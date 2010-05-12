@@ -1,0 +1,79 @@
+This package was debianized by:
+
+    Debian Multimedia Maintainers <pkg-multimedia-maintainers@lists.alioth.debian.org> on Mon, 10 May 2010 23:19:04 +0200
+
+It was downloaded from http://sourceforge.net/projects/yoshimi/files/
+
+Upstream Author(s):
+
+    Alan Calvert
+    Nasca Octavian Paul
+    James Morris
+
+Copyright:
+
+    Copyright (C) 2009-2010, Alan Calvert
+    Copyright (C) 2002-2009 Nasca Octavian Paul
+    Copyright (C) 2009 James Morris
+
+License:
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    This package is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+On Debian systems, the complete text of the GNU General
+Public License version 2 can be found in `/usr/share/common-licenses/GPL-2'.
+
+License exceptions:
+
+src/CMakeList.txt
+src/main.cpp
+src/version.txt
+src/Misc/FileListItem.h
+src/Misc/HistoryListItem.h
+src/MusicIO/Alsaclient.cpp
+src/MusicIO/Alsaclient.h
+src/MusicIO/AlsaEngine.cpp
+src/MusicIO/AlsaEngine.h
+src/MusicIO/AlsaJackClient.cpp
+src/MusicIO/AlsaJackClient.h
+src/MusicIO/JackAlsaClient.cpp
+src/MusicIO/JackAlsaClient.h
+src/MusicIO/JackClient.cpp
+src/MusicIO/JackClient.h
+src/MusicIO/JackEngine.cpp
+src/MusicIO/JackEngine.h
+src/MusicIO/MidiControl.h
+src/MusicIO/MusicClient.ccp
+src/MusicIO/MusicClient.h
+src/MusicIO/MusicIO.cpp
+src/MusicIO/MusicIO.h
+src/MusicIO/WavRecord.cpp
+src/MusicIO/WavRecord.h
+src/Synth/LegatoTypes.h
+src/Synth/SynthTypes.h
+src/UI/ConsoleUI.fl
+src/UI/GuiThreadUI.fl
+src/UI/ParametersUI.fl
+
+Files above are licenced by GPL-3
+
+On Debian systems, the complete text of the GNU General
+Public License version 3 can be found in `/usr/share/common-licenses/GPL-3'.
+
+The Debian packaging is:
+
+    Copyright (C) 2010 Jaromír Mikeš <mira.mikes@seznam.cz>
+    Copyright (C) 2010 Alessio Treglia <quadrispro@ubuntu.com>
+
+and is licensed under the GPL version 2, see above.

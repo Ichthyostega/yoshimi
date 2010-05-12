@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Yoshimi
+Exec=yoshimi
+Icon=yoshimi
+Terminal=false
+Type=Application
+StartupNotify=true
+Categories=GTK;GNOME;AudioVideo;Player;Audio;
+

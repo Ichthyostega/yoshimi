@@ -1,0 +1,15 @@
+#!/usr/bin/make -f
+%:
+	dh $@ --sourcedirectory=src
+
+override_dh_installchangelogs:
+	dh_installchangelogs README.txt
+
+override_dh_install:
+	dh_install
+	uudecode $(CURDIR)/debian/yoshimi.uu
+	install -d $(CURDIR)/debian/yoshimi/usr/share/applications
+	install -d $(CURDIR)/debian/yoshimi/usr/share/icons
+	install -m 644 $(CURDIR)/debian/yoshimi.desktop $(CURDIR)/debian/yoshimi/usr/share/applications
+	install -m 644 $(CURDIR)/yoshimi.png $(CURDIR)/debian/yoshimi/usr/share/icons
+
