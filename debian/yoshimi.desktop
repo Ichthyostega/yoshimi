@@ -1,9 +1,10 @@
 [Desktop Entry]
-Name=Yoshimi
-Exec=yoshimi
-Icon=yoshimi
-Terminal=false
 Type=Application
+Name=Yoshimi
+GenericName=Software Synthesizer
+Comment=Software Synthesizer based on ZynAddSubFX
+Icon=yoshimi
+Exec=yoshimi
+Terminal=false
 StartupNotify=true
-Categories=GTK;GNOME;AudioVideo;Player;Audio;
-
+Categories=AudioVideo;Audio;
