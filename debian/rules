@@ -1,6 +1,9 @@
 #!/usr/bin/make -f
+
+LDFLAGS=-Wl,--as-needed
+
 %:
-	dh $@ --sourcedirectory=src
+	dh --sourcedirectory=src $@
 
 override_dh_installchangelogs:
 	dh_installchangelogs README.txt
