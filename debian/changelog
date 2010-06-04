@@ -2,7 +2,7 @@ yoshimi (0.056-2) unstable; urgency=low
 
   * Add --as-needed to linking options.
   * Drop GCC options which are not supported on all architectures;
-    this closes: #584492.
+    only i386 and amd64 support some of them (Closes: #584492).
 
  -- Alessio Treglia <alessio@debian.org>  Fri, 04 Jun 2010 03:14:10 +0200
 
