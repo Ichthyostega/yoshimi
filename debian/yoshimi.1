@@ -1,0 +1,106 @@
+.\"                                      Hey, EMACS: -*- nroff -*-
+.\" First parameter, NAME, should be all caps
+.\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
+.\" other parameters are allowed: see man(7), man(1)
+.TH YOSHIMI 1 "May 12, 2010"
+.\" Please adjust this date whenever revising the manpage.
+.\"
+.\" Some roff macros, for reference:
+.\" .nh        disable hyphenation
+.\" .hy        enable hyphenation
+.\" .ad l      left justify
+.\" .ad b      justify to both left and right margins
+.\" .nf        disable filling
+.\" .fi        enable filling
+.\" .br        insert line break
+.\" .sp <n>    insert n+1 empty lines
+.\" for manpage-specific macros, see man(7)
+.SH NAME
+yoshimi \- A software synthesizer based on ZynAddSubFX
+.SH SYNOPSIS
+.B yoshimi
+.RI [ options ] 
+.br
+.B bar
+.RI [ options ]
+.SH DESCRIPTION
+This manual page documents briefly the
+.B yoshimi
+command.
+This manual page was written for the Debian distribution
+because the original program does not have a manual page.
+.PP
+\fByoshimi\fP is a opensource software synthesizer capable of making a countless number of instruments, from some common heared from expensive hardware to interesting sounds that you'll boost to an amazing universe of sounds. 
+.PP
+\fByoshimi\fP A software synthesizer based on ZynAddSubFX with very good Jack and Alsa midi/audio functionality on Linux. 
+.SH OPTIONS
+These programs follow the usual GNU command line syntax, with long
+options starting with two dashes (`-').
+A summary of options is included below.
+.TP
+.B \-?, \-\-help
+display command-line help and exit
+.TP
+.B \-\-usage
+display a short usage message
+.TP
+.B \-V, \-\-version
+display program version
+.TP
+.B \-a, \-\-alsa-midi[=<device>]
+use alsa midi input
+.TP
+.B \-A, \-\-alsa-audio[=<device>]
+use alsa audio output
+.TP
+.B \-b, \-\-buffersize=<size>
+set buffer size (alsa audio)
+.TP
+.B \-c, \-\-show-console
+show console on startup
+.TP
+.B \-i, \-\-no-gui
+no-gui
+.TP
+.B \-j, \-\-jack-midi[=<device>]
+use jack midi input
+.TP
+.B \-J, \-\-jack-audio[=<server>]
+use jack audio output
+.TP
+.B \-k, \-\-autostart-jack
+auto start jack server
+.TP
+.B \-K, \-\-auto-connect
+auto connect jack audio
+.TP
+.B \-V, \-\-version
+display program version
+.TP
+.B \-l, \-\-load=<file> 
+load .xmz file
+.TP
+.B \-L, \-\-load-instrument=<file>
+load .xiz file
+.TP
+.B \-N, \-\-name-tag=<tag>
+add tag to clientname
+.TP
+.B \-o, \-\-oscilsize=<size>
+set ADsynth oscilsize
+.TP
+.B \-R, \-\-samplerate=<rate>
+set sample rate (alsa audio)
+.TP
+.B \-S, \-\-state[=<file>]
+load state from <file>, defaults to '$HOME/.yoshimi/yoshimi.state'
+.TP
+.TP
+.SH SEE ALSO
+.BR jackd(1).
+.br
+.SH AUTHOR
+yoshimi was written by Alan Calvert
+.PP
+This manual page was written by Jaromír Mikeš <mira.mikes@seznam.cz>,
+for the Debian project (but may be used by others).

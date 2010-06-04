@@ -1,0 +1,13 @@
+yoshimi (0.056-2) unstable; urgency=low
+
+  * Add --as-needed to linking options.
+  * Drop GCC options which are not supported on all architectures;
+    only i386 and amd64 support some of them (Closes: #584492).
+
+ -- Alessio Treglia <alessio@debian.org>  Fri, 04 Jun 2010 03:14:10 +0200
+
+yoshimi (0.056-1) unstable; urgency=low
+
+  * Initial release (Closes: #581155). 
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Sat, 01 May 2010 16:18:45 +0200
