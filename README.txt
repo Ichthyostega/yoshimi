@@ -6,8 +6,12 @@ See INSTALL for instructions.
 Bon apetite.
 ------------
 Changes
-0.056 reinstates PADsynth functionality - a stuff up in XMLwrapper::getparbool(). 
-0.055.6 possibly fixes loading compressed xml. 
+0.057.1 Fix inverted reverb panning.
+0.057 reinstate jack midi pitchbend fix (from circa 0.022???); incorporate
+      Nedko's lazy signal response fix; check for sse availability, and step
+      over things accordingly.
+0.056 reinstates PADsynth functionality - a stuff up in XMLwrapper::getparbool().
+0.055.6 possibly fixes loading compressed xml.
 0.055.5 Add airlynx/chip instruments.
 0.055.4 Drop double buffer fltk init; add --no-gui
 0.055.3 use the correct #include <FL/x.H> and move it from MasterUI.fl to GuiThreadUI.fl
@@ -15,21 +19,21 @@ Changes
 0.055.1 check for (and require) alsa >= 1.0.17.
 0.055 pre5 becomes 0.055, no change.
 0.055-pre5 a jack midi bug fix; some subtle performance enhancers including
-           slightly more granular locking. 
-0.055-pre4 gui ignition sequence adjusted. 
+           slightly more granular locking.
+0.055-pre4 gui ignition sequence adjusted.
 0.055-pre3 a few gui fixes, maybe even fixed the gui startup issue; LADI 1 support seems ok.
 0.055-pre2 shakes a fist at the gui startup failure; getopt replaced by argp.
 0.055-pre1 shuffled the master gui display about a bit; LADI 1 support seems ok.
-0.054.1 attitudinal adjustment to a few more pans. 
+0.054.1 attitudinal adjustment to a few more pans.
 0.054 a few things from pre4 fixed; ladi1 SIGUSR1 handler in place but still
       untested in ladish context; interrupt handler now handles rude
       interuptions better; instrument banks now shipped uncompressed; mostly
       harmless?
 0.054-pre4 First cut LADI Level 1 compliance. Some new code, and quite a bit of
-           old code moved around, so expect issues. 
-0.054-pre3 formed an alliance with the random_r family; dropped no gui option. 
+           old code moved around, so expect issues.
+0.054-pre3 formed an alliance with the random_r family; dropped no gui option.
 0.053.3 fix NUM_KIT_ITEMS, accidentally reduced 16 -> 3; improve handling of
-        rtprio availability on thread creation;       
+        rtprio availability on thread creation;
 0.053.2 set the priority of threads in accordance with jack's firm recommendation
 0.054-pre2 fixed random error in randomness; more menu madness.
 0.054-pre1 improved xmz file selection, including persistent history selection;
@@ -40,7 +44,7 @@ Changes
            stray mushroom clouds from recorder
 0.053-pre2 utter rubbish
 0.053-pre1 reverted to 0.045, and just added the sane stuff; recording should
-           be fixed; missing ~/.yoshimiXML.cfg no longer a drama 
+           be fixed; missing ~/.yoshimiXML.cfg no longer a drama
 0.046 to 0.051 should be considered as just unfortunate medical outcomes
 0.045 use pthread for managing SCHED_FIFO on threads
 0.044 add alsa period size & samplerate control, and auto-record
