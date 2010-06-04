@@ -2,6 +2,10 @@
 
 LDFLAGS+=-Wl,--as-needed
 
+ifeq ($(DEB_HOST_ARCH_CPU),i386)
+CXXFLAGS+=-msse -msse2 -mfpmath=sse
+endif
+
 %:
 	dh --sourcedirectory=src $@
 
