@@ -41,6 +41,7 @@ Description: A software synthesizer based on ZynAddSubFX
 Package: yoshimi-data
 Architecture: all
 Depends: ${misc:Depends}
+Recommends: yoshimi
 Description: Presets for Yoshimi
  Yoshimi - a software synthesizer for Linux, based on ZynAddSubFX 2.4.0
  .
