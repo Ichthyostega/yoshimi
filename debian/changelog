@@ -1,3 +1,10 @@
+yoshimi (0.057-1) UNRELEASED; urgency=low
+
+  * New upstream release
+  * Recommends on yoshimi for yoshimi-data package added (Closes: #584644).
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Sat, 05 Jun 2010 18:04:09 +0200
+
 yoshimi (0.056-2) unstable; urgency=low
 
   * Add --as-needed to linking options.
