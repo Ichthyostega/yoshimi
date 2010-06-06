@@ -1,9 +1,12 @@
-yoshimi (0.057-1) UNRELEASED; urgency=low
+yoshimi (0.058-1) unstable; urgency=low
 
-  * New upstream release
+  [ Jaromír Mikeš ]
   * Recommends on yoshimi for yoshimi-data package added (Closes: #584644).
 
- -- Jaromír Mikeš <mira.mikes@seznam.cz>  Sat, 05 Jun 2010 18:04:09 +0200
+  [ Alessio Treglia ]
+  * New upstream release.
+
+ -- Alessio Treglia <alessio@debian.org>  Sun, 06 Jun 2010 20:26:45 +0200
 
 yoshimi (0.056-2) unstable; urgency=low
 
