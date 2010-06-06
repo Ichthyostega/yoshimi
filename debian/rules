@@ -2,7 +2,7 @@
 
 LDFLAGS+=-Wl,--as-needed
 
-ifneq (,$(findstring :$(DEB_HOST_ARCH_CPU):,:i386:amd64:))
+ifneq (,$(findstring :$(DEB_HOST_ARCH_CPU):,:amd64:))
 CXXFLAGS+=-msse -msse2 -mfpmath=sse
 endif
 
