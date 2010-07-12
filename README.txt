@@ -6,6 +6,8 @@ See INSTALL for instructions.
 Bon apetite.
 ------------
 Changes
+0.058.1 switch fftw planner flag from FFTW_MEASURE back to FFTW_ESTIMATE,
+        enabling plinky-plank to load in realistic time
 0.058 all the rc5 fixes but lose the debug code;welcome Jeremy Jongepier's Dubstep bass.
 0.057.2-rc5 fix a deadlock on loading instruments using PADsynth.
 0.057.2-rc4 more testing of issues.
