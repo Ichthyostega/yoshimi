@@ -22,7 +22,8 @@ SynthPiano \
 Will_J_Godfrey_Collection; do
     (
     pushd .
-    cd ${dir} && echo "In directory: $(pwd)" && find . -name "*.xiz"
+    # cd ${dir} && echo "In directory: $(pwd)" && gzip -4 *.xiz
+    cd ${dir} && echo "In directory: $(pwd)" && find . -name "*.gz"  -exec ../compit {} \;
     popd
     )
 done
