@@ -9,11 +9,11 @@ Forwarded: no
 
 --- yoshimi.orig/src/CMakeLists.txt
 +++ yoshimi/src/CMakeLists.txt
-@@ -43,7 +43,7 @@ set(BUILD_X86_64_OPTS
-     CACHE STRING "X86_64 complier options"
+@@ -74,7 +74,7 @@ set (BuildOptions_X86_64Core2
  )
- set(BUILD_OPTS
--    "-O3 -march=native -msse -msse2 -mfpmath=sse -ffast-math -fomit-frame-pointer"
+ 
+ set (BuildOptionsBasic
+-    "-O3 -march=pentium4 -msse -msse2 -mfpmath=sse -ffast-math -fomit-frame-pointer"
 +    "-O3 -ffast-math -fomit-frame-pointer"
      CACHE STRING "X86 complier options"
  )
