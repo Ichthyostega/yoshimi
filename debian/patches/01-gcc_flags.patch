@@ -4,8 +4,8 @@ Description: Drop GCC options which are not supported on all architectures.
 Bug: http://bugs.debian.org/584492
 Forwarded: no
 ---
- src/CMakeLists.txt |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ src/CMakeLists.txt |   12 ++----------
+ 1 file changed, 2 insertions(+), 10 deletions(-)
 
 --- yoshimi.orig/src/CMakeLists.txt
 +++ yoshimi/src/CMakeLists.txt
@@ -17,4 +17,21 @@ Forwarded: no
 +    "-O3 -ffast-math -fomit-frame-pointer"
      CACHE STRING "X86 complier options"
  )
+ 
+@@ -193,15 +193,7 @@ if (BuildForDebug)
+     message (STATUS "Building for ${CMAKE_BUILD_TYPE}, flags: ${CMAKE_CXX_FLAGS_DEBUG}")
+ else (BuildForDebug)
+     set (CMAKE_BUILD_TYPE "Release")
+-    if (BuildForAMD_X86_64)
+-        set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptions_x86_64AMD})
+-    else (BuildForAMD_X86_64)
+-        if (BuildForCore2_X86_64)
+-            set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptions_X86_64Core2})
+-        else (BuildForCore2_X86_64)
+-            set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptionsBasic})
+-        endif (BuildForCore2_X86_64)
+-    endif (BuildForAMD_X86_64)
++    set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptionsBasic})
+     message (STATUS "Building for ${CMAKE_BUILD_TYPE}, flags: ${CMAKE_CXX_FLAGS_RELEASE}")
+ endif (BuildForDebug)
  
