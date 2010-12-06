@@ -18,11 +18,10 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified January 2010
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
-#include "Misc/Util.h"
-#include "Misc/Master.h"
+#include "Misc/SynthEngine.h"
 #include "Effects/EQ.h"
 
 EQ::EQ(bool insertion_, float *efxoutl_, float *efxoutr_) :
@@ -58,10 +57,9 @@ void EQ::cleanup(void)
 // Effect output
 void EQ::out(float *smpsl, float *smpsr)
 {
-    int buffersize = zynMaster->getBuffersize();
-    memcpy(efxoutl, smpsl, buffersize * sizeof(float));
-    memcpy(efxoutr, smpsr, buffersize * sizeof(float));
-    for (int i = 0; i < buffersize; ++i)
+    memcpy(efxoutl, smpsl, synth->bufferbytes);
+    memcpy(efxoutr, smpsr, synth->bufferbytes);
+    for (int i = 0; i < synth->buffersize; ++i)
     {
         efxoutl[i] *= volume;
         efxoutr[i] *= volume;
@@ -83,8 +81,8 @@ void EQ::out(float *smpsl, float *smpsr)
 void EQ::setvolume(unsigned char Pvolume_)
 {
     Pvolume = Pvolume_;
-    outvolume = powf(0.005f, (1.0 - Pvolume / 127.0)) * 10.0;
-    volume = (!insertion) ? 1.0 : outvolume;
+    outvolume = powf(0.005f, (1.0f - Pvolume / 127.0f)) * 10.0f;
+    volume = (!insertion) ? 1.0f : outvolume;
 }
 
 
@@ -138,19 +136,19 @@ void EQ::changepar(int npar, unsigned char value)
             break;
         case 1:
             filter[nb].Pfreq = value;
-            tmp = 600.0 * powf(30.0f, (value - 64.0) / 64.0);
+            tmp = 600.0f * powf(30.0f, (value - 64.0f) / 64.0f);
             filter[nb].l->setfreq(tmp);
             filter[nb].r->setfreq(tmp);
             break;
         case 2:
             filter[nb].Pgain = value;
-            tmp = 30.0 * (value - 64.0) / 64.0;
+            tmp = 30.0f * (value - 64.0f) / 64.0f;
             filter[nb].l->setgain(tmp);
             filter[nb].r->setgain(tmp);
             break;
         case 3:
             filter[nb].Pq = value;
-            tmp = powf(30.0f, (value - 64.0) / 64.0);
+            tmp = powf(30.0f, (value - 64.0f) / 64.0f);
             filter[nb].l->setq(tmp);
             filter[nb].r->setq(tmp);
             break;
@@ -203,7 +201,7 @@ unsigned char EQ::getpar(int npar)
 
 float EQ::getfreqresponse(float freq)
 {
-    float resp = 1.0;
+    float resp = 1.0f;
     for (int i = 0; i < MAX_EQ_BANDS; ++i)
     {
         if (filter[i].Ptype == 0)

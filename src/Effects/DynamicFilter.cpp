@@ -18,11 +18,10 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified January 2010
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
-#include "Misc/Util.h"
-#include "Misc/Master.h"
+#include "Misc/SynthEngine.h"
 #include "Effects/DynamicFilter.h"
 
 DynamicFilter::DynamicFilter(bool insertion_, float *efxoutl_, float *efxoutr_) :
@@ -64,19 +63,18 @@ void DynamicFilter::out(float *smpsl, float *smpsr)
     float freq = filterpars->getfreq();
     float q = filterpars->getq();
 
-    int buffersize = zynMaster->getBuffersize();
-    for (int i = 0; i < buffersize; ++i)
+    for (int i = 0; i < synth->buffersize; ++i)
     {
-        memcpy(efxoutl, smpsl, buffersize * sizeof(float));
-        memcpy(efxoutr, smpsr, buffersize * sizeof(float));
-        float x = (fabsf(smpsl[i]) + fabsf(smpsr[i])) * 0.5;
-        ms1 = ms1 * (1.0 - ampsmooth) + x * ampsmooth + 1e-10;
+        memcpy(efxoutl, smpsl, synth->bufferbytes);
+        memcpy(efxoutr, smpsr, synth->bufferbytes);
+        float x = (fabsf(smpsl[i]) + fabsf(smpsr[i])) * 0.5f;
+        ms1 = ms1 * (1.0f - ampsmooth) + x * ampsmooth + 1e-10f;
     }
 
-    float ampsmooth2 = powf(ampsmooth, 0.2) * 0.3;
-    ms2 = ms2 * (1.0 - ampsmooth2) + ms1 * ampsmooth2;
-    ms3 = ms3 * (1.0 - ampsmooth2) + ms2 * ampsmooth2;
-    ms4=ms4 * (1.0 - ampsmooth2) + ms3 * ampsmooth2;
+    float ampsmooth2 = powf(ampsmooth, 0.2f) * 0.3f;
+    ms2 = ms2 * (1.0f - ampsmooth2) + ms1 * ampsmooth2;
+    ms3 = ms3 * (1.0f - ampsmooth2) + ms2 * ampsmooth2;
+    ms4=ms4 * (1.0f - ampsmooth2) + ms3 * ampsmooth2;
     float rms = (sqrtf(ms4)) * ampsns;
 
     float frl = filterl->getrealfreq(freq + lfol + rms);
@@ -89,7 +87,7 @@ void DynamicFilter::out(float *smpsl, float *smpsr)
     filterr->filterout(efxoutr);
 
     // panning
-    for (int i = 0; i < buffersize; ++i)
+    for (int i = 0; i < synth->buffersize; ++i)
     {
         efxoutl[i] *= (1.0 - panning);
         efxoutr[i] *= panning;
@@ -100,7 +98,7 @@ void DynamicFilter::out(float *smpsl, float *smpsr)
 void DynamicFilter::cleanup(void)
 {
     reinitfilter();
-    ms1 = ms2 = ms3 = ms4 = 0.0;
+    ms1 = ms2 = ms3 = ms4 = 0.0f;
 }
 
 
@@ -108,16 +106,16 @@ void DynamicFilter::cleanup(void)
 void DynamicFilter::setdepth(unsigned char Pdepth_)
 {
     Pdepth = Pdepth_;
-    depth = powf(Pdepth / 127.0, 2.0f);
+    depth = powf(Pdepth / 127.0f, 2.0f);
 }
 
 
 void DynamicFilter::setvolume(unsigned char Pvolume_)
 {
     Pvolume = Pvolume_;
-    outvolume = Pvolume / 127.0;
+    outvolume = Pvolume / 127.0f;
     if (!insertion)
-        volume = 1.0;
+        volume = 1.0f;
     else
         volume = outvolume;
 }
@@ -125,17 +123,17 @@ void DynamicFilter::setvolume(unsigned char Pvolume_)
 void DynamicFilter::setpanning(unsigned char Ppanning_)
 {
     Ppanning = Ppanning_;
-    panning = Ppanning / 127.0;
+    panning = Ppanning / 127.0f;
 }
 
 
 void DynamicFilter::setampsns(unsigned char Pampsns_)
 {
     Pampsns = Pampsns_;
-    ampsns = powf(Pampsns / 127.0, 2.5f) * 10.0;
+    ampsns = powf(Pampsns / 127.0f, 2.5f) * 10.0f;
     if (Pampsnsinv)
         ampsns = -ampsns;
-    ampsmooth = expf(-Pampsmooth / 127.0 * 10.0) * 0.99;
+    ampsmooth = expf(-Pampsmooth / 127.0f * 10.0f) * 0.99f;
 }
 
 void DynamicFilter::reinitfilter(void)

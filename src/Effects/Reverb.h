@@ -18,17 +18,19 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified January 2010
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
 #ifndef REVERB_H
 #define REVERB_H
 
-#include "DSP/AnalogFilter.h"
 #include "Effects/Effect.h"
 
 #define REV_COMBS 8
 #define REV_APS 4
+
+class Unison;
+class AnalogFilter;
 
 class Reverb : public Effect
 {
@@ -37,12 +39,28 @@ class Reverb : public Effect
         ~Reverb();
         void out(float *smps_l, float *smps_r);
         void cleanup(void);
-    
+
         void setpreset(unsigned char npreset);
         void changepar(int npar, unsigned char value);
         unsigned char getpar(int npar);
-    
+
     private:
+        // Parametrii
+        unsigned char Pvolume;
+        unsigned char Ppan;
+        unsigned char Ptime;
+        unsigned char Pidelay;
+        unsigned char Pidelayfb;
+        unsigned char Prdelay;
+        unsigned char Perbalance;
+        unsigned char Plpf;
+        unsigned char Phpf; // todo 0..63 lpf, 64 = off, 65..127 = hpf(TODO)
+        unsigned char Plohidamp;
+        unsigned char Ptype;
+        unsigned char Proomsize;
+        unsigned char Pbandwidth;
+
+        // parameter control
         void setvolume(unsigned char Pvolume_);
         void setpan(unsigned char Ppan_);
         void settime(unsigned char Ptime_);
@@ -53,53 +71,36 @@ class Reverb : public Effect
         void setlpf(unsigned char Plpf_);
         void settype( unsigned char Ptype_);
         void setroomsize(unsigned char Proomsize_);
-
+        void setbandwidth(unsigned char Pbandwidth_);
         void processmono(int ch, float *output);
 
-        // Parametrii
-        unsigned char Pvolume;
-        unsigned char Ppan;
-        unsigned char Ptime;
-        unsigned char Pidelay;
-        unsigned char Pidelayfb;
-        unsigned char Prdelay;
-        unsigned char Perbalance;
-        unsigned char Plpf;
-        unsigned char Phpf;
-            // todo 0..63 lpf,64=off,65..127=hpf(TODO)
-        unsigned char Plohidamp;
-        unsigned char Ptype;
-        unsigned char Proomsize;
-
-        float pan, erbalance;
+        float pan;
+        float erbalance;
 
         // Parametrii 2
-        int   lohidamptype; // <0=disable,1=highdamp(lowpass),2=lowdamp(highpass)
-        int   idelaylen, rdelaylen;
-        int   idelayk;
+        int lohidamptype; // 0 = disable, 1 = highdamp (lowpass), 2 = lowdamp (highpass)
+        int idelaylen;
+        int rdelaylen;
+        int idelayk;
         float lohifb;
         float idelayfb;
         float roomsize;
         float rs; // rs is used to "normalise" the volume according to the roomsize
-        int   comblen[REV_COMBS * 2];
-        int   aplen[REV_APS * 2];
-    
+        int comblen[REV_COMBS * 2];
+        int aplen[REV_APS * 2];
+        Unison *bandwidth;
+
         // Internal Variables
         float *comb[REV_COMBS * 2];
-        int    combk[REV_COMBS * 2];
-        float  combfb[REV_COMBS * 2];// <feedback-ul fiecarui filtru "comb"
-        float  lpcomb[REV_COMBS * 2];  // <pentru Filtrul LowPass
-    
+        int combk[REV_COMBS * 2];
+        float combfb[REV_COMBS * 2];// <feedback-ul fiecarui filtru "comb"
+        float lpcomb[REV_COMBS * 2];  // <pentru Filtrul LowPass
         float *ap[REV_APS * 2];
-    
         int apk[REV_APS * 2];
-    
         float *idelay;
-        float *inputbuf;
-        AnalogFilter *lpf; // filters
+        AnalogFilter *lpf;  // filters
         AnalogFilter *hpf;
-    
-        int buffersize;
+        float *inputbuf;
 };
 
 #endif

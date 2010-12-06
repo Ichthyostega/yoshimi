@@ -68,10 +68,13 @@ decl {\#include "ParametersUI.h"} {public
 decl {\#include "ConsoleUI.h"} {public
 } 
 
-decl {\#include "Misc/Master.h"} {public
+decl {\#include "Misc/SynthEngine.h"} {public
 } 
 
-class VUMeter {: {public Fl_Box}
+decl {\#include "Misc/MiscFuncs.h"} {public
+}
+
+class VUMeter {: {public Fl_Box, private MiscFuncs}
 } {
   Function {VUMeter(int x,int y, int w, int h, const char *label=0):Fl_Box(x,y,w,h,label)} {} {
     code {npart=-1;} {}
@@ -91,13 +94,13 @@ class VUMeter {: {public Fl_Box}
         int oy = y();
         int lx = w();
         int ly = h();
-        float dbl = zynMaster->vuOutPeakL;
-        float dbr = zynMaster->vuOutPeakR;
-        float rmsdbl = zynMaster->vuRmsPeakL;
-        float rmsdbr = zynMaster->vuRmsPeakR;
-        float maxdbl = zynMaster->vuMaxOutPeakL;
-        float maxdbr = zynMaster->vuMaxOutPeakR;
-//        bool clipped = zynMaster->vuClipped;
+        float dbl = synth->vuOutPeakL;
+        float dbr = synth->vuOutPeakR;
+        float rmsdbl = synth->vuRmsPeakL;
+        float rmsdbr = synth->vuRmsPeakR;
+        float maxdbl = synth->vuMaxOutPeakL;
+        float maxdbr = synth->vuMaxOutPeakR;
+//        bool clipped = synth->vuClipped;
         dbl = rap2dB(dbl);
         dbr = rap2dB(dbr);
         rmsdbl = rap2dB(rmsdbl);
@@ -176,12 +179,12 @@ class VUMeter {: {public Fl_Box}
             fl_rectf(ox + irmsdbr - 1, oy + ly / 2, 3, VULENY, 255, 255, 0);
 
         // see red if clipped
-        if (zynMaster->vuClippedL)
+        if (synth->vuClippedL)
             fl_rectf(ox + VULENX + 2, oy, lx - VULENX - 3, ly / 2 - 3, 250, 10, 10);
         else
             fl_rectf(ox + VULENX + 2, oy, lx - VULENX - 3, ly / 2 - 3, 0, 0, 10);
 
-        if (zynMaster->vuClippedR)
+        if (synth->vuClippedR)
             fl_rectf(ox + VULENX + 2, oy + ly / 2, lx - VULENX - 3, (ly - 2) / 2 - 2, 250, 10, 10);
         else
             fl_rectf(ox + VULENX + 2, oy + ly / 2, lx - VULENX - 3, (ly - 2) / 2 - 2, 0, 0, 10);
@@ -218,15 +221,15 @@ class VUMeter {: {public Fl_Box}
         if (!active_r())
         {
             fl_rectf(ox, oy, lx, ly, 140, 140, 140);
-            if (zynMaster->fakepeakpart[npart] > 0)
+            if (synth->fakepeakpart[npart] > 0)
             {
-                int fakedb = zynMaster->fakepeakpart[npart] / 255.0 * ly + 4;
+                int fakedb = synth->fakepeakpart[npart] / 255.0 * ly + 4;
                 fl_rectf(ox + 2, oy + ly - fakedb, lx - 4, fakedb, 0, 0, 0);
             }
             return;
         }
         // draw the vu lines
-        float db = zynMaster->vuoutpeakpart[npart];
+        float db = synth->vuoutpeakpart[npart];
         db = rap2dB(db);
 
         db = (MIN_DB - db) / MIN_DB;
@@ -273,7 +276,7 @@ class VUMeter {: {public Fl_Box}
                 break;
             case FL_PUSH:
                 if (npart < 0) //if (npart >= 0) break;
-                    zynMaster->vuresetpeaks();
+                    synth->vuresetpeaks();
                 break;
         }
         return 1;} {}
@@ -285,7 +288,7 @@ class VUMeter {: {public Fl_Box}
   decl {float oldrmsdbr;} {}
 } 
 
-class SysEffSend {: {public WidgetPDial}
+class SysEffSend {: {public WidgetPDial, private MiscFuncs}
 } {
   Function {SysEffSend(int x,int y, int w, int h, const char *label=0):WidgetPDial(x,y,w,h,label)} {} {
     code {neff1=0; neff2=0;} {}
@@ -299,7 +302,7 @@ class SysEffSend {: {public WidgetPDial}
         labelfont(1);
         labelsize(10);
         align(FL_ALIGN_TOP);
-        value(zynMaster->Psysefxsend[neff1][neff2]);
+        value(synth->Psysefxsend[neff1][neff2]);
         copy_label((asString(neff1 + 1) + "->" + asString(neff2 + 1)).c_str());} {}
   }
   Function {~SysEffSend()} {} {
@@ -309,7 +312,7 @@ class SysEffSend {: {public WidgetPDial}
   } {
     code {if (event == FL_PUSH || event == FL_DRAG)
         {
-            zynMaster->setPsysefxsend(neff1,neff2,value());
+            synth->setPsysefxsend(neff1,neff2,value());
         }
         return WidgetPDial::handle(event);} {}
   }
@@ -317,7 +320,7 @@ class SysEffSend {: {public WidgetPDial}
   decl {int neff2;} {}
 } 
 
-class Panellistitem {: {public Fl_Group}
+class Panellistitem {: {public Fl_Group, private MiscFuncs}
 } {
   Function {make_window()} {private
   } {
@@ -327,7 +330,7 @@ class Panellistitem {: {public Fl_Group}
     } {
       Fl_Group panellistitemgroup {
         private xywh {0 20 70 240} box PLASTIC_THIN_UP_BOX
-        code0 {if (zynMaster->part[npart]->Penabled==0) o->deactivate();}
+        code0 {if (synth->part[npart]->Penabled==0) o->deactivate();}
       } {
         Fl_Group {} {
           xywh {45 65 15 110} box ENGRAVED_FRAME
@@ -350,14 +353,14 @@ class Panellistitem {: {public Fl_Group}
           xywh {5 27 60 30} box THIN_DOWN_BOX down_box FLAT_BOX labelfont 1 labelsize 10 align 208
         }
         Fl_Slider partvolume {
-          callback {zynMaster->part[npart]->setPvolume(o->value());}
+          callback {synth->part[npart]->setPvolume(o->value());}
           xywh {10 65 30 110} type {Vert Knob} box FLAT_BOX minimum 127 maximum 0 step 1 value 127
-          code0 {o->value(zynMaster->part[npart]->Pvolume);}
+          code0 {o->value(synth->part[npart]->Pvolume);}
         }
         Fl_Dial partpanning {
-          callback {zynMaster->part[npart]->setPpanning(o->value());}
+          callback {synth->part[npart]->setPpanning(o->value());}
           xywh {20 180 30 30} maximum 127 step 1
-          code0 {o->value(zynMaster->part[npart]->Ppanning);}
+          code0 {o->value(synth->part[npart]->Ppanning);}
           class WidgetPDial
         }
         Fl_Button {} {
@@ -370,7 +373,7 @@ class Panellistitem {: {public Fl_Group}
           xywh {15 235 40 20} box PLASTIC_UP_BOX labelsize 10
         }
         Fl_Choice partrcv {
-          callback {zynMaster->part[npart]->Prcvchn=o->value();}
+          callback {synth->part[npart]->Prcvchn=o->value();}
           tooltip {receive from Midi channel} xywh {10 213 50 15} down_box BORDER_BOX labelsize 10 align 5 textfont 1 textsize 10
           code0 {for(int i = 0; i < NUM_MIDI_CHANNELS; i++)
             {
@@ -379,14 +382,14 @@ class Panellistitem {: {public Fl_Group}
                 else
                     o->add("Dr10");
             }}
-          code1 {o->value(zynMaster->part[npart]->Prcvchn);}
+          code1 {o->value(synth->part[npart]->Prcvchn);}
         } {}
       }
       Fl_Check_Button partenabled {
         label 01
-        callback {zynMaster->actionLock(lockmute);
-            zynMaster->partonoff(npart, o->value());
-            zynMaster->actionLock(unlock);
+        callback {synth->actionLock(lockmute);
+            synth->partonoff(npart, o->value());
+            synth->actionLock(unlock);
             if (o->value() == 0)
                 panellistitemgroup->deactivate();
             else
@@ -402,7 +405,7 @@ class Panellistitem {: {public Fl_Group}
         private xywh {5 0 45 20} down_box DOWN_BOX labeltype EMBOSSED_LABEL labelfont 1 labelsize 13 align 24
         code0 {string tmp = asString(npart + 1);
             o->copy_label(tmp.c_str());}
-        code1 {o->value(zynMaster->part[npart]->Penabled);}
+        code1 {o->value(synth->part[npart]->Penabled);}
       }
     }
   }
@@ -421,15 +424,15 @@ class Panellistitem {: {public Fl_Group}
   }
   Function {refresh()} {open
   } {
-    code {partenabled->value(zynMaster->part[npart]->Penabled);
-        if (zynMaster->part[npart]->Penabled != 0)
+    code {partenabled->value(synth->part[npart]->Penabled);
+        if (synth->part[npart]->Penabled != 0)
             panellistitemgroup->activate();
         else
             panellistitemgroup->deactivate();
-        partvolume->value(zynMaster->part[npart]->Pvolume);
-        partpanning->value(zynMaster->part[npart]->Ppanning);
-        partrcv->value(zynMaster->part[npart]->Prcvchn);
-        partname->label(zynMaster->part[npart]->Pname.c_str());
+        partvolume->value(synth->part[npart]->Pvolume);
+        partpanning->value(synth->part[npart]->Ppanning);
+        partrcv->value(synth->part[npart]->Prcvchn);
+        partname->label(synth->part[npart]->Pname.c_str());
         if ((int)bankui->cbwig->value() != (npart + 1))
             panellistitemgroup->color(fl_rgb_color(160, 160, 160));
         else

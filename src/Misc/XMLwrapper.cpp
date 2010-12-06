@@ -18,15 +18,15 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified January 2010
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
 #include <zlib.h>
 #include <sstream>
-#include <iostream>
+//#include <iostream>
 
+#include "Misc/Config.h"
 #include "Misc/XMLwrapper.h"
-#include "Misc/Util.h"
 
 int xml_k = 0;
 char tabs[STACKSIZE + 2];
@@ -60,7 +60,7 @@ XMLwrapper::XMLwrapper()
 
     mxmlElementSetAttr(root, "version-major", "1");
     mxmlElementSetAttr(root, "version-minor", "1");
-    mxmlElementSetAttr(root, "ZynAddSubFX-author", "Alan Calvert");
+//    mxmlElementSetAttr(root, "ZynAddSubFX-author", "Alan Calvert");
 
     info = addparams0("INFORMATION"); // specifications
     beginbranch("BASE_PARAMETERS");
@@ -266,7 +266,7 @@ char *XMLwrapper::doloadfile(const string& filename)
     int this_read;
     int total_bytes = 0;
     stringstream readStream;
-    for (bool quit = false; !quit && !Pexitprogram;)
+    for (bool quit = false; !quit;)
     {
         memset(fetchBuf, 0, sizeof(fetchBuf) * sizeof(char));
         this_read = gzread(gzf, fetchBuf, bufSize);

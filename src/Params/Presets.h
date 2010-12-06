@@ -37,20 +37,12 @@ class Presets
         void paste(int npreset);     // npreset==0 for clipboard
         bool checkclipboardtype();
         void deletepreset(int npreset);
-
-        char type[MAX_PRESETTYPE_SIZE];
         void setelement(int n);
         void rescanforpresets(void);
-        unsigned int getSamplerate(void) { return samplerate; };
-        int getBuffersize(void) { return buffersize; };
-        int getOscilsize(void) { return oscilsize; };
+        char type[MAX_PRESETTYPE_SIZE];
 
     protected:
         void setpresettype(const char *type);
-        unsigned int samplerate;
-        int buffersize;
-        int oscilsize;
-        int half_oscilsize;
 
     private:
         virtual void add2XML(XMLwrapper *xml) = 0;

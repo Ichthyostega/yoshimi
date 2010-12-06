@@ -2,9 +2,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE ZynAddSubFX-data>
 <ZynAddSubFX-data version-major="1" version-minor="1"
-ZynAddSubFX-author="Nasca Octavian Paul">
+ZynAddSubFX-author="Alan Calvert">
 <INFORMATION>
-<par_bool name="PADsynth_used" value="no" />
+<par name="PADsynth_used" value="0" />
 </INFORMATION>
 <BASE_PARAMETERS>
 <par name="max_midi_parts" value="16" />
@@ -60,7 +60,7 @@ GPL V 2 or later</string>
 <par name="R_val" value="64" />
 </AMPLITUDE_ENVELOPE>
 <AMPLITUDE_LFO>
-<par_real name="freq" value="0.629921" />
+<par_real name="freq" value="0.63" />
 <par name="intensity" value="0" />
 <par name="start_phase" value="64" />
 <par name="lfo_type" value="0" />
@@ -92,7 +92,7 @@ GPL V 2 or later</string>
 <par name="R_val" value="64" />
 </FREQUENCY_ENVELOPE>
 <FREQUENCY_LFO>
-<par_real name="freq" value="0.551181" />
+<par_real name="freq" value="0.551" />
 <par name="intensity" value="0" />
 <par name="start_phase" value="64" />
 <par name="lfo_type" value="0" />
@@ -131,7 +131,7 @@ GPL V 2 or later</string>
 <par name="R_val" value="64" />
 </FILTER_ENVELOPE>
 <FILTER_LFO>
-<par_real name="freq" value="0.629921" />
+<par_real name="freq" value="0.63" />
 <par name="intensity" value="0" />
 <par name="start_phase" value="64" />
 <par name="lfo_type" value="0" />
@@ -424,7 +424,7 @@ GPL V 2 or later</string>
 <par name="par" value="80" />
 </par_no>
 <par_no id="4">
-<par name="par" value="59" />
+<par name="par" value="41" />
 </par_no>
 <par_no id="7">
 <par name="par" value="96" />

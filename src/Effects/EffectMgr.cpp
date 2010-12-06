@@ -2,8 +2,8 @@
     EffectMgr.cpp - Effect manager, an interface betwen the program and effects
 
     Original ZynAddSubFX author Nasca Octavian Paul
-    Copyright (C) 2002-2005 Nasca Octavian Paul
-    Copyright 2009, Alan Calvert
+    Copyright (C) 2002-2009 Nasca Octavian Paul
+    Copyright 2009-2010, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -18,10 +18,10 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified October 2009
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
-#include "Misc/Master.h"
+#include "Misc/SynthEngine.h"
 #include "Effects/EffectMgr.h"
 
 EffectMgr::EffectMgr(const bool insertion_) :
@@ -32,10 +32,10 @@ EffectMgr::EffectMgr(const bool insertion_) :
     dryonly(false)
 {
     setpresettype("Peffect");
-    efxoutl = new float [buffersize];
-    efxoutr = new float [buffersize];
-    memset(efxoutl, 0, buffersize * sizeof(float));
-    memset(efxoutr, 0, buffersize * sizeof(float));
+    efxoutl = new float [synth->buffersize];
+    efxoutr = new float [synth->buffersize];
+    memset(efxoutl, 0, synth->bufferbytes);
+    memset(efxoutr, 0, synth->bufferbytes);
     defaults();
 }
 
@@ -61,8 +61,8 @@ void EffectMgr::changeeffect(int _nefx)
     if (nefx == _nefx)
         return;
     nefx = _nefx;
-    memset(efxoutl, 0, buffersize * sizeof(float));
-    memset(efxoutr, 0, buffersize * sizeof(float));
+    memset(efxoutl, 0, synth->bufferbytes);
+    memset(efxoutr, 0, synth->bufferbytes);
     if (efx)
         delete efx;
     switch (nefx)
@@ -133,9 +133,9 @@ void EffectMgr::changepreset_nolock(unsigned char npreset)
 // Change the preset of the current effect(with thread locking)
 void EffectMgr::changepreset(unsigned char npreset)
 {
-    zynMaster->actionLock(lock);
+    synth->actionLock(lock);
     changepreset_nolock(npreset);
-    zynMaster->actionLock(unlock);
+    synth->actionLock(unlock);
 }
 
 
@@ -150,9 +150,9 @@ void EffectMgr::seteffectpar_nolock(int npar, unsigned char value)
 // Change a parameter of the current effect (with thread locking)
 void EffectMgr::seteffectpar(int npar, unsigned char value)
 {
-    zynMaster->actionLock(lock);
+    synth->actionLock(lock);
     seteffectpar_nolock(npar, value);
-    zynMaster->actionLock(unlock);
+    synth->actionLock(unlock);
 }
 
 // Get a parameter of the current effect
@@ -171,15 +171,15 @@ void EffectMgr::out(float *smpsl, float *smpsr)
     {
         if (!insertion)
         {
-            memset(smpsl, 0, buffersize * sizeof(float));
-            memset(smpsr, 0, buffersize * sizeof(float));
-            memset(efxoutl, 0, buffersize * sizeof(float));
-            memset(efxoutr, 0, buffersize * sizeof(float));
+            memset(smpsl, 0, synth->bufferbytes);
+            memset(smpsr, 0, synth->bufferbytes);
+            memset(efxoutl, 0, synth->bufferbytes);
+            memset(efxoutr, 0, synth->bufferbytes);
         }
         return;
     }
-    memset(efxoutl, 0, buffersize * sizeof(float));
-    memset(efxoutr, 0, buffersize * sizeof(float));
+    memset(efxoutl, 0, synth->bufferbytes);
+    memset(efxoutr, 0, synth->bufferbytes);
     efx->out(smpsl, smpsr);
 
     float volume = efx->volume;
@@ -187,7 +187,7 @@ void EffectMgr::out(float *smpsl, float *smpsr)
     if (nefx == 7)
     {   // this is need only for the EQ effect
         // aca: another memcpy() candidate
-        for (int i = 0; i < buffersize; ++i)
+        for (int i = 0; i < synth->buffersize; ++i)
         {
             smpsl[i] = efxoutl[i];
             smpsr[i] = efxoutr[i];
@@ -199,20 +199,20 @@ void EffectMgr::out(float *smpsl, float *smpsr)
     if (insertion != 0)
     {
         float v1, v2;
-        if (volume < 0.5)
+        if (volume < 0.5f)
         {
-            v1 = 1.0;
-            v2 = volume * 2.0;
+            v1 = 1.0f;
+            v2 = volume * 2.0f;
         } else {
-            v1 = (1.0 - volume) * 2.0;
-            v2 = 1.0;
+            v1 = (1.0f - volume) * 2.0f;
+            v2 = 1.0f;
         }
         if (nefx == 1 || nefx==2)
             v2 *= v2; // for Reverb and Echo, the wet function is not liniar
 
         if (dryonly)
         {   // this is used for instrument effect only
-            for (int i = 0; i < buffersize; ++i)
+            for (int i = 0; i < synth->buffersize; ++i)
             {
                 smpsl[i] *= v1;
                 smpsr[i] *= v1;
@@ -221,17 +221,17 @@ void EffectMgr::out(float *smpsl, float *smpsr)
             }
         } else {
             // normal instrument/insertion effect
-            for (int i = 0; i < buffersize; ++i)
+            for (int i = 0; i < synth->buffersize; ++i)
             {
                 smpsl[i] = smpsl[i] * v1 + efxoutl[i] * v2;
                 smpsr[i] = smpsr[i] * v1 + efxoutr[i] * v2;
             }
         }
     } else { // System effect
-        for (int i = 0; i < buffersize; ++i)
+        for (int i = 0; i < synth->buffersize; ++i)
         {
-            efxoutl[i] *= 2.0 * volume;
-            efxoutr[i] *= 2.0 * volume;
+            efxoutl[i] *= 2.0f * volume;
+            efxoutr[i] *= 2.0f * volume;
             smpsl[i] = efxoutl[i];
             smpsr[i] = efxoutr[i];
         }
@@ -241,14 +241,14 @@ void EffectMgr::out(float *smpsl, float *smpsr)
 // Get the effect volume for the system effect
 float EffectMgr::sysefxgetvolume(void)
 {
-    return (!efx) ? 1.0 : efx->outvolume;
+    return (!efx) ? 1.0f : efx->outvolume;
 }
 
 
 // Get the EQ response
 float EffectMgr::getEQfreqresponse(float freq)
 {
-    return  (nefx == 7) ? efx->getfreqresponse(freq) : 0.0;
+    return  (nefx == 7) ? efx->getfreqresponse(freq) : 0.0f;
 }
 
 

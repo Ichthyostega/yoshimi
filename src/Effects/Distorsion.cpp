@@ -2,8 +2,8 @@
     Distorsion.cpp - Distorsion effect
 
     Original ZynAddSubFX author Nasca Octavian Paul
-    Copyright (C) 2002-2005 Nasca Octavian Paul
-    Copyright 2009, Alan Calvert
+    Copyright (C) 2002-2009 Nasca Octavian Paul
+    Copyright 2009-2010, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -18,160 +18,11 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified October 2009
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
-#include "Misc/Util.h"
-#include "Misc/Master.h"
+#include "Misc/SynthEngine.h"
 #include "Effects/Distorsion.h"
-
-// Waveshape (this is called by OscilGen::waveshape and Distorsion::process)
-void waveshapesmps(int n, float *smps, unsigned char type, unsigned char drive)
-{
-    int i;
-    float ws = drive / 127.0;
-    float tmpv;
-
-    switch (type)
-    {
-        case 1:
-            ws = powf( 10.0f, ws * ws * 3.0f) - 1.0 + 0.001; // Arctangent
-            for (i = 0; i < n; ++i)
-                smps[i] = atanf(smps[i] * ws) / atanf(ws);
-            break;
-        case 2:
-            ws = ws * ws * 32.0 + 0.0001; // Asymmetric
-            tmpv = (ws < 1.0) ? sinf(ws) + 0.1 : 1.1;
-            for (i = 0; i < n; ++i)
-                smps[i] = sinf(smps[i] * (0.1 + ws - ws * smps[i])) / tmpv;
-            break;
-        case 3:
-            ws = ws * ws * ws * 20.0 + 0.0001; // Pow
-            for (i = 0; i < n; ++i)
-            {
-                smps[i] *= ws;
-                if (fabsf(smps[i]) < 1.0)
-                {
-                    smps[i] = (smps[i] - powf(smps[i], 3.0)) * 3.0;
-                    if (ws < 1.0)
-                        smps[i] /= ws;
-                } else
-                    smps[i] = 0.0;
-            }
-            break;
-        case 4:
-            ws = ws * ws * ws * 32.0 + 0.0001; // Sine
-            tmpv = (ws < 1.57) ? sinf(ws) : 1.0;
-            for (i = 0; i < n; ++i)
-                smps[i] = sinf(smps[i] * ws) / tmpv;
-            break;
-        case 5:
-            ws = ws * ws + 0.000001; // Quantisize
-            for (i = 0; i < n; ++i)
-                smps[i] = floorf(smps[i] / ws + 0.5) * ws;
-            break;
-        case 6:
-            ws = ws * ws * ws * 32 + 0.0001; // Zigzag
-            tmpv = (ws < 1.0) ? sinf(ws) : 1.0;
-            for (i = 0; i < n; ++i)
-                smps[i] = asinf(sinf(smps[i] * ws)) / tmpv;
-            break;
-        case 7:
-            ws = powf(2.0, -ws * ws * 8.0); // Limiter
-            for (i = 0; i < n; ++i)
-            {
-                float tmp = smps[i];
-                if (fabsf(tmp) > ws)
-                {
-                    smps[i] = (tmp >= 0.0) ? 1.0 : -1.0;
-                }
-                else
-                    smps[i] /= ws;
-            }
-            break;
-        case 8:
-            ws = powf(2.0f, -ws * ws * 8.0); // Upper Limiter
-            for (i = 0; i < n; ++i)
-            {
-                float tmp = smps[i];
-                if (tmp > ws)
-                    smps[i] = ws;
-                smps[i] *= 2.0;
-            }
-            break;
-        case 9:
-            ws = powf(2.0f, -ws * ws * 8.0); // Lower Limiter
-            for (i = 0; i < n; ++i)
-            {
-                float tmp = smps[i];
-                if (tmp < -ws)
-                    smps[i] = -ws;
-                smps[i] *= 2.0;
-            }
-            break;
-        case 10:
-            ws = (powf(2.0f, ws * 6.0) - 1.0) / powf(2.0, 6.0); // Inverse Limiter
-            for (i = 0; i < n; ++i)
-            {
-                float tmp = smps[i];
-                if (fabsf(tmp) > ws)
-                {
-                    smps[i] = (tmp >= 0.0) ? (tmp - ws) : (tmp + ws);
-                }
-                else
-                    smps[i] = 0;
-            }
-            break;
-        case 11:
-            ws = powf(5.0f, ws * ws * 1.0) - 1.0; // Clip
-            for (i = 0; i < n; ++i)
-                smps[i] = smps[i] * (ws + 0.5) * 0.9999 - floorf(0.5f + smps[i] * (ws + 0.5) * 0.9999);
-            break;
-        case 12:
-            ws = ws * ws * ws * 30 + 0.001; // Asym2
-            tmpv = (ws < 0.3) ? ws : 1.0;
-            for (i = 0; i < n; ++i)
-            {
-                float tmp = smps[i] * ws;
-                if (tmp > -2.0 && tmp < 1.0)
-                    smps[i] = tmp * (1.0 - tmp) * (tmp + 2.0) / tmpv;
-                else
-                    smps[i] = 0.0;
-            }
-            break;
-        case 13:
-            ws = ws * ws * ws * 32.0 + 0.0001; // Pow2
-            tmpv = (ws < 1.0) ? (ws * (1 + ws) / 2.0) : 1.0;
-            for (i = 0; i < n; ++i)
-            {
-                float tmp = smps[i] * ws;
-                if (tmp >- 1.0 && tmp < 1.618034)
-                    smps[i] = tmp * (1.0 - tmp) / tmpv;
-                else if (tmp > 0.0)
-                    smps[i] = -1.0;
-                else
-                    smps[i] = -2.0;
-            }
-            break;
-        case 14:
-            ws = powf(ws, 5.0f) * 80.0 + 0.0001; // sigmoid
-            tmpv = (ws > 10.0) ? 0.5 : 0.5-1.0 / (expf(ws) + 1.0);
-            for (i = 0; i < n; ++i)
-            {
-                float tmp = smps[i] * ws;
-                if (tmp < -10.0)
-                    tmp = -10.0;
-                else if (tmp > 10.0)
-                    tmp = 10.0;
-                tmp = 0.5 - 1.0 / (expf(tmp) + 1.0);
-                smps[i] = tmp / tmpv;
-            }
-            break;
-        // todo update to Distorsion::changepar (Ptype max) if there is added
-        // more waveshapings functions
-    }
-}
-
 
 Distorsion::Distorsion(bool insertion_, float *efxoutl_, float *efxoutr_) :
     Effect(insertion_, efxoutl_, efxoutr_, NULL, 0)
@@ -232,24 +83,23 @@ void Distorsion::applyfilters(float *efxoutl, float *efxoutr)
 // Effect output
 void Distorsion::out(float *smpsl, float *smpsr)
 {
-    int buffersize = zynMaster->getBuffersize();
     float l, r, lout, rout;
 
-    float inputvol = powf(5.0, (Pdrive - 32.0) / 127.0);
+    float inputvol = powf(5.0f, (Pdrive - 32.0f) / 127.0f);
     if (Pnegate != 0)
-        inputvol *= -1.0;
+        inputvol *= -1.0f;
 
     if (Pstereo != 0)
     {   //Stereo
-        for (int i = 0; i < buffersize; ++i)
+        for (int i = 0; i < synth->buffersize; ++i)
         {
-            efxoutl[i] = smpsl[i] * inputvol * (1.0 - panning);
+            efxoutl[i] = smpsl[i] * inputvol * (1.0f - panning);
             efxoutr[i] = smpsr[i] * inputvol * panning;
         }
     } else {
-        for (int i = 0; i < buffersize; ++i)
+        for (int i = 0; i < synth->buffersize; ++i)
         {
-            efxoutl[i] = (smpsl[i] * panning + smpsr[i] * (1.0 - panning)) * inputvol;
+            efxoutl[i] = (smpsl[i] * panning + smpsr[i] * (1.0f - panning)) * inputvol;
         }
     }
 
@@ -257,29 +107,29 @@ void Distorsion::out(float *smpsl, float *smpsr)
         applyfilters(efxoutl, efxoutr);
 
     // no optimised, yet (no look table)
-    waveshapesmps(buffersize, efxoutl, Ptype + 1, Pdrive);
+    waveShapeSmps(synth->buffersize, efxoutl, Ptype + 1, Pdrive);
     if (Pstereo != 0)
-        waveshapesmps(buffersize, efxoutr, Ptype + 1, Pdrive);
+        waveShapeSmps(synth->buffersize, efxoutr, Ptype + 1, Pdrive);
 
     if (Pprefiltering == 0)
         applyfilters(efxoutl, efxoutr);
 
     if (Pstereo == 0)
-        memcpy(efxoutr, efxoutl, buffersize * sizeof(float));
-        //for (i = 0; i < buffersize; ++i)
+        memcpy(efxoutr, efxoutl, synth->bufferbytes);
+        //for (i = 0; i < synth->buffersize; ++i)
         //    efxoutr[i] = efxoutl[i];
 
-    float level = dB2rap(60.0 * Plevel / 127.0 - 40.0);
-    for (int i = 0; i < buffersize; ++i)
+    float level = dB2rap(60.0f * Plevel / 127.0f - 40.0f);
+    for (int i = 0; i < synth->buffersize; ++i)
     {
         lout = efxoutl[i];
         rout = efxoutr[i];
-        l = lout * (1.0 - lrcross) + rout * lrcross;
-        r = rout * (1.0 - lrcross) + lout * lrcross;
+        l = lout * (1.0f - lrcross) + rout * lrcross;
+        r = rout * (1.0f - lrcross) + lout * lrcross;
         lout = l;
         rout = r;
-        efxoutl[i] = lout * 2.0 * level;
-        efxoutr[i] = rout * 2.0 *level;
+        efxoutl[i] = lout * 2.0f * level;
+        efxoutr[i] = rout * 2.0f *level;
     }
 }
 
@@ -290,12 +140,12 @@ void Distorsion::setvolume(unsigned char Pvolume_)
     Pvolume = Pvolume_;
     if(insertion == 0)
     {
-        outvolume = pow(0.01f, (1.0 - Pvolume / 127.0)) * 4.0;
-        volume = 1.0;
+        outvolume = pow(0.01f, (1.0f - Pvolume / 127.0f)) * 4.0f;
+        volume = 1.0f;
     }
     else
-         volume = outvolume = Pvolume / 127.0;
-    if (Pvolume == 0.0)
+         volume = outvolume = Pvolume / 127.0f;
+    if (Pvolume == 0.0f)
         cleanup();
 }
 
@@ -303,21 +153,21 @@ void Distorsion::setvolume(unsigned char Pvolume_)
 void Distorsion::setpanning(unsigned char Ppanning_)
 {
     Ppanning = Ppanning_;
-    panning = (Ppanning + 0.5) / 127.0;
+    panning = (Ppanning + 0.5f) / 127.0f;
 }
 
 
 void Distorsion::setlrcross(unsigned char Plrcross_)
 {
     Plrcross = Plrcross_;
-    lrcross = Plrcross / 127.0;
+    lrcross = Plrcross / 127.0f;
 }
 
 
 void Distorsion::setlpf(unsigned char Plpf_)
 {
     Plpf = Plpf_;
-    float fr = expf(powf(Plpf / 127.0, 0.5f) * logf(25000.0f)) + 40;
+    float fr = expf(powf(Plpf / 127.0f, 0.5f) * logf(25000.0f)) + 40.0f;
     lpfl->setfreq(fr);
     lpfr->setfreq(fr);
 }
@@ -326,7 +176,7 @@ void Distorsion::setlpf(unsigned char Plpf_)
 void Distorsion::sethpf(unsigned char Phpf_)
 {
     Phpf = Phpf_;
-    float fr = expf(powf(Phpf / 127.0, 0.5f) * logf(25000.0f)) + 20.0;
+    float fr = expf(powf(Phpf / 127.0f, 0.5f) * logf(25000.0f)) + 20.0f;
     hpfl->setfreq(fr);
     hpfr->setfreq(fr);
 }

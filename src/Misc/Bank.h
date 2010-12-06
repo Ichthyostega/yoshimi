@@ -18,7 +18,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified January 2010
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
 #ifndef BANK_H
@@ -28,6 +28,7 @@
 
 using namespace std;
 
+#include "Misc/MiscFuncs.h"
 #include "Misc/Part.h"
 
 #define BANK_SIZE 160
@@ -40,7 +41,7 @@ typedef struct {
     string dir;
 } bankstruct_t;
 
-class Bank
+class Bank : private MiscFuncs
 {
     public:
         Bank();
@@ -94,10 +95,5 @@ class Bank
         const string xizext;
         const string force_bank_dir_file;
 };
-
-inline bool Bank::isPADsynth_used(unsigned int ninstrument)
-{
-    return Runtime.CheckPADsynth && bank_instrument[ninstrument].PADsynth_used;
-}
 
 #endif

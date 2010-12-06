@@ -28,9 +28,6 @@ using namespace std;
 #include "MusicIO/MidiControl.h"
 #include "MusicIO/WavRecord.h"
 
-typedef enum { no_audio = 0, jack_audio, alsa_audio, } audio_drivers;
-typedef enum { no_midi = 0, jack_midi, alsa_midi, } midi_drivers;
-
 class MusicClient
 {
     public:
@@ -39,7 +36,8 @@ class MusicClient
 
         bool Open(void);
         virtual bool Start(void) = 0;
-        virtual void Close(void) = 0;
+        virtual void Close(void);
+        virtual bool jacksessionReply(string cmdline) { return false; }
         virtual unsigned int getSamplerate(void) = 0;
         virtual int getBuffersize(void) = 0;
         virtual int grossLatency(void) = 0;

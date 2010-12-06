@@ -3,7 +3,7 @@
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
-    Copyright 2009, Alan Calvert
+    Copyright 2009-2010, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -18,19 +18,18 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified October 2009
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
 #ifndef DISTORSION_H
 #define DISTORSION_H
 
+#include "Misc/WaveShapeSamples.h"
+#include "Misc/MiscFuncs.h"
 #include "DSP/AnalogFilter.h"
 #include "Effects/Effect.h"
 
-// Waveshaping(called by Distorsion effect and waveshape from OscilGen)
-void waveshapesmps(int n, float *smps, unsigned char type, unsigned char drive);
-
-class Distorsion : public Effect
+class Distorsion : public Effect, private MiscFuncs, WaveShapeSamples
 {
     public:
         Distorsion(bool insertion, float *efxoutl_, float *efxoutr_);

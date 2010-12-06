@@ -3,6 +3,7 @@
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2009 Nasca Octavian Paul
+    Copyright 2010, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -17,88 +18,76 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified October 2009
+    This file is a derivative of a ZynAddSubFX original, modified September 2010
 */
 
-#include <cmath>
 #include <cstring>
 #include <sys/sysinfo.h>
 
 using namespace std;
 
-#include "Misc/Util.h"
 #include "Misc/Config.h"
 #include "DSP/FFTwrapper.h"
 
-FFTwrapper::FFTwrapper(int fftsize_)
+FFTwrapper::FFTwrapper(int fftsize_) :
+    fftsize(fftsize_),
+    half_fftsize(fftsize_ / 2)
 {
-    fftsize = fftsize_;
-    data1 = (double*)fftw_malloc(sizeof(double) * fftsize);
-    data2 = (double*)fftw_malloc(sizeof(double) * fftsize);
-    planBasic = fftw_plan_r2r_1d(fftsize, data1, data1, FFTW_R2HC, FFTW_ESTIMATE);
-    planInv = fftw_plan_r2r_1d(fftsize, data2, data2, FFTW_HC2R, FFTW_ESTIMATE);
+    boost_data1 = boost::shared_array<float>(new float[fftsize]);
+    data1 = boost_data1.get();
+    boost_data2 = boost::shared_array<float>(new float[fftsize]);
+    data2 = boost_data2.get();
+
+    planBasic = fftwf_plan_r2r_1d(fftsize, data1, data1, FFTW_R2HC, FFTW_ESTIMATE);
+    planInv = fftwf_plan_r2r_1d(fftsize, data2, data2, FFTW_HC2R, FFTW_ESTIMATE);
 }
 
 
 FFTwrapper::~FFTwrapper()
 {
-    fftw_destroy_plan(planBasic);
-    fftw_destroy_plan(planInv);
-    fftw_free(data1);
-    fftw_free(data2);
+    fftwf_destroy_plan(planBasic);
+    fftwf_destroy_plan(planInv);
 }
 
 
-// do the Fast Fourier Transform
-void FFTwrapper::smps2freqs(float *smps, FFTFREQS freqs)
+// Fast Fourier Transform
+void FFTwrapper::smps2freqs(float *smps, FFTFREQS *freqs)
 {
-    for (int i = 0; i < fftsize; ++i)
-        data1[i] = smps[i];
-    fftw_execute(planBasic);
-    int half_fftsize = fftsize / 2;
-    for (int i = 0; i < half_fftsize; ++i)
-    {
-        freqs.c[i] = data1[i];
-        if (i != 0)
-            freqs.s[i] = data1[fftsize - i];
-    }
+    memcpy(data1, smps, fftsize * sizeof(float));
+    fftwf_execute(planBasic);
+    memcpy(freqs->c, data1, half_fftsize * sizeof(float));
+    for (int i = half_fftsize - 1; i > 0; --i)
+        freqs->s[i] = data1[fftsize - i];
+    data2[half_fftsize] = 0.0f;
+}
+
+
+// Inverse Fast Fourier Transform
+void FFTwrapper::freqs2smps(FFTFREQS *freqs, float *smps)
+{
+    memcpy(data2, freqs->c, half_fftsize * sizeof(float));
     data2[half_fftsize] = 0.0;
+    for (int i = 1; i < half_fftsize; ++i)
+        data2[fftsize - i] = freqs->s[i];
+    fftwf_execute(planInv);
+    memcpy(smps, data2, fftsize * sizeof(float));
 }
 
 
-// do the Inverse Fast Fourier Transform
-void FFTwrapper::freqs2smps(FFTFREQS freqs, float *smps)
+void FFTwrapper::newFFTFREQS(FFTFREQS& f, int size)
 {
-    int half_fftsize = fftsize / 2;
-    data2[half_fftsize] = 0.0;
-    for (int i = 0; i < half_fftsize; ++i)
-    {
-        data2[i] = freqs.c[i];
-        if (i != 0)
-            data2[fftsize - i] = freqs.s[i];
-    }
-    fftw_execute(planInv);
-    for (int i = 0; i < fftsize; ++i)
-        smps[i] = data2[i];
+    f.boost_c = boost::shared_array<float>(new float[size]);
+    f.c = f.boost_c.get();
+    memset(f.c, 0, size * sizeof(float));
+    f.boost_s = boost::shared_array<float>(new float[size]);
+    f.s = f.boost_s.get();
+    memset(f.s, 0, size * sizeof(float));
 }
 
 
-void FFTwrapper::newFFTFREQS(FFTFREQS &f, int size)
+void FFTwrapper::deleteFFTFREQS(FFTFREQS& f)
 {
-    f.c = new float[size];
-    if (NULL != f.c)
-        memset(f.c, 0, sizeof(float) * size);
-    f.s = new float[size];
-    if (NULL != f.s)
-        memset(f.s, 0, sizeof(float) * size);
-}
-
-
-void FFTwrapper::deleteFFTFREQS(FFTFREQS &f)
-{
-    if (NULL != f.c)
-        delete [] f.c;
-    if (NULL != f.s)
-        delete [] f.s;
-    f.c = f.s = NULL;
+    f.boost_s.reset();
+    f.boost_c.reset();
+    f.s = f.c = NULL;
 }

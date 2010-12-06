@@ -26,9 +26,12 @@
 
 using namespace std;
 
+#include "Misc/MiscFuncs.h"
+
 typedef enum { nada = 0, ready, recording } record_state;
 
-class WavRecord {
+class WavRecord : private MiscFuncs
+{
     public:
         WavRecord();
         ~WavRecord();
@@ -50,8 +53,6 @@ class WavRecord {
     private:
         void *recorderThread(void);
         static void *_recorderThread(void *arg);
-        static void _cleanup(void *arg);
-        void cleanup(void);
         void recordLog(string tag);
 
         record_state  recordState;
@@ -70,8 +71,6 @@ class WavRecord {
         string   wavFile;
         SF_INFO  wavOutInfo;
         SNDFILE *wavOutsnd;
-
-        bool         runRecordThread;
         pthread_t    pThread;
 };
 

@@ -3,7 +3,7 @@
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
-    Copyright 2009, Alan Calvert
+    Copyright 2009-2010, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -18,15 +18,16 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified October 2009
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
 #include <cmath>
 
 using namespace std;
 
-#include "Misc/Util.h"
-#include "Misc/Master.h"
+#include "Misc/XMLwrapper.h"
+#include "Misc/SynthEngine.h"
+#include "MusicIO/MidiControl.h"
 #include "Params/Controller.h"
 
 Controller::Controller()
@@ -245,7 +246,7 @@ int Controller::initportamento(float oldfreq, float newfreq, bool in_progress)
         portamentotime *= powf(0.1f, (64.0f - portamento.updowntimestretch) / 64.0f);
     }
 
-    portamento.dx = zynMaster->getBuffersize() / (portamentotime * zynMaster->getSamplerate());
+    portamento.dx = synth->buffersize_f / (portamentotime * synth->samplerate_f);
     portamento.origfreqrap = oldfreq / newfreq;
 
     float tmprap = (portamento.origfreqrap > 1.0)

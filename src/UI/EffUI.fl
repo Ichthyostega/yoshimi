@@ -25,7 +25,7 @@ You should have received a copy of the GNU General Public License along with
 yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
 Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-This file is a derivative of the ZynAddSubFX original, modified January 2010
+This file is a derivative of the ZynAddSubFX original, modified October 2010
 } {selected in_source in_header
 } 
 
@@ -41,10 +41,7 @@ decl {\#include "EnvelopeUI.h"} {public
 decl {\#include "FilterUI.h"} {public
 } 
 
-decl {\#include "Misc/Master.h"} {public
-} 
-
-decl {\#include "Misc/Util.h"} {public
+decl {\#include "Misc/SynthEngine.h"} {public
 } 
 
 decl {\#include "Effects/EffectMgr.h"} {public
@@ -154,7 +151,7 @@ class EQGraph {open : {public Fl_Box}
             fl_color(200, 200, 80);
         fl_line_style(FL_SOLID);
         oiy = getresponse(ly, getfreqx(0.0));
-        float half_samplerate_f = zynMaster->getSamplerate() / 2;
+        float half_samplerate_f = synth->samplerate_f * 0.5f;
         for (i = 1; i < lx; ++i)
         {
             float frq = getfreqx(i / (float)lx);

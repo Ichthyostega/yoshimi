@@ -18,7 +18,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified January 2010
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
 #ifndef ENVELOPE_H
@@ -26,9 +26,11 @@
 
 #include <cmath>
 
-#include "Params/EnvelopeParams.h"
+#include "Misc/MiscFuncs.h"
 
-class Envelope
+class EnvelopeParams;
+
+class Envelope : private MiscFuncs
 {
     public:
 

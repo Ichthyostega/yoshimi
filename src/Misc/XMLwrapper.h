@@ -18,7 +18,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified January 2010
+    This file is a derivative of a ZynAddSubFX original, modified January 2010
 */
 
 #ifndef XML_WRAPPER_H
@@ -29,10 +29,12 @@
 
 using namespace std;
 
+#include "Misc/MiscFuncs.h"
+
 // max tree depth
 #define STACKSIZE 128
 
-class XMLwrapper
+class XMLwrapper : private MiscFuncs
 {
     public:
         XMLwrapper();

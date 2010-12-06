@@ -18,20 +18,24 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified January 2010
+    This file is a derivative of the ZynAddSubFX original, modified October 2010
 */
 
 #ifndef PAD_NOTE_H
 #define PAD_NOTE_H
 
-#include "Params/PADnoteParameters.h"
-#include "Params/Controller.h"
-#include "Synth/Envelope.h"
-#include "Synth/LFO.h"
-#include "DSP/Filter.h"
-#include "Params/Controller.h"
+#include "Synth/Carcass.h"
+#include "Misc/SynthHelper.h"
+#include "Synth/LegatoTypes.h"
 
-class PADnote
+class PADnoteParameters;
+class Controller;
+class Envelope;
+class LFO;
+class Filter;
+class Controller;
+
+class PADnote : public Carcass, private SynthHelper
 {
     public:
         PADnote(PADnoteParameters *parameters, Controller *ctl_, float freq,
@@ -139,10 +143,6 @@ class PADnote
                 int midinote;
             } param;
         } Legato;
-
-        unsigned int samplerate;
-        int buffersize;
-        int oscilsize;
 };
 
 #endif

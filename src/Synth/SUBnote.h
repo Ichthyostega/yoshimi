@@ -18,18 +18,22 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified January 2010
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
 #ifndef SUB_NOTE_H
 #define SUB_NOTE_H
 
-#include "Params/SUBnoteParameters.h"
-#include "Params/Controller.h"
-#include "Synth/Envelope.h"
-#include "DSP/Filter.h"
+#include "Synth/Carcass.h"
+#include "Misc/SynthHelper.h"
+#include "Synth/LegatoTypes.h"
 
-class SUBnote
+class SUBnoteParameters;
+class Controller;
+class Envelope;
+class Filter;
+
+class SUBnote : public Carcass, private SynthHelper
 {
     public:
         SUBnote(SUBnoteParameters *parameters, Controller *ctl_,
@@ -135,9 +139,6 @@ class SUBnote
         const float log_0_001;   // logf(0.001);
         const float log_0_0001;  // logf(0.0001);
         const float log_0_00001; // logf(0.00001);
-
-        unsigned int samplerate;
-        int buffersize;
 };
 
 #endif

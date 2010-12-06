@@ -18,7 +18,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified January 2010
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
 #include <set>
@@ -34,8 +34,8 @@
 
 using namespace std;
 
+#include "Misc/XMLwrapper.h"
 #include "Misc/Config.h"
-#include "Misc/Master.h"
 #include "Misc/Bank.h"
 
 Bank::Bank() :
@@ -180,14 +180,11 @@ void Bank::savetoslot(unsigned int ninstrument, Part *part)
 // Loads the instrument from the bank
 void Bank::loadfromslot(unsigned int ninstrument, Part *part)
 {
-    if (ninstrument >= BANK_SIZE)
-    {
-        Runtime.Log("loadfromslot " + asString(ninstrument) + ", slot > BANK_SIZE");
-        return;
-    }
     if (emptyslot(ninstrument))
         return;
-    part->defaultsinstrument();
+    //part->defaultsinstrument();
+    //part->loadXMLinstrument(bank_instrument[ninstrument].filename);
+    
     part->loadXMLinstrument(bank_instrument[ninstrument].filename);
 }
 
@@ -523,3 +520,9 @@ bool Bank::check_bank_duplicate(string alias)
     }
     return false;
 }    
+
+
+bool Bank::isPADsynth_used(unsigned int ninstrument)
+{
+    return Runtime.CheckPADsynth && bank_instrument[ninstrument].PADsynth_used;
+}

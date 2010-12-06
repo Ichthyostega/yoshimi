@@ -3,6 +3,7 @@
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
+    Copyright 2009-2010, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -17,17 +18,15 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified October 2009
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
 #ifndef ENVELOPE_PARAMS_H
 #define ENVELOPE_PARAMS_H
 
-#include "Misc/XMLwrapper.h"
 #include "Params/Presets.h"
 
-#define MAX_ENVELOPE_POINTS 40
-#define MIN_ENVELOPE_DB -40
+class XMLwrapper;
 
 class EnvelopeParams : public Presets
 {
