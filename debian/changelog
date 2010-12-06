@@ -5,8 +5,9 @@ yoshimi (0.060.1-1) experimental; urgency=low
   * Refresh debian/patches/01-gcc_flags.patch.
   * Drop debian/patches/02-userconfig_path.patch, upstream has acknowledged
     and fixed the issue another way.
-  * debian/control: Build against experimental's JACK to have the session
-    support.
+  * debian/control:
+    - Build against experimental's JACK to have the session support.
+    - Build-depend on libboost-dev.
 
  -- Alessio Treglia <alessio@debian.org>  Mon, 06 Dec 2010 11:13:40 +0100
 
