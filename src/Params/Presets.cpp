@@ -3,7 +3,7 @@
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
-    Copyright 2009, Alan Calvert
+    Copyright 2009-2010, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -18,19 +18,14 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified October 2009
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 #include <cstring>
 
-#include "Misc/Master.h"
+#include "Misc/SynthEngine.h"
 #include "Params/Presets.h"
 
-Presets::Presets() :
-    samplerate(zynMaster->getSamplerate()),
-    buffersize(zynMaster->getBuffersize()),
-    oscilsize(zynMaster->getOscilsize()),
-    half_oscilsize(zynMaster->getOscilsize() / 2),
-    nelement(-1)
+Presets::Presets() : nelement(-1)
 {
     type[0] = 0;
 }

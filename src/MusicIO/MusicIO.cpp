@@ -17,11 +17,16 @@
     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <cstring>
 #include <iostream>
+
+#include <errno.h>
+#include <cstring>
 
 using namespace std;   
 
+#include "Misc/Config.h"
+#include "Misc/SynthEngine.h"
+#include "MusicIO/MidiControl.h"
 #include "MusicIO/MusicIO.h"
 
 MusicIO::MusicIO() :
@@ -32,10 +37,6 @@ MusicIO::MusicIO() :
     rtprio(25),
     audioLatency(0),
     midiLatency(0)
-{ }
-
-
-MusicIO::~MusicIO()
 { }
 
 
@@ -56,7 +57,7 @@ void MusicIO::Close(void)
 
  void MusicIO::getAudio(void)
 {
-    zynMaster->MasterAudio(zynLeft, zynRight);
+    synth->MasterAudio(zynLeft, zynRight);
     if (wavRecorder->Running())
         wavRecorder->Feed(zynLeft, zynRight);
 }
@@ -151,20 +152,20 @@ int MusicIO::getMidiController(unsigned char b)
 void MusicIO::setMidiController(unsigned char ch, unsigned int ctrl,
                                     int param)
 {
-    zynMaster->SetController(ch, ctrl, param);
+    synth->SetController(ch, ctrl, param);
 }
 
 
 void MusicIO::setMidiNote(unsigned char channel, unsigned char note,
                            unsigned char velocity)
 {
-    zynMaster->NoteOn(channel, note, velocity, wavRecorder->Trigger());
+    synth->NoteOn(channel, note, velocity, wavRecorder->Trigger());
 }
 
 
 void MusicIO::setMidiNote(unsigned char channel, unsigned char note)
 {
-    zynMaster->NoteOff(channel, note);
+    synth->NoteOff(channel, note);
 }
 
 
@@ -173,12 +174,12 @@ bool MusicIO::prepBuffers(bool with_interleaved)
     int buffersize = getBuffersize();
     if (buffersize > 0)
     {
-        zynLeft = new jsample_t[buffersize];
-        zynRight = new jsample_t[buffersize];
+        zynLeft = new float[buffersize];
+        zynRight = new float[buffersize];
         if (NULL == zynLeft || NULL == zynRight)
             goto bail_out;
-        memset(zynLeft, 0, sizeof(jsample_t) * buffersize);
-        memset(zynRight, 0, sizeof(jsample_t) * buffersize);
+        memset(zynLeft, 0, sizeof(float) * buffersize);
+        memset(zynRight, 0, sizeof(float) * buffersize);
         if (with_interleaved)
         {
             interleavedShorts = new short int[buffersize * 2];

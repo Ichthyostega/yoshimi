@@ -24,50 +24,29 @@ You should have received a copy of the GNU General Public License along with
 yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
 Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-This file is a derivative of the ZynAddSubFX original, modified January 2010
+This file is a derivative of the ZynAddSubFX original, modified October 2010
 } {in_source in_header
 }
 
-decl {\#include <FL/Fl_Box.H>} {public
-} 
+decl {
+    \#include <FL/Fl_Box.H>
+    \#include <FL/Fl_Group.H>
+    \#include <FL/Fl_File_Chooser.H>
+    \#include <FL/fl_draw.H>
+    \#include "Params/PADnoteParameters.h"
+    \#include "Misc/MiscFuncs.h"
+    \#include "PresetsUI.h"
+    \#include "WidgetPDialUI.h"
+    \#include "EnvelopeUI.h"
+    \#include "LFOUI.h"
+    \#include "FilterUI.h"
+} {global}
 
-decl {\#include <FL/Fl_Group.H>} {public
-} 
-
-decl {\#include <FL/Fl_File_Chooser.H>} {public
-} 
-
-decl {\#include <cmath>} {}
-
-decl {\#include "ResonanceUI.h"} {public
-} 
-
-decl {\#include "WidgetPDialUI.h"} {public
-} 
-
-decl {\#include "EnvelopeUI.h"} {public
-} 
-
-decl {\#include "LFOUI.h"} {public
-} 
-
-decl {\#include "FilterUI.h"} {public
-} 
-
-decl {\#include "OscilGenUI.h"} {public
-} 
-
-decl {\#include "PresetsUI.h"} {public
-} 
-
-decl {\#include "Params/PADnoteParameters.h"} {public
-}
-
-decl {\#include "Misc/Util.h"} {public
-}
-
-decl {\#include "Misc/Master.h"} {public
-}
+decl {
+    \#include "Misc/SynthHelper.h"
+    \#include "ResonanceUI.h"
+    \#include "OscilGenUI.h"
+} {public global}
 
 class PADnoteHarmonicProfile {: {public Fl_Box}
 } {
@@ -136,7 +115,7 @@ fl_line_style(0);} {}
   }
 } 
 
-class PADnoteOvertonePosition {: {public Fl_Box}
+class PADnoteOvertonePosition {: {public Fl_Box, private MiscFuncs}
 } {
   Function {PADnoteOvertonePosition(int x,int y, int w, int h, const char *label=0):Fl_Box(x,y,w,h,label)} {} {
     code {pars=NULL;} {}
@@ -163,13 +142,13 @@ for (int i=1;i<maxharmonic;i++){
 
 
 
-int n = zynMaster->getOscilsize()/2;
+int n = synth->halfoscilsize;
 float spc[n];
 for (int i=0;i<n;i++) spc[i]=0.0;
 
-zynMaster->actionLock(lock);
+synth->actionLock(lock);
 pars->oscilgen->getspectrum(n,spc,0);
-zynMaster->actionLock(unlock);
+synth->actionLock(unlock);
 
 
 //normalize
@@ -229,7 +208,7 @@ for (int i=0;i<lx;i++){
   }
 } 
 
-class PADnoteUI { : {public PresetsUI_}
+class PADnoteUI { : {public PresetsUI_, private SynthHelper}
 } {
   Function {PADnoteUI(PADnoteParameters *parameters)} {
   } {
@@ -835,9 +814,9 @@ detunevalueoutput->do_callback();}
             }
             Fl_Value_Output detunevalueoutput {
               label Detune
-              callback {o->value(getdetune(pars->PDetuneType,0,pars->PDetune));}
+              callback {o->value(getDetune(pars->PDetuneType,0,pars->PDetune));}
               xywh {12 295 45 15} labelsize 10 align 5 minimum -5000 maximum 5000 step 0.01 textfont 1 textsize 10
-              code0 {o->value(getdetune(pars->PDetuneType,0,pars->PDetune));}
+              code0 {o->value(getDetune(pars->PDetuneType,0,pars->PDetune));}
             }
             Fl_Choice detunetype {
               label {Detune Type}
@@ -1013,7 +992,7 @@ if (x==0) fixedfreqetdial->deactivate();
         pstc->value(pars->PPunchStretch);
         pvel->value(pars->PPunchVelocitySensing);
         
-        detunevalueoutput->value(getdetune(pars->PDetuneType,0,pars->PDetune));
+        detunevalueoutput->value(getDetune(pars->PDetuneType,0,pars->PDetune));
         detune->value(pars->PDetune-8192);
         
         int k=pars->PCoarseDetune/1024;if (k>=8) k-=16;

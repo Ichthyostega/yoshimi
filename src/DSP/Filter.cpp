@@ -2,7 +2,8 @@
     Filter.cpp - Filters, uses analog,formant,etc. filters
 
     Original ZynAddSubFX author Nasca Octavian Paul
-    Copyright (C) 2002-2005 Nasca Octavian Paul
+    Copyright (C) 2002-2009 Nasca Octavian Paul
+    Copyright 2009-2010, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -17,11 +18,9 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified October 2009
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
-#include "Misc/Util.h"
-#include "Misc/Master.h"
 #include "DSP/Filter.h"
 
 Filter::Filter(FilterParams *pars)
@@ -37,13 +36,13 @@ Filter::Filter(FilterParams *pars)
             filter = new FormantFilter(pars);
             break;
         case 2:
-            filter = new SVFilter(Ftype, 1000.0, pars->getq(), Fstages);
+            filter = new SVFilter(Ftype, 1000.0f, pars->getq(), Fstages);
             filter->outgain = dB2rap(pars->getgain());
-            if (filter->outgain > 1.0)
+            if (filter->outgain > 1.0f)
                 filter->outgain = sqrtf(filter->outgain);
             break;
         default:
-            filter = new AnalogFilter(Ftype, 1000.0, pars->getq(), Fstages);
+            filter = new AnalogFilter(Ftype, 1000.0f, pars->getq(), Fstages);
             if (Ftype >= 6 && Ftype <= 8)
                 filter->setgain(pars->getgain());
             else
@@ -80,7 +79,7 @@ void Filter::setq(float q_)
 float Filter::getrealfreq(float freqpitch)
 {
     if (category == 0 || category == 2)
-        return powf(2.0, freqpitch + 9.96578428); // log2(1000)=9.95748
+        return powf(2.0f, freqpitch + 9.96578428f); // log2(1000)=9.95748
     else
         return freqpitch;
 }

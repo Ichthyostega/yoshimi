@@ -2,9 +2,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE ZynAddSubFX-data>
 <ZynAddSubFX-data version-major="1" version-minor="1"
-ZynAddSubFX-author="Nasca Octavian Paul">
+ZynAddSubFX-author="Alan Calvert">
 <INFORMATION>
-<par_bool name="PADsynth_used" value="no" />
+<par name="PADsynth_used" value="0" />
 </INFORMATION>
 <BASE_PARAMETERS>
 <par name="max_midi_parts" value="16" />
@@ -36,9 +36,9 @@ GPL V 2 or later</string>
 <ADD_SYNTH_PARAMETERS>
 <par_bool name="stereo" value="yes" />
 <AMPLITUDE_PARAMETERS>
-<par name="volume" value="84" />
+<par name="volume" value="78" />
 <par name="panning" value="62" />
-<par name="velocity_sensing" value="53" />
+<par name="velocity_sensing" value="71" />
 <par name="punch_strength" value="0" />
 <par name="punch_time" value="40" />
 <par name="punch_stretch" value="64" />
@@ -60,7 +60,7 @@ GPL V 2 or later</string>
 <par name="R_val" value="64" />
 </AMPLITUDE_ENVELOPE>
 <AMPLITUDE_LFO>
-<par_real name="freq" value="0.629921" />
+<par_real name="freq" value="0.63" />
 <par name="intensity" value="0" />
 <par name="start_phase" value="64" />
 <par name="lfo_type" value="0" />
@@ -92,7 +92,7 @@ GPL V 2 or later</string>
 <par name="R_val" value="64" />
 </FREQUENCY_ENVELOPE>
 <FREQUENCY_LFO>
-<par_real name="freq" value="0.551181" />
+<par_real name="freq" value="0.551" />
 <par name="intensity" value="30" />
 <par name="start_phase" value="64" />
 <par name="lfo_type" value="0" />
@@ -131,7 +131,7 @@ GPL V 2 or later</string>
 <par name="R_val" value="23" />
 </FILTER_ENVELOPE>
 <FILTER_LFO>
-<par_real name="freq" value="0.574803" />
+<par_real name="freq" value="0.575" />
 <par name="intensity" value="0" />
 <par name="start_phase" value="64" />
 <par name="lfo_type" value="0" />
@@ -209,7 +209,7 @@ GPL V 2 or later</string>
 <par_bool name="freq_envelope_enabled" value="no" />
 <par_bool name="freq_lfo_enabled" value="yes" />
 <FREQUENCY_LFO>
-<par_real name="freq" value="0.448819" />
+<par_real name="freq" value="0.449" />
 <par name="intensity" value="47" />
 <par name="start_phase" value="0" />
 <par name="lfo_type" value="0" />
@@ -285,7 +285,7 @@ GPL V 2 or later</string>
 <par_bool name="freq_envelope_enabled" value="no" />
 <par_bool name="freq_lfo_enabled" value="yes" />
 <FREQUENCY_LFO>
-<par_real name="freq" value="0.181102" />
+<par_real name="freq" value="0.181" />
 <par name="intensity" value="40" />
 <par name="start_phase" value="0" />
 <par name="lfo_type" value="0" />
@@ -376,7 +376,7 @@ GPL V 2 or later</string>
 </FREQUENCY_ENVELOPE>
 <par_bool name="freq_lfo_enabled" value="yes" />
 <FREQUENCY_LFO>
-<par_real name="freq" value="0.299213" />
+<par_real name="freq" value="0.299" />
 <par name="intensity" value="40" />
 <par name="start_phase" value="0" />
 <par name="lfo_type" value="0" />

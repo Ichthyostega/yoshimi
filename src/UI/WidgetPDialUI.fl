@@ -7,58 +7,40 @@ comment {WidgetPDial.h} {not_in_source in_header
 comment {WidgetPDial.cc} {in_source not_in_header
 }
 
-comment {//
-// Original ZynAddSubFX author Nasca Octavian Paul
-// Copyright (C) 2002-2005 Nasca Octavian Paul
-// Copyright 2009, Alan Calvert
-//
-// This file is part of yoshimi, which is free software: you can redistribute
-// it and/or modify it under the terms of version 2 of the GNU General Public
-// License as published by the Free Software Foundation.
-//
-// yoshimi is distributed in the hope that it will be useful, but WITHOUT ANY
-// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-// FOR A PARTICULAR PURPOSE.   See the GNU General Public License (version 2 or
-// later) for more details.
-//
-// You should have received a copy of the GNU General Public License along with
-// yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
-// Street, Fifth Floor, Boston, MA  02110-1301, USA.
-//
-// This file is a derivative of the ZynAddSubFX original, modified October 2009
-// along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
-//} {in_source in_header
-}
+comment {
+Original ZynAddSubFX author Nasca Octavian Paul
+Copyright (C) 2002-2005 Nasca Octavian Paul
+Copyright 2009-2010, Alan Calvert
 
-decl {\#include <FL/Fl_Dial.H>} {public
-} 
+This file is part of yoshimi, which is free software: you can redistribute
+it and/or modify it under the terms of version 2 of the GNU General Public
+License as published by the Free Software Foundation.
 
-decl {\#include <FL/fl_draw.H>} {public
-} 
+yoshimi is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.   See the GNU General Public License (version 2 or
+later) for more details.
 
-decl {\#include <FL/Fl_Tooltip.H>} {public
-} 
+You should have received a copy of the GNU General Public License along with
+yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
+Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-decl {\#include <cmath>} {public
-} 
+This file is a derivative of the ZynAddSubFX original, modified October 2010
+} {in_source in_header}
 
-decl {\#include <string>} {public
-}
+decl {
+    \#include <FL/Fl_Dial.H>
+    \#include <FL/Fl_Menu_Window.H>
+    \#include "Misc/MiscFuncs.h"
+} {public global}
 
-decl {\#include "Misc/Util.h"} {public
-}
+decl {
+    \#include <FL/fl_draw.H>
+    \#include <FL/Fl_Tooltip.H>
+    \#include <FL/Fl_Group.H>
+} {global}
 
-decl {\#include <FL/Fl_Group.H>} {public
-} 
-
-decl {\#include <FL/Fl_Menu_Window.H>} {public
-} 
-
-decl {using namespace std;} {public
-}
-
-
-class TipWin {: {public Fl_Menu_Window}
+class TipWin {: {public Fl_Menu_Window, MiscFuncs}
 } {
   Function {TipWin():Fl_Menu_Window(1,1)} {} {
     code {

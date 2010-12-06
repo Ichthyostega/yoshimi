@@ -2,8 +2,8 @@
     Chorus.cpp - Chorus and Flange effects
 
     Original ZynAddSubFX author Nasca Octavian Paul
-    Copyright (C) 2002-2005 Nasca Octavian Paul
-    Copyright 2009, Alan Calvert
+    Copyright (C) 2002-2009 Nasca Octavian Paul
+    Copyright 2009-2010, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -18,20 +18,19 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified October 2009
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
-#include "Misc/Util.h"
-#include "Misc/Master.h"
+#include "Misc/SynthEngine.h"
 #include "Effects/Chorus.h"
 
-#define MAX_CHORUS_DELAY 250.0 // ms
+#define MAX_CHORUS_DELAY 250.0f // ms
 
 Chorus::Chorus(bool insertion_, float *const efxoutl_, float *efxoutr_) :
     Effect(insertion_, efxoutl_, efxoutr_, NULL, 0)
 {
     dlk = drk = 0;
-    maxdelay = (int)(MAX_CHORUS_DELAY / 1000.0 * zynMaster->getSamplerate());
+    maxdelay = (int)(MAX_CHORUS_DELAY / 1000.0f * synth->samplerate_f);
     delayl = new float[maxdelay];
     delayr = new float[maxdelay];
 
@@ -47,7 +46,7 @@ Chorus::Chorus(bool insertion_, float *const efxoutl_, float *efxoutr_) :
 // get the delay value in samples; xlfo is the current lfo value
 float Chorus::getdelay(float xlfo)
 {
-    float result = (Pflangemode) ? 0 : (delay + xlfo * depth) * zynMaster->getSamplerate();
+    float result = (Pflangemode) ? 0 : (delay + xlfo * depth) * synth->samplerate_f;
 
     //check if it is too big delay (caused bu erroneous setDelay() and setDepth()
     if ((result + 0.5) >= maxdelay)
@@ -62,7 +61,7 @@ float Chorus::getdelay(float xlfo)
 // Apply the effect
 void Chorus::out(float *smpsl, float *smpsr)
 {
-    const float one = 1.0;
+    const float one = 1.0f;
     dl1 = dl2;
     dr1 = dr2;
     lfo.effectlfoout(&lfol, &lfor);
@@ -71,58 +70,56 @@ void Chorus::out(float *smpsl, float *smpsr)
     dr2 = getdelay(lfor);
 
     float inL, inR, tmpL, tmpR, tmp;
-    int buffersize = zynMaster->getBuffersize();
-    for (int i = 0; i < buffersize; ++i)
+    for (int i = 0; i < synth->buffersize; ++i)
     {
         inL = tmpL = smpsl[i];
         inR = tmpR = smpsr[i];
         // LRcross
-        inL = tmpL * (1.0 - lrcross) + tmpR * lrcross;
-        inR = tmpR * (1.0 - lrcross) + tmpL * lrcross;
+        inL = tmpL * (1.0f - lrcross) + tmpR * lrcross;
+        inR = tmpR * (1.0f - lrcross) + tmpL * lrcross;
 
         // Left channel
 
         // compute the delay in samples using linear interpolation between the lfo delays
-        mdel = (dl1 * (buffersize - i) + dl2 * i) / buffersize;
+        mdel = (dl1 * (synth->buffersize - i) + dl2 * i) / synth->buffersize_f;
         if (++dlk >= maxdelay)
             dlk = 0;
-        tmp = dlk - mdel + maxdelay * 2.0; // where should I get the sample from
-
-        F2I(tmp, dlhi);
+        tmp = dlk - mdel + maxdelay * 2.0f; // where should I get the sample from
+        // F2I(tmp, dlhi);
+        dlhi = (tmp > 0.0f) ? lrintf(tmp) : lrintf(tmp - 1.0f);
         dlhi %= maxdelay;
 
         dlhi2 = (dlhi - 1 + maxdelay) % maxdelay;
-        dllo = 1.0 - fmodf(tmp, one);
-        efxoutl[i] = delayl[dlhi2] * dllo + delayl[dlhi] * (1.0 - dllo);
+        dllo = 1.0f - fmodf(tmp, one);
+        efxoutl[i] = delayl[dlhi2] * dllo + delayl[dlhi] * (1.0f - dllo);
         delayl[dlk] = inL + efxoutl[i] * fb;
 
         // Right channel
 
         // compute the delay in samples using linear interpolation between the lfo delays
-        mdel = (dr1 * (buffersize - i) + dr2 * i) / buffersize;
+        mdel = (dr1 * (synth->buffersize - i) + dr2 * i) / synth->buffersize_f;
         if (++drk >= maxdelay)
             drk = 0;
-        tmp = drk * 1.0 - mdel + maxdelay * 2.0; // where should I get the sample from
-
-        F2I(tmp, dlhi);
+        tmp = drk * 1.0f - mdel + maxdelay * 2.0f; // where should I get the sample from
+        // F2I(tmp, dlhi);
+        dlhi = (tmp > 0.0f) ? lrintf(tmp) : lrintf(tmp - 1.0f);
         dlhi %= maxdelay;
-
         dlhi2 = (dlhi - 1 + maxdelay) % maxdelay;
-        dllo = 1.0 - fmodf(tmp, one);
-        efxoutr[i] = delayr[dlhi2] * dllo + delayr[dlhi] * (1.0 - dllo);
+        dllo = 1.0f - fmodf(tmp, one);
+        efxoutr[i] = delayr[dlhi2] * dllo + delayr[dlhi] * (1.0f - dllo);
         delayr[dlk] = inR + efxoutr[i] * fb;
     }
 
     if (Poutsub)
-        for (int i = 0; i < buffersize; ++i)
+        for (int i = 0; i < synth->buffersize; ++i)
         {
-            efxoutl[i] *= -1.0;
-            efxoutr[i] *= -1.0;
+            efxoutl[i] *= -1.0f;
+            efxoutr[i] *= -1.0f;
         }
 
-    for (int i = 0; i < buffersize; ++i)
+    for (int i = 0; i < synth->buffersize; ++i)
     {
-        efxoutl[i] *= (1.0 - panning);
+        efxoutl[i] *= (1.0f - panning);
         efxoutr[i] *= panning;
     }
 }
@@ -131,7 +128,7 @@ void Chorus::out(float *smpsl, float *smpsr)
 void Chorus::cleanup(void)
 {
     for (int i = 0; i < maxdelay; ++i)
-        delayl[i] = delayr[i] = 0.0;
+        delayl[i] = delayr[i] = 0.0f;
 }
 
 
@@ -139,43 +136,43 @@ void Chorus::cleanup(void)
 void Chorus::setdepth(unsigned char Pdepth_)
 {
     Pdepth = Pdepth_;
-    depth = (powf(8.0f, (Pdepth / 127.0f) * 2.0f) - 1.0f) / 1000.0; // seconds
+    depth = (powf(8.0f, (Pdepth / 127.0f) * 2.0f) - 1.0f) / 1000.0f; // seconds
 }
 
 
 void Chorus::setdelay(unsigned char Pdelay_)
 {
     Pdelay = Pdelay_;
-    delay = (powf(10.0f, (Pdelay / 127.0f) * 2.0f) - 1.0f) / 1000.0; // seconds
+    delay = (powf(10.0f, (Pdelay / 127.0f) * 2.0f) - 1.0f) / 1000.0f; // seconds
 }
 
 
 void Chorus::setfb(unsigned char Pfb_)
 {
     Pfb = Pfb_;
-    fb = (Pfb - 64.0) / 64.1;
+    fb = (Pfb - 64.0f) / 64.1f;
 }
 
 
 void Chorus::setvolume(unsigned char Pvolume_)
 {
     Pvolume = Pvolume_;
-    outvolume = Pvolume / 127.0;
-    volume = (!insertion) ? 1.0 : outvolume;
+    outvolume = Pvolume / 127.0f;
+    volume = (!insertion) ? 1.0f : outvolume;
 }
 
 
 void Chorus::setpanning(unsigned char Ppanning_)
 {
     Ppanning = Ppanning_;
-    panning = Ppanning / 127.0;
+    panning = Ppanning / 127.0f;
 }
 
 
 void Chorus::setlrcross(unsigned char Plrcross_)
 {
     Plrcross = Plrcross_;
-    lrcross = Plrcross / 127.0;
+    lrcross = Plrcross / 127.0f;
 }
 
 

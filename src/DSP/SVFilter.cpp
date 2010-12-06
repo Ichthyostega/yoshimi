@@ -2,7 +2,8 @@
     SVFilter.cpp - Several state-variable filters
 
     Original ZynAddSubFX author Nasca Octavian Paul
-    Copyright (C) 2002-2005 Nasca Octavian Paul
+    Copyright (C) 2002-2009 Nasca Octavian Paul
+    Copyright 2009-2010, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -17,11 +18,12 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified October 2009
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
-#include "Misc/Util.h"
-#include "Misc/Master.h"
+#include <cstring>
+
+#include "Misc/SynthEngine.h"
 #include "DSP/SVFilter.h"
 
 SVFilter::SVFilter(unsigned char Ftype, float Ffreq, float Fq,
@@ -44,37 +46,37 @@ SVFilter::SVFilter(unsigned char Ftype, float Ffreq, float Fq,
 void SVFilter::cleanup()
 {
     for (int i = 0; i < MAX_FILTER_STAGES + 1; ++i)
-        st[i].low = st[i].high = st[i].band = st[i].notch = 0.0;
+        st[i].low = st[i].high = st[i].band = st[i].notch = 0.0f;
     oldabovenq = 0;
     abovenq = 0;
 }
 
 void SVFilter::computefiltercoefs(void)
 {
-    par.f = freq / zynMaster->getSamplerate() * 4.0;
-    if (par.f > 0.99999)
-        par.f = 0.99999;
-    par.q = 1.0 - atanf(sqrtf(q)) * 2.0 / PI;
-    par.q = powf(par.q, 1.0 / (stages + 1));
+    par.f = freq / synth->samplerate_f * 4.0f;
+    if (par.f > 0.99999f)
+        par.f = 0.99999f;
+    par.q = 1.0f - atanf(sqrtf(q)) * 2.0f / PI;
+    par.q = powf(par.q, 1.0f / (stages + 1));
     par.q_sqrt = sqrtf(par.q);
 }
 
 
 void SVFilter::setfreq(float frequency)
 {
-    if (frequency < 0.1)
-        frequency = 0.1;
+    if (frequency < 0.1f)
+        frequency = 0.1f;
     float rap = freq / frequency;
-    if (rap < 1.0)
-        rap = 1.0 / rap;
+    if (rap < 1.0f)
+        rap = 1.0f / rap;
 
     oldabovenq = abovenq;
-    abovenq = frequency > (zynMaster->getSamplerate() / 2 - 500.0);
+    abovenq = frequency > (synth->halfsamplerate_f - 500.0f);
 
     int nyquistthresh = (abovenq ^ oldabovenq);
 
 
-    if (rap > 3.0 || nyquistthresh != 0)
+    if (rap > 3.0f || nyquistthresh != 0)
     {   //if the frequency is changed fast, it needs interpolation (now, filter and coeficients backup)
         if (firsttime == 0)
             needsinterpolation = 1;
@@ -137,8 +139,7 @@ void SVFilter::singlefilterout(float *smp, fstage &x, parameters &par)
             break;
     }
 
-    int buffersize = zynMaster->getBuffersize();
-    for (int i = 0; i < buffersize; ++i)
+    for (int i = 0; i < synth->buffersize; ++i)
     {
         x.low = x.low + par.f * x.band;
         x.high = par.q_sqrt * smp[i] - x.low - par.q * x.band;
@@ -151,16 +152,10 @@ void SVFilter::singlefilterout(float *smp, fstage &x, parameters &par)
 void SVFilter::filterout(float *smp)
 {
     float *ismp = NULL;
-    int buffersize = zynMaster->getBuffersize();
-
     if (needsinterpolation != 0)
     {
-        ismp = new float[buffersize];
-
-        //for (int i = 0; i < buffersize; ++i)
-        //    ismp[i] = smp[i];
-        memcpy(ismp, smp, buffersize * sizeof(float));
-
+        ismp = new float[synth->buffersize];
+        memcpy(ismp, smp, synth->bufferbytes);
         for (int i = 0; i < stages + 1; ++i)
             singlefilterout(ismp, st[i],ipar);
     }
@@ -170,16 +165,16 @@ void SVFilter::filterout(float *smp)
 
     if (needsinterpolation != 0)
     {
-        for (int i = 0; i < buffersize; ++i)
+        for (int i = 0; i < synth->buffersize; ++i)
         {
-            float x = (float)i / (float)buffersize;
-            smp[i] = ismp[i] * (1.0 - x) + smp[i] * x;
+            float x = (float)i / synth->buffersize_f;
+            smp[i] = ismp[i] * (1.0f - x) + smp[i] * x;
         }
         needsinterpolation = 0;
     }
     if (NULL != ismp)
         delete [] ismp;
 
-    for (int i = 0; i < buffersize; ++i)
+    for (int i = 0; i < synth->buffersize; ++i)
         smp[i] *= outgain;
 }

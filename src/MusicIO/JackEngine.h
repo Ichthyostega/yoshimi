@@ -26,6 +26,10 @@
 #include <jack/jack.h>
 #include <jack/ringbuffer.h>
 
+#if defined(JACK_SESSION)
+    #include <jack/session.h>
+#endif
+
 using namespace std;
 
 #include "MusicIO/MusicIO.h"
@@ -42,14 +46,17 @@ class JackEngine : public MusicIO
         bool openMidi(WavRecord *recorder);
         bool Start(void);
         void Close(void);
-        
+        #if defined(JACK_SESSION)
+            bool jacksessionReply(string cmdline);
+        #endif
         unsigned int getSamplerate(void) { return audio.jackSamplerate; };
         int getBuffersize(void) { return audio.jackNframes; };
-
         string clientName(void);
         int clientId(void);
 
     private:
+        bool openJackClient(string server);
+        bool new_openJackClient(string server);
         bool connectJackPorts(void);
         bool processAudio(jack_nframes_t nframes);
         bool processMidi(jack_nframes_t nframes);
@@ -60,15 +67,20 @@ class JackEngine : public MusicIO
         void midiCleanup(void);
         static void _midiCleanup(void *arg);
         static void _errorCallback(const char *msg);
-        static void _infoCallback(const char *msg);
         static int _xrunCallback(void *arg);
+
+        #if defined(JACK_SESSION)
+            static void _jsessionCallback(jack_session_event_t *event, void *arg);
+            void jsessionCallback(jack_session_event_t *event);
+            jack_session_event_t *lastevent;
+        #endif
 
         jack_client_t      *jackClient;
         struct {
             unsigned int  jackSamplerate;
             unsigned int  jackNframes;
             jack_port_t  *ports[2];
-            jsample_t    *portBuffs[2];
+            float        *portBuffs[2];
         } audio;
 
         struct {
@@ -77,14 +89,13 @@ class JackEngine : public MusicIO
             pthread_t          pThread;
             string             semName;
             sem_t             *eventsUp;
-            bool               threadStop;
         } midi;
 
         struct midi_event {
             jack_nframes_t time;
             char data[4]; // all events of interest are <= 4bytes
         };
-            
+
 };
 
 #endif

@@ -3,6 +3,7 @@
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
+    Copyright 2009-2010, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -17,19 +18,19 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified October 2009
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
 #ifndef SV_FILTER_H
 #define SV_FILTER_H
 
+#include "Misc/MiscFuncs.h"
 #include "DSP/Filter_.h"
 
-class SVFilter : public Filter_
+class SVFilter : public Filter_, private MiscFuncs
 {
     public:
-        SVFilter(unsigned char Ftype, float Ffreq, float Fq,
-                 unsigned char Fstages);
+        SVFilter(unsigned char Ftype, float Ffreq, float Fq, unsigned char Fstages);
         ~SVFilter() { };
         void filterout(float *smp);
         void setfreq(float frequency);

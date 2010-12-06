@@ -17,7 +17,6 @@
     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "Misc/Util.h"
 #include "MusicIO/MusicClient.h"
 #include "MusicIO/JackClient.h"
 #include "MusicIO/AlsaClient.h"
@@ -91,3 +90,9 @@ bool MusicClient::Open(void)
     return false;
 }
 
+
+void MusicClient::Close(void)
+{
+    if (Recorder != NULL)
+        Recorder->Close();
+}

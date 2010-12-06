@@ -18,11 +18,10 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified January 2010
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
-#include "Misc/Util.h"
-#include "Misc/Master.h"
+#include "Misc/SynthEngine.h"
 #include "Effects/Echo.h"
 
 Echo::Echo(bool insertion_, float* efxoutl_, float* efxoutr_) :
@@ -54,7 +53,7 @@ void Echo::cleanup(void)
 {
     memset(ldelay, 0, dl * sizeof(float));
     memset(rdelay, 0, dr * sizeof(float));
-    oldl = oldr = 0.0;
+    oldl = oldr = 0.0f;
 }
 
 
@@ -85,8 +84,7 @@ void Echo::out(float* smpsl, float* smpsr)
     float l, r;
     float ldl = ldelay[kl];
     float rdl = rdelay[kr];
-    int buffersize = zynMaster->getBuffersize();
-    for (int i = 0; i < buffersize; ++i)
+    for (int i = 0; i < synth->buffersize; ++i)
     {
         ldl = ldelay[kl];
         rdl = rdelay[kr];
@@ -95,15 +93,15 @@ void Echo::out(float* smpsl, float* smpsr)
         ldl = l;
         rdl = r;
 
-        efxoutl[i] = ldl * 2.0 - 1e-20f; // anti-denormal - a very, very, very
-        efxoutr[i] = rdl * 2.0 - 1e-20f; // small dc bias
+        efxoutl[i] = ldl * 2.0f - 1e-20f; // anti-denormal - a very, very, very
+        efxoutr[i] = rdl * 2.0f - 1e-20f; // small dc bias
 
-        ldl = smpsl[i] * (1.0 - panning) - ldl * fb;
+        ldl = smpsl[i] * (1.0f - panning) - ldl * fb;
         rdl = smpsr[i] * panning - rdl * fb;
 
         // LowPass Filter
-        ldelay[kl] = ldl = ldl * hidamp + oldl * (1.0 - hidamp);
-        rdelay[kr] = rdl = rdl * hidamp + oldr * (1.0 - hidamp);
+        ldelay[kl] = ldl = ldl * hidamp + oldl * (1.0f - hidamp);
+        rdelay[kr] = rdl = rdl * hidamp + oldr * (1.0f - hidamp);
         oldl = ldl;
         oldr = rdl;
 
@@ -120,11 +118,11 @@ void Echo::setvolume(unsigned char Pvolume_)
     Pvolume = Pvolume_;
     if (insertion == 0)
     {
-        outvolume = powf(0.01, (1.0 - Pvolume / 127.0)) * 4.0;
-        volume = 1.0;
+        outvolume = powf(0.01f, (1.0f - Pvolume / 127.0f)) * 4.0f;
+        volume = 1.0f;
     }
     else
-        volume = outvolume = Pvolume / 127.0;
+        volume = outvolume = Pvolume / 127.0f;
     if (Pvolume == 0)
         cleanup();
 }
@@ -132,13 +130,13 @@ void Echo::setvolume(unsigned char Pvolume_)
 void Echo::setpanning(unsigned char Ppanning_)
 {
     Ppanning = Ppanning_;
-    panning = (Ppanning + 0.5) / 127.0;
+    panning = (Ppanning + 0.5f) / 127.0f;
 }
 
 void Echo::setdelay(const unsigned char Pdelay_)
 {
     Pdelay = Pdelay_;
-    delay = 1 + (int)(Pdelay / 127.0 * zynMaster->getSamplerate() * 1.5); // 0 .. 1.5 sec
+    delay = 1 + lrintf(Pdelay / 127.0f * synth->samplerate_f * 1.5f); // 0 .. 1.5 sec
     initdelays();
 }
 
@@ -146,8 +144,8 @@ void Echo::setlrdelay(unsigned char Plrdelay_)
 {
     float tmp;
     Plrdelay = Plrdelay_;
-    tmp = (powf(2, fabsf(Plrdelay - 64.0) / 64.0 * 9) -1.0) / 1000.0 * zynMaster->getSamplerate();
-    if (Plrdelay < 64.0)
+    tmp = (powf(2.0f, fabsf(Plrdelay - 64.0f) / 64.0f * 9.0f) -1.0f) / 1000.0f * synth->samplerate_f;
+    if (Plrdelay < 64.0f)
         tmp = -tmp;
     lrdelay = (int)tmp;
     initdelays();
@@ -156,19 +154,19 @@ void Echo::setlrdelay(unsigned char Plrdelay_)
 void Echo::setlrcross(unsigned char Plrcross_)
 {
     Plrcross = Plrcross_;
-    lrcross = Plrcross / 127.0 * 1.0;
+    lrcross = Plrcross / 127.0f * 1.0f;
 }
 
 void Echo::setfb(unsigned char Pfb_)
 {
     Pfb = Pfb_;
-    fb = Pfb / 128.0;
+    fb = Pfb / 128.0f;
 }
 
 void Echo::sethidamp(unsigned char Phidamp_)
 {
     Phidamp = Phidamp_;
-    hidamp = 1.0 - Phidamp / 127.0;
+    hidamp = 1.0 - Phidamp / 127.0f;
 }
 
 void Echo::setpreset(unsigned char npreset)

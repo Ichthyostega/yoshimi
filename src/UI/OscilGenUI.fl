@@ -61,13 +61,13 @@ decl {\#include "PresetsUI.h"} {public
 decl {\#include "Synth/OscilGen.h"} {public
 }
 
-decl {\#include "Misc/Util.h"} {public
+decl {\#include "Misc/MiscFuncs.h"} {public
 }
 
-decl {\#include "Misc/Master.h"} {public
+decl {\#include "Misc/SynthEngine.h"} {public
 }
 
-class OscilSpectrum {: {public Fl_Box}
+class OscilSpectrum {: {public Fl_Box, MiscFuncs}
 } {
   Function {OscilSpectrum(int x,int y, int w, int h, const char *label=0):Fl_Box(x,y,w,h,label)} {} {
     code {oscil=NULL;} {}
@@ -84,20 +84,20 @@ class OscilSpectrum {: {public Fl_Box}
         const int maxdb = 60; // must be multiple of 10
         int GX = 2;
         int n = lx / GX - 1;
-        if (n > zynMaster->getOscilsize() / 2)
-            n = zynMaster->getOscilsize() / 2;
+        if (n > synth->halfoscilsize)
+            n = synth->halfoscilsize;
 
         float x;
         float* spc = new float[n];
         for (i = 0; i < n; ++i)
             spc[i] = 0.0;
 
-        zynMaster->actionLock(lock);
+        synth->actionLock(lock);
         if (oscbase == 0)
             oscil->getspectrum(n, spc, 0);
         else
             oscil->getspectrum(n, spc, 1);
-        zynMaster->actionLock(unlock);
+        synth->actionLock(unlock);
 
         // normalize
         float max = 0;
@@ -214,13 +214,13 @@ phase=phase_;} {}
   Function {draw()} {} {
     code {
         int ox = x(), oy = y(), lx = w(), ly = h() - 1;
-        float smps[zynMaster->getOscilsize()];
-        zynMaster->actionLock(lock);
+        float smps[synth->oscilsize];
+        synth->actionLock(lock);
         if (oscbase == 0)
             oscil->get(smps, -1.0);
         else
             oscil->getcurrentbasefunction(smps);
-        zynMaster->actionLock(unlock);
+        synth->actionLock(unlock);
 
         if (damage( )!= 1)
         {
@@ -230,8 +230,7 @@ phase=phase_;} {}
 
         // normalize
         float max = 0;
-        int oscilsize = zynMaster->getOscilsize();
-        for (int o = 0; o < oscilsize; ++o)
+        for (int o = 0; o < synth->oscilsize; ++o)
             if (max < fabsf(smps[o]))
                 max = fabsf(smps[o]);
             //fprintf(stderr,"%.4f\\n",max);
@@ -272,14 +271,13 @@ phase=phase_;} {}
             int lw = 1;
             // if ((lx<135)||(ly<135)) lw=1;
             fl_line_style(0, lw);
-            int ph = (int)((phase - 64.0) / 128.0 * zynMaster->getOscilsize()
-                      + zynMaster->getOscilsize());
+            int ph = lrintf((phase - 64.0) / 128.0 * synth->oscilsize_f + synth->oscilsize_f);
             for (int i = 1; i < lx; ++i)
             {
-                int k1 = (int)((float)oscilsize * (i - 1) / lx) + ph;
-                int k2 = (int)((float)oscilsize * i / lx) + ph;
-                float y1 = smps[k1 % oscilsize] / max;
-                float y2 = smps[k2 % oscilsize] / max;
+                int k1 = lrintf(synth->oscilsize_f * (i - 1) / lx) + ph;
+                int k2 = lrintf(synth->oscilsize_f * i / lx) + ph;
+                float y1 = smps[k1 % synth->oscilsize] / max;
+                float y2 = smps[k2 % synth->oscilsize] / max;
                 fl_line(i - 1 + ox, (int)(y1 * ly / 2.0) + oy + ly / 2, i + ox,
                        (int)(y2 * ly / 2.0) + oy + ly / 2);
             }
@@ -306,14 +304,14 @@ if (Fl::event_button3()) o->value(x);
 if (x==64) o->selection_color(0);
     else o->selection_color(222);
 
-zynMaster->actionLock(lock);
+synth->actionLock(lock);
  oscil->Phmag[n]=x;
  if (x==64) {
     oscil->Phphase[n]=64;
     phase->value(64);
  };
  oscil->prepare();
-zynMaster->actionLock(unlock);
+synth->actionLock(unlock);
 
 display->redraw();
 oldosc->redraw();
@@ -332,10 +330,10 @@ if (cbwidget!=NULL) {
 if (Fl::event_button3()) o->value(x);
    else x=(int)o->value();
 
-zynMaster->actionLock(lock);
+synth->actionLock(lock);
  oscil->Phphase[n]=x;
  oscil->prepare();
-zynMaster->actionLock(unlock);
+synth->actionLock(unlock);
 
 display->redraw();
 oldosc->redraw();
@@ -681,13 +679,13 @@ if (autoclearbutton->value()){
    sabutton->do_callback();
 };
 
-zynMaster->actionLock(lock);
+synth->actionLock(lock);
  for (int i=0;i<MAX_AD_HARMONICS;i++){
    if (oscil->Phmag[i]==64) h[i]->mag->selection_color(0);
       else h[i]->mag->selection_color(222);
  };
  oscil->prepare();
-zynMaster->actionLock(unlock);
+synth->actionLock(unlock);
 
 basefuncdisplaygroup->redraw();
 redrawoscil();}
@@ -718,9 +716,9 @@ for (int i=0;i<MAX_AD_HARMONICS;i++){
 
 //harmonics->redraw();
 
-zynMaster->actionLock(lock);
+synth->actionLock(lock);
  oscil->prepare();
-zynMaster->actionLock(unlock);
+synth->actionLock(unlock);
 
 redrawoscil();}
         xywh {670 505 55 15} box THIN_UP_BOX labelfont 1 labelsize 11
@@ -1074,9 +1072,9 @@ redrawoscil();}
         label Sine
         callback {if (!fl_choice("Convert to SINE?","No","Yes",NULL)) return;
 
-zynMaster->actionLock(lock);
+synth->actionLock(lock);
  oscil->convert2sine(0);
-zynMaster->actionLock(unlock);
+synth->actionLock(unlock);
 
 redrawoscil();
 refresh();}
@@ -1160,9 +1158,9 @@ adhrtype->value(oscil->Padaptiveharmonicspar);
 
 for (int i=0;i<MAX_AD_HARMONICS;i++) h[i]->refresh();
 
-zynMaster->actionLock(lock);
+synth->actionLock(lock);
  oscil->prepare();
-zynMaster->actionLock(unlock);
+synth->actionLock(unlock);
 
 basefuncdisplaygroup->redraw();
 redrawoscil();} {}

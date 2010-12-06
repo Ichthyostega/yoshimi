@@ -3,7 +3,7 @@
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
-    Copyright 2009, Alan Calvert
+    Copyright 2009-2010, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -18,13 +18,12 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified October 2009
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
 #include <cmath>
 
-#include "Misc/Util.h"
-#include "Misc/Master.h"
+#include "Misc/SynthEngine.h"
 #include "Synth/Resonance.h"
 
 Resonance::Resonance() : Presets()
@@ -147,16 +146,16 @@ void Resonance::smooth()
 // Randomize the resonance function
 void Resonance::randomize(int type)
 {
-    int r = (int)(zynMaster->numRandom() * 127.0f);
+    int r = (int)(synth->numRandom() * 127.0f);
     for (int i = 0; i < N_RES_POINTS; ++i)
     {
         Prespoints[i] = r;
-        if (zynMaster->numRandom() < 0.1f && type == 0)
-            r = (zynMaster->numRandom() * 127.0f);
-        if (zynMaster->numRandom() < 0.3f && type == 1)
-            r = (zynMaster->numRandom() * 127.0f);
+        if (synth->numRandom() < 0.1f && type == 0)
+            r = (synth->numRandom() * 127.0f);
+        if (synth->numRandom() < 0.3f && type == 1)
+            r = (synth->numRandom() * 127.0f);
         if (type == 2)
-            r = (zynMaster->numRandom() * 127.0f);
+            r = (synth->numRandom() * 127.0f);
     }
     smooth();
 }

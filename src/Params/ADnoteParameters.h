@@ -18,7 +18,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified January 2010
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
 #ifndef AD_NOTE_PARAMETERS_H
@@ -29,206 +29,164 @@
 #include "Params/FilterParams.h"
 #include "Synth/OscilGen.h"
 #include "Synth/Resonance.h"
-#include "Misc/Util.h"
 #include "Misc/XMLwrapper.h"
 #include "DSP/FFTwrapper.h"
 #include "Params/Presets.h"
 
-enum FMTYPE {
-    NONE, MORPH, RING_MOD, PHASE_MOD, FREQ_MOD, PITCH_MOD
-};
+enum FMTYPE { NONE, MORPH, RING_MOD, PHASE_MOD, FREQ_MOD, PITCH_MOD };
 
-//******************
-// GLOBAL PARAMETERS
-//******************
+extern int ADnote_unison_sizes[];
+
+/*****************************************************************/
+/*                    GLOBAL PARAMETERS                          */
+/*****************************************************************/
 
 struct ADnoteGlobalParam {
+    unsigned char PStereo;
 
-    bool PStereo;
+    // Frequency global parameters
+    unsigned short int PDetune;// fine detune
+    unsigned short int PCoarseDetune; // coarse detune+octave
+    unsigned char PDetuneType;// detune type
 
-    //****************************
-    // FREQUENCY GLOBAL PARAMETERS
-    //****************************
-    unsigned short int PDetune;//fine detune
-    unsigned short int PCoarseDetune;//coarse detune+octave
-    unsigned char PDetuneType;//detune type
+    unsigned char PBandwidth;// how much the relative fine detunes of the voices are changed
 
-    unsigned char PBandwidth;//how much the relative fine detunes of the voices are changed
+    EnvelopeParams *FreqEnvelope; // Frequency Envelope
+    LFOParams *FreqLfo; // Frequency LFO
 
-    EnvelopeParams *FreqEnvelope; //Frequency Envelope
-
-    LFOParams *FreqLfo;//Frequency LFO
-
-    //****************************
-    // AMPLITUDE GLOBAL PARAMETERS
-    //****************************
-
-   
+    // Amplitude global parameters
     unsigned char PPanning; // 0 - random, 1 - left, 64 - center, 127 - right
-
     unsigned char PVolume;
-
     unsigned char PAmpVelocityScaleFunction;
+    unsigned char PPunchStrength;
+    unsigned char PPunchTime;
+    unsigned char PPunchStretch;
+    unsigned char PPunchVelocitySensing;
 
     EnvelopeParams *AmpEnvelope;
-
     LFOParams *AmpLfo;
 
-    unsigned char PPunchStrength,PPunchTime,PPunchStretch,PPunchVelocitySensing;
-
-    //*************************
-    // FILTER GLOBAL PARAMETERS
-    //*************************
+    // Filter global parameters
     FilterParams *GlobalFilter;
-
-    // filter velocity sensing
-    unsigned char PFilterVelocityScale;
-
-    // filter velocity sensing
+    unsigned char PFilterVelocityScale;         // filter velocity sensing
     unsigned char PFilterVelocityScaleFunction;
-
     EnvelopeParams *FilterEnvelope;
-
     LFOParams *FilterLfo;
-
-    // RESONANCE
     Resonance *Reson;
-
-    //how the randomness is applied to the harmonics on more voices using the same oscillator
-    unsigned char Hrandgrouping;
+    unsigned char Hrandgrouping; // how the randomness is applied to the harmonics
+                                 // on more voices using the same oscillator
 };
 
+// Voice parameters
 
-
-//*****************
-// VOICE PARAMETERS
-//*****************
 struct ADnoteVoiceParam {
-
     unsigned char Enabled;
-    unsigned char Type; // 0=Sound, 1=Noise 
-    unsigned char PDelay;
-    unsigned char Presonance;
-
-    // What external oscil should I use, -1 for internal OscilSmp&FMSmp
-    short int Pextoscil;
-    short int PextFMoscil;
-    // it is not allowed that the externoscil,externFMoscil => current voice
-
-    unsigned char Poscilphase, PFMoscilphase;
-
-    unsigned char Pfilterbypass;
-
+    unsigned char Unison_size;              // How many subvoices are used in this voice
+    unsigned char Unison_frequency_spread;  // How subvoices are spread
+    unsigned char Unison_stereo_spread;     // Stereo spread of the subvoices
+    unsigned char Unison_vibratto;          // Vibratto of the subvoices (which makes the unison more "natural")
+    unsigned char Unison_vibratto_speed;    // Medium speed of the vibratto of the subvoices
+    unsigned char Unison_invert_phase;      // Unison invert phase
+                                            // 0 = none, 1 = random, 2 = 50%, 3 = 33%, 4 = 25%
+    unsigned char Type;                     // Type of the voice 0 = Sound, 1 = Noise
+    unsigned char PDelay;                   // Voice Delay
+    unsigned char Presonance;               // If resonance is enabled for this voice
+    short int Pextoscil, PextFMoscil;       // What external oscil should I use,
+                                            // -1 for internal OscilSmp & FMSmp
+                                            // it is not allowed that the externoscil,
+                                            // externFMoscil => current voice
+    unsigned char Poscilphase;              // oscillator phases
+    unsigned char PFMoscilphase;
+    unsigned char Pfilterbypass;            // filter bypass
     OscilGen *OscilSmp;
 
-    //*********************
-    // FREQUENCY PARAMETERS
-    //*********************
-
+    // Frequency parameters
     unsigned char Pfixedfreq;
-
-    unsigned char PfixedfreqET; // Equal temperate (this is used only if the Pfixedfreq is enabled).
-                                // If 0, the frequency is fixed (to 440 Hz).
-                                // If 64, 1 MIDI halftone -> 1 frequency halftone
-
+    unsigned char PfixedfreqET; // Equal temperate (this is used only if the
+                                // Pfixedfreq is enabled). If this parameter is 0,
+                                // the frequency is fixed (to 440 Hz); if this
+                                // parameter is 64, 1 MIDI halftone -> 1 frequency
+                                // halftone
     unsigned short int PDetune;
-
     unsigned short int PCoarseDetune;
-
     unsigned char PDetuneType;
 
-    unsigned char PFreqEnvelopeEnabled;
+
+    unsigned char PFreqEnvelopeEnabled; // Frequency Envelope
     EnvelopeParams *FreqEnvelope;
 
-    unsigned char PFreqLfoEnabled;
+    unsigned char PFreqLfoEnabled;      // Frequency LFO
     LFOParams *FreqLfo;
 
-
-    //*********************
-    // AMPLITUDE PARAMETERS
-    //*********************
+    // Amplitude parameters
     unsigned char PPanning; // 0 - random, 1 - left, 64 - center, 127 - right
-                            // The Panning is ignored if the instrument is mono
-
+                            // panning is ignored if the instrument is mono
     unsigned char PVolume;
-
     unsigned char PVolumeminus;
 
-    unsigned char PAmpVelocityScaleFunction;
+    unsigned char PAmpVelocityScaleFunction; // Velocity sensing
 
-    unsigned char PAmpEnvelopeEnabled;
+    unsigned char PAmpEnvelopeEnabled;  // Amplitude Envelope
     EnvelopeParams *AmpEnvelope;
 
-    unsigned char PAmpLfoEnabled;
+    unsigned char PAmpLfoEnabled;  // Amplitude LFO
     LFOParams *AmpLfo;
 
-    //******************
-    // FILTER PARAMETERS
-    //******************
-    unsigned char PFilterEnabled;
+    // Filter parameters
+
+    unsigned char PFilterEnabled;  // Voice Filter
     FilterParams *VoiceFilter;
 
-    unsigned char PFilterEnvelopeEnabled;
+    unsigned char PFilterEnvelopeEnabled;  // Filter Envelope
     EnvelopeParams *FilterEnvelope;
 
-    unsigned char PFilterLfoEnabled;
+    unsigned char PFilterLfoEnabled;  // LFO Envelope
     LFOParams *FilterLfo;
 
-    //**********************
-    // MODULLATOR PARAMETERS
-    //**********************
+    // Modullator parameters
+    unsigned char PFMEnabled; // 0 = off, 1 = Morph, 2 = RM, 3 = PM, 4 = FM..
+    short int PFMVoice;       // Voice that I use as modullator instead of FMSmp.
+                              // It is -1 if I use FMSmp(default).
+                              // It may not be equal or bigger than current voice
+    OscilGen *FMSmp;          // Modullator oscillator
 
-    unsigned char PFMEnabled; // 0=off, 1=Morph, 2=RM, 3=PM, 4=FM.. 
-       
-    short int PFMVoice; // Voice that I use as modullator instead of FMSmp.
-                        // It is -1 if I use FMSmp(default).
-                        // It may not be equal or bigger than current voice
-                        
-    OscilGen *FMSmp; // Modullator oscillator
-
-    unsigned char PFMVolume; // Modullator Volume
-
-    unsigned char PFMVolumeDamp; // Modullator damping at higher frequencies
-
-    unsigned char PFMVelocityScaleFunction;
-
-    unsigned short int PFMDetune;
-
-    unsigned short int PFMCoarseDetune;
-
-    unsigned char PFMDetuneType;
-
-    unsigned char PFMFreqEnvelopeEnabled;
+    unsigned char PFMVolume;                // Modullator Volume
+    unsigned char PFMVolumeDamp;            // Modullator damping at higher frequencies
+    unsigned char PFMVelocityScaleFunction; // Modullator Velocity Sensing
+    unsigned short int PFMDetune;           // Fine Detune of the Modullator
+    unsigned short int PFMCoarseDetune;     // Coarse Detune of the Modullator
+    unsigned char PFMDetuneType;            // The detune type
+    unsigned char PFMFreqEnvelopeEnabled;   // Frequency Envelope of the Modullator
     EnvelopeParams *FMFreqEnvelope;
-
-    unsigned char PFMAmpEnvelopeEnabled;
+    unsigned char PFMAmpEnvelopeEnabled;    // Frequency Envelope of the Modullator
     EnvelopeParams *FMAmpEnvelope;
 };
+
 
 class ADnoteParameters : public Presets
 {
     public:
         ADnoteParameters(FFTwrapper *fft_);
         ~ADnoteParameters();
+        void defaults(void);
+        void add2XML(XMLwrapper *xml);
+        void getfromXML(XMLwrapper *xml);
+        float getBandwidthDetuneMultiplier();
+        float getUnisonFrequencySpreadCents(int nvoice);
+        int getUnisonSizeIndex(int nvoice);
+        void setUnisonSizeIndex(int nvoice, int index);
 
         ADnoteGlobalParam GlobalPar;
         ADnoteVoiceParam VoicePar[NUM_VOICES];
 
-        void defaults(void);
-        void add2XML(XMLwrapper *xml);
-        void getfromXML(XMLwrapper *xml);
-
-        float getBandwidthDetuneMultiplier();
-
     private:
-        void defaults(int nvoice);
-
-        void EnableVoice(int nvoice);
-        void KillVoice(int nvoice);
-        FFTwrapper *fft;
-
+        void defaults(int n); // n is the nvoice
+        void enableVoice(int nvoice);
+        void killVoice(int nvoice);
         void add2XMLsection(XMLwrapper *xml, int n);
         void getfromXMLsection(XMLwrapper *xml, int n);
+
+        FFTwrapper *fft;
 };
 
 #endif

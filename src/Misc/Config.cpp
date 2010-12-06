@@ -18,21 +18,29 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified January 2010
+    This file is derivative of ZynAddSubFX original code, modified November 2010
 */
+
+#include <iostream>
 
 #include <cmath>
 #include <string>
 #include <argp.h>
+#include <libgen.h>
 
 #if defined(__SSE__)
 #include <xmmintrin.h>
 #endif
 
+#if defined(JACK_SESSION)
+#include <jack/session.h>
+#endif
+
 using namespace std;
 
-#include "GuiThreadUI.h"
-#include "Misc/Master.h"
+#include "Synth/BodyDisposal.h"
+#include "Misc/XMLwrapper.h"
+#include "Misc/SynthEngine.h"
 #include "Misc/Config.h"
 
 Config Runtime;
@@ -52,51 +60,68 @@ static char prog_doc[] =
 const char* argp_program_version = "Yoshimi " YOSHIMI_VERSION;
 
 static struct argp_option cmd_options[] = {
-    {"show-console",    'c',  NULL,         0,  "show console on startup" },
-    {"name-tag",        'N',  "<tag>",      0,  "add tag to clientname" },
-    {"load",            'l',  "<file>",     0,  "load .xmz file" },
-    {"load-instrument", 'L',  "<file>",     0,  "load .xiz file" },
-    {"samplerate",      'R',  "<rate>",     0,  "set sample rate (alsa audio)" },
-    {"buffersize",      'b',  "<size>",     0,  "set buffer size (alsa audio)" },
-    {"oscilsize",       'o',  "<size>",     0,  "set ADsynth oscilsize" },
-    {"alsa-audio",      'A',  "<device>", 0x1,  "use alsa audio output" },
-    {"no-gui",          'i',  NULL,         0,  "no gui"},
-    {"alsa-midi",       'a',  "<device>", 0x1,  "use alsa midi input" },
-    {"jack-audio",      'J',  "<server>", 0x1,  "use jack audio output" },
-    {"jack-midi",       'j',  "<device>", 0x1,  "use jack midi input" },
-    {"autostart-jack",  'k',  NULL,         0,  "auto start jack server" },
-    {"auto-connect",    'K',  NULL,         0,  "auto connect jack audio" },
-    {"state",           'S',  "<file>",   0x1,
-        "load state from <file>, defaults to '$HOME/.yoshimi/yoshimi.state'" },
+    {"alsa-audio",        'A',  "<device>", 0x1,  "use alsa audio output" },
+    {"alsa-midi",         'a',  "<device>", 0x1,  "use alsa midi input" },
+    {"buffersize",        'b',  "<size>",     0,  "set alsa audio buffer size" },
+    {"show-console",      'c',  NULL,         0,  "show console on startup" },
+    {"no-gui",            'i',  NULL,         0,  "no gui"},
+    {"jack-audio",        'J',  "<server>", 0x1,  "use jack audio output" },
+    {"jack-midi",         'j',  "<device>", 0x1,  "use jack midi input" },
+    {"autostart-jack",    'k',  NULL,         0,  "auto start jack server" },
+    {"auto-connect",      'K',  NULL,         0,  "auto connect jack audio" },
+    {"load",              'l',  "<file>",     0,  "load .xmz file" },
+    {"load-instrument",   'L',  "<file>",     0,  "load .xiz file" },
+    {"name-tag",          'N',  "<tag>",      0,  "add tag to clientname" },
+    {"samplerate",        'R',  "<rate>",     0,  "set alsa audio sample rate" },
+    {"oscilsize",         'o',  "<size>",     0,  "set oscilsize" },
+    {"state",             'S',  "<file>",   0x1,  "load state from <file>, defaults to '$HOME/.config/yoshimi/yoshimi.state'" },
+    {"jack-session-file", 'u',  "<file>",     0,  "load jack session file" },
+    {"jack-session-file", 'U',  "<uuid>",     0,  "jack session uuid" },
     { 0, }
 };
 
 
 
 Config::Config() :
-    ConfigFile(string(getenv("HOME")) + string("/.yoshimiXML.cfg")),
-    restoreState(false),
-    StateFile(string(getenv("HOME")) + string("/.yoshimi/yoshimi.state")),
+    doRestoreState(false),
+    doRestoreJackSession(false),
+    baseCmdLine("yoshimi"),
     Samplerate(48000),
     Buffersize(128),
     Oscilsize(1024),
+    runSynth(true),
     showGui(true),
     showConsole(false),
     VirKeybLayout(1),
     audioEngine(DEFAULT_AUDIO),
-    alsaAudioDevice("default"),
+    midiEngine(DEFAULT_MIDI),
+    audioDevice("default"),
+    midiDevice("default"),
     jackServer("default"),
     startJack(false),
     connectJackaudio(false),
-    audioDevice("default"),
-    midiEngine(DEFAULT_MIDI),
+    alsaAudioDevice("default"),
+    alsaSamplerate(48000),
+    alsaBuffersize(256),
     alsaMidiDevice("default"),
     Float32bitWavs(false),
     DefaultRecordDirectory("/tmp"),
     BankUIAutoClose(0),
     Interpolation(0),
     CheckPADsynth(1),
-    sse_level(0)
+    rtprio(50),
+    deadObjects(NULL),
+    sse_level(0),
+    programCmd("yoshimi")
+{
+    std::ios::sync_with_stdio(false);
+    cerr.precision(4);
+    std::ios::sync_with_stdio(false);
+    deadObjects = new BodyDisposal();
+}
+
+
+bool Config::Setup(int argc, char **argv)
 {
     memset(&sigAction, 0, sizeof(sigAction));
     sigAction.sa_handler = sigHandler;
@@ -110,22 +135,18 @@ Config::Config() :
         Log("Setting SIGTERM handler failed");
     if (sigaction(SIGQUIT, &sigAction, NULL))
         Log("Setting SIGQUIT handler failed");
-    AntiDenormals(true);       
-
     clearBankrootDirlist();
     clearPresetsDirlist();
-    loadConfig();
-
+    if (!loadConfig())
+        return false;
     switch (audioEngine)
     {
         case alsa_audio:
             audioDevice = string(alsaAudioDevice);
             break;
-
         case jack_audio:
             audioDevice = string(jackServer);
             break;
-
         case no_audio:
         default:
             audioDevice.clear();
@@ -139,11 +160,9 @@ Config::Config() :
         case jack_midi:
             midiDevice = string(jackServer);
             break;
-
         case alsa_midi:
             midiDevice = string(alsaMidiDevice);
             break;
-
         case no_midi:
         default:
             midiDevice.clear();
@@ -151,12 +170,26 @@ Config::Config() :
     }
     if (!midiDevice.size())
         midiDevice = "default";
+    loadCmdArgs(argc, argv);
+    if (doRestoreState && !(StateFile.size() && isRegFile(StateFile)))
+    {
+        Log("Invalid state file specified for restore: " + StateFile);
+        return false;
+    }
+    if (jackSessionUuid.size() && jackSessionFile.size() && isRegFile(jackSessionFile))
+    {
+        Log(string("Restore jack session requested, uuid ") + jackSessionUuid
+            + string(", session file ") + jackSessionFile);
+        doRestoreJackSession = true;
+    }
+    AntiDenormals(true);
+    return true;
 }
 
 
 Config::~Config()
 {
-    AntiDenormals(false);       
+    AntiDenormals(false);
 }
 
 
@@ -174,7 +207,7 @@ void Config::flushLog(void)
 }
 
 
-string Config::AddParamHistory(string file)
+string Config::addParamHistory(string file)
 {
     if (!file.empty())
     {
@@ -189,10 +222,8 @@ string Config::AddParamHistory(string file)
             item.index = nextHistoryIndex--;
             itx = ParamsHistory.begin();
             for (unsigned int i = 0; i < ParamsHistory.size(); ++i, ++itx)
-            {
                 if (ParamsHistory.at(i).sameFile(file))
                     ParamsHistory.erase(itx);
-            }
             ParamsHistory.insert(ParamsHistory.begin(), item);
             if (ParamsHistory.size() > MaxParamsHistory)
             {
@@ -208,7 +239,7 @@ string Config::AddParamHistory(string file)
 }
 
 
-string Config::HistoryFilename(int index)
+string Config::historyFilename(int index)
 {
     if (index > 0 && index <= (int)ParamsHistory.size())
     {
@@ -235,40 +266,87 @@ void Config::clearPresetsDirlist(void)
 
 bool Config::loadConfig(void)
 {
-    XMLwrapper *xml = new XMLwrapper();
-    if (!ConfigFile.size() || !isRegFile(ConfigFile))
+    string cmd;
+    int chk;
+    string homedir = string(getenv("HOME"));
+    if (homedir.empty() || !isDirectory(homedir))
+        homedir = string("/tmp");
+    ConfigDir = homedir + string("/.config/yoshimi");
+    if (!isDirectory(ConfigDir))
     {
-        Log("Config file " + ConfigFile + " not available");
-        return false;
+        cmd = string("mkdir -p ") + ConfigDir;
+        if ((chk = system(cmd.c_str())) < 0)
+        {
+            Log("Create config directory " + ConfigDir + " failed, status " + asString(chk));
+            return false;
+        }
     }
-    if (xml->loadXMLfile(ConfigFile) < 0)
-        return false;
+    ConfigFile = ConfigDir + string("/yoshimi.config");
+    StateFile = ConfigDir + string("/yoshimi.state");
+    if (!isRegFile(ConfigFile))
+    {
+        Log("ConfigFile " + ConfigFile + " not found");
+        string oldConfigFile = string(getenv("HOME")) + string("/.yoshimiXML.cfg");
+        if (isRegFile(oldConfigFile))
+        {
+            Log("Copying old config file " + oldConfigFile + " to new location: " + ConfigFile);
+            FILE *oldfle = fopen (oldConfigFile.c_str(), "r");
+            FILE *newfle = fopen (ConfigFile.c_str(), "w");
+            if (oldfle != NULL && newfle != NULL)
+                while (!feof(oldfle))
+                    putc(getc(oldfle), newfle);
+            else
+                Log("Failed to copy old config file " + oldConfigFile + " to " + ConfigFile);
+            if (newfle)
+                fclose(newfle);
+            if (oldfle)
+                fclose(oldfle);
+        }
+    }
 
-    bool isok = loadConfigData(xml);
-    if (isok)
+    bool isok = true;
+    if (!isRegFile(ConfigFile))
+        Log("ConfigFile " + ConfigFile + " still not found, will use default settings");
+    else
     {
-        Oscilsize = (int) powf(2.0f, ceil(log (Oscilsize - 1.0f) / logf(2.0)));
-        if (DefaultRecordDirectory.empty())
-            DefaultRecordDirectory = string("/tmp/");
-        if (DefaultRecordDirectory.at(DefaultRecordDirectory.size() - 1) != '/')
-            DefaultRecordDirectory += "/";
-        if (CurrentRecordDirectory.empty())
-            CurrentRecordDirectory = DefaultRecordDirectory;
+        XMLwrapper *xml = new XMLwrapper();
+        if (!xml)
+            Log("loadConfig failed XMLwrapper allocation");
+        else
+        {
+            if (xml->loadXMLfile(ConfigFile) < 0)
+            {
+                Log("loadConfig loadXMLfile failed");
+                return false;
+            }
+            isok = extractConfigData(xml);
+            if (isok)
+            {
+                Oscilsize = lrintf(powf(2.0f, ceil(log (Oscilsize - 1.0f) / logf(2.0))));
+                if (DefaultRecordDirectory.empty())
+                    DefaultRecordDirectory = string("/tmp/");
+                if (DefaultRecordDirectory.at(DefaultRecordDirectory.size() - 1) != '/')
+                    DefaultRecordDirectory += "/";
+                if (CurrentRecordDirectory.empty())
+                    CurrentRecordDirectory = DefaultRecordDirectory;
+            }
+            delete xml;
+        }
     }
-    delete xml;
     return isok;
 }
 
-bool Config::loadConfigData(XMLwrapper *xml)
+
+bool Config::extractConfigData(XMLwrapper *xml)
 {
-    if (NULL == xml)
+    if (!xml)
     {
-        Log("loadConfigData on NULL");
+        Log("extractConfigData on NULL");
         return false;
     }
     if (!xml->enterbranch("CONFIGURATION"))
     {
-        Log("loadConfigData, no CONFIGURATION branch");
+        Log("extractConfigData, no CONFIGURATION branch");
         return false;
     }
     Samplerate = xml->getpar("sample_rate", Samplerate, 44100, 96000);
@@ -278,12 +356,9 @@ bool Config::loadConfigData(XMLwrapper *xml)
     BankUIAutoClose = xml->getpar("bank_window_auto_close",
                                                BankUIAutoClose, 0, 1);
     currentBankDir = xml->getparstr("bank_current");
-    Interpolation =
-        xml->getpar("interpolation", Interpolation, 0, 1);
-    CheckPADsynth =
-        xml->getpar("check_pad_synth", CheckPADsynth, 0, 1);
-    VirKeybLayout =
-        xml->getpar("virtual_keyboard_layout", VirKeybLayout, 0, 10);
+    Interpolation = xml->getpar("interpolation", Interpolation, 0, 1);
+    CheckPADsynth = xml->getpar("check_pad_synth", CheckPADsynth, 0, 1);
+    VirKeybLayout = xml->getpar("virtual_keyboard_layout", VirKeybLayout, 0, 10);
 
     // get bank dirs
     int count = 0;
@@ -368,7 +443,7 @@ bool Config::loadConfigData(XMLwrapper *xml)
             {
                 xmz = xml->getparstr("xmz_file");
                 if (xmz.size() && isRegFile(xmz))
-                    AddParamHistory(xmz);
+                    addParamHistory(xmz);
                 xml->exitbranch();
             }
         }
@@ -380,13 +455,20 @@ bool Config::loadConfigData(XMLwrapper *xml)
 }
 
 
-void Config::SaveConfig(void)
+void Config::saveConfig(void)
 {
     XMLwrapper *xmltree = new XMLwrapper();
+    if (!xmltree)
+    {
+        Log("saveConfig failed xmltree allocation");
+        return;
+    }
     addConfigXML(xmltree);
-    xmltree->saveXMLfile(ConfigFile);
+    if (xmltree->saveXMLfile(ConfigFile))
+        Log("Config saved to " + ConfigFile);
+     else
+        Log("Failed to save config to " + ConfigFile);
     delete xmltree;
-    return;
 }
 
 
@@ -446,191 +528,70 @@ void Config::addConfigXML(XMLwrapper *xmltree)
 }
 
 
-void Config::SaveState(void)
+void Config::saveState(void)
+{
+    saveSessionData(StateFile);
+}
+
+
+void Config::saveSessionData(string savefile)
 {
     XMLwrapper *xmltree = new XMLwrapper();
-    xmltree->beginbranch("SESSION_STATE");
+    if (!xmltree)
+    {
+        Log("saveState failed xmltree allocation");
+        return;
+    }
     addConfigXML(xmltree);
     addRuntimeXML(xmltree);
-    zynMaster->add2XML(xmltree);
-    xmltree->saveXMLfile(StateFile);
-    xmltree->endbranch();
-    Log("State saved to " + StateFile);
+    synth->add2XML(xmltree);
+    if (xmltree->saveXMLfile(savefile))
+        Log("Session state saved to " + savefile);
+    else
+        Log("Session state save to " + savefile + " failed");
 }
 
 
-XMLwrapper *Config::RestoreRuntimeState(void)
+bool Config::restoreState(SynthEngine *synth)
 {
-    if (!StateFile.size() || !isRegFile(StateFile))
+    return restoreSessionData(synth, StateFile);
+}
+
+
+bool Config::restoreSessionData(SynthEngine *synth, string sessionfile)
+{
+    XMLwrapper *xml = NULL;
+    bool ok = false;
+    if (!sessionfile.size() || !isRegFile(sessionfile))
     {
-        Log("State file " + StateFile + " not available");
-        return NULL;
+        Log("Session file " + sessionfile + " not available");
+        goto end_game;
     }
-    XMLwrapper *xml = new XMLwrapper();
-    if (NULL == xml)
+    if (!(xml = new XMLwrapper()))
     {
-        Log("Failed to init xmltree, Config RestoreRuntimeState");
-        return NULL;
+        Log("Failed to init xmltree for restoreState");
+        goto end_game;
     }
-    if (xml->loadXMLfile(StateFile) < 0)
+
+    if (xml->loadXMLfile(sessionfile) < 0)
     {
-        Log("Failed to load xml file " + StateFile + ", Master RestoreState");
+        Log("Failed to load xml file " + sessionfile);
+        goto end_game;
+    }
+    ok = extractConfigData(xml) && extractRuntimeData(xml) && synth->getfromXML(xml);
+
+end_game:
+    if (xml)
         delete xml;
-        return NULL;
-    }
-    if (xml->enterbranch("SESSION_STATE"))
-    {
-        if (loadConfigData(xml) && loadRuntimeData(xml))
-            return xml;
-    }
-    if (NULL != xml)
-        delete xml;
-    return NULL;
+    return ok;
 }
 
 
-void Config::sigHandler(int sig)
-{
-    switch (sig)
-    {
-        case SIGINT:
-        case SIGHUP:
-        case SIGTERM:
-        case SIGQUIT:
-            Runtime.setInterruptActive(sig);
-            break;
-
-        case SIGUSR1:
-            Runtime.setLadi1Active(sig);
-            sigaction(SIGUSR1, &sigAction, NULL);
-            break;
-
-        case SIGUSR2:
-        default:
-            Runtime.Log("Unexpected signal: " + asString(sig));
-            break;
-    }
-}
-
-
-void Config::signalCheck(void)
-{
-    if (ladi1IntActive)
-    {
-        Runtime.SaveState();
-        __sync_sub_and_fetch (&ladi1IntActive, 1);
-    }
-
-    if (sigIntActive)
-        Pexitprogram = true;
-}
-
-//        musicClient->Close();
-//        stopGuiThread();
-//        __sync_sub_and_fetch (&sigIntActive, 1);
-
-
-void Config::setInterruptActive(int sig)
-{
-    Log("Interrupt received");
-    __sync_add_and_fetch(&Config::sigIntActive, 1);
-}
-
-
-void Config::setLadi1Active(int sig)
-{
-    __sync_add_and_fetch(&ladi1IntActive, 1);
-}
-
-
-int Config::SSEcapability(void)
-{
-#if !defined(__SSE__)
-    return 0;
-#else
-#   if defined(__x86_64__)
-        int64_t edx;
-        __asm__ __volatile__ (
-            "mov %%rbx,%%rdi\n\t" // save PIC register
-            "movl $1,%%eax\n\t"
-            "cpuid\n\t"
-            "mov %%rdi,%%rbx\n\t" // restore PIC register
-            : "=d" (edx)
-            : : "%rax", "%rcx", "%rdi"
-        );
-#   else
-        int32_t edx;
-        __asm__ __volatile__ (
-            "movl %%ebx,%%edi\n\t" // save PIC register
-            "movl $1,%%eax\n\t"
-            "cpuid\n\t"
-            "movl %%edi,%%ebx\n\t" // restore PIC register
-            : "=d" (edx)
-            : : "%eax", "%ecx", "%edi"
-        );
-#   endif
-    return ((edx & 0x02000000 /*SSE*/) | (edx & 0x04000000 /*SSE2*/)) >> 25;
-#endif
-}
-
-
-void Config::AntiDenormals(bool set_daz_ftz)
-{
-#if defined(__SSE__)
-    if (set_daz_ftz)
-    {
-        sse_level = SSEcapability();
-        if (sse_level & 0x01)
-            // SSE, turn on flush to zero (FTZ) and round towards zero (RZ)
-            _mm_setcsr(_mm_getcsr() | 0x8000|0x6000);
-        if (sse_level & 0x02)
-            // SSE2, turn on denormals are zero (DAZ)
-	       _mm_setcsr(_mm_getcsr() | 0x0040);
-    }
-    else if (sse_level)
-    {
-        // Clear underflow and precision flags,
-        // turn DAZ, FTZ off, restore round to nearest (RN)
-        _mm_setcsr(_mm_getcsr() & ~(0x0030|0x8000|0x0040|0x6000));
-    }
-#endif        
-}
-
-/**
-SSEcapability() and AntiDenormals() draw gratefully on the work of others,
-including:
-
-Jens M Andreasen, LAD, <http://lists.linuxaudio.org/pipermail/linux-audio-dev/2009-August/024707.html>). 
-
-LinuxSampler src/common/Features.cpp, licensed thus -
-
- *   LinuxSampler - modular, streaming capable sampler                     *
- *                                                                         *
- *   Copyright (C) 2003, 2004 by Benno Senoner and Christian Schoenebeck   *
- *   Copyright (C) 2005 - 2008 Christian Schoenebeck                       *
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- *   This program is distributed in the hope that it will be useful,       *
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
- *   GNU General Public License for more details.                          *
- *                                                                         *
- *   You should have received a copy of the GNU General Public License     *
- *   along with this program; if not, write to the Free Software           *
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston,                 *
- *   MA  02111-1307  USA                                                   *
-**/
-
-
-bool Config::loadRuntimeData(XMLwrapper *xml)
+bool Config::extractRuntimeData(XMLwrapper *xml)
 {
     if (!xml->enterbranch("RUNTIME"))
     {
-        Log("Config loadRuntimeData, no RUNTIME branch");
+        Log("Config extractRuntimeData, no RUNTIME branch");
         return false;
     }
     audioEngine = (audio_drivers)xml->getpar("audio_engine", DEFAULT_AUDIO, no_audio, alsa_audio);
@@ -647,7 +608,6 @@ bool Config::loadRuntimeData(XMLwrapper *xml)
 void Config::addRuntimeXML(XMLwrapper *xml)
 {
     xml->beginbranch("RUNTIME");
-
     xml->addpar("audio_engine", audioEngine);
     xml->addparstr("audio_device", audioDevice);
     xml->addpar("midi_engine", midiEngine);
@@ -658,20 +618,21 @@ void Config::addRuntimeXML(XMLwrapper *xml)
 }
 
 
-void Config::Log(string msg)
+void Config::Log(string msg, bool tostderr)
 {
-    if (showGui)
+    if (showGui && !tostderr)
         LogList.push_back(msg);
+    else
+        cerr << msg << endl;
 }
 
 
-void Config::StartupReport(unsigned int samplerate, int buffersize)
+void Config::StartupReport(void)
 {
     if (!showGui)
         return;
 
     Log(string(argp_program_version));
-    //Log("fftw3 to use " + asString(FFTwrapper::fftw_threads) + " thread(s)");
     Log("Clientname: " + musicClient->midiClientName());
     string report = "Audio: ";
     switch (audioEngine)
@@ -701,29 +662,299 @@ void Config::StartupReport(unsigned int samplerate, int buffersize)
     }
     report += (" -> '" + midiDevice + "'");
     Log(report);
-    Log("Oscilsize: " + asString(Runtime.Oscilsize));
-    Log("Samplerate: " + asString(samplerate));
-    Log("Buffersize: " + asString(buffersize));
-    Log("Alleged latency: " + asString(buffersize) + " frames, "
-        + asString(buffersize * 1000.0f / samplerate) + " ms");
-    Log("Gross latency: " + asString(musicClient->grossLatency()) + " frames, "
-         + asString(musicClient->grossLatency() * 1000.0f / samplerate) + " ms");
+    Log("Oscilsize: " + asString(synth->oscilsize));
+    Log("Samplerate: " + asString(synth->samplerate));
+    Log("Buffersize: " + asString(synth->buffersize));
+    Log("Alleged minimum latency: " + asString(synth->buffersize) + " frames, "
+        + asString(synth->buffersize * 1000.0f / synth->samplerate) + " ms");
 }
+
+
+void Config::setRtprio(int prio)
+{
+    if (prio < rtprio)
+        rtprio = prio;
+}
+
+
+// general thread start service
+bool Config::startThread(pthread_t *pth, void *(*thread_fn)(void*), void *arg,
+                         bool schedfifo, bool midi)
+{
+    pthread_attr_t attr;
+    int chk;
+    bool outcome = false;
+    bool retry = true;
+    while (retry)
+    {
+        if (!(chk = pthread_attr_init(&attr)))
+        {
+            if (!(chk = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED)))
+            {
+                if (schedfifo)
+                {
+                    if ((chk = pthread_attr_setschedpolicy(&attr, SCHED_FIFO)))
+                    {
+                        Log("Failed to set SCHED_FIFO policy in thread attribute: "
+                                    + string(strerror(errno))
+                                    + " (" + asString(chk) + ")");
+                        schedfifo = false;
+                        continue;
+                    }
+                    if ((chk = pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED)))
+                    {
+                        Log("Failed to set inherit scheduler thread attribute: "
+                                    + string(strerror(errno)) + " ("
+                                    + asString(chk) + ")");
+                        schedfifo = false;
+                        continue;
+                    }
+                    sched_param prio_params;
+                    int prio = rtprio;
+                    if (midi)
+                        --prio;
+                    prio_params.sched_priority = (prio > 0) ? prio : 0;
+                    if ((chk = pthread_attr_setschedparam(&attr, &prio_params)))
+                    {
+                        Log("Failed to set thread priority attribute: ("
+                                    + asString(chk) + ")  "
+                                    + string(strerror(errno)));
+                        schedfifo = false;
+                        continue;
+                    }
+                }
+                if (!(chk = pthread_create(pth, &attr, thread_fn, arg)))
+                {
+                    outcome = true;
+                    break;
+                }
+                else if (schedfifo)
+                {
+                    schedfifo = false;
+                    continue;
+                }
+                outcome = false;
+                break;
+            }
+            else
+                Log("Failed to set thread detach state: " + asString(chk));
+        }
+        else
+            Log("Failed to initialise thread attributes: " + asString(chk));
+
+        if (schedfifo)
+        {
+            Log("Failed to start thread (sched_fifo): " + asString(chk)
+                + "  " + string(strerror(errno)));
+            schedfifo = false;
+            continue;
+        }
+        Log("Failed to start thread (sched_other): " + asString(chk)
+            + "  " + string(strerror(errno)));
+        outcome = false;
+        break;
+    }
+    return outcome;
+}
+
+
+void Config::sigHandler(int sig)
+{
+    switch (sig)
+    {
+        case SIGINT:
+        case SIGHUP:
+        case SIGTERM:
+        case SIGQUIT:
+            Runtime.setInterruptActive();
+            break;
+
+        case SIGUSR1:
+            Runtime.setLadi1Active();
+            sigaction(SIGUSR1, &sigAction, NULL);
+            break;
+
+        case SIGUSR2:
+        default:
+            break;
+    }
+}
+
+
+void Config::signalCheck(void)
+{
+    #if defined(JACK_SESSION)
+        switch (jsessionSave)
+        {
+            case JackSessionSave:
+                saveJackSession();
+                __sync_and_and_fetch(&jsessionSave, 0);
+                break;
+            case JackSessionSaveAndQuit:
+                saveJackSession();
+                runSynth = false;
+                __sync_and_and_fetch(&jsessionSave, 0);
+                break;
+            case JackSessionSaveTemplate:
+                // not implemented
+                __sync_and_and_fetch(&jsessionSave, 0);
+                break;
+            default:
+                break;
+        }
+    #endif
+    if (ladi1IntActive)
+    {
+        saveState();
+        __sync_and_and_fetch(&ladi1IntActive, 0);
+    }
+    if (sigIntActive)
+        runSynth = false;
+}
+
+
+void Config::setInterruptActive(void)
+{
+    Log("Interrupt received", true);
+    __sync_or_and_fetch(&sigIntActive, 0xFF);
+}
+
+
+void Config::setLadi1Active(void)
+{
+    __sync_or_and_fetch(&ladi1IntActive, 0xFF);
+}
+
+
+bool Config::restoreJsession(SynthEngine *synth)
+{
+    #if defined(JACK_SESSION)
+        return restoreSessionData(synth, jackSessionFile);
+    #else
+        return false;
+    #endif
+}
+
+
+void Config::setJackSessionSave(int event_type, const char *session_dir, const char *client_uuid)
+{
+    jackSessionDir = string(session_dir);
+    jackSessionUuid = string(client_uuid);
+    jackSessionFile = "yoshimi-" + jackSessionUuid + ".xml";
+    if (!__sync_bool_compare_and_swap (&jsessionSave, jsessionSave, event_type))
+        Log("Error setting jack session save");
+}
+
+
+void Config::saveJackSession(void)
+{
+    saveSessionData(jackSessionDir + jackSessionFile);
+    string cmd = string("yoshimi -U ") + jackSessionUuid
+                 + string(" -u ${SESSION_DIR}") + jackSessionFile;
+    Log("Jack session saved to " + jackSessionDir + jackSessionFile + ", restart command: " + cmd);
+    if (!musicClient->jacksessionReply(cmd))
+        Log("Error on jack session reply");
+    jackSessionDir.clear();
+    jackSessionUuid.clear();
+    jackSessionFile.clear();
+}
+
+
+int Config::SSEcapability(void)
+{
+    #if !defined(__SSE__)
+        return 0;
+    #else
+        #if defined(__x86_64__)
+            int64_t edx;
+            __asm__ __volatile__ (
+                "mov %%rbx,%%rdi\n\t" // save PIC register
+                "movl $1,%%eax\n\t"
+                "cpuid\n\t"
+                "mov %%rdi,%%rbx\n\t" // restore PIC register
+                : "=d" (edx)
+                : : "%rax", "%rcx", "%rdi"
+            );
+        #else
+            int32_t edx;
+            __asm__ __volatile__ (
+                "movl %%ebx,%%edi\n\t" // save PIC register
+                "movl $1,%%eax\n\t"
+                "cpuid\n\t"
+                "movl %%edi,%%ebx\n\t" // restore PIC register
+                : "=d" (edx)
+                : : "%eax", "%ecx", "%edi"
+            );
+        #endif
+        return ((edx & 0x02000000 /*SSE*/) | (edx & 0x04000000 /*SSE2*/)) >> 25;
+    #endif
+}
+
+
+void Config::AntiDenormals(bool set_daz_ftz)
+{
+    #if defined(__SSE__)
+        if (set_daz_ftz)
+        {
+            sse_level = SSEcapability();
+            if (sse_level & 0x01)
+                // SSE, turn on flush to zero (FTZ) and round towards zero (RZ)
+                _mm_setcsr(_mm_getcsr() | 0x8000|0x6000);
+            if (sse_level & 0x02)
+                // SSE2, turn on denormals are zero (DAZ)
+               _mm_setcsr(_mm_getcsr() | 0x0040);
+        }
+        else if (sse_level)
+        {
+            // Clear underflow and precision flags,
+            // turn DAZ, FTZ off, restore round to nearest (RN)
+            _mm_setcsr(_mm_getcsr() & ~(0x0030|0x8000|0x0040|0x6000));
+        }
+    #endif
+}
+
+/**
+SSEcapability() and AntiDenormals() draw gratefully on the work of others,
+including:
+
+Jens M Andreasen, LAD, <http://lists.linuxaudio.org/pipermail/linux-audio-dev/2009-August/024707.html>).
+
+LinuxSampler src/common/Features.cpp, licensed thus -
+
+ *   LinuxSampler - modular, streaming capable sampler                     *
+ *                                                                         *
+ *   Copyright (C) 2003, 2004 by Benno Senoner and Christian Schoenebeck   *
+ *   Copyright (C) 2005 - 2008 Christian Schoenebeck                       *
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ *   This program is distributed in the hope that it will be useful,       *
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ *   GNU General Public License for more details.                          *
+ *                                                                         *
+ *   You should have received a copy of the GNU General Public License     *
+ *   along with this program; if not, write to the Free Software           *
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston,                 *
+ *   MA  02111-1307  USA                                                   *
+**/
 
 
 static error_t parse_cmds (int key, char *arg, struct argp_state *state)
 {
     Config *settings = (Config*)state->input;
-
     switch (key)
     {
         case 'c': settings->showConsole = true; break;
         case 'N': settings->nameTag = string(arg); break;
         case 'l': settings->paramsLoad = string(arg); break;
         case 'L': settings->instrumentLoad = string(arg); break;
-        case 'R': settings->Samplerate = string2int(string(arg)); break;
-        case 'b': settings->Buffersize = string2int(string(arg)); break;
-        case 'o': settings->Oscilsize = string2int(string(arg)); break;
+        case 'R': settings->Samplerate = Runtime.string2int(string(arg)); break;
+        case 'b': settings->Buffersize = Runtime.string2int(string(arg)); break;
+        case 'o': settings->Oscilsize = Runtime.string2int(string(arg)); break;
         case 'A':
             settings->audioEngine = alsa_audio;
             if (arg)
@@ -751,9 +982,21 @@ static error_t parse_cmds (int key, char *arg, struct argp_state *state)
         case 'k': settings->startJack = true; break;
         case 'K': settings->connectJackaudio = true; break;
         case 'S':
-            settings->restoreState = true;
+            settings->doRestoreState = true;
             if (arg)
                 settings->StateFile = string(arg);
+            break;
+        case 'u':
+            #if defined(JACK_SESSION)
+                if (arg)
+                    settings->jackSessionFile = string(arg);
+            #endif
+            break;
+        case 'U':
+            #if defined(JACK_SESSION)
+                if (arg)
+                    settings->jackSessionUuid = string(arg);
+            #endif
             break;
         case ARGP_KEY_ARG:
         case ARGP_KEY_END:
@@ -762,6 +1005,7 @@ static error_t parse_cmds (int key, char *arg, struct argp_state *state)
     }
     return 0;
 }
+
 
 static struct argp cmd_argp = { cmd_options, parse_cmds, prog_doc };
 

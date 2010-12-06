@@ -43,7 +43,7 @@ class JackAlsaClient : public MusicClient
         bool openMidi(WavRecord *recorder);
         bool Start(void);
         void Close(void);
-
+        bool jacksessionReply(string cmdline) { return jackEngine.jacksessionReply(cmdline); }
         unsigned int getSamplerate(void) { return jackEngine.getSamplerate(); };
         int getBuffersize(void) { return jackEngine.getBuffersize(); };
         int grossLatency(void)

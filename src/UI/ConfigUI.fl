@@ -35,10 +35,10 @@ decl {\#include <FL/Fl_File_Chooser.H>} {public
 decl {\#include "Misc/Config.h"} {public
 } 
 
-decl {\#include "Misc/Util.h"} {public
+decl {\#include "Misc/MiscFuncs.h"} {public
 } 
 
-class ConfigUI {open
+class ConfigUI {open : {private MiscFuncs}
 } {
   Function {make_window()} {open
   } {
@@ -382,7 +382,7 @@ class ConfigUI {open
       }
       Fl_Button {} {
         label {Save Settings}
-        callback {Runtime.SaveConfig();
+        callback {Runtime.saveConfig();
             writebankcfg();
             writepresetcfg();}
         xywh {352 308 105 20} box THIN_UP_BOX labelsize 12

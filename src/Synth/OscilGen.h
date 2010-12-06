@@ -18,7 +18,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified January 2010
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
 #ifndef OSCIL_GEN_H
@@ -26,12 +26,13 @@
 
 #include <limits.h>
 
+#include "Misc/WaveShapeSamples.h"
 #include "Misc/XMLwrapper.h"
 #include "DSP/FFTwrapper.h"
 #include "Params/Presets.h"
 #include "Synth/Resonance.h"
 
-class OscilGen : public Presets
+class OscilGen : public Presets, private WaveShapeSamples
 {
     public:
         OscilGen(FFTwrapper *fft_,Resonance *res_);
@@ -118,7 +119,7 @@ class OscilGen : public Presets
 
         float numRandom(void);
         unsigned int random(void);
-        
+
     private:
         float hmag[MAX_AD_HARMONICS], hphase[MAX_AD_HARMONICS];
         // the magnituides and the phases of the sine/nonsine harmonics

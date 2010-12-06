@@ -1,60 +1,59 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0110 
-header_name {.h} 
+version 1.0110
+header_name {.h}
 code_name {.cc}
 comment {BankUI.h} {not_in_source in_header
-} 
+}
 
 comment {BankUI.cc} {in_source not_in_header
-} 
+}
 
-comment {//
-// Original ZynAddSubFX author Nasca Octavian Paul
-// Copyright (C) 2002-2005 Nasca Octavian Paul
-// Copyright 2009, Alan Calvert
-//
-// This file is part of yoshimi, which is free software: you can redistribute
-// it and/or modify it under the terms of version 2 of the GNU General Public
-// License as published by the Free Software Foundation.
-//
-// yoshimi is distributed in the hope that it will be useful, but WITHOUT ANY
-// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-// FOR A PARTICULAR PURPOSE.   See the GNU General Public License (version 2 or
-// later) for more details.
-//
-// You should have received a copy of the GNU General Public License along with
-// yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
-// Street, Fifth Floor, Boston, MA  02110-1301, USA.
-//
-// This file is a derivative of the ZynAddSubFX original, modified October 2009
-//} {in_source in_header
-} 
+comment {
+Original ZynAddSubFX author Nasca Octavian Paul
+Copyright (C) 2002-2005 Nasca Octavian Paul
+Copyright 2009-2010, Alan Calvert
+
+This file is part of yoshimi, which is free software: you can redistribute
+it and/or modify it under the terms of version 2 of the GNU General Public
+License as published by the Free Software Foundation.
+
+yoshimi is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.   See the GNU General Public License (version 2 or
+later) for more details.
+
+You should have received a copy of the GNU General Public License along with
+yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
+Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+This file is derivative of original ZynAddSubFX code, modified November 2010
+} {in_source in_header}
 
 decl {\#include <FL/Fl_Button.H>} {public
-} 
+}
 
 decl {\#include <FL/Fl_File_Chooser.H>} {public
-} 
+}
 
 decl {\#include <FL/Fl_Spinner.H>} {public
-} 
+}
 
 decl {\#include "Misc/Bank.h"} {public
-} 
+}
 
 decl {\#include "Misc/Config.h"} {public
-} 
+}
 
-decl {\#include "Misc/Master.h"} {public
-} 
+decl {\#include "Misc/SynthEngine.h"} {public
+}
 
 class BankProcess_ {open
 } {
-  Function {process()} {open return_type {virtual void}
+  Function {process(void)} {open return_type {virtual void}
   } {}
   decl {Bank *bank;} {public
   }
-} 
+}
 
 class BankSlot {open : {public Fl_Button, BankProcess_}
 } {
@@ -119,7 +118,7 @@ class BankSlot {open : {public Fl_Button, BankProcess_}
   decl {int *what, *whatslot, nslot, highlight, *nselected;} {}
   decl {void (BankProcess_:: *fnc)(void);} {}
   decl {BankProcess_ *bp;} {}
-} 
+}
 
 class BankUI {open : {public BankProcess_}
 } {
@@ -275,15 +274,17 @@ class BankUI {open : {public BankProcess_}
   } {
     code {fnc = &BankProcess_::process;
         npart = npart_;
-        bank = &zynMaster->bank;
+        bank = &synth->bank;
         what = 0;
         nselected = -1;
         make_window();
         mode = 1;} {}
   }
-  Function {~BankUI()} {return_type virtual
-  } {
-    code {bankuiwindow->hide(); delete(bankuiwindow);} {}
+  Function {~BankUI()} {} {
+    code {//
+        bankuiwindow->hide();
+        delete bankuiwindow;
+    } {}
   }
   Function {Show()} {open
   } {
@@ -309,24 +310,34 @@ class BankUI {open : {public BankProcess_}
             if (tmp != NULL)
                 bank->setname(slot, string(tmp), -1);
             bs[slot]->refresh();
+
             // Re-read from slot
-            zynMaster->actionLock(lockmute);
-            bank->loadfromslot(slot, zynMaster->part[*npart]);
-            zynMaster->part[*npart]->applyparameters(true);
-            zynMaster->actionLock(unlock);
-            zynMaster->part[*npart]->Pname = bank->getname(slot);
+            //synth->actionLock(lockmute);
+            //bank->loadfromslot(slot, synth->part[*npart]);
+            //synth->part[*npart]->applyparameters(true);
+            //synth->actionLock(unlock);
+
+            bank->loadfromslot(slot, synth->part[*npart]);
+            // synth->part[*npart]->applyparameters();
+
+            synth->part[*npart]->Pname = bank->getname(slot);
             cbwig->do_callback();
         }
 
         if (what == 1 && mode == 1 && !bank->emptyslot(slot))
-        {   // Reads from slot
-            zynMaster->actionLock(lockmute);
-            bank->loadfromslot(slot, zynMaster->part[*npart]);
-            zynMaster->part[*npart]->applyparameters(true);
-            zynMaster->actionLock(unlock);
-            zynMaster->part[*npart]->Pname = bank->getname(slot);
+        {
+            // Reads from slot
+            //synth->actionLock(lockmute);
+            //bank->loadfromslot(slot, synth->part[*npart]);
+            //synth->part[*npart]->applyparameters(true);
+            //synth->actionLock(unlock);
+
+            bank->loadfromslot(slot, synth->part[*npart]);
+            //synth->part[*npart]->applyparameters();
+
+            synth->part[*npart]->Pname = bank->getname(slot);
             cbwig->do_callback();
-     
+
             if (Runtime.BankUIAutoClose != 0)
                 bankuiwindow->hide();
         }
@@ -339,9 +350,9 @@ class BankUI {open : {public BankProcess_}
                     doit = false;
             if (doit)
             {
-                zynMaster->actionLock(lockmute);
-                bank->savetoslot(slot,zynMaster->part[*npart]);
-                zynMaster->actionLock(unlock);
+                synth->actionLock(lockmute);
+                bank->savetoslot(slot,synth->part[*npart]);
+                synth->actionLock(unlock);
                 bs[slot]->refresh();
                 mode = 1;
                 readbutton->value(1);
@@ -427,4 +438,4 @@ class BankUI {open : {public BankProcess_}
   decl {void (BankProcess_::* fnc)(void);} {}
   decl {Fl_Spinner *cbwig;} {public
   }
-} 
+}

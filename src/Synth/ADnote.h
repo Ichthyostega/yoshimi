@@ -1,5 +1,5 @@
 /*
-    ADnote.h - The "additive" synthesizer
+    ADnote.h
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
@@ -18,65 +18,71 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified January 2010
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
 #ifndef AD_NOTE_H
 #define AD_NOTE_H
 
+#include "Misc/SynthHelper.h"
+#include "Synth/Carcass.h"
 #include "Synth/LegatoTypes.h"
-#include "Synth/Envelope.h"
-#include "Synth/LFO.h"
-#include "DSP/Filter.h"
-#include "Params/ADnoteParameters.h"
-#include "Params/Controller.h"
+
+class ADnoteParameters;
+class Controller;
+class Envelope;
+class LFO;
+class Filter;
 
 // Globals
 
-#define FM_AMP_MULTIPLIER 14.71280603
+#define FM_AMP_MULTIPLIER 14.71280603f
 
 #define OSCIL_SMP_EXTRA_SAMPLES 5
 
-class ADnote // ADDitive note
+class ADnote : public Carcass, private SynthHelper
 {
     public:
-        ADnote(ADnoteParameters *pars, Controller *ctl_, float freq,
-               float velocity, int portamento_, int midinote_, bool besilent);
+        ADnote(ADnoteParameters *pars, Controller *ctl_, float freq_,
+               float velocity_, int portamento_, int midinote_,
+               bool besilent);
         ~ADnote();
 
+        int noteout(float *outl, float *outr);
+        void relasekey();
+        int finished() const;
         void ADlegatonote(float freq_, float velocity_, int portamento_,
                           int midinote_, bool externcall);
-
-        int noteout(float *outl, float *outr);
-        void relasekey(void);
-        bool finished(void) { return !NoteEnabled; };
-
-        // ready - this is 0 if it is not ready (the parameters has to be computed)
-        // or other value if the parameters has been computed and if it is ready to output
         char ready;
 
     private:
-        void setfreq(int nvoice, float freq);
-        void setfreqFM(int nvoice, float freq);
-        void computecurrentparameters();
-        void initparameters();
-        void KillVoice(int nvoice);
-        void KillNote(void);
-        float getvoicebasefreq(int nvoice);
-        float getFMvoicebasefreq(int nvoice);
-        void ComputeVoiceOscillator_LinearInterpolation(int nvoice);
-        void ComputeVoiceOscillator_CubicInterpolation(int nvoice);
-        void ComputeVoiceOscillatorMorph(int nvoice);
-        void ComputeVoiceOscillatorRingModulation(int nvoice);
-        void ComputeVoiceOscillatorFrequencyModulation(int nvoice, int FMmode);
-                    // FMmode=0 for phase modulation, 1 for Frequency modulation
-        //  inline void ComputeVoiceOscillatorFrequencyModulation(int nvoice);
-        void ComputeVoiceOscillatorPitchModulation(int nvoice);
-        void fadein(float *smps);
 
-        // GLOBALS
+        void setfreq(int nvoice, float in_freq);
+        void setfreqFM(int nvoice, float in_freq);
+        void computeUnisonFreqRap(int nvoice);
+        void computeCurrentParameters();
+        void initParameters();
+        void killVoice(int nvoice);
+        void killNote();
+        float getVoiceBaseFreq(int nvoice) const;
+        float getFMVoiceBaseFreq(int nvoice) const;
+        void computeVoiceOscillator_LinearInterpolation(int nvoice);
+        void computeVoiceOscillator_CubicInterpolation(int nvoice);
+        void computeVoiceOscillatorMorph(int nvoice);
+        void computeVoiceOscillatorRingModulation(int nvoice);
+        void computeVoiceOscillatorFrequencyModulation(int nvoice, int FMmode);
+            // FMmode = 0 for phase modulation, 1 for Frequency modulation
+        //  void ComputeVoiceOscillatorFrequencyModulation(int nvoice);
+        void computeVoiceOscillatorPitchModulation(int nvoice);
+
+        void computeVoiceNoise(int nvoice);
+
+        void fadein(float *smps) const;
+
+
+        // Globals
         ADnoteParameters *partparams;
-        bool stereo; // allows note Panning
+        unsigned char stereo; // allows note Panning
         int midinote;
         float velocity;
         float basefreq;
@@ -85,63 +91,42 @@ class ADnote // ADDitive note
         Controller *ctl;
 
         // Global parameters
-
         struct ADnoteGlobal {
-            //****************************
-            // FREQUENCY GLOBAL PARAMETERS
-            //****************************
-            float Detune;//cents
-
+            // Frequency global parameters
+            float  Detune; // cents
             Envelope *FreqEnvelope;
-            LFO *FreqLfo;
+            LFO      *FreqLfo;
 
-            //****************************
-            // AMPLITUDE GLOBAL PARAMETERS
-            //****************************
-            float Volume; // [ 0 .. 1 ]
-
-            float Panning; // [ 0 .. 1 ]
-
+            // Amplitude global parameters
+            float  Volume;  // [ 0 .. 1 ]
+            float  Panning; // [ 0 .. 1 ]
             Envelope *AmpEnvelope;
-            LFO *AmpLfo;
-
+            LFO      *AmpLfo;
             struct {
-                int Enabled;
-                float initialvalue;
-                float dt;
-                float t;
+                int      Enabled;
+                float initialvalue, dt, t;
             } Punch;
 
-            //*************************
-            // FILTER GLOBAL PARAMETERS
-            //*************************
+            // Filter global parameters
             Filter *GlobalFilterL;
             Filter *GlobalFilterR;
-
-            float FilterCenterPitch; // octaves
-            float FilterQ;
-            float FilterFreqTracking;
-
+            float  FilterCenterPitch; // octaves
+            float  FilterQ;
+            float  FilterFreqTracking;
             Envelope *FilterEnvelope;
-
-            LFO *FilterLfo;
+            LFO      *FilterLfo;
         } NoteGlobalPar;
 
-        //*****************
-        // VOICE PARAMETERS
-        //*****************
+
+        // Voice parameters
         struct ADnoteVoice {
             bool Enabled;
             int noisetype; // (sound/noise)
             int filterbypass;
-
             int DelayTicks;
+            float *OscilSmp; // Waveform of the Voice
 
-            float *OscilSmp;
-
-            //*********************
-            // FREQUENCY PARAMETERS
-            //*********************
+            // Frequency parameters
             int fixedfreq;   // if the frequency is fixed to 440 Hz
             int fixedfreqET; // if the "fixed" frequency varies according to the note (ET)
 
@@ -150,66 +135,64 @@ class ADnote // ADDitive note
             float FineDetune;
 
             Envelope *FreqEnvelope;
-            LFO *FreqLfo;
+            LFO      *FreqLfo;
 
-            //*********************
-            // AMPLITUDE PARAMETERS
-            //*********************
+            // Amplitude parameters
             float  Panning; // 0.0=left, 0.5 = center, 1.0 = right
-            float Volume; // [-1.0 .. 1.0]
+            float  Volume;  // [-1.0 .. 1.0]
 
             Envelope *AmpEnvelope;
-            LFO *AmpLfo;
+            LFO      *AmpLfo;
 
-            //******************
-            // FILTER PARAMETERS
-            //******************
+            // Filter parameters
+            Filter   *VoiceFilterL;
+            Filter   *VoiceFilterR;
 
-            Filter *VoiceFilter;
-
-            float FilterCenterPitch;
-            float FilterFreqTracking;
+            float  FilterCenterPitch;
+            float  FilterFreqTracking;
 
             Envelope *FilterEnvelope;
-            LFO *FilterLfo;
+            LFO      *FilterLfo;
 
-            //**********************
-            // MODULLATOR PARAMETERS
-            //**********************
-
+            // Modullator parameters
             FMTYPE FMEnabled;
-
-            int FMVoice;
-
+            int    FMVoice;
             float *VoiceOut; // Voice Output used by other voices if use this as modullator
-            float *FMSmp;    // Wave of the Voice
-
-            float FMVolume;
-            float FMDetune; //in cents
-
+            float *FMSmp; // Wave of the Voice
+            float  FMVolume;
+            float  FMDetune; // in cents
             Envelope *FMFreqEnvelope;
             Envelope *FMAmpEnvelope;
         } NoteVoicePar[NUM_VOICES];
 
-
-        //**********************************************
-        // INTERNAL VALUES OF THE NOTE AND OF THE VOICES
-        //**********************************************
+        // Internal values of the note and of the voices
         float time; // time from the start of the note
-    
-        float oscposlo[NUM_VOICES];  // fractional part (skip)
-        float oscfreqlo[NUM_VOICES];
 
-        int oscposhi[NUM_VOICES];  // integer part (skip)
-        int oscfreqhi[NUM_VOICES];
+        int unison_size[NUM_VOICES]; //the size of unison for a single voice
 
-        // fractional part (skip) of the Modullator
-        float oscposloFM[NUM_VOICES];
-        float oscfreqloFM[NUM_VOICES];
+        float unison_stereo_spread[NUM_VOICES]; // stereo spread of subvoices (0.0=mono,1.0=max)
+
+        float *oscposlo[NUM_VOICES], *oscfreqlo[NUM_VOICES]; // fractional part (skip)
+
+        int *oscposhi[NUM_VOICES], *oscfreqhi[NUM_VOICES]; // integer part (skip)
+
+        float *oscposloFM[NUM_VOICES], *oscfreqloFM[NUM_VOICES]; // fractional part (skip) of the Modullator
+
+        float *unison_base_freq_rap[NUM_VOICES]; // the unison base_value
+
+        float *unison_freq_rap[NUM_VOICES]; // how the unison subvoice's frequency is changed (1.0 for no change)
+
+        bool *unison_invert_phase[NUM_VOICES]; // which subvoice has phase inverted
+
+        struct { // unison vibratto
+            float  amplitude; // amplitude which be added to unison_freq_rap
+            float *step;      // value which increments the position
+            float *position;  // between -1.0 and 1.0
+        } unison_vibratto[NUM_VOICES];
 
         // integer part (skip) of the Modullator
-        unsigned short int oscposhiFM[NUM_VOICES];
-        unsigned short int oscfreqhiFM[NUM_VOICES];
+        unsigned int *oscposhiFM[NUM_VOICES];
+        unsigned int *oscfreqhiFM[NUM_VOICES];
 
         // used to compute and interpolate the amplitudes of voices and modullators
         float oldamplitude[NUM_VOICES];
@@ -218,10 +201,13 @@ class ADnote // ADDitive note
         float FMnewamplitude[NUM_VOICES];
 
         // used by Frequency Modulation (for integration)
-        float FMoldsmp[NUM_VOICES];
+        float *FMoldsmp[NUM_VOICES];
 
-        // temporary buffer
-        float *tmpwave;
+        // temporary buffers
+        float *tmpwavel;
+        float *tmpwaver;
+        float **tmpwave_unison;
+        int max_unison;
 
         // Filter bypass samples
         float *bypassl;
@@ -246,22 +232,19 @@ class ADnote // ADDitive note
             float lastfreq;
             LegatoMsg msg;
             int decounter;
-            struct { // Fade In-Out vars
+            struct {
+                // Fade In/Out vars
                 int length;
                 float m;
                 float step;
             } fade;
-            struct { // Note parameters
-                float freq;
-                float vel;
+            struct {
+                // Note parameters
+                float freq, vel;
                 int portamento;
                 int midinote;
             } param;
         } Legato;
-
-        unsigned int samplerate;
-        int buffersize;
-        int oscilsize;
 };
 
 #endif

@@ -17,91 +17,94 @@
     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <iostream>
+
 using namespace std;
 
-#include "Misc/Util.h"
-#include "Misc/Master.h"
+#include "Misc/Config.h"
+#include "Misc/SynthEngine.h"
 #include "MusicIO/MusicClient.h"
-#include "GuiThreadUI.h"
+#include "MasterUI.h"
+#include "Synth/BodyDisposal.h"
 
 int main(int argc, char *argv[])
 {
-    std::ios::sync_with_stdio(false);
-    cerr.precision(2);
+    if (!Runtime.Setup(argc, argv))
+        goto bail_out;
 
-    Runtime.loadCmdArgs(argc, argv);
     if (Runtime.showGui)
     {
         guiMaster = new MasterUI();
-        if (NULL == guiMaster)
+        if (!guiMaster)
         {
             Runtime.Log("Failed to instantiate guiMaster");
             goto bail_out;
         }
     }
-    if (NULL == (zynMaster = new Master()))
+    if (!(synth = new SynthEngine()))
     {
         Runtime.Log("Failed to allocate Master");
         goto bail_out;
     }
-
-    if (NULL == (musicClient = MusicClient::newMusicClient()))
+    if (!(musicClient = MusicClient::newMusicClient()))
     {
         Runtime.Log("Failed to instantiate MusicClient");
         goto bail_out;
     }
-
     if (!(musicClient->Open()))
     {
         Runtime.Log("Failed to open MusicClient");
         goto bail_out;
     }
-
-    if (!zynMaster->Init())
+    if (!synth->Init(musicClient->getSamplerate(), musicClient->getBuffersize()))
     {
         Runtime.Log("Master init failed");
         goto bail_out;
     }
-
-    if (!startGuiThread(Runtime.showGui))
-    {
-        Runtime.Log("Failed to start gui thread");
-        goto bail_out;
-    }
-    if (musicClient->Start())
-    {
-        if (Runtime.showGui)
-            Runtime.StartupReport(musicClient->getSamplerate(),
-                                  musicClient->getBuffersize());
-        while (!Pexitprogram)
-        {
-            usleep(16666); // where all the action is ...
-            Runtime.signalCheck();
-        }
-        musicClient->Close();
-        if (Runtime.showGui)
-        {
-            if (NULL != guiMaster)
-            {
-                delete guiMaster;
-                guiMaster = NULL;
-            }
-        }
-    }
-    else
+    if (!musicClient->Start())
     {
         Runtime.Log("So sad, failed to start MusicIO");
         goto bail_out;
     }
-    Runtime.flushLog();
-    return 0;
-
-bail_out:
-    Runtime.Log("Yoshimi stages a strategic retreat :-(");
-    if (NULL != guiMaster)
+    if (Runtime.showGui)
     {
-        guiMaster->strategicRetreat();
+        guiMaster->Init();
+        Runtime.StartupReport();
+    }
+    while (Runtime.runSynth)
+    {
+        Runtime.deadObjects->disposeBodies();
+        Runtime.signalCheck();
+        if (Runtime.showGui)
+        {
+            if (!Runtime.LogList.empty())
+            { 
+                guiMaster->Log(Runtime.LogList.front());
+                Runtime.LogList.pop_front();
+            }
+            Fl::wait(0.04);
+        }
+        else
+            usleep(40000); // where all the action is ...
+    }
+    musicClient->Close();
+    if (Runtime.showGui)
+    {
+        if (guiMaster)
+        {
+            delete guiMaster;
+            guiMaster = NULL;
+        }
     }
     Runtime.flushLog();
-    return 1;
+    exit(EXIT_SUCCESS);
+
+bail_out:
+    Runtime.runSynth = false;
+    usleep(33333); // contemplative pause ...
+    Runtime.Log("Yoshimi stages a strategic retreat :-(");
+    if (guiMaster)
+        guiMaster->strategicRetreat();
+    Runtime.flushLog();
+    exit(EXIT_FAILURE);
 }

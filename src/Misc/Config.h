@@ -18,7 +18,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified January 2010
+    This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
 #ifndef CONFIG_H
@@ -31,63 +31,85 @@
 
 using namespace std;
 
-#include "Misc/XMLwrapper.h"
 #include "MusicIO/MusicClient.h"
 #include "Misc/HistoryListItem.h"
+#include "Misc/MiscFuncs.h"
 
-#define MAX_BANK_ROOT_DIRS 100
+typedef enum { no_audio = 0, jack_audio, alsa_audio, } audio_drivers;
+typedef enum { no_midi = 0, jack_midi, alsa_midi, } midi_drivers;
 
-class Config
+extern bool Pexitprogram;  // if the UI sets this true, the program will exit
+
+class XMLwrapper;
+class BodyDisposal;
+class SynthEngine;
+
+class Config : public MiscFuncs
 {
     public:
         Config();
         ~Config();
-
-        void loadCmdArgs(int argc, char **argv);
-        void StartupReport(unsigned int samplerate, int buffersize);
+        bool Setup(int argc, char **argv);
+        void StartupReport(void);
         void Announce(void);
         void Usage(void);
+        void Log(string msg, bool tostderr = false);
+        void flushLog(void);
         void clearBankrootDirlist(void);
         void clearPresetsDirlist(void);
-        void SaveConfig(void);
-        void SaveState(void);
-        XMLwrapper *RestoreRuntimeState(void);
-        string AddParamHistory(string file);
-        string HistoryFilename(int index);
+        void saveConfig(void);
+        void saveState(void);
+        bool restoreState(SynthEngine *synth);
+        bool restoreJsession(SynthEngine *synth);
+        void setJackSessionSave(int event_type, const char *session_dir, const char *client_uuid);
+        void saveJackSession(void);
 
         static void sigHandler(int sig);
-        void setInterruptActive(int sig);
-        void setLadi1Active(int sig);
+        void setInterruptActive(void);
+        void setLadi1Active(void);
         void signalCheck(void);
+        void setRtprio(int prio);
+        bool startThread(pthread_t *pth, void *(*thread_fn)(void*), void *arg,
+                         bool schedfifo, bool midi);
 
-        void Log(string msg);
-        void flushLog(void);
+        string addParamHistory(string file);
+        string historyFilename(int index);
 
+        string        ConfigDir;
         string        ConfigFile;
-        bool          restoreState;
-        string        StateFile;
-        string        CurrentXMZ;
         string        paramsLoad;
         string        instrumentLoad;
+        bool          doRestoreState;
+        string        StateFile;
+        string        CurrentXMZ;
+        bool          doRestoreJackSession;
+        const string  baseCmdLine;
+        string        jackSessionFile;
 
         unsigned int  Samplerate;
         unsigned int  Buffersize;
         unsigned int  Oscilsize;
 
+        bool          runSynth;
         bool          showGui;
         bool          showConsole;
         int           VirKeybLayout;
 
         audio_drivers audioEngine;
-        string        alsaAudioDevice;
-        string        jackServer;
-        bool          startJack;  // default false
-        bool          connectJackaudio; // default false
-        string        audioDevice;
-
         midi_drivers  midiEngine;
-        string        alsaMidiDevice;
+        string        audioDevice;
         string        midiDevice;
+
+        string        jackServer;
+        bool          startJack;        // false
+        bool          connectJackaudio; // false
+        string        jackSessionUuid;
+
+        string        alsaAudioDevice;
+        unsigned int  alsaSamplerate;
+        int           alsaBuffersize;
+
+        string        alsaMidiDevice;
         string        nameTag;
 
         bool          Float32bitWavs;
@@ -100,18 +122,23 @@ class Config
         string        currentBankDir;
         string        presetsDirlist[MAX_BANK_ROOT_DIRS];
         int           CheckPADsynth;
+        int           rtprio;
 
         deque<HistoryListItem> ParamsHistory;
         deque<HistoryListItem>::iterator itx;
         static const unsigned short MaxParamsHistory;
         list<string> LogList;
+        BodyDisposal *deadObjects;
 
     private:
+        void loadCmdArgs(int argc, char **argv);
         bool loadConfig(void);
-        bool loadConfigData(XMLwrapper *xml);
-        bool loadRuntimeData(XMLwrapper *xml);
+        bool extractConfigData(XMLwrapper *xml);
+        bool extractRuntimeData(XMLwrapper *xml);
         void addConfigXML(XMLwrapper *xml);
         void addRuntimeXML(XMLwrapper *xml);
+        void saveSessionData(string savefile);
+        bool restoreSessionData(SynthEngine *synth, string sessionfile);
         int SSEcapability(void);
         void AntiDenormals(bool set_daz_ftz);
 
@@ -120,6 +147,9 @@ class Config
         static int sigIntActive;
         static int ladi1IntActive;
         int sse_level;
+        int jsessionSave;
+        const string programCmd;
+        string jackSessionDir;
 };
 
 extern Config Runtime;

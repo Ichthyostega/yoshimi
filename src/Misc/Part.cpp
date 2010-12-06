@@ -19,32 +19,44 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified January 2010
+    This file is a derivative of a ZynAddSubFX original, modified November 2010
 */
 
 #include <cstring>
 
 using namespace std;
 
-#include "Misc/Util.h"
-#include "Misc/Master.h"
+#include "Params/ADnoteParameters.h"
+#include "Params/SUBnoteParameters.h"
+#include "Params/PADnoteParameters.h"
+#include "Synth/ADnote.h"
+#include "Synth/SUBnote.h"
+#include "Synth/PADnote.h"
+#include "Params/Controller.h"
+#include "Effects/EffectMgr.h"
+#include "DSP/FFTwrapper.h"
 #include "Misc/Microtonal.h"
+#include "Misc/XMLwrapper.h"
+#include "Misc/SynthEngine.h"
+#include "Synth/Resonance.h"
+#include "Synth/BodyDisposal.h"
 #include "Misc/Part.h"
 
 Part::Part(Microtonal *microtonal_, FFTwrapper *fft_) :
     killallnotes(false),
     microtonal(microtonal_),
     fft(fft_),
-    buffersize(zynMaster->getBuffersize())
+    partMuted(0)
 {
-    partoutl = new float [buffersize];
-    memset(partoutl, 0, buffersize * sizeof(float));
-    partoutr = new float [buffersize];
-    memset(partoutr, 0, buffersize * sizeof(float));
-    tmpoutl = new float [buffersize];
-    memset(tmpoutl, 0, buffersize * sizeof(float));
-    tmpoutr = new float [buffersize];
-    memset(tmpoutr, 0, buffersize * sizeof(float));
+    ctl = new Controller();
+    partoutl = new float [synth->buffersize];
+    memset(partoutl, 0, synth->bufferbytes);
+    partoutr = new float [synth->buffersize];
+    memset(partoutr, 0, synth->bufferbytes);
+    tmpoutl = new float [synth->buffersize];
+    memset(tmpoutl, 0, synth->bufferbytes);
+    tmpoutr = new float [synth->buffersize];
+    memset(tmpoutr, 0, synth->bufferbytes);
 
     for (int n = 0; n < NUM_KIT_ITEMS; ++n)
     {
@@ -64,10 +76,10 @@ Part::Part(Microtonal *microtonal_, FFTwrapper *fft_) :
 
     for (int n = 0; n < NUM_PART_EFX + 1; ++n)
     {
-        partfxinputl[n] = new float[buffersize];
-        memset(partfxinputl[n], 0, buffersize * sizeof(float));
-        partfxinputr[n] = new float[buffersize];
-        memset(partfxinputr[n], 0, buffersize * sizeof(float));
+        partfxinputl[n] = new float[synth->buffersize];
+        memset(partfxinputl[n], 0, synth->bufferbytes);
+        partfxinputr[n] = new float[synth->buffersize];
+        memset(partfxinputr[n], 0, synth->bufferbytes);
 
         Pefxbypass[n] = false;
     }
@@ -98,6 +110,7 @@ Part::Part(Microtonal *microtonal_, FFTwrapper *fft_) :
     defaults();
 }
 
+
 void Part::defaults(void)
 {
     Penabled = 0;
@@ -114,7 +127,7 @@ void Part::defaults(void)
     Pveloffs = 64;
     Pkeylimit = 15;
     defaultsinstrument();
-    ctl.defaults();
+    ctl->defaults();
 }
 
 void Part::defaultsinstrument(void)
@@ -159,22 +172,24 @@ void Part::defaultsinstrument(void)
 // Cleanup the part
 void Part::cleanup(void)
 {
+    __sync_or_and_fetch (&partMuted, 0xFF);
     for (int k = 0; k < POLIPHONY; ++k)
         KillNotePos(k);
-    memset(partoutl, 0, buffersize * sizeof(float));
-    memset(partoutr, 0, buffersize * sizeof(float));
-    memset(tmpoutl, 0, buffersize * sizeof(float));
-    memset(tmpoutr, 0, buffersize * sizeof(float));
+    memset(partoutl, 0, synth->bufferbytes);
+    memset(partoutr, 0, synth->bufferbytes);
+    memset(tmpoutl, 0, synth->bufferbytes);
+    memset(tmpoutr, 0, synth->bufferbytes);
 
-    ctl.resetall();
+    ctl->resetall();
     for (int nefx = 0; nefx < NUM_PART_EFX; ++nefx)
         partefx[nefx]->cleanup();
     for (int n = 0; n < NUM_PART_EFX + 1; ++n)
     {
-        memset(partfxinputl[n], 0, buffersize * sizeof(float));
-        memset(partfxinputr[n], 0, buffersize * sizeof(float));
+        memset(partfxinputl[n], 0, synth->bufferbytes);
+        memset(partfxinputr[n], 0, synth->bufferbytes);
 
     }
+    __sync_and_and_fetch (&partMuted, 0);
 }
 
 
@@ -184,11 +199,11 @@ Part::~Part()
     for (int n = 0; n < NUM_KIT_ITEMS; ++n)
     {
         if (kit[n].adpars)
-            delete (kit[n].adpars);
+            delete kit[n].adpars;
         if (kit[n].subpars)
-            delete (kit[n].subpars);
+            delete kit[n].subpars;
         if (kit[n].padpars )
-            delete (kit[n].padpars);
+            delete kit[n].padpars;
         kit[n].adpars = NULL;
         kit[n].subpars = NULL;
         kit[n].padpars = NULL;
@@ -199,12 +214,14 @@ Part::~Part()
     delete [] tmpoutl;
     delete [] tmpoutr;
     for (int nefx = 0; nefx < NUM_PART_EFX; ++nefx)
-        delete (partefx[nefx]);
+        delete partefx[nefx];
     for (int n = 0; n < NUM_PART_EFX + 1; ++n)
     {
         delete [] partfxinputl[n];
         delete [] partfxinputr[n];
     }
+    if (ctl)
+        delete ctl;
 }
 
 
@@ -320,7 +337,7 @@ void Part::NoteOn(unsigned char note, unsigned char velocity, int masterkeyshift
         }
 
         // compute the velocity offset
-        float vel = VelF(velocity / 127.0, Pvelsns) + (Pveloffs - 64.0) / 64.0;
+        float vel = velF(velocity / 127.0, Pvelsns) + (Pveloffs - 64.0) / 64.0;
         vel = (vel < 0.0) ? 0.0 : vel;
         vel = (vel > 1.0) ? 1.0 : vel;
 
@@ -350,13 +367,13 @@ void Part::NoteOn(unsigned char note, unsigned char velocity, int masterkeyshift
         if (Ppolymode || !ismonofirstnote)
         {
             // I added a third argument to the
-            // ctl.initportamento(...) function to be able
+            // ctl->initportamento(...) function to be able
             // to tell it if we're doing a legato note.
-            portamento = ctl.initportamento(oldfreq, notebasefreq, doinglegato);
+            portamento = ctl->initportamento(oldfreq, notebasefreq, doinglegato);
         }
 
         if (portamento)
-            ctl.portamento.noteusing = pos;
+            ctl->portamento.noteusing = pos;
         oldfreq = notebasefreq;
 
         lastpos = pos; // Keep a trace of used pos.
@@ -483,15 +500,15 @@ void Part::NoteOn(unsigned char note, unsigned char velocity, int masterkeyshift
             partnote[pos].kititem[0].sendtoparteffect = 0;
             if (kit[0].Padenabled)
                 partnote[pos].kititem[0].adnote =
-                    new ADnote(kit[0].adpars, &ctl,notebasefreq, vel,
+                    new ADnote(kit[0].adpars, ctl,notebasefreq, vel,
                                portamento, note, false /*not silent*/);
             if (kit[0].Psubenabled)
                 partnote[pos].kititem[0].subnote =
-                    new SUBnote(kit[0].subpars, &ctl,notebasefreq, vel,
+                    new SUBnote(kit[0].subpars, ctl,notebasefreq, vel,
                                 portamento, note, false);
             if (kit[0].Ppadenabled)
                 partnote[pos].kititem[0].padnote =
-                    new PADnote(kit[0].padpars, &ctl, notebasefreq, vel,
+                    new PADnote(kit[0].padpars, ctl, notebasefreq, vel,
                                 portamento, note, false);
             if (kit[0].Padenabled || kit[0].Psubenabled || kit[0].Ppadenabled)
                 partnote[pos].itemsplaying++;
@@ -502,15 +519,15 @@ void Part::NoteOn(unsigned char note, unsigned char velocity, int masterkeyshift
                 partnote[posb].kititem[0].sendtoparteffect = 0;
                 if (kit[0].Padenabled)
                     partnote[posb].kititem[0].adnote =
-                        new ADnote(kit[0].adpars, &ctl, notebasefreq, vel,
+                        new ADnote(kit[0].adpars, ctl, notebasefreq, vel,
                                    portamento, note, true /*for silent*/);
                 if (kit[0].Psubenabled)
                     partnote[posb].kititem[0].subnote =
-                        new SUBnote(kit[0].subpars, &ctl, notebasefreq, vel,
+                        new SUBnote(kit[0].subpars, ctl, notebasefreq, vel,
                                     portamento, note, true);
                 if (kit[0].Ppadenabled)
                     partnote[posb].kititem[0].padnote =
-                        new PADnote(kit[0].padpars, &ctl, notebasefreq, vel,
+                        new PADnote(kit[0].padpars, ctl, notebasefreq, vel,
                                     portamento, note, true);
                 if (kit[0].Padenabled || kit[0].Psubenabled || kit[0].Ppadenabled)
                     partnote[posb].itemsplaying++;
@@ -536,17 +553,17 @@ void Part::NoteOn(unsigned char note, unsigned char velocity, int masterkeyshift
                 if (kit[item].adpars && kit[item].Padenabled)
                 {
                     partnote[pos].kititem[ci].adnote =
-                        new ADnote(kit[item].adpars, &ctl, notebasefreq, vel,
+                        new ADnote(kit[item].adpars, ctl, notebasefreq, vel,
                                    portamento, note, false /*not silent*/);
                 }
                 if (kit[item].subpars && kit[item].Psubenabled)
                     partnote[pos].kititem[ci].subnote =
-                        new SUBnote(kit[item].subpars, &ctl,notebasefreq, vel,
+                        new SUBnote(kit[item].subpars, ctl,notebasefreq, vel,
                                     portamento, note, false);
 
                 if (kit[item].padpars && kit[item].Ppadenabled)
                     partnote[pos].kititem[ci].padnote =
-                        new PADnote(kit[item].padpars, &ctl, notebasefreq, vel,
+                        new PADnote(kit[item].padpars, ctl, notebasefreq, vel,
                                     portamento, note, false);
 
                 // Spawn another note (but silent) if legatomodevalid==true
@@ -560,16 +577,16 @@ void Part::NoteOn(unsigned char note, unsigned char velocity, int masterkeyshift
                     if (kit[item].adpars && kit[item].Padenabled)
                     {
                         partnote[posb].kititem[ci].adnote =
-                            new ADnote(kit[item].adpars, &ctl, notebasefreq, vel,
+                            new ADnote(kit[item].adpars, ctl, notebasefreq, vel,
                                        portamento, note, true /*silent*/);
                     }
                     if (kit[item].subpars && kit[item].Psubenabled)
                         partnote[posb].kititem[ci].subnote =
-                            new SUBnote(kit[item].subpars, &ctl, notebasefreq,
+                            new SUBnote(kit[item].subpars, ctl, notebasefreq,
                                         vel, portamento, note, true);
                     if (kit[item].padpars && kit[item].Ppadenabled)
                         partnote[posb].kititem[ci].padnote =
-                            new PADnote(kit[item].padpars, &ctl, notebasefreq,
+                            new PADnote(kit[item].padpars, ctl, notebasefreq,
                                         vel, portamento, note, true);
 
                     if (kit[item].adpars || kit[item].subpars)
@@ -605,7 +622,7 @@ void Part::NoteOff(unsigned char note) //relase the key
     {   //first note in, is first out if there are same note multiple times
         if (partnote[i].status == KEY_PLAYING && partnote[i].note == note)
         {
-            if (!ctl.sustain.sustain)
+            if (!ctl->sustain.sustain)
             {   //the sustain pedal is not pushed
                 if (!Ppolymode && (not monomemnotes.empty()))
                 {
@@ -632,54 +649,54 @@ void Part::SetController(unsigned int type, int par)
     switch (type)
     {
         case C_pitchwheel:
-            ctl.setpitchwheel(par);
+            ctl->setpitchwheel(par);
             break;
         case C_expression:
-            ctl.setexpression(par);
+            ctl->setexpression(par);
             setPvolume(Pvolume);
             break;
         case C_portamento:
-            ctl.setportamento(par);
+            ctl->setportamento(par);
             break;
         case C_panning:
-            ctl.setpanning(par);
+            ctl->setpanning(par);
             setPpanning(Ppanning);
             break;
         case C_filtercutoff:
-            ctl.setfiltercutoff(par);
+            ctl->setfiltercutoff(par);
             break;
         case C_filterq:
-            ctl.setfilterq(par);
+            ctl->setfilterq(par);
             break;
         case C_bandwidth:
-            ctl.setbandwidth(par);
+            ctl->setbandwidth(par);
             break;
         case C_modwheel:
-            ctl.setmodwheel(par);
+            ctl->setmodwheel(par);
             break;
         case C_fmamp:
-            ctl.setfmamp(par);
+            ctl->setfmamp(par);
             break;
         case C_volume:
-            ctl.setvolume(par);
-            if (ctl.volume.receive)
-                volume = ctl.volume.volume;
+            ctl->setvolume(par);
+            if (ctl->volume.receive)
+                volume = ctl->volume.volume;
             else
                 setPvolume(Pvolume);
             break;
         case C_sustain:
-            ctl.setsustain(par);
-            if (!ctl.sustain.sustain)
+            ctl->setsustain(par);
+            if (!ctl->sustain.sustain)
                 RelaseSustainedKeys();
             break;
         case C_allsoundsoff:
             AllNotesOff(); // Panic
             break;
         case C_resetallcontrollers:
-            ctl.resetall();
+            ctl->resetall();
             RelaseSustainedKeys();
-            if (ctl.volume.receive)
-                volume = ctl.volume.volume;
+            if (ctl->volume.receive)
+                volume = ctl->volume.volume;
             setPvolume(Pvolume);
             setPpanning(Ppanning);
 
@@ -696,19 +713,19 @@ void Part::SetController(unsigned int type, int par)
             RelaseAllKeys();
             break;
         case C_resonance_center:
-            ctl.setresonancecenter(par);
+            ctl->setresonancecenter(par);
             for (int item = 0; item < NUM_KIT_ITEMS; ++item)
             {
                 if (!kit[item].adpars)
                     continue;
                 kit[item].adpars->GlobalPar.Reson->sendcontroller(C_resonance_center,
-                                                                  ctl.resonancecenter.relcenter);
+                                                                  ctl->resonancecenter.relcenter);
             }
             break;
         case C_resonance_bandwidth:
-            ctl.setresonancebw(par);
+            ctl->setresonancebw(par);
             kit[0].adpars->GlobalPar.Reson->sendcontroller(C_resonance_bandwidth,
-                                                           ctl.resonancebandwidth.relbw);
+                                                           ctl->resonancebandwidth.relbw);
             break;
     }
 }
@@ -794,24 +811,24 @@ void Part::KillNotePos(int pos)
     {
         if (partnote[pos].kititem[j].adnote)
         {
-            delete partnote[pos].kititem[j].adnote;
+            Runtime.deadObjects->addBody(partnote[pos].kititem[j].adnote);
             partnote[pos].kititem[j].adnote = NULL;
         }
         if (partnote[pos].kititem[j].subnote)
         {
-            delete partnote[pos].kititem[j].subnote;
+            Runtime.deadObjects->addBody(partnote[pos].kititem[j].subnote);
             partnote[pos].kititem[j].subnote = NULL;
         }
         if (partnote[pos].kititem[j].padnote)
         {
-            delete partnote[pos].kititem[j].padnote;
+            Runtime.deadObjects->addBody(partnote[pos].kititem[j].padnote);
             partnote[pos].kititem[j].padnote = NULL;
         }
     }
-    if (pos == ctl.portamento.noteusing)
+    if (pos == ctl->portamento.noteusing)
     {
-        ctl.portamento.noteusing = -1;
-        ctl.portamento.used = 0;
+        ctl->portamento.noteusing = -1;
+        ctl->portamento.used = 0;
     }
 }
 
@@ -857,11 +874,18 @@ void Part::setkeylimit(unsigned char Pkeylimit)
 // Compute Part samples and store them in the partoutl[] and partoutr[]
 void Part::ComputePartSmps(void)
 {
+    if (partMuted)
+    {
+        memset(partoutl, 0, synth->bufferbytes);
+        memset(partoutr, 0, synth->bufferbytes);
+        return;
+    }
+
     int k;
     int noteplay; // 0 if there is nothing activated
     for (int nefx = 0; nefx < NUM_PART_EFX + 1; ++nefx){
-        memset(partfxinputl[nefx], 0, buffersize * sizeof(float));
-        memset(partfxinputr[nefx], 0, buffersize * sizeof(float));
+        memset(partfxinputl[nefx], 0, synth->bufferbytes);
+        memset(partfxinputr[nefx], 0, synth->bufferbytes);
     }
 
     for (k = 0; k < POLIPHONY; ++k)
@@ -885,15 +909,15 @@ void Part::ComputePartSmps(void)
                     adnote->noteout(tmpoutl, tmpoutr);
                 else
                 {
-                    memset(tmpoutl, 0, buffersize * sizeof(float));
-                    memset(tmpoutr, 0, buffersize * sizeof(float));
+                    memset(tmpoutl, 0, synth->bufferbytes);
+                    memset(tmpoutr, 0, synth->bufferbytes);
                 }
                 if (adnote->finished())
                 {
-                    delete (adnote);
+                    Runtime.deadObjects->addBody(partnote[k].kititem[item].adnote);
                     partnote[k].kititem[item].adnote = NULL;
                 }
-                for (int i = 0; i < buffersize; ++i)
+                for (int i = 0; i < synth->buffersize; ++i)
                 {   // add the ADnote to part(mix)
                     partfxinputl[sendcurrenttofx][i] += tmpoutl[i];
                     partfxinputr[sendcurrenttofx][i]+=tmpoutr[i];
@@ -907,17 +931,17 @@ void Part::ComputePartSmps(void)
                     subnote->noteout(tmpoutl, tmpoutr);
                 else
                 {
-                    memset(tmpoutl, 0, buffersize * sizeof(float));
-                    memset(tmpoutr, 0, buffersize * sizeof(float));
+                    memset(tmpoutl, 0, synth->bufferbytes);
+                    memset(tmpoutr, 0, synth->bufferbytes);
                 }
-                for (int i = 0; i < buffersize; ++i)
+                for (int i = 0; i < synth->buffersize; ++i)
                 {   // add the SUBnote to part(mix)
                     partfxinputl[sendcurrenttofx][i] += tmpoutl[i];
                     partfxinputr[sendcurrenttofx][i] += tmpoutr[i];
                 }
                 if (subnote->finished())
                 {
-                    delete (subnote);
+                    Runtime.deadObjects->addBody(partnote[k].kititem[item].subnote);
                     partnote[k].kititem[item].subnote = NULL;
                 }
             }
@@ -931,15 +955,15 @@ void Part::ComputePartSmps(void)
                 }
                 else
                 {
-                    memset(tmpoutl, 0, buffersize * sizeof(float));
-                    memset(tmpoutr, 0, buffersize * sizeof(float));
+                    memset(tmpoutl, 0, synth->bufferbytes);
+                    memset(tmpoutr, 0, synth->bufferbytes);
                 }
                 if (padnote->finished())
                 {
-                    delete (padnote);
+                    Runtime.deadObjects->addBody(partnote[k].kititem[item].padnote);
                     partnote[k].kititem[item].padnote = NULL;
                 }
-                for (int i = 0 ; i < buffersize; ++i)
+                for (int i = 0 ; i < synth->buffersize; ++i)
                 {   // add the PADnote to part(mix)
                     partfxinputl[sendcurrenttofx][i] += tmpoutl[i];
                     partfxinputr[sendcurrenttofx][i] += tmpoutr[i];
@@ -959,7 +983,7 @@ void Part::ComputePartSmps(void)
             partefx[nefx]->out(partfxinputl[nefx], partfxinputr[nefx]);
             if (Pefxroute[nefx] == 2)
             {
-                for (int i = 0; i < buffersize; ++i)
+                for (int i = 0; i < synth->buffersize; ++i)
                 {
                     partfxinputl[nefx + 1][i] += partefx[nefx]->efxoutl[i];
                     partfxinputr[nefx + 1][i] += partefx[nefx]->efxoutr[i];
@@ -967,26 +991,26 @@ void Part::ComputePartSmps(void)
             }
         }
         int routeto = (Pefxroute[nefx] == 0) ? nefx + 1 : NUM_PART_EFX;
-        for (int i = 0; i < buffersize; ++i)
+        for (int i = 0; i < synth->buffersize; ++i)
         {
             partfxinputl[routeto][i] += partfxinputl[nefx][i];
             partfxinputr[routeto][i] += partfxinputr[nefx][i];
         }
     }
-    memcpy(partoutl, partfxinputl[NUM_PART_EFX], buffersize * sizeof(float));
-    memcpy(partoutr, partfxinputr[NUM_PART_EFX], buffersize * sizeof(float));
+    memcpy(partoutl, partfxinputl[NUM_PART_EFX], synth->bufferbytes);
+    memcpy(partoutr, partfxinputr[NUM_PART_EFX], synth->bufferbytes);
 
     // Kill All Notes if killallnotes true
     if (killallnotes)
     {
-        for (int i = 0; i < buffersize; ++i)
+        for (int i = 0; i < synth->buffersize; ++i)
         {
-            float tmp = (buffersize - i) / (float)buffersize;
+            float tmp = (synth->buffersize - i) / synth->buffersize_f;
             partoutl[i] *= tmp;
             partoutr[i] *= tmp;
         }
-        memset(tmpoutl, 0, buffersize * sizeof(float));
-        memset(tmpoutr, 0, buffersize * sizeof(float));
+        memset(tmpoutl, 0, synth->bufferbytes);
+        memset(tmpoutr, 0, synth->bufferbytes);
 
         for (int k = 0; k < POLIPHONY; ++k)
             KillNotePos(k);
@@ -994,7 +1018,7 @@ void Part::ComputePartSmps(void)
         for (int nefx = 0; nefx < NUM_PART_EFX; ++nefx)
             partefx[nefx]->cleanup();
     }
-    ctl.updateportamento();
+    ctl->updateportamento();
 }
 
 
@@ -1002,14 +1026,14 @@ void Part::ComputePartSmps(void)
 void Part::setPvolume(char value)
 {
     Pvolume = value;
-    volume  = dB2rap((Pvolume - 96.0) / 96.0 * 40.0) * ctl.expression.relvolume;
+    volume  = dB2rap((Pvolume - 96.0) / 96.0 * 40.0) * ctl->expression.relvolume;
 }
 
 
 void Part::setPpanning(char Ppanning_)
 {
     Ppanning = Ppanning_;
-    panning = Ppanning / 127.0 + ctl.panning.pan;
+    panning = Ppanning / 127.0 + ctl->panning.pan;
     if (panning < 0.0)
         panning = 0.0;
     else if (panning > 1.0)
@@ -1027,20 +1051,26 @@ void Part::setkititemstatus(int kititem, int Penabled_)
     bool resetallnotes = false;
     if (!Penabled_)
     {
+        kit[kititem].Pname.clear();
         if (kit[kititem].adpars)
-            delete (kit[kititem].adpars);
+        {
+            delete kit[kititem].adpars;
+            kit[kititem].adpars = NULL;
+        }
         if (kit[kititem].subpars)
-            delete (kit[kititem].subpars);
+        {
+            delete kit[kititem].subpars;
+            kit[kititem].subpars = NULL;
+        }
         if (kit[kititem].padpars)
         {
-            delete (kit[kititem].padpars);
+            delete kit[kititem].padpars;
+            kit[kititem].padpars = NULL;
             resetallnotes = true;
         }
-        kit[kititem].adpars = NULL;
-        kit[kititem].subpars = NULL;
-        kit[kititem].padpars = NULL;
-        kit[kititem].Pname.clear();
-    } else {
+    }
+    else
+    {
         if (!kit[kititem].adpars)
             kit[kititem].adpars = new ADnoteParameters(fft);
         if (!kit[kititem].subpars)
@@ -1156,7 +1186,7 @@ void Part::add2XML(XMLwrapper *xml)
     xml->endbranch();
 
     xml->beginbranch("CONTROLLER");
-    ctl.add2XML(xml);
+    ctl->add2XML(xml);
     xml->endbranch();
 }
 
@@ -1198,18 +1228,26 @@ bool Part::loadXMLinstrument(string filename)
         Runtime.Log(filename + " is not an instrument file");
         return false;
     }
+    __sync_or_and_fetch (&partMuted, 0xFF);
+    defaultsinstrument();
     getfromXMLinstrument(xml);
+    applyparameters();
+    __sync_and_and_fetch (&partMuted, 0);
     xml->exitbranch();
     delete xml;
     return true;
 }
 
 
-void Part::applyparameters(bool islocked)
+void Part::applyparameters(void)
 {
+//    for (int n = 0; n < NUM_KIT_ITEMS; ++n)
+//        if (kit[n].padpars && kit[n].Ppadenabled)
+//            kit[n].padpars->applyparameters(islocked);
+
     for (int n = 0; n < NUM_KIT_ITEMS; ++n)
-        if (kit[n].padpars && kit[n].Ppadenabled)
-            kit[n].padpars->applyparameters(islocked);
+        if (kit[n].Ppadenabled && kit[n].padpars != NULL)
+            kit[n].padpars->applyparameters(true);
 }
 
 
@@ -1290,7 +1328,7 @@ void Part::getfromXMLinstrument(XMLwrapper *xml)
 
 void Part::getfromXML(XMLwrapper *xml)
 {
-    Penabled=xml->getparbool("enabled", Penabled);
+    Penabled = xml->getparbool("enabled", Penabled);
 
     setPvolume(xml->getpar127("volume", Pvolume));
     setPpanning(xml->getpar127("panning", Ppanning));
@@ -1316,7 +1354,7 @@ void Part::getfromXML(XMLwrapper *xml)
     }
     if (xml->enterbranch("CONTROLLER"))
     {
-        ctl.getfromXML(xml);
+        ctl->getfromXML(xml);
         xml->exitbranch();
     }
 }
