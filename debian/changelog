@@ -1,4 +1,4 @@
-yoshimi (0.060.1-1) UNRELEASED; urgency=low
+yoshimi (0.060.1-1) experimental; urgency=low
 
   * New upstream release.
   * debian/gbp.conf: Add sign-tags = True
@@ -8,7 +8,7 @@ yoshimi (0.060.1-1) UNRELEASED; urgency=low
   * debian/control: Build against experimental's JACK to have the session
     support.
 
- -- Alessio Treglia <alessio@debian.org>  Mon, 06 Dec 2010 11:12:43 +0100
+ -- Alessio Treglia <alessio@debian.org>  Mon, 06 Dec 2010 11:13:40 +0100
 
 yoshimi (0.058.1-1) unstable; urgency=low
 
