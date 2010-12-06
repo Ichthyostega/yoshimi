@@ -1,3 +1,15 @@
+yoshimi (0.060.1-1) UNRELEASED; urgency=low
+
+  * New upstream release.
+  * debian/gbp.conf: Add sign-tags = True
+  * Refresh debian/patches/01-gcc_flags.patch.
+  * Drop debian/patches/02-userconfig_path.patch, upstream has acknowledged
+    and fixed the issue another way.
+  * debian/control: Build against experimental's JACK to have the session
+    support.
+
+ -- Alessio Treglia <alessio@debian.org>  Mon, 06 Dec 2010 11:12:43 +0100
+
 yoshimi (0.058.1-1) unstable; urgency=low
 
   * New upstream release.
