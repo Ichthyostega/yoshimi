@@ -839,7 +839,7 @@ void ADnote::initParameters()
             if (partparams->VoicePar[nvoice].PextFMoscil != -1)
                 vc = partparams->VoicePar[nvoice].PextFMoscil;
 
-            float tmp = 1.0;
+            float tmp = 1.0f;
             if (partparams->VoicePar[vc].FMSmp->Padaptiveharmonics != 0
                || NoteVoicePar[nvoice].FMEnabled == MORPH
                || NoteVoicePar[nvoice].FMEnabled == RING_MOD)
