@@ -9,9 +9,6 @@ endif
 %:
 	dh --sourcedirectory=src $@
 
-override_dh_installchangelogs:
-	dh_installchangelogs README.txt
-
 override_dh_install:
 	dh_install
 	uudecode $(CURDIR)/debian/yoshimi.uu
