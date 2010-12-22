@@ -1,3 +1,12 @@
+yoshimi (0.060.3.1-1) experimental; urgency=low
+
+  * Imported Upstream version 0.060.3.1
+  * Upstream's changelog is not available anymore.
+  * Install the presets too.
+  * Refresh build flags patch.
+
+ -- Alessio Treglia <alessio@debian.org>  Wed, 22 Dec 2010 09:50:43 +0100
+
 yoshimi (0.060.1-1) experimental; urgency=low
 
   * New upstream release.
