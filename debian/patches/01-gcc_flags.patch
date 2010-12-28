@@ -4,12 +4,12 @@ Description: Drop GCC options which are not supported on all architectures.
 Bug: http://bugs.debian.org/584492
 Forwarded: no
 ---
- src/CMakeLists.txt |   17 ++++-------------
- 1 file changed, 4 insertions(+), 13 deletions(-)
+ src/CMakeLists.txt |    4 ++++
+ 1 file changed, 4 insertions(+)
 
 --- yoshimi.orig/src/CMakeLists.txt
 +++ yoshimi/src/CMakeLists.txt
-@@ -82,6 +82,9 @@ set (BuildOptions32bit
+@@ -81,6 +81,9 @@ set (BuildOptionsBasic
  set (BuildOptionsDebug
      "-O0 -g3 -ggdb -Wall -Wpointer-arith" CACHE STRING "Debug build flags")
  
@@ -19,23 +19,10 @@ Forwarded: no
  find_package (PkgConfig REQUIRED)
  if (PKG_CONFIG_FOUND)
      message(STATUS "Found pkg-config ${PKG_CONFIG_EXECUTABLE}")
-@@ -194,19 +197,7 @@ if (BuildForDebug)
-     message (STATUS "Building for ${CMAKE_BUILD_TYPE}, flags: ${CMAKE_CXX_FLAGS_DEBUG}")
- else (BuildForDebug)
-     set (CMAKE_BUILD_TYPE "Release")
--    if (BuildForAMD_X86_64)
--        set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptions_x86_64AMD})
--    else (BuildForAMD_X86_64)
--        if (BuildForCore2_X86_64)
--            set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptions_X86_64Core2})
--        else (BuildForCore2_X86_64)
--            if (BuildFor32bit)  
--                set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptions32bit})
--            else (BuildFor32bit)  
--                message(FATAL_ERROR "Please choose one of the BuildForXXX options!")
--            endif (BuildFor32bit)  
--        endif (BuildForCore2_X86_64)
--    endif (BuildForAMD_X86_64)
+@@ -202,6 +205,7 @@ else (BuildForDebug)
+             set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptionsBasic})
+         endif (BuildForCore2_X86_64)
+     endif (BuildForAMD_X86_64)
 +    set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptionsDebian})
      message (STATUS "Building for ${CMAKE_BUILD_TYPE}, flags: ${CMAKE_CXX_FLAGS_RELEASE}")
  endif (BuildForDebug)
