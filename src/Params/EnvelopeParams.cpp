@@ -3,7 +3,7 @@
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
-    Copyright 2009-2010, Alan Calvert
+    Copyright 2009-2011, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -18,7 +18,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of a ZynAddSubFX original, modified October 2010
+    This file is derivative of ZynAddSubFX original code, modified January 2011
 */
 
 #include <cmath>
@@ -29,7 +29,14 @@
 
 EnvelopeParams::EnvelopeParams(unsigned char Penvstretch_,
                                unsigned char Pforcedrelease_) :
-    Presets()
+    Presets(),
+    Pfreemode(1),
+    Penvpoints(1),
+    Penvsustain(1),
+    Penvstretch(Penvstretch_),
+    Pforcedrelease(Pforcedrelease_),
+    Plinearenvelope(0),
+    Envmode(1)
 {
     int i;
 
@@ -47,19 +54,12 @@ EnvelopeParams::EnvelopeParams(unsigned char Penvstretch_,
         Penvval[i] = 64;
     }
     Penvdt[0] = 0; // no used
-    Penvsustain = 1;
-    Penvpoints = 1;
-    Envmode = 1;
-    Penvstretch = Penvstretch_;
-    Pforcedrelease = Pforcedrelease_;
-    Pfreemode = 1;
-    Plinearenvelope = 0;
     store2defaults();
 }
 
 float EnvelopeParams::getdt(char i)
 {
-    float result = (powf(2.0f, Penvdt[(int)i] / 127.0f * 12.0f) - 1.0f) * 10.0; // miliseconds
+    float result = (powf(2.0f, Penvdt[(int)i] / 127.0f * 12.0f) - 1.0f) * 10.0f; // miliseconds
     return result;
 }
 

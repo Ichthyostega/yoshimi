@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2009 Nasca Octavian Paul
     Copyright 2009, James Morris
-    Copyright 2009-2010, Alan Calvert
+    Copyright 2009-2011, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -19,8 +19,10 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified October 2010
+    This file is derivative of ZynAddSubFX original code, modified March 2011
 */
+
+#include <fftw3.h>
 
 #include "Misc/SynthEngine.h"
 #include "DSP/FormantFilter.h"
@@ -31,8 +33,8 @@ FormantFilter::FormantFilter(FilterParams *pars)
     for (int i = 0; i < numformants; ++i)
         formant[i] = new AnalogFilter(4/*BPF*/, 1000.0f, 10.0f, pars->Pstages);
     cleanup();
-    inbuffer = new float [synth->buffersize];
-    tmpbuf = new float [synth->buffersize];
+    inbuffer = (float*)fftwf_malloc(synth->bufferbytes);
+    tmpbuf = (float*)fftwf_malloc(synth->bufferbytes);
 
     for (int j = 0; j < FF_MAX_VOWELS; ++j)
         for (int i = 0; i < numformants; ++i)
@@ -67,7 +69,7 @@ FormantFilter::FormantFilter(FilterParams *pars)
     outgain = dB2rap(pars->getgain());
 
     oldinput = -1.0f;
-    Qfactor = 1.0;
+    Qfactor = 1.0f;
     oldQfactor = Qfactor;
     firsttime = 1;
 }
@@ -76,8 +78,8 @@ FormantFilter::~FormantFilter()
 {
     for (int i = 0; i < numformants; ++i)
         delete(formant[i]);
-    delete [] inbuffer;
-    delete [] tmpbuf;
+    fftwf_free(inbuffer);
+    fftwf_free(tmpbuf);
 }
 
 
@@ -99,7 +101,7 @@ void FormantFilter::setpos(float input)
     if ((fabsf(oldinput-input) < 0.001f) && (fabsf(slowinput - input) < 0.001f) &&
             (fabsf(Qfactor - oldQfactor) < 0.001f))
     {
-//	oldinput=input; daca setez asta, o sa faca probleme la schimbari foarte lente
+        //	oldinput=input; daca setez asta, o sa faca probleme la schimbari foarte lente
         firsttime = 0;
         return;
     } else
@@ -109,14 +111,12 @@ void FormantFilter::setpos(float input)
     if (pos < 0.0f)
         pos += 1.0f;
 
-    float ff = pos * sequencesize;
-    // F2I(pos * sequencesize, p2);
-    p2 = (ff > 0.0f) ? lrintf(ff) : lrintf(ff - 1.0f);
-    p1=p2-1;
+    p2 = float2int(pos * sequencesize);
+    p1 = p2 - 1;
     if (p1 < 0)
         p1 += sequencesize;
 
-    pos = fmodf(pos*sequencesize, 1.0f);
+    pos = fmodf(pos * sequencesize, 1.0f);
     if (pos < 0.0f)
         pos = 0.0f;
     else if (pos > 1.0f)

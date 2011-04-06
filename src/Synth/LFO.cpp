@@ -3,7 +3,7 @@
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
-    Copyright 2009-2010, Alan Calvert
+    Copyright 2009-2011, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -18,7 +18,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of a ZynAddSubFX original, modified October 2010
+    This file is derivative of ZynAddSubFX original code, modified January 2011
 */
 
 #include <cmath>
@@ -32,10 +32,9 @@ LFO::LFO(LFOParams *lfopars, float basefreq)
     if (lfopars->Pstretch == 0)
         lfopars->Pstretch = 1;
     float lfostretch =
-        powf(basefreq / 440.0f, (lfopars->Pstretch - 64.0f) / 63.0f); // max 2x/octave
+        powf(basefreq / 440.0f, (float)((int)lfopars->Pstretch - 64) / 63.0f); // max 2x/octave
 
-    float lfofreq =
-        (powf(2.0f, lfopars->Pfreq * 10.0f) - 1.0f) / 12.0f * lfostretch;
+    float lfofreq = (powf(2.0f, lfopars->Pfreq * 10.0f) - 1.0f) / 12.0f * lfostretch;
     incx = fabsf(lfofreq) * synth->buffersize_f / synth->samplerate_f;
 
     if (lfopars->Pcontinous == 0)
@@ -43,15 +42,15 @@ LFO::LFO(LFOParams *lfopars, float basefreq)
         if (lfopars->Pstartphase == 0)
             x = synth->numRandom();
         else
-            x = fmodf((float)((lfopars->Pstartphase - 64.0) / 127.0f + 1.0f), 1.0f);
+            x = fmodf(((float)((int)lfopars->Pstartphase - 64) / 127.0f + 1.0f), 1.0f);
     }
     else
     {
         float tmp = fmodf(lfopars->time * incx, 1.0f);
-        x = fmodf((float)((lfopars->Pstartphase - 64.0f) / 127.0f + 1.0f + tmp), 1.0f);
+        x = fmodf((((int)lfopars->Pstartphase - 64) / 127.0f + 1.0f + tmp), 1.0f);
     }
 
-    // Limit the Frequency(or else...)
+    // Limit the Frequency (or else...)
     if (incx > 0.49999999f)
         incx = 0.499999999f;
 
@@ -88,6 +87,7 @@ LFO::LFO(LFOParams *lfopars, float basefreq)
     computenextincrnd(); // twice because I want incrnd & nextincrnd to be random
 }
 
+
 // LFO out
 float LFO::lfoout(void)
 {
@@ -104,9 +104,9 @@ float LFO::lfoout(void)
             break;
         case 2: // LFO_SQUARE
             if (x < 0.5f)
-                out = -1.0;
+                out = -1.0f;
             else
-                out = 1.0;
+                out = 1.0f;
             break;
         case 3: // LFO_RAMPUP
             out = (x - 0.5f) * 2.0f;
@@ -130,7 +130,7 @@ float LFO::lfoout(void)
         out *= lfointensity * amp2;
     if (lfodelay < 0.00001f)
     {
-        if (freqrndenabled == 0)
+        if (!freqrndenabled)
             x += incx;
         else
         {
@@ -143,7 +143,6 @@ float LFO::lfoout(void)
             x = fmodf(x, 1.0f);
             amp1 = amp2;
             amp2 = (1 - lfornd) + lfornd * synth->numRandom();
-
             computenextincrnd();
         }
     } else
@@ -151,20 +150,23 @@ float LFO::lfoout(void)
     return out;
 }
 
+
 // LFO out (for amplitude)
 float LFO::amplfoout(void)
 {
     float out;
-    out = 1.0 - lfointensity + lfoout();
-    out = (out <- 1.0f) ? -1.0f : out;
-    out = (out > 1.0f) ? 1.0f : out;
+    out = 1.0f - lfointensity + lfoout();
+    if (out < -1.0f)
+        out = -1.0f;
+    else if (out > 1.0f)
+        out = 1.0f;
     return out;
 }
 
 
 void LFO::computenextincrnd(void)
 {
-    if (freqrndenabled == 0)
+    if(!freqrndenabled)
         return;
     incrnd = nextincrnd;
     nextincrnd = powf(0.5f, lfofreqrnd) + synth->numRandom() * (powf(2.0f, lfofreqrnd) - 1.0f);

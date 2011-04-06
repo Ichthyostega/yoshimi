@@ -3,7 +3,7 @@
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
-    Copyright 2009-2010, Alan Calvert
+    Copyright 2009-2011, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -18,7 +18,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of a ZynAddSubFX original, modified October 2010
+    This file is derivative of ZynAddSubFX original code, modified January 2011
 */
 
 #ifndef MICROTONAL_H
@@ -28,50 +28,51 @@
 
 using namespace std;
 
+#include "Misc/MiscFuncs.h"
+
 class XMLwrapper;
 
 #define MAX_OCTAVE_SIZE 128
 
-class Microtonal
+class Microtonal : private MiscFuncs
 {
     public:
-        Microtonal() { };
-        ~Microtonal() { };
+        Microtonal() { defaults(); }
+        ~Microtonal() { }
         void defaults(void);
-        float getnotefreq(int note, int keyshift);
+        float getNoteFreq(int note);
+        float getNoteFreq(int note, int keyshift);
 
         // Parameters
         unsigned char Pinvertupdown;
-        unsigned char Pinvertupdowncenter;
+        int           Pinvertupdowncenter;
         unsigned char Penabled;
         int           PAnote;
         int           Pscaleshift;
         float         PAfreq;
 
         // first and last key (to retune)
-        unsigned char Pfirstkey;
-        unsigned char Plastkey;
+        int Pfirstkey;
+        int Plastkey;
 
         // The middle note where scale degree 0 is mapped to
-        int           Pmiddlenote;
+        int Pmiddlenote;
 
         // Map size
-        unsigned char Pmapsize;
+        int Pmapsize;
 
-        // Mapping ON/OFF
-        unsigned char Pmappingenabled;
-        // Mapping (keys)
-        short int Pmapping[128];
+        unsigned char Pmappingenabled; // Mapping ON/OFF
+        int Pmapping[128];             // Mapping (keys)
 
-        unsigned char Pglobalfinedetune;
+        float Pglobalfinedetune;
 
-        // Functions
-        unsigned char getoctavesize(void);
+        int getoctavesize(void);
         void tuningtoline(int n, char *line, int maxn);
         int loadscl(string filename); // load the tunnings from a .scl file
         int loadkbm(string filename); // load the mapping from .kbm file
         int texttotunings(const char *text);
         void texttomapping(const char *text);
+
         string Pname;
         string Pcomment;
 
@@ -82,27 +83,30 @@ class Microtonal
 
     private:
         int linetotunings(unsigned int nline, const char *line);
-        int loadline(FILE *file, char *line);
-            // loads a line from the text file,
-            // ignoring the lines beggining with "!"
+        int loadline(FILE *file, char *line); // loads a line from the text file,
+                                              // ignoring the lines beggining with "!"
         int octavesize;
+
         struct {
             unsigned char type; // 1 for cents or 2 for division
-            // the real tuning (eg. +1.05946 for one halftone)
-            // or 2.0 for one octave
-            float tuning;
-            unsigned int x1, x2; // the real tunning is x1/x2
+            float tuning;       // the real tuning (eg. +1.05946 for one halftone)
+                                // or 2.0 for one octave
+            unsigned int x1; // the real tunning is x1 / x2
+            unsigned int x2;
         } octave[MAX_OCTAVE_SIZE],
           tmpoctave[MAX_OCTAVE_SIZE];
 
-      unsigned int samplerate;
-      int buffersize;
-      int oscilsize;
+        static float note_12et[128];
 };
 
-inline unsigned char Microtonal::getoctavesize(void)
+inline int Microtonal::getoctavesize(void)
 {
-    return ((Penabled) ? octavesize : 12);
+    return ((Penabled != 0) ? octavesize : 12);
+}
+
+inline float Microtonal::getNoteFreq(int note)
+{
+    return powf(2.0f, (float)(note - PAnote) / 12.0f) * PAfreq;
 }
 
 #endif

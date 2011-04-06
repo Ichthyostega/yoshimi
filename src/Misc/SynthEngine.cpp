@@ -3,7 +3,7 @@
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
-    Copyright 2009-2010, Alan Calvert
+    Copyright 2009-2011, Alan Calvert
     Copyright 2009, James Morris
 
     This file is part of yoshimi, which is free software: you can redistribute
@@ -19,7 +19,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of a ZynAddSubFX original, modified October 2010
+    This file is derivative of original ZynAddSubFX code, modified March 2011
 */
 
 using namespace std;
@@ -33,12 +33,11 @@ char SynthEngine::random_state[256] = { 0, };
 struct random_data SynthEngine::random_buf;
 
 SynthEngine::SynthEngine() :
-    muted(0),
     shutup(false),
     samplerate(48000),
     samplerate_f(samplerate),
     halfsamplerate_f(samplerate / 2),
-    buffersize(0),
+    buffersize(256),
     buffersize_f(buffersize),
     oscilsize(1024),
     oscilsize_f(oscilsize),
@@ -46,7 +45,7 @@ SynthEngine::SynthEngine() :
     halfoscilsize_f(halfoscilsize),
     ctl(NULL),
     fft(NULL),
-    recordPending(false),
+    muted(0xFF),
     tmpmixl(NULL),
     tmpmixr(NULL),
     processLock(NULL),
@@ -69,6 +68,7 @@ SynthEngine::~SynthEngine()
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
         if (part[npart])
             delete part[npart];
+
     for (int nefx = 0; nefx < NUM_INS_EFX; ++nefx)
         if (insefx[nefx])
             delete insefx[nefx];
@@ -77,9 +77,9 @@ SynthEngine::~SynthEngine()
             delete sysefx[nefx];
 
     if (tmpmixl)
-        delete [] tmpmixl;
+        fftwf_free(tmpmixl);
     if (tmpmixr)
-        delete [] tmpmixr;
+        fftwf_free(tmpmixr);
     if (fft)
         delete fft;
     pthread_mutex_destroy(&processMutex);
@@ -127,15 +127,15 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
         oscilsize = buffersize / 2;
     }
 
-    if ((fft = new FFTwrapper(oscilsize)) == NULL)
+    if (!(fft = new FFTwrapper(oscilsize)))
     {
         Runtime.Log("SynthEngine failed to allocate fft");
         goto bail_out;
     }
 
-    tmpmixl = (float*)fftwf_malloc(synth->bufferbytes);
-    tmpmixr = (float*)fftwf_malloc(synth->bufferbytes);
-    if (tmpmixl == NULL || tmpmixr == NULL)
+     tmpmixl = (float*)fftwf_malloc(synth->bufferbytes);
+     tmpmixr = (float*)fftwf_malloc(synth->bufferbytes);
+    if (!tmpmixl || !tmpmixr)
     {
         Runtime.Log("SynthEngine tmpmix allocations failed");
         goto bail_out;
@@ -144,20 +144,19 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
     {
         part[npart] = new Part(&microtonal, fft);
-        if (NULL == part[npart])
+        if (!part[npart])
         {
             Runtime.Log("Failed to allocate new Part");
             goto bail_out;
         }
-        vuoutpeakpart[npart] = 1e-9;
+        vuoutpeakpart[npart] = 1e-9f;
         fakepeakpart[npart] = 0;
     }
 
     // Insertion Effects init
     for (int nefx = 0; nefx < NUM_INS_EFX; ++nefx)
     {
-        insefx[nefx] = new EffectMgr(1);
-        if (NULL == insefx[nefx])
+        if (!(insefx[nefx] = new EffectMgr(1)))
         {
             Runtime.Log("Failed to allocate new Insertion EffectMgr");
             goto bail_out;
@@ -167,25 +166,24 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
     // System Effects init
     for (int nefx = 0; nefx < NUM_SYS_EFX; ++nefx)
     {
-        sysefx[nefx] = new EffectMgr(0);
-        if (NULL == sysefx[nefx])
+        if (!(sysefx[nefx] = new EffectMgr(0)))
         {
             Runtime.Log("Failed to allocate new System Effects EffectMgr");
             goto bail_out;
         }
     }
     defaults();
-    if (Runtime.doRestoreJackSession)
+    if (Runtime.restoreJackSession)
     {
-        if (!Runtime.restoreJsession(this))
+        if (!Runtime.restoreJsession())
         {
             Runtime.Log("Restore jack session failed");
             goto bail_out;
         }
     }
-    else if (Runtime.doRestoreState)
+    else if (Runtime.restoreState)
     {
-        if (!Runtime.restoreState(this))
+        if (!Runtime.stateRestore())
          {
              Runtime.Log("Restore state failed");
              goto bail_out;
@@ -222,30 +220,30 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
     return true;
 
 bail_out:
-    if (fft != NULL)
+    if (fft)
         delete fft;
     fft = NULL;
-    if (tmpmixl != NULL)
+    if (tmpmixl)
         fftwf_free(tmpmixl);
     tmpmixl = NULL;
-    if (tmpmixr != NULL)
+    if (tmpmixr)
         fftwf_free(tmpmixr);
     tmpmixr = NULL;
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
     {
-        if (NULL != part[npart])
+        if (part[npart])
             delete part[npart];
         part[npart] = NULL;
     }
     for (int nefx = 0; nefx < NUM_INS_EFX; ++nefx)
     {
-        if (NULL != insefx[nefx])
+        if (insefx[nefx])
             delete insefx[nefx];
         insefx[nefx] = NULL;
     }
     for (int nefx = 0; nefx < NUM_SYS_EFX; ++nefx)
     {
-        if (NULL != sysefx[nefx])
+        if (sysefx[nefx])
             delete sysefx[nefx];
         sysefx[nefx] = NULL;
     }
@@ -283,15 +281,11 @@ void SynthEngine::defaults(void)
 
 
 // Note On Messages (velocity == 0 => NoteOff)
-void SynthEngine::NoteOn(unsigned char chan, unsigned char note,
-                    unsigned char velocity, bool record_trigger)
+void SynthEngine::NoteOn(unsigned char chan, unsigned char note, unsigned char velocity)
 {
     if (!velocity)
         this->NoteOff(chan, note);
-    else if (!muted)
-    {
-        if (recordPending && record_trigger)
-            guiMaster->record_activated();
+    else if (!isMuted())
         for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
         {
             if (chan == part[npart]->Prcvchn)
@@ -305,7 +299,6 @@ void SynthEngine::NoteOn(unsigned char chan, unsigned char note,
                 }
             }
         }
-    }
 }
 
 
@@ -327,47 +320,18 @@ void SynthEngine::NoteOff(unsigned char chan, unsigned char note)
 // Controllers
 void SynthEngine::SetController(unsigned char chan, unsigned int type, short int par)
 {
-    if (type == C_dataentryhi
-        || type == C_dataentrylo
-        || type == C_nrpnhi
-        || type == C_nrpnlo)
-    {
-        // Process RPN and NRPN by the Master (ignore the chan)
-        ctl->setparameternumber(type, par);
-
-        int parhi = -1, parlo = -1, valhi = -1, vallo = -1;
-        if (!ctl->getnrpn(&parhi, &parlo, &valhi, &vallo))
-        {   // this is NRPN
-            // fprintf(stderr,"rcv. NRPN: %d %d %d %d\n",parhi,parlo,valhi,vallo);
-            switch (parhi)
-            {
-                case 0x04: // System Effects
-                    if (parlo < NUM_SYS_EFX)
-                        sysefx[parlo]->seteffectpar_nolock(valhi, vallo);
-                    break;
-            case 0x08: // Insertion Effects
-                if (parlo < NUM_INS_EFX)
-                    insefx[parlo]->seteffectpar_nolock(valhi, vallo);
-                break;
-
-            }
-        }
+    for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
+    {   // Send the controller to all part assigned to the channel
+        if (chan == part[npart]->Prcvchn && part[npart]->Penabled)
+            part[npart]->SetController(type, par);
     }
-    else
-    {   // other controllers
-        for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
-        {   // Send the controller to all part assigned to the channel
-            if (chan == part[npart]->Prcvchn && part[npart]->Penabled)
-                part[npart]->SetController(type, par);
-        }
 
-        if (type == C_allsoundsoff)
-        {   // cleanup insertion/system FX
-            for (int nefx = 0; nefx < NUM_SYS_EFX; ++nefx)
-                sysefx[nefx]->cleanup();
-            for (int nefx = 0; nefx < NUM_INS_EFX; ++nefx)
-                insefx[nefx]->cleanup();
-        }
+    if (type == C_allsoundsoff)
+    {   // cleanup insertion/system FX
+        for (int nefx = 0; nefx < NUM_SYS_EFX; ++nefx)
+            sysefx[nefx]->cleanup();
+        for (int nefx = 0; nefx < NUM_INS_EFX; ++nefx)
+            insefx[nefx]->cleanup();
     }
 }
 
@@ -396,6 +360,8 @@ void SynthEngine::MasterAudio(float *outl, float *outr)
 {
     memset(outl, 0, bufferbytes);
     memset(outr, 0, bufferbytes);
+    if (isMuted())
+        return;
 
     // Compute part samples and store them npart]->partoutl,partoutr
     int npart;
@@ -428,17 +394,10 @@ void SynthEngine::MasterAudio(float *outl, float *outr)
         if (!part[npart]->Penabled)
             continue;
 
-        float newvol_l = part[npart]->volume;
-        float newvol_r = part[npart]->volume;
         float oldvol_l = part[npart]->oldvolumel;
         float oldvol_r = part[npart]->oldvolumer;
-        float pan = part[npart]->panning;
-        if (pan < 0.5f)
-            newvol_l *= (1.0f - pan) * 2.0f;
-        else
-            newvol_r *= pan * 2.0f;
-
-        actionLock(lock);
+        float newvol_l = part[npart]->pannedVolLeft();
+        float newvol_r = part[npart]->pannedVolRight();
         if (aboveAmplitudeThreshold(oldvol_l, newvol_l)
             || aboveAmplitudeThreshold(oldvol_r, newvol_r))
         {   // the volume or the panning has changed and needs interpolation
@@ -462,7 +421,6 @@ void SynthEngine::MasterAudio(float *outl, float *outr)
                 part[npart]->partoutr[i] *= newvol_r;
             }
         }
-        actionLock(unlock);
     }
     // System effects
     for (nefx = 0; nefx < NUM_SYS_EFX; ++nefx)
@@ -683,12 +641,12 @@ bool SynthEngine::actionLock(lockset request)
             break;
 
         case unlock:
-            __sync_and_and_fetch(&muted, muted, 0);
+            Unmute();
             chk = pthread_mutex_unlock(processLock);
             break;
 
         case lockmute:
-            __sync_and_and_fetch(&muted, muted, 0xFF);
+            Mute();
             chk = pthread_mutex_lock(processLock);
             break;
 
@@ -723,13 +681,16 @@ bool SynthEngine::vupeakLock(lockset request)
 void SynthEngine::vuresetpeaks(void)
 {
     vupeakLock(lock);
-    vuOutPeakL = vuoutpeakl = 1e-12;
-    vuOutPeakR = vuoutpeakr =  1e-12;
-    vuMaxOutPeakL = vumaxoutpeakl = 1e-12;
-    vuMaxOutPeakR = vumaxoutpeakr = 1e-12;
-    vuRmsPeakL = vurmspeakl = 1e-12;
-    vuRmsPeakR = vurmspeakr = 1e-12;
-    vuClippedL = vuClippedL = clippedL = clippedR = false;
+    vuOutPeakL = vuoutpeakl = 1e-12f;
+    vuOutPeakR = vuoutpeakr =  1e-12f;
+    vuMaxOutPeakL = vumaxoutpeakl = 1e-12f;
+    vuMaxOutPeakR = vumaxoutpeakr = 1e-12f;
+    vuRmsPeakL = vurmspeakl = 1e-12f;
+    vuRmsPeakR = vurmspeakr = 1e-12f;
+    vuClippedL = false;
+    vuClippedL = false;
+    clippedL = false;
+    clippedR = false;
     vupeakLock(unlock);
 }
 
@@ -748,7 +709,6 @@ void SynthEngine::add2XML(XMLwrapper *xml)
     actionLock(lockmute);
     xml->addpar("volume", Pvolume);
     xml->addpar("key_shift", Pkeyshift);
-    xml->addparbool("nrpn_receive", ctl->NRPN.receive);
 
     xml->beginbranch("MICROTONAL");
     microtonal.add2XML(xml);
@@ -874,7 +834,6 @@ bool SynthEngine::getfromXML(XMLwrapper *xml)
     }
     setPvolume(xml->getpar127("volume", Pvolume));
     setPkeyshift(xml->getpar127("key_shift", Pkeyshift));
-    ctl->NRPN.receive = xml->getparbool("nrpn_receive", ctl->NRPN.receive);
 
     part[0]->Penabled = 0;
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
@@ -943,3 +902,53 @@ bool SynthEngine::getfromXML(XMLwrapper *xml)
     xml->exitbranch(); // MASTER
     return true;
 }
+
+
+float SynthHelper::getDetune(unsigned char type, unsigned short int coarsedetune,
+                             unsigned short int finedetune) const
+{
+    float det = 0.0f;
+    float octdet = 0.0f;
+    float cdet = 0.0f;
+    float findet = 0.0f;
+
+    int octave = coarsedetune / 1024; // get Octave
+    if (octave >= 8)
+        octave -= 16;
+    octdet = octave * 1200.0f;
+
+    int cdetune = coarsedetune % 1024; // coarse and fine detune
+    if (cdetune > 512)
+        cdetune -= 1024;
+    int fdetune = finedetune - 8192;
+
+    switch (type)
+    {
+        // case 1 is used for the default (see below)
+        case 2:
+            cdet = fabs(cdetune * 10.0f);
+            findet = fabs(fdetune / 8192.0f) * 10.0f;
+            break;
+        case 3:
+            cdet = fabsf(cdetune * 100.0f);
+            findet = pow(10.0f, fabs(fdetune / 8192.0f) * 3.0f) / 10.0f - 0.1f;
+            break;
+        case 4:
+            cdet = fabs(cdetune * 701.95500087f); // perfect fifth
+            findet = (pow(2.0f, fabs(fdetune / 8192.0f) * 12.0f) - 1.0f) / 4095.0f * 1200.0f;
+            break;
+            // case ...: need to update N_DETUNE_TYPES, if you'll add more
+        default:
+            cdet = fabs(cdetune * 50.0f);
+            findet = fabs(fdetune / 8192.0f) * 35.0f; // almost like "Paul's Sound Designer 2"
+            break;
+    }
+    if (finedetune < 8192)
+        findet = -findet;
+    if (cdetune < 0)
+        cdet = -cdet;
+    det = octdet + cdet + findet;
+    return det;
+}
+
+

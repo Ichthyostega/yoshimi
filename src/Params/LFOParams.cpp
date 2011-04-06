@@ -3,7 +3,7 @@
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
-    Copyright 2009, Alan Calvert
+    Copyright 2009-2011, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -18,48 +18,48 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of a ZynAddSubFX original, modified October 2009
+    This file is derivative of ZynAddSubFX original code, modified January 2011
 */
 
 #include <cmath>
 
 #include "Params/LFOParams.h"
 
-int LFOParams::time;
+int LFOParams::time = 0;
 
-LFOParams::LFOParams(char Pfreq_, char Pintensity_, char Pstartphase_,
-                     char PLFOtype_, char Prandomness_, char Pdelay_,
-                     char Pcontinous_, char fel_) :
-    Presets()
+LFOParams::LFOParams(float Pfreq_, unsigned char Pintensity_,
+                     unsigned char Pstartphase_, unsigned char PLFOtype_,
+                     unsigned char Prandomness_, unsigned char Pdelay_,
+                     unsigned char Pcontinous_, int fel_) :
+    Presets(),
+    fel(fel_),
+    Dfreq(Pfreq_),
+    Dintensity(Pintensity_),
+    Dstartphase(Pstartphase_),
+    DLFOtype(PLFOtype_),
+    Drandomness(Prandomness_),
+    Ddelay(Pdelay_),
+    Dcontinous(Pcontinous_)
 {
-    switch (fel_)
+    switch (fel)
     {
-    case 0:
-        setpresettype("Plfofrequency");
-        break;
-    case 1:
-        setpresettype("Plfoamplitude");
-        break;
-    case 2:
-        setpresettype("Plfofilter");
-        break;
+        case 0:
+            setpresettype("Plfofrequency");
+            break;
+        case 1:
+            setpresettype("Plfoamplitude");
+            break;
+        case 2:
+            setpresettype("Plfofilter");
+            break;
     };
-    Dfreq = Pfreq_;
-    Dintensity = Pintensity_;
-    Dstartphase = Pstartphase_;
-    DLFOtype = PLFOtype_;
-    Drandomness = Prandomness_;
-    Ddelay = Pdelay_;
-    Dcontinous = Pcontinous_;
-    fel = fel_;
-    time = 0;
-
     defaults();
-};
+}
+
 
 void LFOParams::defaults(void)
 {
-    Pfreq = Dfreq / 127.0;
+    Pfreq = Dfreq / 127.0f;
     Pintensity = Dintensity;
     Pstartphase = Dstartphase;
     PLFOtype = DLFOtype;
@@ -68,31 +68,32 @@ void LFOParams::defaults(void)
     Pcontinous = Dcontinous;
     Pfreqrand = 0;
     Pstretch = 64;
-};
+}
 
 
 void LFOParams::add2XML(XMLwrapper *xml)
 {
-    xml->addparreal("freq",Pfreq);
-    xml->addpar("intensity",Pintensity);
-    xml->addpar("start_phase",Pstartphase);
-    xml->addpar("lfo_type",PLFOtype);
-    xml->addpar("randomness_amplitude",Prandomness);
-    xml->addpar("randomness_frequency",Pfreqrand);
-    xml->addpar("delay",Pdelay);
-    xml->addpar("stretch",Pstretch);
-    xml->addparbool("continous",Pcontinous);
-};
+    xml->addparreal("freq", Pfreq);
+    xml->addpar("intensity", Pintensity);
+    xml->addpar("start_phase", Pstartphase);
+    xml->addpar("lfo_type", PLFOtype);
+    xml->addpar("randomness_amplitude", Prandomness);
+    xml->addpar("randomness_frequency", Pfreqrand);
+    xml->addpar("delay", Pdelay);
+    xml->addpar("stretch", Pstretch);
+    xml->addparbool("continous",    Pcontinous);
+}
+
 
 void LFOParams::getfromXML(XMLwrapper *xml)
 {
-    Pfreq=xml->getparreal("freq",Pfreq,0.0,1.0);
-    Pintensity=xml->getpar127("intensity",Pintensity);
-    Pstartphase=xml->getpar127("start_phase",Pstartphase);
-    PLFOtype=xml->getpar127("lfo_type",PLFOtype);
-    Prandomness=xml->getpar127("randomness_amplitude",Prandomness);
-    Pfreqrand=xml->getpar127("randomness_frequency",Pfreqrand);
-    Pdelay=xml->getpar127("delay",Pdelay);
-    Pstretch=xml->getpar127("stretch",Pstretch);
-    Pcontinous=xml->getparbool("continous",Pcontinous);
-};
+    Pfreq = xml->getparreal("freq", Pfreq, 0.0, 1.0);
+    Pintensity = xml->getpar127("intensity", Pintensity);
+    Pstartphase = xml->getpar127("start_phase", Pstartphase);
+    PLFOtype = xml->getpar127("lfo_type", PLFOtype);
+    Prandomness = xml->getpar127("randomness_amplitude", Prandomness);
+    Pfreqrand = xml->getpar127("randomness_frequency", Pfreqrand);
+    Pdelay = xml->getpar127("delay", Pdelay);
+    Pstretch = xml->getpar127("stretch", Pstretch);
+    Pcontinous = xml->getparbool("continous", Pcontinous);
+}

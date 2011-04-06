@@ -247,10 +247,12 @@ class VirKeys {: {public Fl_Box}
         {
             vel = midivel * (127.0 - rndvelocity) / 127.0 + synth->numRandom() * rndvelocity;
         }
-        synth->NoteOn(midich, nk + midioct * 12, (int)vel, false);} {}
+        synth->NoteOn(midich, nk + midioct * 12, vel);
+    } {}
   }
   Function {relasekey(int nk,int type)} {} {
-    code {if (nk < 0 || nk >= N_OCT * 12)
+    code {//
+        if (nk < 0 || nk >= N_OCT * 12)
             return;
         if (pressed[nk] == 0)
             return; // the key is not pressed

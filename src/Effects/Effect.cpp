@@ -3,7 +3,7 @@
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
-    Copyright 2009, Alan Calvert
+    Copyright 2011, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -18,7 +18,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified October 2009
+    This file is derivative of ZynAddSubFX original code, modified April 2011
 */
 
 #include "Effects/Effect.h"
@@ -31,5 +31,23 @@ Effect::Effect(bool insertion_, float *efxoutl_, float *efxoutr_,
     efxoutr(efxoutr_),
     filterpars(filterpars_),
     insertion(insertion_)
-{ }
+{
+    setpanning(64);
+    setlrcross(40);
+ }
 
+
+void Effect::setpanning(char Ppanning_)
+{
+    Ppanning = Ppanning_;
+    float t = (Ppanning > 0) ? (float)(Ppanning - 1) / 126.0f : 0.0f;
+    pangainL = cosf(t * PI / 2.0f);
+    pangainR = cosf((1.0f - t) * PI / 2.0f);
+}
+
+
+void Effect::setlrcross(char Plrcross_)
+{
+    Plrcross = Plrcross_;
+    lrcross = (float)Plrcross / 127.0f;
+}

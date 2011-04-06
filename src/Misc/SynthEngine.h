@@ -3,7 +3,7 @@
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
-    Copyright 2009-2010, Alan Calvert
+    Copyright 2009-2011, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -18,7 +18,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of a ZynAddSubFX original, modified October 2010
+    This file is derivative of ZynAddSubFX original code, modified March 2011
 */
 
 #ifndef SYNTHENGINE_H
@@ -63,22 +63,19 @@ class SynthEngine : private SynthHelper, MiscFuncs
         int getalldata(char **data);
         void putalldata(char *data, int size);
 
-        // midi in
-        void NoteOn(unsigned char chan, unsigned char note,
-                    unsigned char velocity, bool record_trigger);
+        void NoteOn(unsigned char chan, unsigned char note, unsigned char velocity);
         void NoteOff(unsigned char chan, unsigned char note);
         void SetController(unsigned char chan, unsigned int type, short int par);
-        // void NRPN...
-
+        float numRandom(void);
+        unsigned int random(void);
         void ShutUp(void);
-
         void MasterAudio(float *outl, float *outr);
-
         void partonoff(int npart, int what);
+        void Mute(void) { __sync_or_and_fetch(&muted, 0xFF); }
+        void Unmute(void) { __sync_and_and_fetch(&muted, 0); }
+        bool isMuted(void) { return (__sync_add_and_fetch(&muted, 0) != 0); }
 
         Part *part[NUM_MIDI_PARTS];
-
-        int muted;
         bool shutup;
 
         // parameters
@@ -121,10 +118,6 @@ class SynthEngine : private SynthHelper, MiscFuncs
         Bank bank;
         FFTwrapper *fft;
 
-//        unsigned int getSamplerate(void) { return samplerate; };
-//        int getBuffersize(void) { return buffersize; };
-//        int getOscilsize(void) { return oscilsize; };
-
         // peaks for VU-meters
         void vuresetpeaks(void);
         float vuOutPeakL;
@@ -136,12 +129,9 @@ class SynthEngine : private SynthHelper, MiscFuncs
         bool vuClippedL;
         bool vuClippedR;
 
-        bool recordPending;
-
-        float numRandom(void);
-        unsigned int random(void);
 
     private:
+        int muted;
         float volume;
         float sysefxvol[NUM_SYS_EFX][NUM_MIDI_PARTS];
         float sysefxsend[NUM_SYS_EFX][NUM_SYS_EFX];

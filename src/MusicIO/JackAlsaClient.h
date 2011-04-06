@@ -1,6 +1,6 @@
 /*
     JackAlsaClient.h - Jack audio + Alsa midi
-    
+
     Copyright 2009-2010, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can
@@ -39,21 +39,16 @@ class JackAlsaClient : public MusicClient
         JackAlsaClient() : MusicClient() { };
         ~JackAlsaClient() { Close(); };
 
-        bool openAudio(WavRecord *recorder);
-        bool openMidi(WavRecord *recorder);
+        bool openAudio(void);
+        bool openMidi(void);
         bool Start(void);
-        void Close(void);
-        bool jacksessionReply(string cmdline) { return jackEngine.jacksessionReply(cmdline); }
+        void Close(void) { jackEngine.Close(); alsaEngine.Close(); }
         unsigned int getSamplerate(void) { return jackEngine.getSamplerate(); };
         int getBuffersize(void) { return jackEngine.getBuffersize(); };
-        int grossLatency(void)
-            { return jackEngine.grossLatency() + alsaEngine.grossLatency(); };
-
         string audioClientName(void) { return jackEngine.clientName(); };
         string midiClientName(void) { return alsaEngine.midiClientName(); };
         int audioClientId(void) { return jackEngine.clientId(); };
         int midiClientId(void) { return alsaEngine.midiClientId(); };
-
 
     private:
         JackEngine jackEngine;

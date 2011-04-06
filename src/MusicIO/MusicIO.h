@@ -1,7 +1,7 @@
 /*
     MusicIO.h
 
-    Copyright 2009-2010, Alan Calvert
+    Copyright 2009-2011, Alan Calvert
     Copyright 2009, James Morris
 
     This file is part of yoshimi, which is free software: you can
@@ -21,27 +21,22 @@
 #ifndef MUSIC_IO_H
 #define MUSIC_IO_H
 
-#include "Misc/MiscFuncs.h"
-#include "MusicIO/WavRecord.h"
+#include "Misc/SynthEngine.h"
 
-class MusicIO : protected MiscFuncs
+class MusicIO : virtual protected MiscFuncs
 {
     public:
         MusicIO();
-        ~MusicIO() { }
+        ~MusicIO();
         virtual unsigned int getSamplerate(void) = 0;
         virtual int getBuffersize(void) = 0;
         virtual bool Start(void) = 0;
-        virtual void Close(void);
-        bool jacksessionReply(string cmdline) { return false; }
-        int grossLatency(void) { return audioLatency + midiLatency; }
+        virtual void Close(void) = 0;
 
     protected:
         bool prepBuffers(bool with_interleaved);
-        bool prepRecord(void);
-        void getAudio(void);
+        void getAudio(void) { if (synth) synth->MasterAudio(zynLeft, zynRight); }
         void InterleaveShorts(void);
-        bool setThreadAttributes(pthread_attr_t *attr, bool schedfifo, bool midi = false);
         int getMidiController(unsigned char b);
         void setMidiController(unsigned char ch, unsigned int ctrl, int param);
         void setMidiNote(unsigned char chan, unsigned char note);
@@ -50,11 +45,7 @@ class MusicIO : protected MiscFuncs
         float *zynLeft;
         float *zynRight;
         short int *interleavedShorts;
-
-        WavRecord *wavRecorder;
         int rtprio;
-        unsigned int audioLatency; // frames
-        unsigned int midiLatency;  // ""
 };
 
 #endif
