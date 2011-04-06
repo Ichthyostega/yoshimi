@@ -25,7 +25,7 @@
 
 SUBnoteParameters::SUBnoteParameters() : Presets()
 {
-    setpresettype("Psubsyth");
+    setpresettype("SUBnoteParameters");
     AmpEnvelope = new EnvelopeParams(64, 1);
     AmpEnvelope->ADSRinit_dB(0, 40, 127, 25);
     FreqEnvelope = new EnvelopeParams(64, 0);
@@ -39,12 +39,12 @@ SUBnoteParameters::SUBnoteParameters() : Presets()
     defaults();
 }
 
+
 void SUBnoteParameters::defaults(void)
 {
     PVolume = 96;
-    PPanning = 64;
+    setPan(PPanning = 64);
     PAmpVelocityScaleFunction = 90;
-
     Pfixedfreq = 0;
     PfixedfreqET = 0;
     Pnumstages = 2;
@@ -78,14 +78,30 @@ void SUBnoteParameters::defaults(void)
     GlobalFilterEnvelope->defaults();
 }
 
+
 SUBnoteParameters::~SUBnoteParameters()
 {
-    delete (AmpEnvelope);
-    delete (FreqEnvelope);
-    delete (BandWidthEnvelope);
-    delete (GlobalFilter);
-    delete (GlobalFilterEnvelope);
+    delete AmpEnvelope;
+    delete FreqEnvelope;
+    delete BandWidthEnvelope;
+    delete GlobalFilter;
+    delete GlobalFilterEnvelope;
 }
+
+
+void SUBnoteParameters::setPan(char pan)
+{
+    PPanning = pan;
+    if (!randomPan())
+    {
+        float t = (float)(PPanning - 1) / 126.0f;
+        pangainL = cosf(t * PI / 2.0f);
+        pangainR = cosf((1.0f - t) * PI / 2.0f);
+    }
+    else
+        pangainL = pangainR = 0.7f;
+}
+
 
 void SUBnoteParameters::add2XML(XMLwrapper *xml)
 {
@@ -155,6 +171,7 @@ void SUBnoteParameters::add2XML(XMLwrapper *xml)
     }
     xml->endbranch();
 }
+
 
 void SUBnoteParameters::getfromXML(XMLwrapper *xml)
 {

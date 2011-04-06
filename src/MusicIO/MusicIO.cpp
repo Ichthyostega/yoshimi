@@ -1,7 +1,7 @@
 /*
     MusicIO.cpp
 
-    Copyright 2009-2010, Alan Calvert
+    Copyright 2009-2011, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -17,12 +17,11 @@
     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <iostream>
-
 #include <errno.h>
 #include <cstring>
+#include <fftw3.h>
 
-using namespace std;   
+using namespace std;
 
 #include "Misc/Config.h"
 #include "Misc/SynthEngine.h"
@@ -33,33 +32,17 @@ MusicIO::MusicIO() :
     zynLeft(NULL),
     zynRight(NULL),
     interleavedShorts(NULL),
-    wavRecorder(NULL),
-    rtprio(25),
-    audioLatency(0),
-    midiLatency(0)
+    rtprio(25)
 { }
 
-
-void MusicIO::Close(void)
+MusicIO::~MusicIO()
 {
-    if (NULL != zynLeft)
-        delete [] zynLeft;
-    if (NULL != zynRight)
-        delete [] zynRight;
-    if (NULL != interleavedShorts)
+    if (zynLeft)
+        fftwf_free(zynLeft);
+    if (zynRight)
+        fftwf_free(zynRight);
+    if (interleavedShorts)
         delete [] interleavedShorts;
-    zynLeft = NULL;
-    zynRight = NULL;
-    interleavedShorts = NULL;
-}
-
-
-
- void MusicIO::getAudio(void)
-{
-    synth->MasterAudio(zynLeft, zynRight);
-    if (wavRecorder->Running())
-        wavRecorder->Feed(zynLeft, zynRight);
 }
 
 
@@ -128,19 +111,6 @@ int MusicIO::getMidiController(unsigned char b)
 	    case 123: // All Notes OFF
             ctl = C_allnotesoff;
 	        break;
-	    // RPN and NRPN
-	    case 0x06: // Data Entry (Coarse)
-            ctl = C_dataentryhi;
-	         break;
-	    case 0x26: // Data Entry (Fine)
-            ctl = C_dataentrylo;
-	         break;
-	    case 99:  // NRPN (Coarse)
-            ctl = C_nrpnhi;
-	         break;
-	    case 98: // NRPN (Fine)
-            ctl = C_nrpnlo;
-	        break;
 	    default: // an unrecognised controller!
             ctl = C_NULL;
             break;
@@ -149,8 +119,7 @@ int MusicIO::getMidiController(unsigned char b)
 }
 
 
-void MusicIO::setMidiController(unsigned char ch, unsigned int ctrl,
-                                    int param)
+void MusicIO::setMidiController(unsigned char ch, unsigned int ctrl, int param)
 {
     synth->SetController(ch, ctrl, param);
 }
@@ -159,7 +128,7 @@ void MusicIO::setMidiController(unsigned char ch, unsigned int ctrl,
 void MusicIO::setMidiNote(unsigned char channel, unsigned char note,
                            unsigned char velocity)
 {
-    synth->NoteOn(channel, note, velocity, wavRecorder->Trigger());
+    synth->NoteOn(channel, note, velocity);
 }
 
 
@@ -174,12 +143,12 @@ bool MusicIO::prepBuffers(bool with_interleaved)
     int buffersize = getBuffersize();
     if (buffersize > 0)
     {
-        zynLeft = new float[buffersize];
-        zynRight = new float[buffersize];
-        if (NULL == zynLeft || NULL == zynRight)
+        if (!(zynLeft = (float*)fftwf_malloc(buffersize * sizeof(float))))
             goto bail_out;
-        memset(zynLeft, 0, sizeof(float) * buffersize);
-        memset(zynRight, 0, sizeof(float) * buffersize);
+        if (!(zynRight = (float*)fftwf_malloc(buffersize * sizeof(float))))
+            goto bail_out;
+        memset(zynLeft, 0, buffersize * sizeof(float));
+        memset(zynRight, 0, buffersize * sizeof(float));
         if (with_interleaved)
         {
             interleavedShorts = new short int[buffersize * 2];
@@ -192,64 +161,20 @@ bool MusicIO::prepBuffers(bool with_interleaved)
 
 bail_out:
     Runtime.Log("Failed to allocate audio buffers, size " + asString(buffersize));
-    if (NULL != zynLeft)
-        delete [] zynLeft;
-    if (NULL != zynRight)
-        delete [] zynRight;
-    if (NULL != interleavedShorts)
+    if (zynLeft)
+    {
+        fftwf_free(zynLeft);
+        zynLeft = NULL;
+    }
+    if (zynRight)
+    {
+        fftwf_free(zynRight);
+        zynRight = NULL;
+    }
+    if (interleavedShorts)
+    {
         delete [] interleavedShorts;
-    zynLeft = NULL;
-    zynRight = NULL;
-    interleavedShorts = NULL;
+        interleavedShorts = NULL;
+    }
     return false;
-}
-
-
-bool MusicIO::prepRecord(void)
-{
-    return wavRecorder->Prep(getSamplerate(), getBuffersize());
-}
-
-
-bool MusicIO::setThreadAttributes(pthread_attr_t *attr, bool schedfifo, bool midi)
-{
-    int chk;
-    if ((chk = pthread_attr_init(attr)))
-    {
-        Runtime.Log("Failed to initialise audio thread attributes: " + asString(chk));
-        return false;
-    }
-
-    if ((chk = pthread_attr_setdetachstate(attr, PTHREAD_CREATE_DETACHED)))
-    {
-        Runtime.Log("Failed to set audio thread detach state: " + asString(chk));
-        return false;
-    }
-    if (schedfifo)
-    {
-        if ((chk = pthread_attr_setschedpolicy(attr, SCHED_FIFO)))
-        {
-            Runtime.Log("Failed to set SCHED_FIFO policy in audio thread attribute: "
-                        + string(strerror(errno)) + " (" + asString(chk) + ")");
-            return false;
-        }
-        if ((chk = pthread_attr_setinheritsched(attr, PTHREAD_EXPLICIT_SCHED)))
-        {
-            Runtime.Log("Failed to set inherit scheduler audio thread attribute: "
-                        + string(strerror(errno)) + " (" + asString(chk) + ")");
-            return false;
-        }
-        sched_param prio_params;
-        int prio = rtprio;
-        if (midi)
-            prio--;
-        prio_params.sched_priority = (prio > 0) ? prio : 0;
-        if ((chk = pthread_attr_setschedparam(attr, &prio_params)))
-        {
-            Runtime.Log("Failed to set audio thread priority attribute: ("
-                        + asString(chk) + ")  " + string(strerror(errno)));
-            return false;
-        }
-    }
-    return true;
 }

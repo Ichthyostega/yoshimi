@@ -3,7 +3,7 @@
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2009 Nasca Octavian Paul
-    Copyright 2009-2010, Alan Calvert
+    Copyright 2009-2011, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -18,7 +18,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of a ZynAddSubFX original, modified October 2010
+    This file is derivative of ZynAddSubFX original code, modified April 2011
 */
 
 #include "Misc/SynthEngine.h"
@@ -33,9 +33,8 @@ Chorus::Chorus(bool insertion_, float *const efxoutl_, float *efxoutr_) :
     maxdelay = (int)(MAX_CHORUS_DELAY / 1000.0f * synth->samplerate_f);
     delayl = new float[maxdelay];
     delayr = new float[maxdelay];
-
     setpreset(Ppreset);
-
+    changepar(1, 64);
     lfo.effectlfoout(&lfol, &lfor);
     dl2 = getdelay(lfol);
     dr2 = getdelay(lfor);
@@ -119,8 +118,8 @@ void Chorus::out(float *smpsl, float *smpsr)
 
     for (int i = 0; i < synth->buffersize; ++i)
     {
-        efxoutl[i] *= (1.0f - panning);
-        efxoutr[i] *= panning;
+        efxoutl[i] *= pangainL;
+        efxoutr[i] *= pangainR;
     }
 }
 
@@ -159,20 +158,6 @@ void Chorus::setvolume(unsigned char Pvolume_)
     Pvolume = Pvolume_;
     outvolume = Pvolume / 127.0f;
     volume = (!insertion) ? 1.0f : outvolume;
-}
-
-
-void Chorus::setpanning(unsigned char Ppanning_)
-{
-    Ppanning = Ppanning_;
-    panning = Ppanning / 127.0f;
-}
-
-
-void Chorus::setlrcross(unsigned char Plrcross_)
-{
-    Plrcross = Plrcross_;
-    lrcross = Plrcross / 127.0f;
 }
 
 

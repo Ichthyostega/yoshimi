@@ -1,9 +1,10 @@
 /*
 
     SUBnote.cpp - The "subtractive" synthesizer
-    Copyright (C) 2002-2005 Nasca Octavian Paul
-    Author: Nasca Octavian Paul
-    Copyright 2009-2010 Alan Calvert
+
+    Original ZynAddSubFX author Nasca Octavian Paul
+    Copyright (C) 2002-2009 Nasca Octavian Paul
+    Copyright 2009-2011, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -18,10 +19,11 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of the ZynAddSubFX original, modified October 2010
+    This file is derivative of ZynAddSubFX original code, modified April 2011
 */
 
 #include <cmath>
+#include <fftw3.h>
 
 #include "Params/SUBnoteParameters.h"
 #include "Params/Controller.h"
@@ -45,8 +47,8 @@ SUBnote::SUBnote(SUBnoteParameters *parameters, Controller *ctl_, float freq,
 {
     ready = 0;
 
-    tmpsmp = new float[synth->buffersize];
-    tmprnd = new float[synth->buffersize];
+    tmpsmp = (float*)fftwf_malloc(synth->bufferbytes);
+    tmprnd = (float*)fftwf_malloc(synth->bufferbytes);
 
     // Initialise some legato-specific vars
     Legato.msg = LM_Norm;
@@ -64,7 +66,12 @@ SUBnote::SUBnote(SUBnoteParameters *parameters, Controller *ctl_, float freq,
     NoteEnabled = true;
     volume = powf(0.1f, 3.0f * (1.0f - pars->PVolume / 96.0f)); // -60 dB .. 0 dB
     volume *= velF(velocity, pars->PAmpVelocityScaleFunction);
-    panning = (pars->PPanning) ? pars->PPanning / 127.0f : synth->numRandom();
+    if (pars->randomPan())
+    {
+        float t = synth->numRandom();
+        randpanL = cosf(t * PI / 2.0f);
+        randpanR = cosf((1.0f - t) * PI / 2.0f);
+    }
     numstages = pars->Pnumstages;
     stereo = pars->Pstereo;
     start = pars->Pstart;
@@ -200,9 +207,6 @@ SUBnote::SUBnote(SUBnoteParameters *parameters, Controller *ctl_, float freq,
 void SUBnote::SUBlegatonote(float freq, float velocity,
                             int portamento_, int midinote, bool externcall)
 {
-    //SUBnoteParameters *parameters=pars;
-    //Controller *ctl_=ctl;
-
     // Manage legato stuff
     if (externcall)
         Legato.msg = LM_Norm;
@@ -235,12 +239,12 @@ void SUBnote::SUBlegatonote(float freq, float velocity,
 
     volume = powf(0.1f, 3.0f * (1.0f - pars->PVolume / 96.0f)); // -60 dB .. 0 dB
     volume *= velF(velocity, pars->PAmpVelocityScaleFunction);
-    if (pars->PPanning)
-        panning = pars->PPanning / 127.0f;
-    else
-        panning = synth->numRandom();
-
-    // start=pars->Pstart;
+    if (pars->randomPan())
+    {
+        float t = synth->numRandom();
+        randpanL = cosf(t * PI / 2.0f);
+        randpanR = cosf((1.0f - t) * PI / 2.0f);
+    }
 
     int pos[MAX_SUB_HARMONICS];
 
@@ -329,7 +333,7 @@ void SUBnote::SUBlegatonote(float freq, float velocity,
                 hgain = expf(hmagnew * log_0_00001);
                 break;
             default:
-                hgain = 1.0 - hmagnew;
+                hgain = 1.0f - hmagnew;
         }
         gain *= hgain;
         reduceamp += hgain;
@@ -378,8 +382,8 @@ SUBnote::~SUBnote()
 {
     if (NoteEnabled)
         KillNote();
-    delete [] tmpsmp;
-    delete [] tmprnd;
+    fftwf_free(tmpsmp);
+    fftwf_free(tmprnd);
 }
 
 // Kill the note
@@ -595,8 +599,6 @@ int SUBnote::noteout(float *outl, float *outr)
         tmprnd[i] = synth->numRandom() * 2.0f - 1.0f;
     for (int n = 0; n < numharmonics; ++n)
     {
-        //for (int i = 0; i < synth->buffersize; ++i)
-        //    tmpsmp[i] = tmprnd[i];
         memcpy(tmpsmp, tmprnd, synth->bufferbytes);
         for (int nph = 0; nph < numstages; ++nph)
             filter(lfilter[nph + n * numstages], tmpsmp);
@@ -640,6 +642,15 @@ int SUBnote::noteout(float *outl, float *outr)
         firsttick = 0;
     }
 
+
+    float pangainL = pars->pangainL; // assume non random pan
+    float pangainR = pars->pangainR;
+    if (pars->randomPan())
+    {
+        pangainL = randpanL;
+        pangainR = randpanR;
+    }
+
     if (aboveAmplitudeThreshold(oldamplitude, newamplitude))
     {
         // Amplitude interpolation
@@ -647,16 +658,16 @@ int SUBnote::noteout(float *outl, float *outr)
         {
             float tmpvol = interpolateAmplitude(oldamplitude, newamplitude, i,
                                                 synth->buffersize);
-            outl[i] *= tmpvol * (1.0f - panning);
-            outr[i] *= tmpvol * panning;
+            outl[i] *= tmpvol * pangainL;
+            outr[i] *= tmpvol * pangainR;
         }
     }
     else
     {
         for (int i = 0; i < synth->buffersize; ++i)
         {
-            outl[i] *= newamplitude * (1.0f - panning);
-            outr[i] *= newamplitude * panning;
+            outl[i] *= newamplitude * pangainL;
+            outr[i] *= newamplitude * pangainR;
         }
     }
     oldamplitude = newamplitude;

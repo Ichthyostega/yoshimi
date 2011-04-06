@@ -3,7 +3,7 @@
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2009 Nasca Octavian Paul
-    Copyright 2009-2010, Alan Calvert
+    Copyright 2009-2011, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -18,10 +18,11 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of a ZynAddSubFX original, modified October 2010
+    This file is a derivative of a ZynAddSubFX original, modified April 2011
 */
 
 #include <cstring>
+#include <fftw3.h>
 
 #include "Misc/SynthEngine.h"
 #include "DSP/AnalogFilter.h"
@@ -33,7 +34,8 @@ AnalogFilter::AnalogFilter(unsigned char Ftype, float Ffreq, float Fq, unsigned 
     q(Fq),
     gain(1.0),
     abovenq(0),
-    oldabovenq(0)
+    oldabovenq(0),
+    tmpismp(NULL)
 {
 
     for (int i = 0; i < 3; ++i)
@@ -46,9 +48,16 @@ AnalogFilter::AnalogFilter(unsigned char Ftype, float Ffreq, float Fq, unsigned 
     firsttime = 1;
     d[0] = 0; // this is not used
     outgain = 1.0f;
+    tmpismp = (float*)fftwf_malloc(synth->bufferbytes);
 }
 
-AnalogFilter::~AnalogFilter() { }
+
+AnalogFilter::~AnalogFilter()
+{
+    if (tmpismp)
+        fftwf_free(tmpismp);
+}
+
 
 void AnalogFilter::cleanup()
 {
@@ -60,6 +69,7 @@ void AnalogFilter::cleanup()
     }
     needsinterpolation = 0;
 }
+
 
 void AnalogFilter::computefiltercoefs(void)
 {
@@ -132,19 +142,21 @@ void AnalogFilter::computefiltercoefs(void)
                 cs = cosf(omega);
                 alpha = sn / (2.0f * tmpq);
                 tmp = 1 + alpha;
-                c[0] = (1.0f - cs) / 2.0f / tmp;
                 c[1] = (1.0f - cs) / tmp;
-                c[2] = (1.0f - cs) / 2.0f / tmp;
+                c[0] = c[2] = c[1] / 2.0f;
                 d[1] = -2.0f * cs / tmp * -1.0f;
                 d[2] = (1.0f - alpha) / tmp * -1.0f;
+
+                //c[0] = (1.0f - cs) / 2.0f / tmp;
+                //c[1] = (1.0f - cs) / tmp;
+                //c[2] = (1.0f - cs) / 2.0f / tmp;
+                //d[1] = -2.0f * cs / tmp * -1.0f;
+                //d[2] = (1.0f - alpha) / tmp * -1.0f;
             }
             else
             {
                 c[0] = 1.0f;
-                c[1] = 0.0f;
-                c[2] = 0.0f;
-                d[1] = 0.0f;
-                d[2] = 0.0f;
+                c[1] = c[2] = d[1] = d[2] = 0.0f;
             }
             order = 2;
             break;
@@ -163,13 +175,7 @@ void AnalogFilter::computefiltercoefs(void)
                 d[2] = (1.0f - alpha) / tmp * -1.0f;
             }
             else
-            {
-                c[0] = 0.0f;
-                c[1] = 0.0f;
-                c[2] = 0.0f;
-                d[1] = 0.0f;
-                d[2] = 0.0f;
-            }
+                c[0] = c[1] = c[2] = d[1] = d[2] = 0.0f;
             order = 2;
             break;
         case 4: // BPF 2 poles
@@ -187,13 +193,7 @@ void AnalogFilter::computefiltercoefs(void)
                 d[2] = (1.0f - alpha) / tmp * -1.0f;
             }
             else
-            {
-                c[0] = 0.0f;
-                c[1] = 0.0f;
-                c[2] = 0.0f;
-                d[1] = 0.0f;
-                d[2] = 0.0f;
-            }
+                c[0] = c[1] = c[2] = d[1] = d[2] = 0.0f;
             order = 2;
             break;
         case 5: // NOTCH 2 poles
@@ -213,10 +213,7 @@ void AnalogFilter::computefiltercoefs(void)
             else
             {
                 c[0] = 1.0f;
-                c[1] = 0.0f;
-                c[2] = 0.0f;
-                d[1] = 0.0f;
-                d[2] = 0.0f;
+                c[1] = c[2] = d[1] = d[2] = 0.0f;
             }
             order = 2;
             break;
@@ -238,10 +235,7 @@ void AnalogFilter::computefiltercoefs(void)
             else
             {
                 c[0] = 1.0f;
-                c[1] = 0.0f;
-                c[2] = 0.0f;
-                d[1] = 0.0f;
-                d[2] = 0.0f;
+                c[1] = c[2] = d[1] = d[2] = 0.0f;
             }
             order = 2;
             break;
@@ -265,10 +259,7 @@ void AnalogFilter::computefiltercoefs(void)
             else
             {
                 c[0] = tmpgain;
-                c[1] = 0.0f;
-                c[2] = 0.0f;
-                d[1] = 0.0f;
-                d[2] = 0.0f;
+                c[1] = c[2] = d[1] = d[2] = 0.0f;
             }
             order = 2;
             break;
@@ -283,7 +274,7 @@ void AnalogFilter::computefiltercoefs(void)
                 beta = sqrtf(tmpgain) / tmpq;
                 tmp = (tmpgain + 1.0f) - (tmpgain - 1.0f) * cs + beta * sn;
 
-                c[0]=tmpgain * ((tmpgain + 1.0f) + (tmpgain - 1.0f) * cs + beta * sn) / tmp;
+                c[0] = tmpgain * ((tmpgain + 1.0f) + (tmpgain - 1.0f) * cs + beta * sn) / tmp;
                 c[1] = -2.0f * tmpgain * ((tmpgain - 1.0f) + (tmpgain + 1.0f) * cs) / tmp;
                 c[2] = tmpgain * ((tmpgain + 1.0f) + (tmpgain - 1.0f) * cs - beta * sn) / tmp;
                 d[1] = 2.0f * ((tmpgain - 1.0f) - (tmpgain + 1.0f) * cs) / tmp * -1.0f;
@@ -292,10 +283,7 @@ void AnalogFilter::computefiltercoefs(void)
             else
             {
                 c[0] = 1.0f;
-                c[1] = 0.0f;
-                c[2] = 0.0f;
-                d[1] = 0.0f;
-                d[2] = 0.0f;
+                c[1] = c[2] = d[1] = d[2] = 0.0f;
             }
             order = 2;
             break;
@@ -316,12 +304,13 @@ void AnalogFilter::setfreq(float frequency)
         rap = 1.0f / rap;
 
     oldabovenq = abovenq;
-    abovenq = frequency > (synth->halfsamplerate_f - 500.0);
+    abovenq = frequency > (synth->halfsamplerate_f - 500.0f);
 
     int nyquistthresh = (abovenq ^ oldabovenq);
 
     if (rap > 3.0f || nyquistthresh != 0)
-    {   // if the frequency is changed fast, it needs interpolation (now, filter and coeficients backup)
+    {   // if the frequency is changed fast, it needs interpolation
+        // (now, filter and coeficients backup)
         for (int i = 0; i < 3; ++i)
         {
             oldc[i] = c[i];
@@ -340,11 +329,13 @@ void AnalogFilter::setfreq(float frequency)
     firsttime = 0;
 }
 
+
 void AnalogFilter::setfreq_and_q(float frequency, float q_)
 {
     q = q_;
     setfreq(frequency);
 }
+
 
 void AnalogFilter::setq(float q_)
 {
@@ -352,17 +343,20 @@ void AnalogFilter::setq(float q_)
     computefiltercoefs();
 }
 
+
 void AnalogFilter::settype(int type_)
 {
     type = type_;
     computefiltercoefs();
 }
 
+
 void AnalogFilter::setgain(float dBgain)
 {
     gain = dB2rap(dBgain);
     computefiltercoefs();
 }
+
 
 void AnalogFilter::setstages(int stages_)
 {
@@ -373,9 +367,9 @@ void AnalogFilter::setstages(int stages_)
     computefiltercoefs();
 }
 
+
 void AnalogFilter::singlefilterout(float *smp, fstage &x, fstage &y, float *c, float *d)
 {
-    //unsigned int u;
     float y0;
     if (order == 1)
     {   // First order filter
@@ -384,11 +378,10 @@ void AnalogFilter::singlefilterout(float *smp, fstage &x, fstage &y, float *c, f
             y0 = smp[i] * c[0] + x.c1 * c[1] + y.c1 * d[1];
             y.c1 = y0;
             x.c1 = smp[i];
-            // output
-            smp[i] = y0;
+            smp[i] = y0; // out it goes
         }
     }
-    if (order==2) {// Second order filter
+    if (order == 2) { // Second order filter
         for (int i = 0; i < synth->buffersize; ++i)
         {
             y0 = smp[i] * c[0] + x.c1 * c[1] + x.c2 * c[2] + y.c1 * d[1] + y.c2 * d[2];
@@ -396,22 +389,19 @@ void AnalogFilter::singlefilterout(float *smp, fstage &x, fstage &y, float *c, f
             y.c1 = y0;
             x.c2 = x.c1;
             x.c1 = smp[i];
-            //output
-            smp[i] = y0;
+            smp[i] = y0; // out it goes
         }
     }
 }
+
+
 void AnalogFilter::filterout(float *smp)
 {
-    float *ismp = NULL;      // used if it needs interpolation
     if (needsinterpolation != 0)
     {
-        ismp = new float[synth->buffersize];
-        //for (int i = 0; i < synth->buffersize; ++i)
-        //    ismp[i] = smp[i];
-        memcpy(ismp, smp, synth->bufferbytes);
+        memcpy(tmpismp, smp, synth->bufferbytes);
         for (int i = 0; i < stages + 1; ++i)
-            singlefilterout(ismp, oldx[i], oldy[i], oldc, oldd);
+            singlefilterout(tmpismp, oldx[i], oldy[i], oldc, oldd);
     }
 
     for (int i = 0; i < stages + 1; ++i)
@@ -422,15 +412,15 @@ void AnalogFilter::filterout(float *smp)
         for (int i = 0; i < synth->buffersize; ++i)
         {
             float x = (float)i / synth->buffersize_f;
-            smp[i] = ismp[i] * (1.0f - x) + smp[i] * x;
+            smp[i] = tmpismp[i] * (1.0f - x) + smp[i] * x;
         }
-        delete [] ismp;
         needsinterpolation = 0;
     }
 
     for (int i = 0; i < synth->buffersize; ++i)
         smp[i] *= outgain;
 }
+
 
 float AnalogFilter::H(float freq)
 {

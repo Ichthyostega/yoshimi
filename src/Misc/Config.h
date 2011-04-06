@@ -3,7 +3,7 @@
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
-    Copyright 2009-2010, Alan Calvert
+    Copyright 2009-2011, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -18,7 +18,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of a ZynAddSubFX original, modified October 2010
+    This file is derivative of ZynAddSubFX original code, modified April 2011
 */
 
 #ifndef CONFIG_H
@@ -38,11 +38,8 @@ using namespace std;
 typedef enum { no_audio = 0, jack_audio, alsa_audio, } audio_drivers;
 typedef enum { no_midi = 0, jack_midi, alsa_midi, } midi_drivers;
 
-extern bool Pexitprogram;  // if the UI sets this true, the program will exit
-
 class XMLwrapper;
 class BodyDisposal;
-class SynthEngine;
 
 class Config : public MiscFuncs
 {
@@ -58,11 +55,14 @@ class Config : public MiscFuncs
         void clearBankrootDirlist(void);
         void clearPresetsDirlist(void);
         void saveConfig(void);
-        void saveState(void);
-        bool restoreState(SynthEngine *synth);
-        bool restoreJsession(SynthEngine *synth);
-        void setJackSessionSave(int event_type, const char *session_dir, const char *client_uuid);
-        void saveJackSession(void);
+        void saveState(void) { saveSessionData(StateFile); }
+        void saveState(const string statefile)  { saveSessionData(statefile); }
+        bool loadState(const string statefile)
+            { return restoreSessionData(statefile); }
+        bool stateRestore(void)
+            { return restoreSessionData(StateFile); }
+        bool restoreJsession(void);
+        void setJackSessionSave(int event_type, string session_file);
 
         static void sigHandler(int sig);
         void setInterruptActive(void);
@@ -70,20 +70,20 @@ class Config : public MiscFuncs
         void signalCheck(void);
         void setRtprio(int prio);
         bool startThread(pthread_t *pth, void *(*thread_fn)(void*), void *arg,
-                         bool schedfifo, bool midi);
+                         bool schedfifo, bool lowprio);
 
         string addParamHistory(string file);
         string historyFilename(int index);
+        string programCmd(void) { return programcommand; }
 
         string        ConfigDir;
         string        ConfigFile;
         string        paramsLoad;
         string        instrumentLoad;
-        bool          doRestoreState;
+        bool          restoreState;
         string        StateFile;
         string        CurrentXMZ;
-        bool          doRestoreJackSession;
-        const string  baseCmdLine;
+        bool          restoreJackSession;
         string        jackSessionFile;
 
         unsigned int  Samplerate;
@@ -106,15 +106,9 @@ class Config : public MiscFuncs
         string        jackSessionUuid;
 
         string        alsaAudioDevice;
-        unsigned int  alsaSamplerate;
-        int           alsaBuffersize;
 
         string        alsaMidiDevice;
         string        nameTag;
-
-        bool          Float32bitWavs;
-        string        DefaultRecordDirectory;
-        string        CurrentRecordDirectory;
 
         int           BankUIAutoClose;
         int           Interpolation;
@@ -138,17 +132,18 @@ class Config : public MiscFuncs
         void addConfigXML(XMLwrapper *xml);
         void addRuntimeXML(XMLwrapper *xml);
         void saveSessionData(string savefile);
-        bool restoreSessionData(SynthEngine *synth, string sessionfile);
+        bool restoreSessionData(string sessionfile);
         int SSEcapability(void);
         void AntiDenormals(bool set_daz_ftz);
+        void saveJackSession(void);
 
         static unsigned short nextHistoryIndex;
         static struct sigaction sigAction;
-        static int sigIntActive;
-        static int ladi1IntActive;
+        int sigIntActive;
+        int ladi1IntActive;
         int sse_level;
         int jsessionSave;
-        const string programCmd;
+        const string programcommand;
         string jackSessionDir;
 };
 

@@ -1,7 +1,7 @@
 #
 #   CMakeLists.txt
 #
-#   Copyright 2009-2010, Alan Calvert
+#   Copyright 2009-2011, Alan Calvert
 #
 #   This file is part of yoshimi, which is free software: you can
 #   redistribute it and/or modify it under the terms of the GNU General
@@ -20,7 +20,7 @@ project (Yoshimi)
 cmake_minimum_required (VERSION 2.6)
 cmake_policy (VERSION 2.6)
 cmake_policy (SET CMP0004 OLD)
-set (YOSHIMI_VERSION "0.060.5")
+set (YOSHIMI_VERSION "0.060.8")
 file (WRITE version.txt "${YOSHIMI_VERSION}")
 
 set (CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -45,14 +45,14 @@ check_c_source_compiles (
     {
         jack_session_event_type_t x = JackSessionSave;
         return 0;
-    }" HAS_JACK_SESSION
+    }" HasJackSession
 )
 
-if (HAS_JACK_SESSION)
+if (HasJackSession)
     option (JackSessionSupport "Include Jack Session Support" ON)
-else (HAS_JACK_SESSION)
-    option (JackSessionSupport "Include Jack Session Support" OFF)
-endif (HAS_JACK_SESSION)
+else (HasJackSession)
+    set (JackSessionSupport OFF)
+endif (HasJackSession)
 
 set (DefaultAudio jack CACHE STRING "Default audio driver - alsa or jack")
 set (DefaultMidi jack CACHE STRING "Default midi driver - alsa or jack")
@@ -108,7 +108,7 @@ endif (HAS_LIBZ)
 # fftw3f
 pkg_check_modules (FFTW3F REQUIRED fftw3f>=0.22)
 if (FFTW3F_FOUND)
-    set (FFTW3F_LIBRARIES "${FFTW3F_LIBRARIES};fftw3f_threads")
+    set (FFTW3F_LIBRARIES "${FFTW3F_LIBRARIES}")
     message (STATUS "Found fftw3f ${FFTW3F_VERSION}")
 else (FFTW3F_FOUND)
     message (FATAL_ERROR "fftw3f >=0.22 required but not found")
@@ -145,14 +145,6 @@ if (Boost_FOUND)
 else (Boost_FOUND)
     message (FATAL_ERROR "boost headers required, but not found")
 endif (Boost_FOUND)
-
-# libsndfile
-pkg_check_modules (LIBSNDFILE REQUIRED sndfile)
-if (LIBSNDFILE_FOUND)
-    message (STATUS "Found libsndfile ${LIBSNDFILE_VERSION}")
-else (LIBSNDFILE_FOUND)
-    message (FATAL_ERROR "libsndfile required but not found")
-endif (LIBSNDFILE_FOUND)
 
 # fontconfig
 pkg_check_modules (FONTCONFIG REQUIRED fontconfig>=0.22)
@@ -238,7 +230,7 @@ set (Synth_sources
 set (MusicIO_sources
     MusicIO/MusicClient.cpp  MusicIO/MusicIO.cpp  MusicIO/JackEngine.cpp
     MusicIO/AlsaEngine.cpp  MusicIO/JackClient.cpp  MusicIO/AlsaClient.cpp
-    MusicIO/JackAlsaClient.cpp  MusicIO/AlsaJackClient.cpp MusicIO/WavRecord.cpp
+    MusicIO/JackAlsaClient.cpp  MusicIO/AlsaJackClient.cpp
 )
 
 add_definitions (
@@ -302,33 +294,49 @@ else (JackSessionSupport)
     message(STATUS "Without jack session support")
 endif (JackSessionSupport)
 
+# Check for jack latency API >= 0.120.1
+check_c_source_compiles (
+    "#include <jack/jack.h>
+    int main(int argc, char **argv)
+    {
+        if (jack_set_latency_callback)
+            return 0;
+        else
+            return 1;
+    }" HasJackLatency
+)
+
+if (HasJackLatency)
+    add_definitions(-DJACK_LATENCY)
+endif (HasJackLatency)
+
 set (ProgSources
-    ${yoshimi_FLTK_UI_SRCS}
-    ${DSP_sources}
-    ${Effects_sources}
     ${Misc_sources}
     ${Params_sources}
     ${Synth_sources}
+    ${DSP_sources}
+    ${Effects_sources}
     ${MusicIO_sources}
+    ${yoshimi_FLTK_UI_SRCS}
 )
 
 include_directories (AFTER
-    ${FFTW3F_INC_DIR}
     ${MXML_INCLUDE_DIRS}
     ${ALSA_INCLUDE_DIRS}
     ${JACK_INCLUDE_DIRS}
     ${FONTCONFIG_INCLUDE_DIRS}
     ${FLTK_INCLUDE_DIR}
+    ${FFTW3F_INC_DIR}
 )
 
 set(ExternLibraries
-    ${FFTW3F_LIBRARIES}
     ${FONTCONFIG_LIBRARIES}
     ${FLTK_LIBRARIES}
     ${MXML_LIBRARIES}
     ${ALSA_LIBRARIES}
     ${JACK_LIBRARIES}
     ${LIBSNDFILE_LIBRARIES}
+    ${FFTW3F_LIBRARIES}
     z
 )
 

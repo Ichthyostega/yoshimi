@@ -3,7 +3,7 @@
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2009 Nasca Octavian Paul
-    Copyright 2010, Alan Calvert
+    Copyright 2011, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -18,7 +18,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is derivative of original ZynAddSubFX code, modified December 2010
+    This file is derivative of original ZynAddSubFX code, modified March 2011
 */
 
 #include <cstring>
@@ -34,7 +34,7 @@ FFTwrapper::FFTwrapper(int fftsize_) :
     half_fftsize(fftsize_ / 2)
 {
     data1 = (float*)fftwf_malloc(fftsize * sizeof(float));
-    data2 =  (float*)fftwf_malloc(fftsize * sizeof(float));
+    data2 = (float*)fftwf_malloc(fftsize * sizeof(float));
     planBasic = fftwf_plan_r2r_1d(fftsize, data1, data1, FFTW_R2HC, FFTW_ESTIMATE);
     planInv = fftwf_plan_r2r_1d(fftsize, data2, data2, FFTW_HC2R, FFTW_ESTIMATE);
 }
@@ -49,13 +49,32 @@ FFTwrapper::~FFTwrapper()
 }
 
 
+void FFTwrapper::newFFTFREQS(FFTFREQS *f, int size)
+{
+    f->c = (float*)fftwf_malloc(size * sizeof(float));
+    memset(f->c, 0, size * sizeof(float));
+    f->s = (float*)fftwf_malloc(size * sizeof(float));
+    memset(f->s, 0, size * sizeof(float));
+}
+
+
+void FFTwrapper::deleteFFTFREQS(FFTFREQS *f)
+{
+    if (f->s)
+        fftwf_free(f->s);
+    if (f->c)
+        fftwf_free(f->c);
+    f->s = f->c = NULL;
+}
+
+
 // Fast Fourier Transform
 void FFTwrapper::smps2freqs(float *smps, FFTFREQS *freqs)
 {
     memcpy(data1, smps, fftsize * sizeof(float));
     fftwf_execute(planBasic);
     memcpy(freqs->c, data1, half_fftsize * sizeof(float));
-    for (int i = half_fftsize - 1; i > 0; --i)
+    for (int i = 1; i < half_fftsize; ++i)
         freqs->s[i] = data1[fftsize - i];
     data2[half_fftsize] = 0.0f;
 }
@@ -70,23 +89,4 @@ void FFTwrapper::freqs2smps(FFTFREQS *freqs, float *smps)
         data2[fftsize - i] = freqs->s[i];
     fftwf_execute(planInv);
     memcpy(smps, data2, fftsize * sizeof(float));
-}
-
-
-void FFTwrapper::newFFTFREQS(FFTFREQS& f, int size)
-{
-    f.c = (float*)fftwf_malloc(size * sizeof(float));
-    memset(f.c, 0, size * sizeof(float));
-    f.s = (float*)fftwf_malloc(size * sizeof(float));
-    memset(f.s, 0, size * sizeof(float));
-}
-
-
-void FFTwrapper::deleteFFTFREQS(FFTFREQS& f)
-{
-    if (f.s)
-        fftwf_free(f.s);
-    if (f.c)
-        fftwf_free(f.c);
-    f.s = f.c = NULL;
 }

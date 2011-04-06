@@ -1,7 +1,7 @@
 /*
     main.cpp
 
-    Copyright 2009-2010, Alan Calvert
+    Copyright 2009-2011, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -17,8 +17,6 @@
     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <iostream>
-
 using namespace std;
 
 #include "Misc/Config.h"
@@ -32,79 +30,86 @@ int main(int argc, char *argv[])
     if (!Runtime.Setup(argc, argv))
         goto bail_out;
 
-    if (Runtime.showGui)
-    {
-        guiMaster = new MasterUI();
-        if (!guiMaster)
-        {
-            Runtime.Log("Failed to instantiate guiMaster");
-            goto bail_out;
-        }
-    }
     if (!(synth = new SynthEngine()))
     {
-        Runtime.Log("Failed to allocate Master");
+        Runtime.Log("Failed to allocate SynthEngine");
         goto bail_out;
     }
+
     if (!(musicClient = MusicClient::newMusicClient()))
     {
         Runtime.Log("Failed to instantiate MusicClient");
         goto bail_out;
     }
+
     if (!(musicClient->Open()))
     {
         Runtime.Log("Failed to open MusicClient");
         goto bail_out;
     }
+
     if (!synth->Init(musicClient->getSamplerate(), musicClient->getBuffersize()))
     {
-        Runtime.Log("Master init failed");
+        Runtime.Log("SynthEngine init failed");
         goto bail_out;
     }
+
     if (!musicClient->Start())
     {
-        Runtime.Log("So sad, failed to start MusicIO");
+        Runtime.Log("Failed to start MusicIO");
         goto bail_out;
     }
+
     if (Runtime.showGui)
     {
+        if (!(guiMaster = new MasterUI()))
+        {
+            Runtime.Log("Failed to instantiate gui");
+            goto bail_out;
+        }
         guiMaster->Init();
-        Runtime.StartupReport();
     }
+
+    Runtime.StartupReport();
+    synth->Unmute();
     while (Runtime.runSynth)
     {
-        Runtime.deadObjects->disposeBodies();
         Runtime.signalCheck();
+        Runtime.deadObjects->disposeBodies();
         if (Runtime.showGui)
         {
-            if (!Runtime.LogList.empty())
-            { 
+            for (int i = 0; !Runtime.LogList.empty() && i < 5; ++i)
+            {
                 guiMaster->Log(Runtime.LogList.front());
                 Runtime.LogList.pop_front();
             }
-            Fl::wait(0.04);
+            if (Runtime.runSynth)
+                Fl::wait(0.033333);
         }
-        else
-            usleep(40000); // where all the action is ...
+        else if (Runtime.runSynth)
+            usleep(33333); // where all the action is ...
     }
     musicClient->Close();
-    if (Runtime.showGui)
-    {
-        if (guiMaster)
-        {
-            delete guiMaster;
-            guiMaster = NULL;
-        }
-    }
+    delete musicClient;
+    delete synth;
+    Runtime.deadObjects->disposeBodies();
     Runtime.flushLog();
+    if (guiMaster)
+        delete guiMaster;
     exit(EXIT_SUCCESS);
 
 bail_out:
     Runtime.runSynth = false;
-    usleep(33333); // contemplative pause ...
     Runtime.Log("Yoshimi stages a strategic retreat :-(");
+    if (musicClient)
+    {
+        musicClient->Close();
+        delete musicClient;
+    }
+    if (synth)
+        delete synth;
     if (guiMaster)
-        guiMaster->strategicRetreat();
+        delete guiMaster;
     Runtime.flushLog();
     exit(EXIT_FAILURE);
 }

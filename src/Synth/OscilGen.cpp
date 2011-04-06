@@ -3,7 +3,7 @@
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
-    Copyright 2009-2010 Alan Calvert
+    Copyright 2009-2011 Alan Calvert
     Copyright 2009 James Morris
 
     This file is part of yoshimi, which is free software: you can redistribute
@@ -19,7 +19,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of a ZynAddSubFX original, modified October 2010
+    This file is a derivative of a ZynAddSubFX original, modified March 2011
 */
 
 #include <cmath>
@@ -31,46 +31,38 @@ using namespace std;
 #include "Misc/SynthEngine.h"
 #include "Synth/OscilGen.h"
 
-FFTFREQS OscilGen::outoscilFFTfreqs;
-
-float *OscilGen::tmpsmps = NULL; // buffersize array for temporary data
-
 char OscilGen::random_state[256];
 struct random_data OscilGen::random_buf;
 char OscilGen::harmonic_random_state[256];
 struct random_data OscilGen::harmonic_random_buf;
 
-OscilGen::OscilGen(FFTwrapper *fft_, Resonance *res_) : Presets()
+OscilGen::OscilGen(FFTwrapper *fft_, Resonance *res_) :
+    Presets(),
+    ADvsPAD(false),
+    tmpsmps((float*)fftwf_malloc(synth->oscilsize * sizeof(float))),
+    fft(fft_),
+    res(res_),
+    randseed(1)
 {
-    if (NULL == tmpsmps)
-    {
-        FFTwrapper::newFFTFREQS(OscilGen::outoscilFFTfreqs, synth->halfoscilsize);
-        if (NULL == (tmpsmps = new float[synth->oscilsize]))
-            Runtime.Log("Very bad error, failed to allocate OscilGen::tmpsmps");
-        else
-            memset(tmpsmps, 0, synth->oscilsize * sizeof(float));
-    }
-
     setpresettype("Poscilgen");
-    fft = fft_;
-    res = res_;
-    FFTwrapper::newFFTFREQS(oscilFFTfreqs, synth->halfoscilsize);
-    FFTwrapper::newFFTFREQS(basefuncFFTfreqs, synth->halfoscilsize);
-
-    randseed = 1;
-    ADvsPAD = false;
+    FFTwrapper::newFFTFREQS(&outoscilFFTfreqs, synth->halfoscilsize);
+    if (!tmpsmps)
+        Runtime.Log("Very bad error, failed to allocate OscilGen::tmpsmps");
+    else
+        memset(tmpsmps, 0, synth->oscilsize * sizeof(float));
+    FFTwrapper::newFFTFREQS(&oscilFFTfreqs, synth->halfoscilsize);
+    FFTwrapper::newFFTFREQS(&basefuncFFTfreqs, synth->halfoscilsize);
     defaults();
 }
 
 OscilGen::~OscilGen()
 {
-    FFTwrapper::deleteFFTFREQS(basefuncFFTfreqs);
-    FFTwrapper::deleteFFTFREQS(oscilFFTfreqs);
-    if (NULL != tmpsmps)
+    FFTwrapper::deleteFFTFREQS(&basefuncFFTfreqs);
+    FFTwrapper::deleteFFTFREQS(&oscilFFTfreqs);
+    if (tmpsmps)
     {
-        delete [] tmpsmps;
-        tmpsmps = NULL;
-        FFTwrapper::deleteFFTFREQS(outoscilFFTfreqs);
+        fftwf_free(tmpsmps);
+        FFTwrapper::deleteFFTFREQS(&outoscilFFTfreqs);
     }
 }
 
@@ -93,17 +85,18 @@ void OscilGen::defaults(void)
     oldmodulationpar2 = 0;
     oldmodulationpar3 = 0;
 
+    memset(hmag, 0, MAX_AD_HARMONICS * sizeof(float));
+    memset(hphase, 0, MAX_AD_HARMONICS * sizeof(float));
     for (int i = 0; i < MAX_AD_HARMONICS; ++i)
     {
-        hmag[i] = 0.0;
-        hphase[i] = 0.0f;
         Phmag[i] = 64;
         Phphase[i] = 64;
     }
     Phmag[0] = 127;
     Phmagtype = 0;
     if (ADvsPAD)
-        Prand = 127; // max phase randomness (usefull if the oscil will be imported to a ADsynth from a PADsynth
+        Prand = 127; // max phase randomness (usefull if the oscil will be
+                     // imported to a ADsynth from a PADsynth
     else
         Prand = 64; // no randomness
 
@@ -140,11 +133,6 @@ void OscilGen::defaults(void)
     Padaptiveharmonicsbasefreq = 128;
     Padaptiveharmonicspar = 50;
 
-    //for (int i = 0 ; i < synth->halfoscilsize; ++i)
-    //{
-    //    oscilFFTfreqs.s[i] = oscilFFTfreqs.c[i] = 0.0;
-    //    basefuncFFTfreqs.s[i] = basefuncFFTfreqs.c[i] = 0.0;
-    //}
     memset(oscilFFTfreqs.s, 0, synth->halfoscilsize * sizeof(float));
     memset(oscilFFTfreqs.c, 0, synth->halfoscilsize * sizeof(float));
     memset(basefuncFFTfreqs.s, 0, synth->halfoscilsize * sizeof(float));
@@ -162,12 +150,11 @@ void OscilGen::convert2sine(int magtype)
     float mag[MAX_AD_HARMONICS], phase[MAX_AD_HARMONICS];
     float oscil[synth->oscilsize];
     FFTFREQS freqs;
-    FFTwrapper::newFFTFREQS(freqs, synth->halfoscilsize);
-
+    FFTwrapper::newFFTFREQS(&freqs, synth->halfoscilsize);
     get(oscil, -1.0f);
     FFTwrapper *fft = new FFTwrapper(synth->oscilsize);
     fft->smps2freqs(oscil, &freqs);
-    delete(fft);
+    delete fft;
 
     float max = 0.0f;
 
@@ -180,8 +167,8 @@ void OscilGen::convert2sine(int magtype)
         if (max < mag[i])
             max = mag[i];
     }
-    if (max < 0.00001)
-        max = 1.0;
+    if (max < 0.00001f)
+        max = 1.0f;
 
     defaults();
 
@@ -190,7 +177,7 @@ void OscilGen::convert2sine(int magtype)
         float newmag = mag[i] / max;
         float newphase = phase[i];
 
-        Phmag[i] = (int) ((newmag) * 64.0f) + 64;
+        Phmag[i] = lrintf(newmag * 64.0f) + 64;
 
         Phphase[i] = 64 - lrintf(64.0f * newphase / PI);
         if (Phphase[i] > 127)
@@ -199,7 +186,7 @@ void OscilGen::convert2sine(int magtype)
         if (Phmag[i] == 64)
             Phphase[i] = 64;
     }
-    FFTwrapper::deleteFFTFREQS(freqs);
+    FFTwrapper::deleteFFTFREQS(&freqs);
     prepare();
 }
 
@@ -207,7 +194,7 @@ void OscilGen::convert2sine(int magtype)
 // Base Functions - START
 float OscilGen::basefunc_pulse(float x, float a)
 {
-    return (fmod(x, 1.0f) < a) ? -1.0f : 1.0f;
+    return (fmodf(x, 1.0f) < a) ? -1.0f : 1.0f;
 }
 
 
@@ -217,7 +204,7 @@ float OscilGen::basefunc_saw(float x, float a)
         a = 0.00001f;
     else if (a > 0.99999f)
         a = 0.99999f;
-    x = fmod(x, 1.0f);
+    x = fmodf(x, 1.0f);
     if (x < a)
         return x / a * 2.0f - 1.0f;
     else
@@ -227,7 +214,7 @@ float OscilGen::basefunc_saw(float x, float a)
 
 float OscilGen::basefunc_triangle(float x, float a)
 {
-    x = fmod(x + 0.25f, 1.0f);
+    x = fmodf(x + 0.25f, 1.0f);
     a = 1 - a;
     if (a < 0.00001f)
         a = 0.00001f;
@@ -246,7 +233,7 @@ float OscilGen::basefunc_triangle(float x, float a)
 
 float OscilGen::basefunc_power(float x, float a)
 {
-    x = fmod(x, 1.0f);
+    x = fmodf(x, 1.0f);
     if (a < 0.00001f)
         a = 0.00001f;
     else if (a > 0.99999f)
@@ -257,7 +244,7 @@ float OscilGen::basefunc_power(float x, float a)
 
 float OscilGen::basefunc_gauss(float x, float a)
 {
-    x = fmod(x, 1.0f) * 2.0f - 1.0f;
+    x = fmodf(x, 1.0f) * 2.0f - 1.0f;
     if (a < 0.00001f)
         a = 0.00001f;
     return expf(-x * x * (expf(a * 8.0f) + 5.0f)) * 2.0f - 1.0f;
@@ -280,7 +267,7 @@ float OscilGen::basefunc_diode(float x, float a)
 
 float OscilGen::basefunc_abssine(float x, float a)
 {
-    x = fmod(x, 1.0f);
+    x = fmodf(x, 1.0f);
     if (a < 0.00001f)
         a = 0.00001f;
     else if (a > 0.99999f)
@@ -293,7 +280,7 @@ float OscilGen::basefunc_pulsesine(float x, float a)
 {
     if (a < 0.00001f)
         a = 0.00001f;
-    x = (fmod(x, 1.0f) - 0.5f) * expf((a - 0.5f) * logf(128.0f));
+    x = (fmodf(x, 1.0f) - 0.5f) * expf((a - 0.5f) * logf(128.0f));
     if (x < -0.5f)
         x = -0.5f;
     else if (x > 0.5f)
@@ -305,7 +292,7 @@ float OscilGen::basefunc_pulsesine(float x, float a)
 
 float OscilGen::basefunc_stretchsine(float x, float a)
 {
-    x = fmod(x + 0.5f, 1.0f) * 2.0f - 1.0f;
+    x = fmodf(x + 0.5f, 1.0f) * 2.0f - 1.0f;
     a =(a - 0.5f) * 4.0f;
     if (a > 0.0f)
         a *= 2.0f;
@@ -319,7 +306,7 @@ float OscilGen::basefunc_stretchsine(float x, float a)
 
 float OscilGen::basefunc_chirp(float x, float a)
 {
-    x = fmod(x, 1.0f) * 2.0f * PI;
+    x = fmodf(x, 1.0f) * 2.0f * PI;
     a = (a - 0.5f) * 4.0f;
     if (a < 0.0f)
         a *= 2.0f;
@@ -330,7 +317,7 @@ float OscilGen::basefunc_chirp(float x, float a)
 
 float OscilGen::basefunc_absstretchsine(float x, float a)
 {
-    x = fmod(x + 0.5f, 1.0f) * 2.0f - 1.0f;
+    x = fmodf(x + 0.5f, 1.0f) * 2.0f - 1.0f;
     a = (a - 0.5f) * 9.0f;
     a = powf(3.0f, a);
     float b = powf(fabsf(x), a);
@@ -562,7 +549,7 @@ void OscilGen::oscilfilter(void)
                 gain = cosf(x * PI) * (1.0f - tmp) + 1.01f + tmp; // low shelf
                 break;
             case 13:
-                tmp = (int)powf(2.0f, ((1.0f - par) * 7.2f));
+                tmp = lrintf(powf(2.0f, ((1.0f - par) * 7.2f)));
                 gain = 1.0f;
                 if (i == tmp)
                     gain = powf(2.0f, par2 * par2 * 8.0f);
@@ -680,14 +667,14 @@ void OscilGen::modulation(void)
             break;
         case 3:
             modulationpar1 = (powf(2.0f, modulationpar1 * 9.0f) - 1.0f) / 100.0f;
-            modulationpar3 = 0.01f + (powf(2, modulationpar3 * 16.0f) - 1.0f) / 10.0f;
+            modulationpar3 = 0.01f + (powf(2.0f, modulationpar3 * 16.0f) - 1.0f) / 10.0f;
             break;
     }
 
     int eighth_i = synth->oscilsize / 8;
     float eighth_f = synth->oscilsize_f / 8.0f;
 
-    oscilFFTfreqs.c[0] = 0.0; // remove the DC
+    oscilFFTfreqs.c[0] = 0.0f; // remove the DC
     // reduce the amplitude of the freqs near the nyquist
     for (int i = 1; i < eighth_i; ++i)
     {
@@ -912,8 +899,8 @@ void OscilGen::prepare(void)
     {   // the sine case
         for (int i = 0; i < MAX_AD_HARMONICS; ++i)
         {
-            oscilFFTfreqs.c[i + 1] =- hmag[i] * sinf(hphase[i] * (i + 1)) / 2.0;
-            oscilFFTfreqs.s[i + 1] = hmag[i] * cosf(hphase[i] * (i + 1)) / 2.0;
+            oscilFFTfreqs.c[i + 1] =- hmag[i] * sinf(hphase[i] * (i + 1)) / 2.0f;
+            oscilFFTfreqs.s[i + 1] = hmag[i] * cosf(hphase[i] * (i + 1)) / 2.0f;
         }
     }
     else
@@ -973,7 +960,7 @@ void OscilGen::adaptiveharmonic(FFTFREQS f, float freq)
         freq = 440.0f;
 
     FFTFREQS inf;
-    FFTwrapper::newFFTFREQS(inf, synth->halfoscilsize);
+    FFTwrapper::newFFTFREQS(&inf, synth->halfoscilsize);
     for (int i = 0; i < synth->halfoscilsize; ++i)
     {
         inf.s[i] = f.s[i];
@@ -1001,8 +988,8 @@ void OscilGen::adaptiveharmonic(FFTFREQS f, float freq)
     for (int i = 0; i < synth->halfoscilsize - 2; ++i)
     {
         float h = i * rap;
-        int high = (int)(i * rap);
-        float low = fmod(h, 1.0f);
+        int high = lrintf(i * rap);
+        float low = fmodf(h, 1.0f);
 
         if (high >= synth->halfoscilsize - 2)
         {
@@ -1039,7 +1026,7 @@ void OscilGen::adaptiveharmonic(FFTFREQS f, float freq)
     f.c[1] += f.c[0];
     f.s[1] += f.s[0];
     f.c[0] = f.s[0] = 0.0f;
-    FFTwrapper::deleteFFTFREQS(inf);
+    FFTwrapper::deleteFFTFREQS(&inf);
 }
 
 
@@ -1089,16 +1076,15 @@ void OscilGen::adaptiveharmonicpostprocess(float *f, int size)
 
 
 // Get the oscillator function
-short int OscilGen::get(float *smps, float freqHz)
+int OscilGen::get(float *smps, float freqHz)
 {
     return this->get(smps, freqHz, 0);
 }
 
 
 // Get the oscillator function
-short int OscilGen::get(float *smps, float freqHz, int resonance)
+int OscilGen::get(float *smps, float freqHz, int resonance)
 {
-    //int i;
     int nyquist, outpos;
 
     if (oldbasepar != Pbasefuncpar

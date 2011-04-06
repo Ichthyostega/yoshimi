@@ -3,7 +3,7 @@
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
-    Copyright 2009-2010, Alan Calvert
+    Copyright 2009-2011, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -18,7 +18,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of a ZynAddSubFX original, modified October 2010
+    This file is a derivative of a ZynAddSubFX original, modified March 2011
 */
 
 #include <cmath>
@@ -35,7 +35,7 @@
 
 PADnoteParameters::PADnoteParameters(FFTwrapper *fft_) : Presets()
 {
-    setpresettype("Ppadsyth");
+    setpresettype("PADnoteParameters");
     fft = fft_;
 
     resonance = new Resonance();
@@ -119,7 +119,7 @@ void PADnoteParameters::defaults(void)
 
     // Amplitude Global Parameters
     PVolume = 90;
-    PPanning = 64; // center
+    setPan(PPanning = 64); // center
     PAmpVelocityScaleFunction = 64;
     AmpEnvelope->defaults();
     AmpLfo->defaults();
@@ -566,7 +566,7 @@ void PADnoteParameters::applyparameters(bool islocked)
     // prepare a BIG FFT stuff
     FFTwrapper *fft = new FFTwrapper(samplesize);
     FFTFREQS fftfreqs;
-    FFTwrapper::newFFTFREQS(fftfreqs, samplesize / 2);
+    FFTwrapper::newFFTFREQS(&fftfreqs, samplesize / 2);
 
     float adj[samplemax]; // this is used to compute frequency relation to the base frequency
     for (int nsample = 0; nsample < samplemax; ++nsample)
@@ -626,7 +626,7 @@ void PADnoteParameters::applyparameters(bool islocked)
         newsample.smp = NULL;
     }
     delete fft;
-    FFTwrapper::deleteFFTFREQS(fftfreqs);
+    FFTwrapper::deleteFFTFREQS(&fftfreqs);
 
     // delete the additional samples that might exists and are not useful
     if (!islocked)
@@ -635,6 +635,20 @@ void PADnoteParameters::applyparameters(bool islocked)
         deletesample(i);
     if (!islocked)
         synth->actionLock(unlock);
+}
+
+
+void PADnoteParameters::setPan(char pan)
+{
+    PPanning = pan;
+    if (!randomPan())
+    {
+        float t = (float)(PPanning - 1) / 126.0f;
+        pangainL = cosf(t * PI / 2.0f);
+        pangainR = cosf((1.0f - t) * PI / 2.0f);
+    }
+    else
+        pangainL = pangainR = 0.7f;
 }
 
 

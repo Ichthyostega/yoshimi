@@ -3,7 +3,7 @@
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
-    Copyright 2009-2010, Alan Calvert
+    Copyright 2009-2011, Alan Calvert
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of version 2 of the GNU General Public
@@ -18,7 +18,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of a ZynAddSubFX original, modified October 2010
+    This file is a derivative of a ZynAddSubFX original, modified April 2011
 */
 
 #ifndef PAD_NOTE_PARAMETERS_H
@@ -41,6 +41,9 @@ class PADnoteParameters : public Presets
         ~PADnoteParameters();
 
         void defaults(void);
+        void setPan(char pan);
+        bool randomPan(void) { return !PPanning; }
+
         void add2XML(XMLwrapper *xml);
         void getfromXML(XMLwrapper *xml);
 
@@ -95,47 +98,38 @@ class PADnoteParameters : public Presets
             unsigned char basenote, oct, smpoct;
         } Pquality;
 
-        // frequency parameters
-        // If the base frequency is fixed to 440 Hz
-        unsigned char Pfixedfreq;
+        // Frequency parameters
+        unsigned char Pfixedfreq; // If the base frequency is fixed to 440 Hz
 
         // Equal temperate (this is used only if the Pfixedfreq is enabled)
         // If this parameter is 0, the frequency is fixed (to 440 Hz);
         // if this parameter is 64, 1 MIDI halftone -> 1 frequency halftone
-        unsigned char PfixedfreqET;
+        unsigned char      PfixedfreqET;
+
         unsigned short int PDetune;       // fine detune
         unsigned short int PCoarseDetune; // coarse detune+octave
-        unsigned char PDetuneType;        // detune type
+        unsigned char      PDetuneType;   // detune type
 
         EnvelopeParams *FreqEnvelope; // Frequency Envelope
         LFOParams *FreqLfo;           // Frequency LFO
 
         // Amplitude parameters
         unsigned char PStereo;
-        // Panning -  0 - random
-        //            1 - left
-        //           64 - center
-        //          127 - right */
-        unsigned char PPanning;
-
+        unsigned char PPanning;  // 0 random, 64 center, 127 right
+        float         pangainL;  // derived from PPanning
+        float         pangainR;  // ^^
         unsigned char PVolume;
-
         unsigned char PAmpVelocityScaleFunction;
 
         EnvelopeParams *AmpEnvelope;
-
         LFOParams *AmpLfo;
 
         unsigned char PPunchStrength, PPunchTime, PPunchStretch, PPunchVelocitySensing;
 
         // Filter Parameters
         FilterParams *GlobalFilter;
-
-        // filter velocity sensing
-        unsigned char PFilterVelocityScale;
-
-        // filter velocity sensing
-        unsigned char PFilterVelocityScaleFunction;
+        unsigned char PFilterVelocityScale; // filter velocity sensing
+        unsigned char PFilterVelocityScaleFunction; // filter velocity sensing
 
         EnvelopeParams *FilterEnvelope;
         LFOParams *FilterLfo;
@@ -168,7 +162,7 @@ class PADnoteParameters : public Presets
         void deletesample(int n);
 
         FFTwrapper *fft;
-        pthread_mutex_t *mutex;
+        //pthread_mutex_t *mutex;
 };
 
 #endif
