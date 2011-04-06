@@ -33,8 +33,9 @@ Depends: ${shlibs:Depends},
  ${misc:Depends},
  yoshimi-data,
  jackd
-Description: A software synthesizer based on ZynAddSubFX
- A software synthesizer for Linux, based on ZynAddSubFX 2.4.0
+Description: software synthesizer based on ZynAddSubFX
+ Yoshimi is a software synthesizer for GNU/Linux, based on
+ ZynAddSubFX 2.4.0.
  .
  Yoshimi delivers the same synthesizer capabilities along with 
  very good Jack and Alsa midi/audio functionality on Linux.
@@ -44,7 +45,7 @@ Architecture: all
 Depends: ${misc:Depends}
 Recommends: yoshimi
 Description: Presets for Yoshimi
- Yoshimi - a software synthesizer for Linux, based on ZynAddSubFX 2.4.0
+ Yoshimi is a software synthesizer for GNU/Linux, based on
+ ZynAddSubFX 2.4.0.
  .
- Yoshimi delivers the same synthesizer capabilities along with 
- very good Jack and Alsa midi/audio functionality on Linux.
+ This package provides banks and presets for Yoshimi.
