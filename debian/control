@@ -54,7 +54,7 @@ Package: yoshimi-dbg
 Section: debug
 Priority: extra
 Architecture: any
-Depends: yoshimi (= ${binary:Version}},
+Depends: yoshimi (= ${binary:Version}),
  ${misc:Depends}
 Description: Debugging symbols for Yoshimi
  Yoshimi is a software synthesizer for GNU/Linux, based on
