@@ -1,3 +1,9 @@
+yoshimi (0.060.8-2) unstable; urgency=low
+
+  * Provide -DBG package.
+
+ -- Alessio Treglia <alessio@debian.org>  Mon, 11 Apr 2011 20:13:44 +0200
+
 yoshimi (0.060.8-1) unstable; urgency=low
 
   * New upstream release.
