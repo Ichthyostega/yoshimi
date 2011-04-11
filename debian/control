@@ -49,3 +49,15 @@ Description: Presets for Yoshimi
  ZynAddSubFX 2.4.0.
  .
  This package provides banks and presets for Yoshimi.
+
+Package: yoshimi-dbg
+Section: debug
+Priority: extra
+Architecture: any
+Depends: yoshimi (= ${binary:Version}},
+ ${misc:Depends}
+Description: Debugging symbols for Yoshimi
+ Yoshimi is a software synthesizer for GNU/Linux, based on
+ ZynAddSubFX 2.4.0.
+ .
+ This package provides the debugging symbols for yoshimi.

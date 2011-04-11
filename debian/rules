@@ -17,3 +17,5 @@ override_dh_install:
 	install -m 644 $(CURDIR)/debian/yoshimi.desktop $(CURDIR)/debian/yoshimi/usr/share/applications
 	install -m 644 $(CURDIR)/yoshimi.png $(CURDIR)/debian/yoshimi/usr/share/icons
 
+override_dh_strip:
+	dh_strip --dbg-package=yoshimi-dbg
