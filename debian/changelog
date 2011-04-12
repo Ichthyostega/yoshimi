@@ -1,3 +1,14 @@
+yoshimi (0.060.10-1) unstable; urgency=low
+
+  * New upstream release:
+    - COPYING file updated.
+    - licence anomalies corrected.
+  * Update debian/copyright.
+    - Update licensing,copyright information.
+    - Comply with DEP-5 rev.174.
+
+ -- Alessio Treglia <alessio@debian.org>  Tue, 12 Apr 2011 12:18:22 +0200
+
 yoshimi (0.060.8-2) unstable; urgency=low
 
   * Provide -DBG package.
