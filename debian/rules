@@ -7,7 +7,7 @@ CXXFLAGS+=-msse -msse2 -mfpmath=sse
 endif
 
 %:
-	dh --sourcedirectory=src $@
+	dh $@ --parallel --sourcedirectory=src
 
 override_dh_install:
 	dh_install
