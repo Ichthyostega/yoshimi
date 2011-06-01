@@ -1,3 +1,12 @@
+yoshimi (0.060.10-2) unstable; urgency=low
+
+  * Build-Depend on libjack-dev only (Closes: #628711).
+  * Demote jackd to Recommends as yoshimi could be used without it.
+  * Enable parallel builds.
+  * Bump Standards.
+
+ -- Alessio Treglia <alessio@debian.org>  Wed, 01 Jun 2011 12:39:37 +0200
+
 yoshimi (0.060.10-1) unstable; urgency=low
 
   * New upstream release:
