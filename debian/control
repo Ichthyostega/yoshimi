@@ -31,8 +31,8 @@ Package: yoshimi
 Architecture: any
 Depends: ${shlibs:Depends},
  ${misc:Depends},
- yoshimi-data,
- jackd
+ yoshimi-data
+Recommends: jackd
 Description: software synthesizer based on ZynAddSubFX
  Yoshimi is a software synthesizer for GNU/Linux, based on
  ZynAddSubFX 2.4.0.
