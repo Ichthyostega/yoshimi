@@ -1,3 +1,13 @@
+yoshimi (0.060.10-3) unstable; urgency=low
+
+  * Refresh 01-gcc_flags.patch.
+  * debian/patches/02-fluid_1.3.patch:
+    - Since the 1.3.x series, Fluid no longer produces (empty)
+      implementations for totally empty functions in .fl files.
+      Thank you, Aaron! (Closes: #633476)
+
+ -- Alessio Treglia <alessio@debian.org>  Mon, 11 Jul 2011 15:33:20 +0200
+
 yoshimi (0.060.10-2) unstable; urgency=low
 
   * Build-Depend on libjack-dev only (Closes: #628711).
