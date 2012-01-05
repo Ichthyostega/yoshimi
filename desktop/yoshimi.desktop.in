@@ -9,4 +9,4 @@ Exec=@CMAKE_INSTALL_PREFIX@/bin/yoshimi
 TryExec=@CMAKE_INSTALL_PREFIX@/bin/yoshimi
 Terminal=false
 StartupNotify=true
-Icon=@CMAKE_INSTALL_PREFIX@/share/yoshimi/pink_robot_icon.png
+Icon=@CMAKE_INSTALL_PREFIX@/share/yoshimi/yoshimi.png
