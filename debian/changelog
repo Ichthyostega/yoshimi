@@ -1,3 +1,10 @@
+yoshimi (0.060.12-1) unstable; urgency=low
+
+  * New upstream release.
+  * Remove 02-fluid_1.3.patch, applied upstream.
+
+ -- Alessio Treglia <alessio@debian.org>  Thu, 05 Jan 2012 15:12:50 +0100
+
 yoshimi (0.060.10-3) unstable; urgency=low
 
   * Refresh 01-gcc_flags.patch.
