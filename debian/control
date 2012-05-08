@@ -2,25 +2,27 @@ Source: yoshimi
 Section: sound
 Priority: optional
 Maintainer: Debian Multimedia Maintainers <pkg-multimedia-maintainers@lists.alioth.debian.org>
-Uploaders: Alessio Treglia <alessio@debian.org>,
+Uploaders:
+ Alessio Treglia <alessio@debian.org>,
  Jaromír Mikeš <mira.mikes@seznam.cz>
-Build-Depends: debhelper (>= 7.0.50~),
+Build-Depends:
  cmake,
- sharutils,
- libx11-dev,
- libboost-dev,
- fluid,
- libfltk1.1-dev,
- libmxml-dev,
- libfftw3-dev,
- libsndfile1-dev,
- libjack-dev,
- libasound2-dev,
- libfontconfig1-dev,
+ debhelper (>= 7.0.50~),
  dpkg-dev (>= 1.14.17),
- libxinerama-dev,
+ fluid,
+ libasound2-dev,
+ libboost-dev,
+ libfftw3-dev,
+ libfltk1.1-dev,
+ libfontconfig1-dev,
  libgl1-mesa-dev | libgl-dev,
- libglu1-mesa-dev | libglu-dev
+ libglu1-mesa-dev | libglu-dev,
+ libjack-dev,
+ libmxml-dev,
+ libsndfile1-dev,
+ libx11-dev,
+ libxinerama-dev,
+ sharutils
 DM-Upload-Allowed: yes
 Standards-Version: 3.9.2
 Vcs-Git: git://git.debian.org/git/pkg-multimedia/yoshimi.git
@@ -29,21 +31,25 @@ Homepage: http://yoshimi.sourceforge.net
 
 Package: yoshimi
 Architecture: any
-Depends: ${shlibs:Depends},
+Depends:
+ yoshimi-data,
  ${misc:Depends},
- yoshimi-data
-Recommends: jackd
+ ${shlibs:Depends}
+Recommends:
+ jackd
 Description: software synthesizer based on ZynAddSubFX
  Yoshimi is a software synthesizer for GNU/Linux, based on
  ZynAddSubFX 2.4.0.
  .
- Yoshimi delivers the same synthesizer capabilities along with 
+ Yoshimi delivers the same synthesizer capabilities along with
  very good Jack and Alsa midi/audio functionality on Linux.
 
 Package: yoshimi-data
 Architecture: all
-Depends: ${misc:Depends}
-Recommends: yoshimi
+Depends:
+ ${misc:Depends}
+Recommends:
+ yoshimi
 Description: Presets for Yoshimi
  Yoshimi is a software synthesizer for GNU/Linux, based on
  ZynAddSubFX 2.4.0.
@@ -54,7 +60,8 @@ Package: yoshimi-dbg
 Section: debug
 Priority: extra
 Architecture: any
-Depends: yoshimi (= ${binary:Version}),
+Depends:
+ yoshimi (= ${binary:Version}),
  ${misc:Depends}
 Description: Debugging symbols for Yoshimi
  Yoshimi is a software synthesizer for GNU/Linux, based on
