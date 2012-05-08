@@ -1,3 +1,11 @@
+yoshimi (0.060.12-2) unstable; urgency=low
+
+  * Fix missing #includes to solve FTBFS with GCC 4.7. (Closes: #672002)
+  * Update debian/copyright to machine-readable format.
+  * Bump standards.
+
+ -- Alessio Treglia <alessio@debian.org>  Tue, 08 May 2012 15:57:18 -0700
+
 yoshimi (0.060.12-1) unstable; urgency=low
 
   * New upstream release.
