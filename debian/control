@@ -24,7 +24,7 @@ Build-Depends:
  libxinerama-dev,
  sharutils
 DM-Upload-Allowed: yes
-Standards-Version: 3.9.2
+Standards-Version: 3.9.3
 Vcs-Git: git://git.debian.org/git/pkg-multimedia/yoshimi.git
 Vcs-Browser: http://git.debian.org/?p=pkg-multimedia/yoshimi.git
 Homepage: http://yoshimi.sourceforge.net
