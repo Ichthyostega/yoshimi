@@ -1,3 +1,9 @@
+yoshimi (1.0.0-1) UNRELEASED; urgency=low
+
+  * Start new upload
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Thu, 19 Jul 2012 15:56:33 +0200
+
 yoshimi (0.060.12-2) unstable; urgency=low
 
   * Fix missing #includes to solve FTBFS with GCC 4.7. (Closes: #672002)
