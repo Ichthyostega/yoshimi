@@ -1,6 +1,8 @@
 yoshimi (1.0.0-1) UNRELEASED; urgency=low
 
-  * Start new upload
+  * New upstream release.
+  * Remove patches applied upstream:
+    - debian/patches/02-gcc47.patch
 
  -- Jaromír Mikeš <mira.mikes@seznam.cz>  Thu, 19 Jul 2012 15:56:33 +0200
 
