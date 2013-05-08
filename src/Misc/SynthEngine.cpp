@@ -357,22 +357,26 @@ void SynthEngine::partonoff(int npart, int what)
 
 
 // Master audio out (the final sound)
-void SynthEngine::MasterAudio(float *outl, float *outr)
+void SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS], float *outr [NUM_MIDI_PARTS])
 {
-    memset(outl, 0, bufferbytes);
-    memset(outr, 0, bufferbytes);
+    int npart;
+    for (npart = 0; npart < (NUM_MIDI_PARTS + 1); ++npart)
+    {
+        memset(outl[npart], 0, bufferbytes);
+        memset(outr[npart], 0, bufferbytes);
+    }
     if (isMuted())
         return;
 
-    // Compute part samples and store them npart]->partoutl,partoutr
-    int npart;
+    actionLock(lock);
+
+    // Compute part samples and store them ->partoutl,partoutr
     for (npart = 0; npart < NUM_MIDI_PARTS; ++npart)
         if (part[npart]->Penabled)
         {
-            actionLock(lock);
             part[npart]->ComputePartSmps();
-            actionLock(unlock);
         }
+
     // Insertion effects
     int nefx;
     for (nefx = 0; nefx < NUM_INS_EFX; ++nefx)
@@ -382,9 +386,7 @@ void SynthEngine::MasterAudio(float *outl, float *outr)
             int efxpart = Pinsparts[nefx];
             if (part[efxpart]->Penabled)
             {
-                actionLock(lock);
                 insefx[nefx]->out(part[efxpart]->partoutl, part[efxpart]->partoutr);
-                actionLock(unlock);
             }
         }
     }
@@ -399,15 +401,12 @@ void SynthEngine::MasterAudio(float *outl, float *outr)
         float oldvol_r = part[npart]->oldvolumer;
         float newvol_l = part[npart]->pannedVolLeft();
         float newvol_r = part[npart]->pannedVolRight();
-        if (aboveAmplitudeThreshold(oldvol_l, newvol_l)
-            || aboveAmplitudeThreshold(oldvol_r, newvol_r))
+        if (aboveAmplitudeThreshold(oldvol_l, newvol_l) || aboveAmplitudeThreshold(oldvol_r, newvol_r))
         {   // the volume or the panning has changed and needs interpolation
             for (int i = 0; i < buffersize; ++i)
             {
-                float vol_l = interpolateAmplitude(oldvol_l, newvol_l, i,
-                                                   buffersize);
-                float vol_r = interpolateAmplitude(oldvol_r, newvol_r, i,
-                                                   buffersize);
+                float vol_l = interpolateAmplitude(oldvol_l, newvol_l, i, buffersize);
+                float vol_r = interpolateAmplitude(oldvol_r, newvol_r, i, buffersize);
                 part[npart]->partoutl[i] *= vol_l;
                 part[npart]->partoutr[i] *= vol_r;
             }
@@ -443,10 +442,8 @@ void SynthEngine::MasterAudio(float *outl, float *outr)
                 float vol = sysefxvol[nefx][npart];
                 for (int i = 0; i < buffersize; ++i)
                 {
-                    actionLock(lock);
                     tmpmixl[i] += part[npart]->partoutl[i] * vol;
                     tmpmixr[i] += part[npart]->partoutr[i] * vol;
-                    actionLock(unlock);
                 }
             }
         }
@@ -459,10 +456,8 @@ void SynthEngine::MasterAudio(float *outl, float *outr)
                 float v = sysefxsend[nefxfrom][nefx];
                 for (int i = 0; i < buffersize; ++i)
                 {
-                    actionLock(lock);
                     tmpmixl[i] += sysefx[nefxfrom]->efxoutl[i] * v;
                     tmpmixr[i] += sysefx[nefxfrom]->efxoutr[i] * v;
-                    actionLock(unlock);
                 }
             }
         }
@@ -472,22 +467,28 @@ void SynthEngine::MasterAudio(float *outl, float *outr)
         float outvol = sysefx[nefx]->sysefxgetvolume();
         for (int i = 0; i < buffersize; ++i)
         {
-            actionLock(lock);
-            outl[i] += tmpmixl[i] * outvol;
-            outr[i] += tmpmixr[i] * outvol;
-            actionLock(unlock);
+            outl[NUM_MIDI_PARTS][i] += tmpmixl[i] * outvol;
+            outr[NUM_MIDI_PARTS][i] += tmpmixr[i] * outvol;
         }
     }
 
-    // Mix all parts
+    // Copy all parts
+    for (npart = 0; npart < NUM_MIDI_PARTS; ++npart)
+    {
+        for (int i = 0; i < buffersize; ++i)
+        {
+            outl[npart][i] = part[npart]->partoutl[i];
+            outr[npart][i] = part[npart]->partoutr[i];
+        }
+    }
+
+    // Mix all parts to mixed outputs
     for (npart = 0; npart < NUM_MIDI_PARTS; ++npart)
     {
         for (int i = 0; i < buffersize; ++i)
         {   // the volume did not change
-            actionLock(lock);
-            outl[i] += part[npart]->partoutl[i];
-            outr[i] += part[npart]->partoutr[i];
-            actionLock(unlock);
+            outl[NUM_MIDI_PARTS][i] += outl[npart][i];
+            outr[NUM_MIDI_PARTS][i] += outr[npart][i];
         }
     }
 
@@ -496,11 +497,11 @@ void SynthEngine::MasterAudio(float *outl, float *outr)
     {
         if (Pinsparts[nefx] == -2)
         {
-            actionLock(lock);
-            insefx[nefx]->out(outl, outr);
-            actionLock(unlock);
+            insefx[nefx]->out(outl[NUM_MIDI_PARTS], outr[NUM_MIDI_PARTS]);
         }
     }
+
+    actionLock(unlock);
 
     LFOParams::time++; // update the LFO's time
 
@@ -512,41 +513,61 @@ void SynthEngine::MasterAudio(float *outl, float *outr)
     vupeakLock(unlock);
 
     float absval;
+    //Per output master volume and fade
+    for (npart = 0; npart < NUM_MIDI_PARTS; ++npart)
+    {
+        for (int idx = 0; idx < buffersize; ++idx)
+        {
+            outl[npart][idx] *= volume; // apply Master Volume
+            outr[npart][idx] *= volume;
+
+            if (shutup) // fade-out
+            {
+                float fade = (float) (buffersize - idx) / (float) buffersize;
+                outl[npart][idx] *= fade;
+                outr[npart][idx] *= fade;
+            }
+        }
+    }
+
+    //Master volume and clip calculation for mixed outputs
     for (int idx = 0; idx < buffersize; ++idx)
     {
-        outl[idx] *= volume; // apply Master Volume
-        outr[idx] *= volume;
+        outl[NUM_MIDI_PARTS][idx] *= volume; // apply Master Volume
+        outr[NUM_MIDI_PARTS][idx] *= volume;
 
-        if ((absval = fabsf(outl[idx])) > vuoutpeakl) // Peak computation (for vumeters)
+        if ((absval = fabsf(outl[NUM_MIDI_PARTS][idx])) > vuoutpeakl) // Peak computation (for vumeters)
             vuoutpeakl = absval;
-        if ((absval = fabsf(outr[idx])) > vuoutpeakr)
+        if ((absval = fabsf(outr[NUM_MIDI_PARTS][idx])) > vuoutpeakr)
             vuoutpeakr = absval;
-        vurmspeakl += outl[idx] * outl[idx];  // RMS Peak
-        vurmspeakr += outr[idx] * outr[idx];
+        vurmspeakl += outl[NUM_MIDI_PARTS][idx] * outl[NUM_MIDI_PARTS][idx]; // RMS Peak
+        vurmspeakr += outr[NUM_MIDI_PARTS][idx] * outr[NUM_MIDI_PARTS][idx];
 
         // check for clips
-        if (outl[idx] > 1.0f)
+        if (outl[NUM_MIDI_PARTS][idx] > 1.0f)
             clippedL = true;
-        else if (outl[idx] < -1.0f)
+        else if (outl[NUM_MIDI_PARTS][idx] < -1.0f)
             clippedL = true;
-        if (outr[idx] > 1.0f)
+        if (outr[NUM_MIDI_PARTS][idx] > 1.0f)
             clippedR = true;
-        else if (outr[idx] < -1.0f)
+        else if (outr[NUM_MIDI_PARTS][idx] < -1.0f)
             clippedR = true;
 
         if (shutup) // fade-out
         {
-            float fade = (float)(buffersize - idx) / (float)buffersize;
-            outl[idx] *= fade;
-            outr[idx] *= fade;
+            float fade = (float) (buffersize - idx) / (float) buffersize;
+            outl[NUM_MIDI_PARTS][idx] *= fade;
+            outr[NUM_MIDI_PARTS][idx] *= fade;
         }
     }
     if (shutup)
         ShutUp();
 
     vupeakLock(lock);
-    if (vumaxoutpeakl < vuoutpeakl)  vumaxoutpeakl = vuoutpeakl;
-    if (vumaxoutpeakr < vuoutpeakr)  vumaxoutpeakr = vuoutpeakr;
+    if (vumaxoutpeakl < vuoutpeakl)
+        vumaxoutpeakl = vuoutpeakl;
+    if (vumaxoutpeakr < vuoutpeakr)
+        vumaxoutpeakr = vuoutpeakr;
 
     vurmspeakl = sqrtf(vurmspeakl / buffersize);
     vurmspeakr = sqrtf(vurmspeakr / buffersize);
@@ -570,14 +591,14 @@ void SynthEngine::MasterAudio(float *outl, float *outr)
         else if (fakepeakpart[npart] > 1)
             fakepeakpart[npart]--;
     }
-    vuOutPeakL =    vuoutpeakl;
-    vuOutPeakR =    vuoutpeakr;
+    vuOutPeakL = vuoutpeakl;
+    vuOutPeakR = vuoutpeakr;
     vuMaxOutPeakL = vumaxoutpeakl;
     vuMaxOutPeakR = vumaxoutpeakr;
-    vuRmsPeakL =    vurmspeakl;
-    vuRmsPeakR =    vurmspeakr;
-    vuClippedL =    clippedL;
-    vuClippedR =    clippedR;
+    vuRmsPeakL = vurmspeakl;
+    vuRmsPeakR = vurmspeakr;
+    vuClippedL = clippedL;
+    vuClippedR = clippedR;
     vupeakLock(unlock);
 }
 

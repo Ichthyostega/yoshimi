@@ -20,7 +20,7 @@ project (Yoshimi)
 cmake_minimum_required (VERSION 2.6)
 cmake_policy (VERSION 2.6)
 cmake_policy (SET CMP0004 OLD)
-set (YOSHIMI_VERSION "1.0.0")
+set (YOSHIMI_VERSION "1.1.0")
 file (WRITE version.txt "${YOSHIMI_VERSION}")
 
 set (CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -155,6 +155,16 @@ else(FONTCONFIG_FOUND)
     message (FATAL_ERROR "fontconfig>=0.22 required but not found")
 endif(FONTCONFIG_FOUND)
 
+
+# libcairo
+pkg_check_modules (LIBCAIRO REQUIRED cairo)
+if (LIBCAIRO_FOUND)
+    message (STATUS "Found libcairo ${LIBCAIRO_VERSION}")
+else (LIBCAIRO_FOUND)
+    message (FATAL_ERROR "libcairo required but not found")
+endif (LIBCAIRO_FOUND)
+
+
 # fltk
 find_package (FLTK REQUIRED)
 if (FLTK_FOUND)
@@ -249,7 +259,7 @@ add_definitions (
 add_definitions (-DMAX_BANK_ROOT_DIRS=128)
 add_definitions (-DMAX_AD_HARMONICS=128)
 add_definitions (-DMAX_SUB_HARMONICS=64)
-add_definitions (-DPAD_MAX_SAMPLES=64)
+add_definitions (-DPAD_MAX_SAMPLES=96)
 add_definitions (-DNUM_MIDI_PARTS=16)
 add_definitions (-DNUM_MIDI_CHANNELS=16)
 add_definitions (-DMAX_ENVELOPE_POINTS=40)
@@ -332,6 +342,7 @@ include_directories (AFTER
     ${FONTCONFIG_INCLUDE_DIRS}
     ${FLTK_INCLUDE_DIR}
     ${FFTW3F_INC_DIR}
+    ${LIBCAIRO_INCLUDE_DIRS}
 )
 
 set(ExternLibraries
@@ -342,6 +353,7 @@ set(ExternLibraries
     ${JACK_LIBRARIES}
     ${LIBSNDFILE_LIBRARIES}
     ${FFTW3F_LIBRARIES}
+    ${LIBCAIRO_LIBRARIES}
     z
 )
 
