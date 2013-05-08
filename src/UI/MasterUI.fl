@@ -724,7 +724,7 @@ ZynAddSubFX}
         code0 {//
             o->copy_label(string("This is free software, and comes with ABSOLUTELY NO WARRANTY; "
                                  "you may redistribute it and/or modify it under the terms of "
-                                 "GPL version 3, or (at your option) any later version.\\n\\n").c_str());}
+                                 "GPL version 2, or (at your option) any later version.\\n\\n").c_str());}
       }
       Fl_Box {} {
         label { version}
@@ -770,7 +770,7 @@ ZynAddSubFX}
     }
     Fl_Window panelwindow {
       label {Yoshimi Panel}
-      xywh {402 107 630 635} type Double labelfont 13 labelsize 13 hide
+      xywh {402 107 635 635} type Double labelfont 13 labelsize 13 hide
     } {
       Fl_Scroll {} {
         xywh {0 5 570 310} type HORIZONTAL box THIN_UP_BOX
@@ -803,7 +803,7 @@ ZynAddSubFX}
       Fl_Button {} {
         label Close
         callback {panelwindow->hide(); updatepanel();}
-        xywh {575 605 50 25} box THIN_UP_BOX labelsize 13
+        xywh {575 604 55 25} box THIN_UP_BOX labelsize 13
       }
       Fl_Button {} {
         label Refresh
