@@ -22,6 +22,7 @@ Build-Depends:
  libsndfile1-dev,
  libx11-dev,
  libxinerama-dev,
+ libcairo2-dev,
  sharutils
 Standards-Version: 3.9.3
 Vcs-Git: git://git.debian.org/git/pkg-multimedia/yoshimi.git
