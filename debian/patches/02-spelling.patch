@@ -1,0 +1,90 @@
+Author: Jaromír Mikeš <mira.mikes@seznam.cz>
+Origin: Debian
+Description: Some spelling fixing patch.
+Forwarded: no
+
+Index: yoshimi/src/Params/PADnoteParameters.h
+===================================================================
+--- yoshimi.orig/src/Params/PADnoteParameters.h	2013-05-08 20:54:14.649557670 +0200
++++ yoshimi/src/Params/PADnoteParameters.h	2013-05-08 20:54:14.641557670 +0200
+@@ -54,7 +54,7 @@
+ 
+         //parameters
+ 
+-        //the mode: 0 - bandwidth, 1 - discrete (bandwidth=0), 2 - continous
++        //the mode: 0 - bandwidth, 1 - discrete (bandwidth=0), 2 - continuous
+         //the harmonic profile is used only on mode 0
+         unsigned char Pmode;
+ 
+Index: yoshimi/src/UI/ADnoteUI.fl
+===================================================================
+--- yoshimi.orig/src/UI/ADnoteUI.fl	2013-05-08 20:54:14.649557670 +0200
++++ yoshimi/src/UI/ADnoteUI.fl	2013-05-08 20:54:14.645557669 +0200
+@@ -537,7 +537,7 @@
+             Fl_Dial fixedfreqetdial {
+               label {Eq.T.}
+               callback {pars->VoicePar[nvoice].PfixedfreqET = lrintf(o->value());}
+-              tooltip {How the frequency varies acording to the keyboard (leftmost for fixed frequency)} xywh {405 255 15 15} box ROUND_UP_BOX labelsize 10 align 8 maximum 127 step 1
++              tooltip {How the frequency varies according to the keyboard (leftmost for fixed frequency)} xywh {405 255 15 15} box ROUND_UP_BOX labelsize 10 align 8 maximum 127 step 1
+               code0 {o->value(pars->VoicePar[nvoice].PfixedfreqET);}
+               code1 {if (pars->VoicePar[nvoice].Pfixedfreq==0) o->deactivate();}
+               class WidgetPDial
+Index: yoshimi/src/UI/LFOUI.fl
+===================================================================
+--- yoshimi.orig/src/UI/LFOUI.fl	2013-05-08 20:54:14.649557670 +0200
++++ yoshimi/src/UI/LFOUI.fl	2013-05-08 20:54:14.645557669 +0200
+@@ -140,7 +140,7 @@
+         Fl_Check_Button continous {
+           label {C.}
+           callback {pars->Pcontinous=(int)o->value();}
+-          tooltip {Continous LFO} xywh {165 35 15 15} down_box DOWN_BOX labelsize 10 align 2
++          tooltip {Continuous LFO} xywh {165 35 15 15} down_box DOWN_BOX labelsize 10 align 2
+         }
+         Fl_Dial freqrand {
+           label {F.R.}
+Index: yoshimi/src/UI/PADnoteUI.fl
+===================================================================
+--- yoshimi.orig/src/UI/PADnoteUI.fl	2013-05-08 20:54:14.649557670 +0200
++++ yoshimi/src/UI/PADnoteUI.fl	2013-05-08 20:54:14.645557669 +0200
+@@ -892,7 +892,7 @@
+             Fl_Dial fixedfreqetdial {
+               label {Eq.T.}
+               callback {pars->PfixedfreqET=(int) o->value();}
+-              tooltip {How the frequency varies acording to the keyboard (leftmost for fixed frequency)} xywh {420 295 15 15} box ROUND_UP_BOX labelsize 10 align 8 maximum 127 step 1
++              tooltip {How the frequency varies according to the keyboard (leftmost for fixed frequency)} xywh {420 295 15 15} box ROUND_UP_BOX labelsize 10 align 8 maximum 127 step 1
+               code0 {o->value(pars->PfixedfreqET);}
+               code1 {if (pars->Pfixedfreq==0) o->deactivate();}
+               class WidgetPDial
+Index: yoshimi/src/UI/SUBnoteUI.fl
+===================================================================
+--- yoshimi.orig/src/UI/SUBnoteUI.fl	2013-05-08 20:54:14.649557670 +0200
++++ yoshimi/src/UI/SUBnoteUI.fl	2013-05-08 20:54:14.645557669 +0200
+@@ -328,7 +328,7 @@
+         Fl_Dial fixedfreqetdial {
+           label {Eq.T.}
+           callback {pars->PfixedfreqET=(int) o->value();}
+-          tooltip {How the frequency varies acording to the keyboard (leftmost for fixed frequency)} xywh {610 45 15 15} box ROUND_UP_BOX labelsize 10 align 8 maximum 127 step 1
++          tooltip {How the frequency varies according to the keyboard (leftmost for fixed frequency)} xywh {610 45 15 15} box ROUND_UP_BOX labelsize 10 align 8 maximum 127 step 1
+           code0 {o->value(pars->PfixedfreqET);}
+           code1 {if (pars->Pfixedfreq==0) o->deactivate();}
+           class WidgetPDial
+Index: yoshimi/src/Params/LFOParams.cpp
+===================================================================
+--- yoshimi.orig/src/Params/LFOParams.cpp	2013-05-08 09:47:45.000000000 +0200
++++ yoshimi/src/Params/LFOParams.cpp	2013-05-08 20:55:55.677561778 +0200
+@@ -82,7 +82,7 @@
+     xml->addpar("randomness_frequency", Pfreqrand);
+     xml->addpar("delay", Pdelay);
+     xml->addpar("stretch", Pstretch);
+-    xml->addparbool("continous",    Pcontinous);
++    xml->addparbool("continuous",    Pcontinous);
+ }
+ 
+ 
+@@ -96,5 +96,5 @@
+     Pfreqrand = xml->getpar127("randomness_frequency", Pfreqrand);
+     Pdelay = xml->getpar127("delay", Pdelay);
+     Pstretch = xml->getpar127("stretch", Pstretch);
+-    Pcontinous = xml->getparbool("continous", Pcontinous);
++    Pcontinous = xml->getparbool("continuous", Pcontinous);
+ }
