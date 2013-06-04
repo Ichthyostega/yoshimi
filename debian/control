@@ -7,7 +7,7 @@ Uploaders:
  Jaromír Mikeš <mira.mikes@seznam.cz>
 Build-Depends:
  cmake,
- debhelper (>= 7.0.50~),
+ debhelper (>= 8),
  dpkg-dev (>= 1.14.17),
  fluid,
  libasound2-dev,
