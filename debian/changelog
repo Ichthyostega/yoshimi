@@ -8,6 +8,7 @@ yoshimi (1.1.0-1) unstable; urgency=low
   * Bump standards.
   * Added Keywords entry to desktop file.
   * Set dh/compat 8.
+  * .gitignore file tuned.
 
  -- Jaromír Mikeš <mira.mikes@seznam.cz>  Tue, 04 Jun 2013 23:47:33 +0200
 
