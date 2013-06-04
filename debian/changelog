@@ -1,8 +1,15 @@
-yoshimi (1.1.0-1) UNRELEASED; urgency=low
+yoshimi (1.1.0-1) unstable; urgency=low
 
   * New upstream release.
+  * Added libcairo2-dev as build dep.
+  * Added patch fixing some spelling issues.
+  * Installing new yoshimi icon.
+  * Fix VCS canonical URLs.
+  * Bump standards.
+  * Added Keywords entry to desktop file.
+  * Set dh/compat 8.
 
- -- Jaromír Mikeš <mira.mikes@seznam.cz>  Wed, 08 May 2013 20:03:20 +0200
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Tue, 04 Jun 2013 23:47:33 +0200
 
 yoshimi (1.0.0-1) unstable; urgency=low
 
