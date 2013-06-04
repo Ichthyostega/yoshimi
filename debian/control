@@ -25,8 +25,8 @@ Build-Depends:
  libcairo2-dev,
  sharutils
 Standards-Version: 3.9.3
-Vcs-Git: git://git.debian.org/git/pkg-multimedia/yoshimi.git
-Vcs-Browser: http://git.debian.org/?p=pkg-multimedia/yoshimi.git
+Vcs-Git: git://anonscm.debian.org/pkg-multimedia/yoshimi.git
+Vcs-Browser: http://anonscm.debian.org/gitweb/?p=pkg-multimedia/yoshimi.git
 Homepage: http://yoshimi.sourceforge.net
 
 Package: yoshimi
