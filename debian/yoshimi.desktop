@@ -3,6 +3,7 @@ Type=Application
 Name=Yoshimi
 GenericName=Software Synthesizer
 Comment=Software Synthesizer based on ZynAddSubFX
+Keywords=audio;sound;jackd,midi,synth;synthesizer
 Icon=yoshimi
 Exec=yoshimi
 Terminal=false
