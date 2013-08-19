@@ -2,7 +2,7 @@ Author: Alessio Treglia <alessio@debian.org>
 Origin: Debian
 Description: Drop GCC options which are not supported on all architectures.
 Bug: http://bugs.debian.org/584492
-Forwarded: no
+Forwarded: yes
 ---
  src/CMakeLists.txt |    4 ++++
  1 file changed, 4 insertions(+)

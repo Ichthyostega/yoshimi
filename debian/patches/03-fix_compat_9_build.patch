@@ -1,7 +1,7 @@
 Author: Jaromír Mikeš <mira.mikes@seznam.cz>
 Origin: Debian
 Description: Fix FTBS with compat 9. Thanks to Sebastian Ramacher <sramacher@debian.org>.
-Forwarded: no
+Forwarded: yes
 
 Index: yoshimi/src/UI/MasterUI.fl
 ===================================================================
