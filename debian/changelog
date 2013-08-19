@@ -1,3 +1,12 @@
+yoshimi (1.1.0-2) unstable; urgency=low
+
+  * Set dh/compat 9
+  * Small change in patch description.
+  * Added patch to fix FTBS with compat 9.
+    Thanks to Sebastian Ramacher <sramacher@debian.org>.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Mon, 19 Aug 2013 04:30:36 +0200
+
 yoshimi (1.1.0-1) unstable; urgency=low
 
   * New upstream release.
