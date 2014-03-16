@@ -106,7 +106,7 @@ void Envelope::relasekey(void)
 float Envelope::envout(void)
 {
     float out;
-    if (envfinish != 0)
+    if (envfinish)
     {   // if the envelope is finished
         envoutval = envval[envpoints - 1];
         return envoutval;
@@ -185,7 +185,7 @@ float Envelope::envout_dB(void)
         if (out > 0.001f)
             envoutval = rap2dB(out);
         else
-            envoutval = -40.0f;
+            envoutval = MIN_ENVELOPE_DB;
     } else
         out = dB2rap(envout());
 

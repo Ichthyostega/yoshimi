@@ -1,5 +1,5 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0110 
+version 1.0302 
 header_name {.h} 
 code_name {.cc}
 comment {MicrotonalUI.h} {not_in_source in_header
@@ -27,22 +27,24 @@ yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
 Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 This file is a derivative of the ZynAddSubFX original, modified October 2009
-} {selected in_source in_header
+} {in_source in_header
 } 
 
-decl {\#include <FL/Fl_File_Chooser.H>} {public
+decl {\#include <FL/Fl_File_Chooser.H>} {public local
 } 
 
-decl {\#include <FL/fl_ask.H>} {public
+decl {\#include <FL/fl_ask.H>} {public local
 } 
 
-decl {\#include "Misc/Microtonal.h"} {public
+decl {\#include "Misc/Microtonal.h"} {public local
 } 
 
-class MicrotonalUI {} {
-  Function {make_window()} {} {
+class MicrotonalUI {selected
+} {
+  Function {make_window()} {open
+  } {
     Fl_Window microtonaluiwindow {
-      label Scales
+      label Scales open
       xywh {99 164 405 450} type Double hide
     } {
       Fl_Group {} {
@@ -201,7 +203,7 @@ class MicrotonalUI {} {
           tooltip {Inport Scala .kbm file (keyboard mapping)} xywh {243 428 84 16} box THIN_UP_BOX labelfont 1 labelsize 10
         }
       }
-      Fl_Group {} {
+      Fl_Group {} {open
         xywh {108 2 140 45} box ENGRAVED_FRAME
       } {
         Fl_Counter anotecounter {
@@ -219,8 +221,9 @@ class MicrotonalUI {} {
         Fl_Value_Input afreqinput {
           label {"A" Freq.}
           callback {microtonal->PAfreq=o->value();}
-          tooltip {The freq. of "A" note (default=440.0)} xywh {118 17 45 20} labelfont 1 labelsize 10 align 1 minimum 1 maximum 20000 step 0.001 value 440 textfont 1 textsize 10
-          code0 {o->value(microtonal->PAfreq);}
+          tooltip {The freq. of "A" note (default=440.0)} xywh {118 17 45 20} labelfont 1 labelsize 10 align 1 minimum 1 maximum 20000 value 440 textfont 1 textsize 10
+          code0 {o->step(0.001, 1);}
+          code1 {o->value(microtonal->PAfreq);}
         }
       }
       Fl_Button {} {
@@ -295,5 +298,6 @@ class MicrotonalUI {} {
 
         //applybutton->color(FL_GRAY);} {}
   }
-  decl {Microtonal *microtonal;} {}
+  decl {Microtonal *microtonal;} {private local
+  }
 } 

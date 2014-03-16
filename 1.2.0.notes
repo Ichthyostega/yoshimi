@@ -1,0 +1,63 @@
+yoshimi-1.2.0
+
+Added circle and spike AddSynth Waveshapes.
+
+Added MIDI bank and program change. Bank change can be selected as MSB, LSB or disabled. Included CC for patches 120 to 160. Also CC selectable and can be disabled.
+
+Finally resolved trailing zeros in detune bug.
+Fixed microtonal saving bug.
+
+Corrected parameter loading regression (that mainly affected the Overdrive sound).
+
+Corrected regression that stopped the -K option autoconnecting
+
+Other small bug fixes.
+
+Added and updated voice patches.
+
+Special thanks to Kristian Amlie and Tito Latini
+
+yoshimi-1.1.0
+
+* Optimization patches provided by Kristian Amlie.
+* Added The Mysterious Bank by Florian Dupeyron aka My?terious.
+* Virtual keyboard AZERTY patch, thanks to David Adler.
+* Yoshimi has shiny new knobs! Thanks to Alessandro Preziosi aka licnep.
+* Multiple JACK outputs implementation by Andrew Deryabin.
+* Expand state file path before any check by Nikita Zlobin.
+* Some minor cosmetic changes (placement of Close buttons, resized the panel window).
+
+yoshimi-1.0.0
+
+* In memory of Alan Calvert who passed away exactly one year ago. Cal, we're pretty sure it's only angel horns you hear and no devil trombones!
+* Modified INSTALL file and added instructions on how to build Yoshimi outside the source tree. Thanks to Jimmy for the instructions.
+* Previously when microtonal loaded .xsz files, it did not convert the tunings back into their x.y format, which was displayed to the user, this patch corrects this mistake. Thanks to Mark McCurry for the patch.
+* Renamed Yoshimi icon.
+* Applied patch from SourceForge ticket #3487751 (Simplify desktop file and install it and the icon file). Thanks to Tim harder for this patch.
+* Yoshimi likes GCC >= 4.7 again.
+
+yoshimi-0.060.12
+
+* Fix for the keyshift/microtonal issue, patch provided by RPD (Rob). Thanks!
+
+yoshimi-0.060.11
+
+* Fix empty functions, fluid no longer produces (empty) implementations for totally empty functions in .fl files. More info: http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=633476 and http://www.fltk.org/str.php?L2259 Thanks to Frank Kober for pointing out this issue and thanks for the patch.
+* Dynamically switching to legato mode using a footswitch has been made possible by Kristian Amlie. Thanks for the patch!
+* Renamed Yoshimi icon file in the desktop directory and modified desktop file accordingly. Packagers, please use this icon file, it has been designed specifically for Yoshimi. If anything needs to be changed in order to have this icon included please let me know
+
+Jeremy Jongepier <jeremy@autostatic.com>
+
+yoshimi-0.060.10
+
+COPYING file updated
+
+yoshimi-0.060.9
+
+licence anomalies corrected.
+
+yoshimi-0.060.8
+
+Nothing too adventurous, just an incremental advance on 0.058.1 adding Paul's
+Unison and Reverb enhancements, jack session support, panning inversion
+corrections and assorted other tweaks and bug fixes. 
