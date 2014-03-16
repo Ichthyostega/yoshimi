@@ -267,9 +267,9 @@ bool JackEngine::connectJackPorts(void)
         return false;
 	}
     int ret;
-    for (int port = 0; (port < (2 * NUM_MIDI_PARTS)) && (NULL != audio.ports[port]); ++port)
+    for (int port = 0; port < 2 && (NULL != audio.ports[port]); ++port)
     {
-        const char *port_name = jack_port_name(audio.ports[port]);
+        const char *port_name = jack_port_name(audio.ports[port + NUM_MIDI_PARTS * 2]);
         if ((ret = jack_connect(jackClient, port_name, playback_ports[port])))
         {
             Runtime.Log("Cannot connect " + string(port_name)
@@ -434,7 +434,7 @@ void *JackEngine::midiThread(void)
     if (sem_init(&midiSem, 0, 0) < 0)
     {
         Runtime.Log("Error on jack midi sem_init " + string(strerror(errno)));
-        return false;
+        return NULL;
     }
 
     while (Runtime.runSynth)
@@ -507,6 +507,12 @@ void *JackEngine::midiThread(void)
                 ctrltype = getMidiController(midiEvent.data[1]);
                 par = midiEvent.data[2];
                 setMidiController(channel, ctrltype, par);
+                break;
+                
+            case 0xC0: // program change
+                ctrltype = C_programchange;
+                par = midiEvent.data[1];
+                setMidiProgram(channel, par);
                 break;
 
             case 0xE0: // pitch bend

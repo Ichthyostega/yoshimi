@@ -624,11 +624,11 @@ void ADnote::ADlegatonote(float freq_, float velocity_, int portamento_,
             if (adpars->VoicePar[nvoice].PextFMoscil != -1)
                 vc = adpars->VoicePar[nvoice].PextFMoscil;
 
-            float tmp = 1.0f;
+//            float tmp = 1.0f;
             if (adpars->VoicePar[vc].FMSmp->Padaptiveharmonics
                || NoteVoicePar[nvoice].FMEnabled == MORPH
                || NoteVoicePar[nvoice].FMEnabled == RING_MOD)
-                tmp = getFMVoiceBaseFreq(nvoice);
+//                tmp = getFMVoiceBaseFreq(nvoice);
 
             if (!adpars->GlobalPar.Hrandgrouping)
                 adpars->VoicePar[vc].FMSmp->newrandseed();
@@ -1447,7 +1447,7 @@ void ADnote::computeVoiceOscillatorFrequencyModulation(int nvoice, int FMmode)
 
         for (i = 0; i < synth->buffersize; ++i)
         {
-            // F2I(tw[i], FMmodfreqhi);
+            //F2I(tw[i], FMmodfreqhi);
             FMmodfreqhi = float2int(tw[i]);
             FMmodfreqlo = fmodf(tw[i] + 0.0000000001f, 1.0f);
             if (FMmodfreqhi < 0)

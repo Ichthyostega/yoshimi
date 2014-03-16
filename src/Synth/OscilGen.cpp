@@ -341,6 +341,61 @@ float OscilGen::basefunc_sqr(float x, float a)
     return -atanf(sinf(x * 2.0f * PI) * a);
 }
 
+
+float OscilGen::basefunc_spike(float x, float a)
+{
+    float b = a * 0.66666; // the width of the range: if a == 0.5, b == 0.33333
+
+    if(x < 0.5)
+    {
+        if(x < (0.5 - (b / 2.0)))
+            return 0.0;
+        else
+	{
+            x = (x + (b / 2) - 0.5) * (2.0 / b); // shift to zero, and expand to range from 0 to 1
+            return x * (2.0 / b); // this is the slope: 1 / (b / 2)
+        }
+    }
+    else
+    {
+        if(x > (0.5 + (b / 2.0)))
+            return 0.0;
+        else
+	{
+            x = (x - 0.5) * (2.0 / b);
+            return (1 - x) * (2.0 / b);
+        }
+    }
+}
+
+
+float OscilGen::basefunc_circle(float x, float a)
+{
+    // a is parameter: 0 -> 0.5 -> 1 // O.5 = circle
+    float b, y;
+
+    b = 2 - (a * 2); // b goes from 2 to 0
+    x = x * 4;
+
+    if(x < 2)
+    {
+        x = x - 1; // x goes from -1 to 1
+        if((x < -b) || (x > b))
+            y = 0;
+        else
+            y = sqrt(1 - (pow(x, 2) / pow(b, 2)));  // normally * a^2, but a stays 1
+    }
+    else
+    {
+        x = x - 3; // x goes from -1 to 1 as well
+        if((x < -b) || (x > b))
+            y = 0;
+        else
+            y = -sqrt(1 - (pow(x, 2) / pow(b, 2)));
+    }
+    return y;
+}
+
 // Base Functions - END
 
 
@@ -447,6 +502,12 @@ void OscilGen::getbasefunction(float *smps)
                 case 13:
                     smps[i] = basefunc_sqr(t, par);
                     break;
+                case 14:
+                    smps[i] = basefunc_spike(t, par);
+                    break;
+                case 15:
+                    smps[i] = basefunc_circle(t, par);
+                    break;
                 default:
                     smps[i] = -sinf(2.0f * PI * (float)i / synth->oscilsize_f);
         }
@@ -543,7 +604,7 @@ void OscilGen::oscilfilter(void)
                 gain *= gain;
                 break;
             case 12:
-                p2 = 1.0 - par + 0.2f;
+                p2 = 1.0f - par + 0.2f;
                 x = i / (64.0f * p2 * p2);
                 x = (x > 1.0f) ? 1.0f : x;
                 tmp = powf(1.0f - par2, 2.0f);
@@ -566,7 +627,7 @@ void OscilGen::oscilfilter(void)
 
     max = sqrtf(max);
     if (max < 1e-10f)
-        max = 1.0;
+        max = 1.0f;
     float imax = 1.0f / max;
     for (int i = 1; i < synth->halfoscilsize; ++i)
     {
@@ -664,7 +725,7 @@ void OscilGen::modulation(void)
             break;
         case 2:
             modulationpar1 = (powf(2.0f, modulationpar1 * 7.0f) - 1.0f) / 100.0f;
-            modulationpar3 = 1.0f + floorf((powf(2, modulationpar3 * 5.0f) - 1.0f));
+            modulationpar3 = 1.0f + floorf((powf(2.0f, modulationpar3 * 5.0f) - 1.0f));
             break;
         case 3:
             modulationpar1 = (powf(2.0f, modulationpar1 * 9.0f) - 1.0f) / 100.0f;
@@ -830,9 +891,9 @@ void OscilGen::shiftharmonics(void)
                 hc = oscilFFTfreqs.c[oldh + 1];
                 hs = oscilFFTfreqs.s[oldh + 1];
                 if (fabsf(hc) < 0.000001f)
-                    hc = 0.0;
+                    hc = 0.0f;
                 if (fabsf(hs) < 0.000001f)
-                    hs = 0.0;
+                    hs = 0.0f;
             }
 
             oscilFFTfreqs.c[i + 1] = hc;
@@ -840,7 +901,7 @@ void OscilGen::shiftharmonics(void)
         }
     }
 
-    oscilFFTfreqs.c[0]=0.0;
+    oscilFFTfreqs.c[0]=0.0f;
 }
 
 
@@ -1007,7 +1068,7 @@ void OscilGen::adaptiveharmonic(FFTFREQS f, float freq)
                 hs = inf.s[high] * (1.0f - low) + inf.s[high + 1] * low;
             }
             if (fabsf(hc) < 0.000001f)
-                hc = 0.0;
+                hc = 0.0f;
             if (fabsf(hs) < 0.000001f)
                 hs = 0.0f;
         }
@@ -1200,7 +1261,7 @@ int OscilGen::get(float *smps, float freqHz, int resonance)
                 break;
             case 2:
                 power = power * 2.0f - 0.5f;
-                power = powf(15.0f, power) * 2.0;
+                power = powf(15.0f, power) * 2.0f;
                 float rndfreq = 2 * PI * harmonicRandom();
                 for (int i = 1 ; i < nyquist - 1; ++i)
                 {
