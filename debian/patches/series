@@ -1,4 +1,3 @@
 01-gcc_flags.patch
-#02-spelling.patch
 03-fix_compat_9_build.patch
 04-fix_FTBFS.patch
