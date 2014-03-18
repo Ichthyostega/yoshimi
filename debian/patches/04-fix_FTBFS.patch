@@ -1,0 +1,17 @@
+Author: Jaromír Mikeš <mira.mikes@seznam.cz>
+Origin: Debian
+Description: Fix FTBFS. Thanks to upstream.
+Forwarded: no
+
+Index: yoshimi/src/CMakeLists.txt
+===================================================================
+--- yoshimi.orig/src/CMakeLists.txt	2014-03-18 22:03:05.360151251 +0100
++++ yoshimi/src/CMakeLists.txt	2014-03-18 22:06:37.213928081 +0100
+@@ -359,6 +359,7 @@
+     ${LIBSNDFILE_LIBRARIES}
+     ${FFTW3F_LIBRARIES}
+     ${LIBCAIRO_LIBRARIES}
++    z
+ )
+ 
+ set (CMAKE_EXE_LINKER_FLAGS "-ldl")
