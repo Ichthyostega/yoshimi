@@ -7,11 +7,13 @@ Forwarded: yes
  src/CMakeLists.txt |    4 ++++
  1 file changed, 4 insertions(+)
 
---- yoshimi.orig/src/CMakeLists.txt
-+++ yoshimi/src/CMakeLists.txt
-@@ -81,6 +81,9 @@ set (BuildOptionsBasic
+Index: yoshimi/src/CMakeLists.txt
+===================================================================
+--- yoshimi.orig/src/CMakeLists.txt	2014-03-17 00:55:47.478391726 +0100
++++ yoshimi/src/CMakeLists.txt	2014-03-17 00:55:47.474391845 +0100
+@@ -81,6 +81,9 @@
  set (BuildOptionsDebug
-     "-O0 -g3 -ggdb -Wall -Wpointer-arith" CACHE STRING "Debug build flags")
+     "-O0 -g3 -ggdb -Wall -Wpointer-arith -ldl" CACHE STRING "Debug build flags")
  
 +set (BuildOptionsDebian
 +    "-O3 -ffast-math -fomit-frame-pointer" CACHE STRING "Debian build flags")
@@ -19,7 +21,7 @@ Forwarded: yes
  find_package (PkgConfig REQUIRED)
  if (PKG_CONFIG_FOUND)
      message(STATUS "Found pkg-config ${PKG_CONFIG_EXECUTABLE}")
-@@ -194,6 +197,7 @@ else (BuildForDebug)
+@@ -205,6 +208,7 @@
              set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptionsBasic})
          endif (BuildForCore2_X86_64)
      endif (BuildForAMD_X86_64)
