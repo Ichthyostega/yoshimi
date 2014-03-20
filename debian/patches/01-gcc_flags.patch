@@ -9,14 +9,14 @@ Forwarded: yes
 
 Index: yoshimi/src/CMakeLists.txt
 ===================================================================
---- yoshimi.orig/src/CMakeLists.txt	2014-03-17 00:55:47.478391726 +0100
-+++ yoshimi/src/CMakeLists.txt	2014-03-17 00:55:47.474391845 +0100
+--- yoshimi.orig/src/CMakeLists.txt	2014-03-20 12:26:13.702271262 +0100
++++ yoshimi/src/CMakeLists.txt	2014-03-20 12:27:18.278644212 +0100
 @@ -81,6 +81,9 @@
  set (BuildOptionsDebug
      "-O0 -g3 -ggdb -Wall -Wpointer-arith -ldl" CACHE STRING "Debug build flags")
  
 +set (BuildOptionsDebian
-+    "-O3 -ffast-math -fomit-frame-pointer" CACHE STRING "Debian build flags")
++    "-O3 -ffast-math -fomit-frame-pointer -ldl" CACHE STRING "Debian build flags")
 +
  find_package (PkgConfig REQUIRED)
  if (PKG_CONFIG_FOUND)
