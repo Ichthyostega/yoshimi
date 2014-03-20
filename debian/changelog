@@ -1,8 +1,13 @@
-yoshimi (1.2.0-1) UNRELEASED; urgency=low
+yoshimi (1.2.0-1) unstable; urgency=low
 
-  * Start new upload.
+  * Imported Upstream version 1.2.0
+  * Bump Standards.
+  * Patch refreshed.
+  * Added patch to fix FTBFS.
+  * Spelling patch removed - not applying anymore.
+  * Added patch to fix hardening.
 
- -- Jaromír Mikeš <mira.mikes@seznam.cz>  Mon, 17 Mar 2014 00:54:03 +0100
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Thu, 20 Mar 2014 18:39:52 +0100
 
 yoshimi (1.1.0-2) unstable; urgency=low
 
