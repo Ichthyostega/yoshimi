@@ -1,4 +1,1 @@
 01-gcc_flags.patch
-03-fix_compat_9_build.patch
-04-fix_FTBFS.patch
-05-fix_hardening.patch
