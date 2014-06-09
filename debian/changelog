@@ -3,7 +3,7 @@ yoshimi (1.2.1-1) unstable; urgency=low
   * Imported Upstream version 1.2.1
   * Removed/Refreshed patches - applied upstream.
 
- -- Jaromír Mikeš <mira.mikes@seznam.cz> Tue, 10 Jun 2014 01:16:11 +0200
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Tue, 10 Jun 2014 01:16:11 +0200
 
 yoshimi (1.2.0-1) unstable; urgency=low
 
