@@ -51,7 +51,7 @@ class Config : public MiscFuncs
         void StartupReport(void);
         void Announce(void);
         void Usage(void);
-        void Log(string msg, bool tostderr = false);
+        void Log(string msg, bool tostderr = true);
         void flushLog(void);
         void clearBankrootDirlist(void);
         void clearPresetsDirlist(void);
@@ -112,6 +112,7 @@ class Config : public MiscFuncs
         string        nameTag;
 
         int           BankUIAutoClose;
+        unsigned int  GzipCompression;
         int           Interpolation;
         string        bankRootDirlist[MAX_BANK_ROOT_DIRS];
         string        currentBankDir;
@@ -121,6 +122,7 @@ class Config : public MiscFuncs
         unsigned int  midi_bank_C;
         unsigned int  midi_upper_voice_C;
         int           enable_part_on_voice_load;
+        char          AudioSend[NUM_MIDI_PARTS];
 
         deque<HistoryListItem> ParamsHistory;
         deque<HistoryListItem>::iterator itx;
