@@ -121,7 +121,7 @@ bool XMLwrapper::checkfileinformation(const string& filename)
         node = root = tree = NULL;
         return false;
     }
-    information.PADsynth_used = getpar("PADsynth_used", 0, 0, 1);
+    information.PADsynth_used = getparbool("PADsynth_used",0);
     exitbranch();
     if (tree)
         mxmlDelete(tree);
@@ -141,14 +141,35 @@ bool XMLwrapper::saveXMLfile(const string& filename)
         Runtime.Log("Error, failed to allocate xml data space");
         return false;
     }
-    FILE *xmlfile = fopen(filename.c_str(), "w");
-    if (!xmlfile)
+    unsigned int compression = Runtime.GzipCompression;
+    if (compression == 0)
     {
-        Runtime.Log("Error, failed to open xml file " + filename + " for save");
-        return false;
+        FILE *xmlfile = fopen(filename.c_str(), "w");
+        if (!xmlfile)
+        {
+            Runtime.Log("Error, failed to open xml file " + filename + " for save");
+            return false;
+        }
+        fputs(xmldata, xmlfile);
+        fclose(xmlfile);
     }
-    fputs(xmldata, xmlfile);
-    fclose(xmlfile);
+    else
+    {
+        if (compression > 9)
+            compression = 9;
+        char options[10];
+        snprintf(options, 10, "wb%d", compression);
+
+        gzFile gzfile;
+        gzfile = gzopen(filename.c_str(), options);
+        if (gzfile == NULL)
+        {
+            Runtime.Log("Error, gzopen() == NULL");
+            return false;
+        }
+        gzputs(gzfile, xmldata);
+        gzclose(gzfile);
+    }
     free(xmldata);
     return true;
 }
@@ -160,7 +181,7 @@ char *XMLwrapper::getXMLdata()
     memset(tabs, 0, STACKSIZE + 2);
     mxml_node_t *oldnode=node;
     node = info;
-    addpar("PADsynth_used", information.PADsynth_used);
+    addparbool("PADsynth_used", information.PADsynth_used);
     node = oldnode;
     char *xmldata = mxmlSaveAllocString(tree, XMLwrapper_whitespace_callback);
     return xmldata;
@@ -386,7 +407,8 @@ int XMLwrapper::getparbool(const string& name, int defaultpar)
     const char *strval = mxmlElementGetAttr(node, "value");
     if (!strval)
         return defaultpar;
-    return (strval[0] == 'Y' || strval[0] == 'y') ? 1 : 0;
+    char tmp = strval[0] | 0x20;
+    return (tmp != '0' && tmp != 'n' && tmp != 'f') ? 1 : 0;
 }
 
 
