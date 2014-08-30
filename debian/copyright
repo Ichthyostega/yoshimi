@@ -2,6 +2,7 @@ Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: Yoshimi
 Upstream-Contact: yoshimi-user@lists.sourceforge.net
 Source: http://sourceforge.net/projects/yoshimi/files/
+Files-Excluded: .git/*
 
 Files: *
 License: GPL-2+
