@@ -5,6 +5,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2009 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
+    Copyright 2014, Will Godfrey    
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -20,11 +21,12 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is derivative of ZynAddSubFX original code, modified April 2011
+    This file is derivative of ZynAddSubFX original code, modified August 2014
 */
 
 #include <cmath>
 #include <fftw3.h>
+#include <cassert>
 
 #include "Params/SUBnoteParameters.h"
 #include "Params/Controller.h"
@@ -70,8 +72,8 @@ SUBnote::SUBnote(SUBnoteParameters *parameters, Controller *ctl_, float freq,
     if (pars->randomPan())
     {
         float t = synth->numRandom();
-        randpanL = cosf(t * PI / 2.0f);
-        randpanR = cosf((1.0f - t) * PI / 2.0f);
+        randpanL = cosf(t * HALFPI);
+        randpanR = cosf((1.0f - t) * HALFPI);
     }
     numstages = pars->Pnumstages;
     stereo = pars->Pstereo;
@@ -134,7 +136,9 @@ SUBnote::SUBnote(SUBnoteParameters *parameters, Controller *ctl_, float freq,
 
     for (int n = 0; n < numharmonics; ++n)
     {
-        float freq = basefreq * (pos[n] + 1);
+        float freq =  basefreq * pars->POvertoneFreqMult[pos[n]];
+        overtone_freq[n] = freq;
+        overtone_rolloff[n] = computerolloff(freq);
 
         // the bandwidth is not absolute(Hz); it is relative to frequency
         float bw = powf(10.0f, (pars->Pbandwidth - 127.0f) / 127.0f * 4.0f) * numstages;
@@ -243,8 +247,8 @@ void SUBnote::SUBlegatonote(float freq, float velocity,
     if (pars->randomPan())
     {
         float t = synth->numRandom();
-        randpanL = cosf(t * PI / 2.0f);
-        randpanR = cosf((1.0f - t) * PI / 2.0f);
+        randpanL = cosf(t * HALFPI);
+        randpanR = cosf((1.0f - t) * HALFPI);
     }
 
     int pos[MAX_SUB_HARMONICS];
@@ -414,7 +418,7 @@ void SUBnote::computefiltercoefs(bpfilter &filter, float freq, float bw, float g
         freq = synth->halfsamplerate_f - 200.0f;
     }
 
-    float omega = 2.0f * PI * freq / synth->samplerate_f;
+    float omega = TWOPI * freq / synth->samplerate_f;
     float sn = sinf(omega);
     float cs = cosf(omega);
     float alpha = sn * sinhf(LOG_2 / 2.0f * bw * omega / sn);
@@ -444,11 +448,11 @@ void SUBnote::initfilter(bpfilter &filter, float freq, float bw, float amp, floa
     else
     {
         float a = 0.1f * mag; // empirically
-        float p = synth->numRandom() * 2.0f * PI;
+        float p = synth->numRandom() * TWOPI;
         if (start == 1)
             a *= synth->numRandom();
         filter.yn1 = a * cosf(p);
-        filter.yn2 = a * cosf(p + freq * 2.0f * PI / synth->samplerate_f);
+        filter.yn2 = a * cosf(p + freq * TWOPI / synth->samplerate_f);
 
         // correct the error of computation the start amplitude
         // at very high frequencies
@@ -466,20 +470,46 @@ void SUBnote::initfilter(bpfilter &filter, float freq, float bw, float amp, floa
 }
 
 // Do the filtering
+
+inline void SubFilterA(const float coeff[4], float &src, float work[4])
+{
+    work[3] = src*coeff[0]+work[1]*coeff[1]+work[2]*coeff[2]+work[3]*coeff[3];
+    work[1] = src;
+    src     = work[3];
+}
+
+inline void SubFilterB(const float coeff[4], float &src, float work[4])
+{
+    work[2] = src*coeff[0]+work[0]*coeff[1]+work[3]*coeff[2]+work[2]*coeff[3];
+    work[0] = src;
+    src     = work[2];
+}
+
+// ported from zynaddsubfx V 2.4.4
+//This dance is designed to minimize unneeded memory operations which can result
+//in quite a bit of wasted time
 void SUBnote::filter(bpfilter &filter, float *smps)
 {
-    float out;
-    for (int i = 0; i < synth->buffersize; ++i)
-    {
-        out = smps[i] * filter.b0 + filter.b2 * filter.xn2
-              - filter.a1 * filter.yn1 - filter.a2 * filter.yn2;
-        filter.xn2 = filter.xn1;
-        filter.xn1 = smps[i];
-        filter.yn2 = filter.yn1;
-        filter.yn1 = out;
-        smps[i] = out;
+    assert(synth->buffersize % 8 == 0);
+    float coeff[4] = {filter.b0, filter.b2,  -filter.a1, -filter.a2};
+    float work[4]  = {filter.xn1, filter.xn2, filter.yn1, filter.yn2};
+
+    for(int i = 0; i < synth->buffersize; i += 8) {
+        SubFilterA(coeff, smps[i + 0], work);
+        SubFilterB(coeff, smps[i + 1], work);
+        SubFilterA(coeff, smps[i + 2], work);
+        SubFilterB(coeff, smps[i + 3], work);
+        SubFilterA(coeff, smps[i + 4], work);
+        SubFilterB(coeff, smps[i + 5], work);
+        SubFilterA(coeff, smps[i + 6], work);
+        SubFilterB(coeff, smps[i + 7], work);
     }
+    filter.xn1 = work[0];
+    filter.xn2 = work[1];
+    filter.yn1 = work[2];
+    filter.yn2 = work[3];
 }
+
 
 // Init Parameters
 void SUBnote::initparameters(float freq)
@@ -503,6 +533,25 @@ void SUBnote::initparameters(float freq)
         GlobalFilterFreqTracking = pars->GlobalFilter->getfreqtracking(basefreq);
     }
     computecurrentparameters();
+}
+//end of port
+
+// Compute how much to reduce amplitude near nyquist or subaudible frequencies.
+float SUBnote::computerolloff(float freq)
+{
+    const float lower_limit = 10.0f;
+    const float lower_width = 10.0f;
+    const float upper_width = 200.0f;
+    float upper_limit = synth->samplerate / 2.0f;
+
+    if (freq > lower_limit + lower_width &&
+            freq < upper_limit - upper_width)
+        return 1.0f;
+    if (freq <= lower_limit || freq >= upper_limit)
+        return 0.0f;
+    if (freq <= lower_limit + lower_width)
+        return (1.0f - cosf(M_PI * (freq - lower_limit) / lower_width)) / 2.0f;
+    return (1.0f - cosf(M_PI * (freq - upper_limit) / upper_width)) / 2.0f;
 }
 
 // Compute Parameters of SUBnote for each tick
@@ -600,11 +649,12 @@ int SUBnote::noteout(float *outl, float *outr)
         tmprnd[i] = synth->numRandom() * 2.0f - 1.0f;
     for (int n = 0; n < numharmonics; ++n)
     {
+        float rolloff = overtone_rolloff[n];
         memcpy(tmpsmp, tmprnd, synth->bufferbytes);
         for (int nph = 0; nph < numstages; ++nph)
             filter(lfilter[nph + n * numstages], tmpsmp);
         for (int i = 0; i < synth->buffersize; ++i)
-            outl[i] += tmpsmp[i];
+            outl[i] += tmpsmp[i] * rolloff;
     }
 
     if (GlobalFilterL != NULL)
@@ -617,11 +667,12 @@ int SUBnote::noteout(float *outl, float *outr)
             tmprnd[i] = synth->numRandom() * 2.0f - 1.0f;
         for (int n = 0; n < numharmonics; ++n)
         {
+            float rolloff = overtone_rolloff[n];
             memcpy(tmpsmp, tmprnd, synth->bufferbytes);
             for (int nph = 0; nph < numstages; ++nph)
                 filter(rfilter[nph + n * numstages], tmpsmp);
             for (int i = 0; i < synth->buffersize; ++i)
-                outr[i] += tmpsmp[i];
+                outr[i] += tmpsmp[i] * rolloff;
         }
         if (GlobalFilterR != NULL)
             GlobalFilterR->filterout(outr);

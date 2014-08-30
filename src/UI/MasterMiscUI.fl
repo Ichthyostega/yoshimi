@@ -1,5 +1,5 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0300 
+version 1.0302 
 header_name {.h} 
 code_name {.cc}
 comment {MasterUI.h} {not_in_source in_header
@@ -11,6 +11,7 @@ comment {MasterUI.cc} {in_source not_in_header
 comment {Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009-2011, Alan Calvert
+Copyright 2014, Will Godfrey    
 
 This file is part of yoshimi, which is free software: you can redistribute
 it and/or modify it under the terms of the GNU Library General Public
@@ -26,7 +27,7 @@ You should have received a copy of the GNU General Public License along with
 yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
 Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-This file is a derivative of the ZynAddSubFX original, modified March 2011
+This file is a derivative of the ZynAddSubFX original, modified August 2014
 } {in_source in_header
 } 
 
@@ -75,7 +76,7 @@ decl {\#include "Misc/SynthEngine.h"} {public local
 decl {\#include "Misc/MiscFuncs.h"} {public local
 } 
 
-class VUMeter {: {public Fl_Box, private MiscFuncs}
+class VUMeter {open : {public Fl_Box, private MiscFuncs}
 } {
   Function {VUMeter(int x,int y, int w, int h, const char *label=0):Fl_Box(x,y,w,h,label)} {open
   } {
@@ -91,7 +92,8 @@ class VUMeter {: {public Fl_Box, private MiscFuncs}
         oldrmsdbl = 0.0;
         oldrmsdbr = 0.0;} {}
   }
-  Function {draw_master()} {} {
+  Function {draw_master()} {open
+  } {
     code {\#define MIN_DB (-48)
         int ox = x();
         int oy = y();
@@ -99,8 +101,8 @@ class VUMeter {: {public Fl_Box, private MiscFuncs}
         int ly = h();
         float dbl = synth->vuOutPeakL;
         float dbr = synth->vuOutPeakR;
-        float rmsdbl = synth->vuRmsPeakL;
-        float rmsdbr = synth->vuRmsPeakR;
+        float rmsdbl = sqrt(synth->vuRmsPeakL);
+        float rmsdbr = sqrt(synth->vuRmsPeakR);
         float maxdbl = synth->vuMaxOutPeakL;
         float maxdbr = synth->vuMaxOutPeakR;
 //        bool clipped = synth->vuClipped;
@@ -182,12 +184,12 @@ class VUMeter {: {public Fl_Box, private MiscFuncs}
             fl_rectf(ox + irmsdbr - 1, oy + ly / 2, 3, VULENY, 255, 255, 0);
 
         // see red if clipped
-        if (synth->vuClippedL)
+        if (synth->vuClipped & 1)
             fl_rectf(ox + VULENX + 2, oy, lx - VULENX - 3, ly / 2 - 3, 250, 10, 10);
         else
             fl_rectf(ox + VULENX + 2, oy, lx - VULENX - 3, ly / 2 - 3, 0, 0, 10);
 
-        if (synth->vuClippedR)
+        if (synth->vuClipped & 2)
             fl_rectf(ox + VULENX + 2, oy + ly / 2, lx - VULENX - 3, (ly - 2) / 2 - 2, 250, 10, 10);
         else
             fl_rectf(ox + VULENX + 2, oy + ly / 2, lx - VULENX - 3, (ly - 2) / 2 - 2, 0, 0, 10);
@@ -212,7 +214,8 @@ class VUMeter {: {public Fl_Box, private MiscFuncs}
             snprintf(tmpstr, 7, "%+3.f%s", maxdbr + 0.5f, dbtag);
             fl_draw(tmpstr, ox + VULENX + 1, oy + ly / 2 + 1,
                     lx - VULENX - 4, VULENY, FL_ALIGN_RIGHT, NULL, 0);
-        }} {}
+        }} {selected
+    }
   }
   Function {draw_part()} {open
   } {
@@ -221,28 +224,22 @@ class VUMeter {: {public Fl_Box, private MiscFuncs}
         int oy = y()+2;
         int lx = w()-4;
         int ly = h()-4;
-        if (!active_r())
+        if (synth->vuoutpeakpart[npart] < 0)
         {
             fl_rectf(ox, oy, lx, ly, 140, 140, 140);
-            if (synth->fakepeakpart[npart] > 0)
-            {
-                int fakedb = synth->fakepeakpart[npart] / 255.0 * ly + 4;
-                fl_rectf(ox + 2, oy + ly - fakedb, lx - 4, fakedb, 0, 0, 0);
-            }
+            int fakedb = synth->vuoutpeakpart[npart] / 127.0 * ly - 2;
+            fl_rectf(ox + 2, oy + ly + fakedb, lx - 4, -fakedb, 0, 0, 0);
             return;
         }
         // draw the vu lines
-        float db = synth->vuoutpeakpart[npart];
-        db = rap2dB(db);
+        float db = rap2dB(synth->vuoutpeakpart[npart]);
 
         db = (MIN_DB - db) / MIN_DB;
         db = (db > 1.0) ? 1.0 : db;
-        db *= ly - 2;
-        int idb = (int) db;
+        int idb = db * ly - 2;
 
         fl_rectf(ox, oy, lx, ly, 0, 0, 0);
         fl_rectf(ox, oy + ly - idb, lx, idb, 0, 200, 255);
-//        fl_rectf(ox, oy, lx, ly - idb, 0, 0, 0);
 
         // draw the scales
         float tmp = ly * 1.0 / MIN_DB;
@@ -260,14 +257,14 @@ class VUMeter {: {public Fl_Box, private MiscFuncs}
     code {if (npart>=0) draw_part();
    else draw_master();} {}
   }
-  Function {tickdraw(VUMeter *o)} {return_type {static void}
+  Function {tickdraw(VUMeter *o)} {open return_type {static void}
   } {
     code {o->redraw();} {}
   }
-  Function {tick(void *v)} {return_type {static void}
+  Function {tick(void *v)} {open return_type {static void}
   } {
     code {tickdraw((VUMeter *) v);
-        Fl::add_timeout(0.033333333, tick, v); // 1.0 / 30.0 => 30 fps} {}
+        Fl::add_timeout(0.05, tick, v); // 1.0 / 30.0 => 30 fps} {}
   }
   Function {handle(int event)} {return_type int
   } {
@@ -331,7 +328,7 @@ class SysEffSend {: {public WidgetPDial, private MiscFuncs}
   }
 } 
 
-class Panellistitem {open : {public Fl_Group, private MiscFuncs}
+class Panellistitem {: {public Fl_Group, private MiscFuncs}
 } {
   Function {make_window()} {open private
   } {
@@ -342,6 +339,7 @@ class Panellistitem {open : {public Fl_Group, private MiscFuncs}
       Fl_Group panellistitemgroup {open
         private xywh {0 20 71 258} box PLASTIC_THIN_UP_BOX
         code0 {if (synth->part[npart]->Penabled==0) o->deactivate();}
+        code1 {if (Runtime.audioEngine != jack_audio) audiosend->deactivate();}
       } {
         Fl_Group {} {
           xywh {45 65 15 110} box ENGRAVED_FRAME
@@ -364,7 +362,7 @@ class Panellistitem {open : {public Fl_Group, private MiscFuncs}
           xywh {5 27 60 30} box THIN_DOWN_BOX down_box FLAT_BOX labelfont 1 labelsize 10 align 208
         }
         Fl_Slider partvolume {
-          callback {synth->part[npart]->setVolume(o->value());} selected
+          callback {synth->part[npart]->setVolume(o->value());}
           xywh {10 65 30 110} type {Vert Knob} box THIN_DOWN_BOX minimum 127 maximum 0 step 1 value 127
           code0 {o->value(synth->part[npart]->Pvolume);}
         }
@@ -396,9 +394,9 @@ class Panellistitem {open : {public Fl_Group, private MiscFuncs}
           code1 {o->value(synth->part[npart]->Prcvchn);}
         } {}
         Fl_Choice audiosend {
-          callback {Runtime.AudioSend[npart] = o->value() + 1;} open
-          tooltip {Audio Send} xywh {8 229 50 15} box BORDER_BOX down_box BORDER_BOX labelsize 10 textsize 12
-          code0 {if (Runtime.AudioSend[npart] == 1) o->value(0); else if (Runtime.AudioSend[npart] == 2) o->value(1); else o->value(2);}
+          callback {synth->part[npart]->Paudiodest = o->value() + 1;}
+          tooltip {Set Audio Destination} xywh {8 229 50 15} box BORDER_BOX down_box BORDER_BOX labelsize 10 textsize 12
+          code0 {if (synth->part[npart]->Paudiodest == 2) o->value(1); else if (synth->part[npart]->Paudiodest == 3) o->value(2); else o->value(0);}
         } {
           MenuItem main {
             label Main
@@ -462,6 +460,10 @@ class Panellistitem {open : {public Fl_Group, private MiscFuncs}
         partpanning->value(synth->part[npart]->Ppanning);
         partrcv->value(synth->part[npart]->Prcvchn);
         partname->label(synth->part[npart]->Pname.c_str());
+        int tmp = synth->part[npart]->Paudiodest - 1;
+        if (tmp < 0 or tmp > 3)
+            tmp = 0;
+        audiosend->value(tmp);
         if ((int)bankui->cbwig->value() != (npart + 1))
             panellistitemgroup->color(fl_rgb_color(160, 160, 160));
         else

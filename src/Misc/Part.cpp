@@ -5,6 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009, James Morris
     Copyright 2009-2011, Alan Calvert
+    Copyright 2014, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -20,7 +21,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is derivative of ZynAddSubFX original code, modified April 2011
+    This file is derivative of ZynAddSubFX original code, modified July 2014
 */
 
 #include <cstring>
@@ -127,6 +128,8 @@ void Part::defaults(void)
     Pvelsns = 64;
     Pveloffs = 64;
     Pkeylimit = 15;
+    Pfrand = 0;
+    setDestination(1);
     defaultsinstrument();
     ctl->defaults();
 }
@@ -356,6 +359,11 @@ void Part::NoteOn(int note, int velocity, int masterkeyshift)
         }
         else
             notebasefreq = microtonal->getNoteFreq(note);
+
+        if (Pfrand > 0.005)  // effective range 0.01 to 0.1
+        {
+          notebasefreq *= (1 + ((synth->numRandom() - 0.5f) * Pfrand));
+        }
 
         // Portamento
         if (oldfreq < 1.0f)
@@ -832,8 +840,8 @@ void Part::setkeylimit(unsigned char Pkeylimit_)
 {
     Pkeylimit = Pkeylimit_;
     int keylimit = Pkeylimit;
-    if (!keylimit)
-        keylimit = POLIPHONY - 5;
+/*    if (!keylimit) // not needed now
+        keylimit = POLIPHONY - 5;*/
 
     // release old keys if the number of notes>keylimit
     if (Ppolymode && !ctl->legato.legato)
@@ -1024,20 +1032,25 @@ void Part::setVolume(char value)
     volume  = dB2rap((Pvolume - 96.0f) / 96.0f * 40.0f) * ctl->expression.relvolume;
 }
 
+void Part::setDestination(int value)
+{
+    Paudiodest = value;
+}
+
 
 void Part::setPan(char value)
 {
     Ppanning = value;
     float t = ((Ppanning > 0) ? (float)(Ppanning - 1) : 0.0f) / 126.0f;
-    pangainL = cosf(t * PI / 2.0f);
-    pangainR = cosf((1.0f - t) * PI / 2.0f);
+    pangainL = cosf(t * HALFPI);
+    pangainR = cosf((1.0f - t) * HALFPI);
 }
 
 
 // Enable or disable a kit item
 void Part::setkititemstatus(int kititem, int Penabled_)
 {
-    if (kititem == 0 && kititem >= NUM_KIT_ITEMS)
+    if (kititem == 0 || kititem >= NUM_KIT_ITEMS)
         return; // nonexistent kit item and the first kit item is always enabled
     kit[kititem].Penabled = Penabled_;
 
@@ -1173,6 +1186,7 @@ void Part::add2XML(XMLwrapper *xml)
     xml->addparbool("poly_mode", Ppolymode);
     xml->addpar("legato_mode", Plegatomode);
     xml->addpar("key_limit", Pkeylimit);
+    xml->addpar("destination", Paudiodest);
 
     xml->beginbranch("INSTRUMENT");
     add2XMLinstrument(xml);
@@ -1336,6 +1350,16 @@ void Part::getfromXML(XMLwrapper *xml)
     if (!Plegatomode)
         Plegatomode = xml->getpar127("legato_mode", Plegatomode);
     Pkeylimit = xml->getpar127("key_limit", Pkeylimit);
+    if (Pkeylimit < 1)
+    {
+        Pkeylimit = POLIPHONY - 5;
+    }
+    else if(Pkeylimit > (POLIPHONY - 5))
+    {
+        Pkeylimit = POLIPHONY - 5;
+    }
+    setDestination(xml->getpar127("destination", Paudiodest));
+    
     if (xml->enterbranch("INSTRUMENT"))
     {
         getfromXMLinstrument(xml);
