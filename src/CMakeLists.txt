@@ -20,7 +20,7 @@ project (Yoshimi)
 cmake_minimum_required (VERSION 2.6)
 cmake_policy (VERSION 2.6)
 cmake_policy (SET CMP0004 OLD)
-set (YOSHIMI_VERSION "1.2.2")
+set (YOSHIMI_VERSION "1.2.3")
 file (WRITE version.txt "${YOSHIMI_VERSION}")
 
 set (CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -265,7 +265,10 @@ add_definitions (-DNUM_MIDI_PARTS=16)
 add_definitions (-DNUM_MIDI_CHANNELS=16)
 add_definitions (-DMAX_ENVELOPE_POINTS=40)
 
-add_definitions (-DPI=3.1415926536f -DLOG_2=0.693147181f)
+add_definitions (-DPI=3.1415926536f)
+add_definitions (-DTWOPI=6.28318530718f)
+add_definitions (-DHALFPI=1.57079632679f)
+add_definitions (-DLOG_2=0.693147181f)
 
 # these were previously (pointlessly) user configurable
 add_definitions (-DNUM_VOICES=8)

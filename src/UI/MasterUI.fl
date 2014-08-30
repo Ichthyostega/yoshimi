@@ -11,6 +11,7 @@ comment {MasterUI.cc} {in_source not_in_header
 comment {Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009-2011, Alan Calvert
+Copyright 2014, Will Godfrey    
 
 This file is part of yoshimi, which is free software: you can redistribute
 it and/or modify it under the terms of the GNU Library General Public
@@ -26,7 +27,7 @@ You should have received a copy of the GNU General Public License along with
 yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
 Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-This file is a derivative of the ZynAddSubFX original, modified April 2011
+This file is a derivative of the ZynAddSubFX original, modified August 2014
 } {in_source in_header
 } 
 
@@ -192,8 +193,8 @@ class MasterUI {open : {private MiscFuncs}
           {
                   Runtime.saveConfig();
                   Runtime.runSynth = false;
-          }} open selected
-      xywh {4 20 390 460} type Double labelfont 13 labelsize 12 xclass Yoshimi visible
+          }} open
+      xywh {4 20 390 460} type Double labelfont 13 labelsize 12 hide xclass Yoshimi
     } {
       Fl_Menu_Bar mastermenu {open
         xywh {-5 0 690 25} labelsize 13
@@ -315,7 +316,7 @@ class MasterUI {open : {private MiscFuncs}
           }
         }
         Submenu Parameters {
-          label {&Parameters}
+          label {&Parameters} open
           xywh {0 0 70 21} labelsize 12
           code0 {o = o; // suppress warning
               if (Runtime.ParamsHistory.empty())
@@ -858,7 +859,8 @@ ZynAddSubFX}
         }
         updatepanel();} {}
   }
-  Function {do_load_master(bool updatehistory, const char* file)} {} {
+  Function {do_load_master(bool updatehistory, const char* file)} {open
+  } {
     code {//
         const char *fname;
         if (NULL != file)
@@ -893,7 +895,8 @@ ZynAddSubFX}
             }
             else
                 fl_alert("%s",msg.c_str());
-        }} {}
+        }} {selected
+    }
   }
   Function {do_save_master(const char* file = NULL)} {} {
     code {//
@@ -926,7 +929,8 @@ ZynAddSubFX}
         }
         updatepanel();} {}
   }
-  Function {refresh_master_ui()} {} {
+  Function {refresh_master_ui()} {open
+  } {
     code {//
         ninseff = 0;
         nsyseff = 0;

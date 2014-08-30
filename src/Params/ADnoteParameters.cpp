@@ -31,9 +31,11 @@ using namespace std;
 
 #include "Params/ADnoteParameters.h"
 
-int ADnoteParameters::ADnote_unison_sizes[] = {
+/*int ADnoteParameters::ADnote_unison_sizes[] = {
     1, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 0
-};
+};*/
+int ADnoteParameters::ADnote_unison_sizes[] =
+{2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50, 0};
 
 ADnoteParameters::ADnoteParameters(FFTwrapper *fft_) :
     Presets(),
@@ -107,6 +109,7 @@ void ADnoteParameters::defaults(int n)
     VoicePar[nvoice].Unison_vibratto = 64;
     VoicePar[nvoice].Unison_vibratto_speed = 64;
     VoicePar[nvoice].Unison_invert_phase = 0;
+    VoicePar[nvoice].Unison_phase_randomness = 127;
 
     VoicePar[nvoice].Type = 0;
     VoicePar[nvoice].Pfixedfreq = 0;
@@ -244,7 +247,7 @@ ADnoteParameters::~ADnoteParameters()
 }
 
 
-int ADnoteParameters::getUnisonSizeIndex(int nvoice)
+/*int ADnoteParameters::getUnisonSizeIndex(int nvoice)
 {
     unsigned int idx = 0;
     if (nvoice < NUM_VOICES)
@@ -275,7 +278,7 @@ void ADnoteParameters::setUnisonSizeIndex(int nvoice, int index)
         }
     }
     VoicePar[nvoice].Unison_size = unison;
-}
+}*/
 
 
 void ADnoteParameters::setGlobalPan(char pan)
@@ -284,8 +287,8 @@ void ADnoteParameters::setGlobalPan(char pan)
     if (!randomGlobalPan())
     {
         float t = (float)(GlobalPar.PPanning - 1) / 126.0f;
-        GlobalPar.pangainL = cosf(t * PI / 2.0f);
-        GlobalPar.pangainR = cosf((1.0f - t) * PI / 2.0f);
+        GlobalPar.pangainL = cosf(t * HALFPI);
+        GlobalPar.pangainR = cosf((1.0f - t) * HALFPI);
     }
     else
         GlobalPar.pangainL = GlobalPar.pangainR = 0.7f;
@@ -298,8 +301,8 @@ void ADnoteParameters::setVoicePan(int nvoice, char pan)
     if (!randomVoicePan(nvoice))
     {
         float t = (float)(VoicePar[nvoice].PPanning - 1) / 126.0f;
-        VoicePar[nvoice].pangainL = cosf(t * PI / 2.0f);
-        VoicePar[nvoice].pangainR = cosf((1.0f - t) * PI / 2.0f);
+        VoicePar[nvoice].pangainL = cosf(t * HALFPI);
+        VoicePar[nvoice].pangainR = cosf((1.0f - t) * HALFPI);
     }
     else
         VoicePar[nvoice].pangainL = VoicePar[nvoice].pangainR = 0.7f;
@@ -334,6 +337,7 @@ void ADnoteParameters::add2XMLsection(XMLwrapper *xml, int n)
     xml->addpar("unison_vibratto", VoicePar[nvoice].Unison_vibratto);
     xml->addpar("unison_vibratto_speed", VoicePar[nvoice].Unison_vibratto_speed);
     xml->addpar("unison_invert_phase", VoicePar[nvoice].Unison_invert_phase);
+    xml->addpar("unison_phase_randomness", VoicePar[nvoice].Unison_phase_randomness);
 
     xml->addpar("delay", VoicePar[nvoice].PDelay);
     xml->addparbool("resonance", VoicePar[nvoice].Presonance);
@@ -643,6 +647,8 @@ void ADnoteParameters::getfromXMLsection(XMLwrapper *xml, int n)
         xml->getpar127("unison_vibratto_speed", VoicePar[nvoice].Unison_vibratto_speed);
     VoicePar[nvoice].Unison_invert_phase =
         xml->getpar127("unison_invert_phase", VoicePar[nvoice].Unison_invert_phase);
+    VoicePar[nvoice].Unison_phase_randomness =
+        xml->getpar127("unison_phase_randomness", VoicePar[nvoice].Unison_phase_randomness);
 
     VoicePar[nvoice].Type = xml->getpar127("type", VoicePar[nvoice].Type);
     VoicePar[nvoice].PDelay = xml->getpar127("delay", VoicePar[nvoice].PDelay);

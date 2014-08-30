@@ -4,6 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2010 Alan Calvert
+    Copyright 2014, Will Godfrey    
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -19,7 +20,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of a ZynAddSubFX original, modified October 2010
+    This file is a derivative of a ZynAddSubFX original, modified August 2014
 */
 
 #ifndef SUB_NOTE_H
@@ -102,12 +103,16 @@ class SUBnote : public Carcass, private SynthHelper
         };
 
         void initfilter(bpfilter &filter, float freq, float bw, float amp, float mag);
+        float computerolloff(float freq);
         void computefiltercoefs(bpfilter &filter, float freq, float bw, float gain);
         void filter(bpfilter &filter, float *smps);
 
         bpfilter *lfilter;
         bpfilter *rfilter;
 
+        float overtone_rolloff[MAX_SUB_HARMONICS];
+        float overtone_freq[MAX_SUB_HARMONICS];
+        
         float *tmpsmp;
         float *tmprnd; // this is filled with random numbers
 

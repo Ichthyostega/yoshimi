@@ -4,6 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011 Alan Calvert
+    Copyright 2014, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -19,7 +20,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is derivative of original ZynAddSubFX code, modified March 2011
+    This file is derivative of original ZynAddSubFX code, modified July 2014
 */
 
 #ifndef PART_H
@@ -29,6 +30,7 @@
 
 using namespace std;
 
+#include "Misc/Part.h"
 #include "Misc/MiscFuncs.h"
 #include "Misc/SynthHelper.h"
 
@@ -96,6 +98,7 @@ class Part : private MiscFuncs, SynthHelper
         void setkeylimit(unsigned char Pkeylimit_);
         void setkititemstatus(int kititem, int Penabled_);
         void setVolume(char value);
+        void setDestination(int value);
 
         unsigned char Penabled;
         unsigned char Pvolume;
@@ -114,6 +117,8 @@ class Part : private MiscFuncs, SynthHelper
         unsigned char Plegatomode; // 0 = normal, 1 = legato
         unsigned char Pkeylimit;   // how many keys can play simultaneously,
                                    // time 0 = off, the older will be released
+        float         Pfrand;      // Part randon frequency contend
+        int           Paudiodest;  // jack output routing
         string        Pname;
         struct {
             unsigned char Ptype;
