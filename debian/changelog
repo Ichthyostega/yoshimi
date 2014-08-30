@@ -1,6 +1,6 @@
-yoshimi (1.2.3-1) UNRELEASED; urgency=low
+yoshimi (1.2.3-1) unstable; urgency=low
 
-  * Start new upload.
+  * Imported Upstream version 1.2.3
 
  -- Jaromír Mikeš <mira.mikes@seznam.cz>  Sat, 30 Aug 2014 13:36:09 +0300
 
