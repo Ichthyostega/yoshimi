@@ -1,3 +1,25 @@
+yoshimi-1.2.3
+- Some more minor bug fixes.
+- INSTALL file now refers to V1.2.2
+- Enabled saving audio destination in parameters file
+    only relevant for jack output.
+- Ported SubSynth overtones feature from Zyn. 2.4.4
+- Ported Unison phase randomisation control from Zyn. 2.4.4
+- Ported AddSynth & SubSynth processing encancements from Zyn. 2.4.4
+- Changed part's key limit from a list to a spinner so you can set
+  any value up to the maximum poliphony - 5
+  This is error checked when parameter files are loaded.
+- Changed unison size from a list to an enable button and spinner
+  giving you finer grained control.
+  Values that match ZynAddSubFX are highlighted for compatibilty
+- Added experimental 'naturalise' small random detune feature at note-on.
+- Performed lots of tiny optimsations.
+- Disabled part audio out selection if not running jack.
+- Updated copyright notices.
+- Temporarily disabled ALSA MIDI auto connect till I can find out why 
+  it crashes - seems it's never worked.
+
+  
 yoshimi-1.2.2
 
 - Started some documentation. Much more needed!

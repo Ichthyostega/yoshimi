@@ -4,6 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
+    Copyright 2014, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -19,7 +20,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is derivative of ZynAddSubFX original code, modified March 2011
+    This file is derivative of ZynAddSubFX original code, modified August 2014
 */
 
 #ifndef SYNTHENGINE_H
@@ -93,6 +94,7 @@ class SynthEngine : private SynthHelper, MiscFuncs
         float halfoscilsize_f;
 
         unsigned char Pvolume;
+        int           Paudiodest;
         int           Pkeyshift;
         unsigned char Psysefxvol[NUM_SYS_EFX][NUM_MIDI_PARTS];
         unsigned char Psysefxsend[NUM_SYS_EFX][NUM_SYS_EFX];
@@ -102,6 +104,7 @@ class SynthEngine : private SynthHelper, MiscFuncs
         void setPkeyshift(int Pkeyshift_);
         void setPsysefxvol(int Ppart, int Pefx, char Pvol);
         void setPsysefxsend(int Pefxfrom, int Pefxto, char Pvol);
+        void setPaudiodest(int value);
 
         // effects
         EffectMgr *sysefx[NUM_SYS_EFX]; // system
@@ -112,8 +115,7 @@ class SynthEngine : private SynthHelper, MiscFuncs
 
         // peaks for part VU-meters
         float vuoutpeakpart[NUM_MIDI_PARTS];
-        unsigned char fakepeakpart[NUM_MIDI_PARTS]; // this is used to compute the
-                                                    // "peak" when the part is disabled
+
         // others ...
         Controller *ctl;
         Microtonal microtonal;
@@ -128,8 +130,7 @@ class SynthEngine : private SynthHelper, MiscFuncs
         float vuMaxOutPeakR;
         float vuRmsPeakL;
         float vuRmsPeakR;
-        bool vuClippedL;
-        bool vuClippedR;
+        int vuClipped;
 
 
     private:
@@ -147,8 +148,7 @@ class SynthEngine : private SynthHelper, MiscFuncs
         float vumaxoutpeakr;
         float vurmspeakl;
         float vurmspeakr;
-        bool clippedL;
-        bool clippedR;
+        int clipped;
 
         pthread_mutex_t  processMutex;
         pthread_mutex_t *processLock;
