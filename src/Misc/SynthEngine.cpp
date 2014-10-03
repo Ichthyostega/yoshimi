@@ -21,8 +21,11 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is derivative of original ZynAddSubFX code, modified August 2014
+    This file is derivative of original ZynAddSubFX code, modified October 2014
 */
+
+#include<stdio.h>
+#include <sys/time.h>
 
 using namespace std;
 
@@ -52,7 +55,7 @@ SynthEngine::SynthEngine() :
     tmpmixl(NULL),
     tmpmixr(NULL),
     processLock(NULL),
-    meterLock(NULL),
+    vuringbuf(NULL),
     stateXMLtree(NULL)
 {
     ctl = new Controller();
@@ -68,6 +71,9 @@ SynthEngine::SynthEngine() :
 
 SynthEngine::~SynthEngine()
 {
+    if (vuringbuf)
+        jack_ringbuffer_free(vuringbuf);
+    
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
         if (part[npart])
             delete part[npart];
@@ -86,7 +92,6 @@ SynthEngine::~SynthEngine()
     if (fft)
         delete fft;
     pthread_mutex_destroy(&processMutex);
-    pthread_mutex_destroy(&meterMutex);
     if (ctl)
         delete ctl;
 }
@@ -110,15 +115,6 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
         goto bail_out;
     }
 
-    if (!pthread_mutex_init(&meterMutex, NULL))
-        meterLock = &meterMutex;
-    else
-    {
-        Runtime.Log("SynthEngine meterLock init fails :-(");
-        meterLock = NULL;
-        goto bail_out;
-    }
-
     if (initstate_r(samplerate + buffersize + oscilsize, random_state,
                     sizeof(random_state), &random_buf))
         Runtime.Log("SynthEngine Init failed on general randomness");
@@ -133,6 +129,12 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
     if (!(fft = new FFTwrapper(oscilsize)))
     {
         Runtime.Log("SynthEngine failed to allocate fft");
+        goto bail_out;
+    }
+
+    if (!(vuringbuf = jack_ringbuffer_create(sizeof(VUtransfer))))
+    {
+        Runtime.Log("SynthEngine failed to create vu ringbuffer");
         goto bail_out;
     }
 
@@ -152,7 +154,7 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
             Runtime.Log("Failed to allocate new Part");
             goto bail_out;
         }
-        vuoutpeakpart[npart] = -1;
+        VUpeak.values.parts[npart] = -0.2;
     }
 
     // Insertion Effects init
@@ -193,9 +195,9 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
     }
     else
     {
-        if (Runtime.paramsLoad.size())
+        if (Runtime.paramsLoad.size()) // these are not fatal if failed
         {
-            if (loadXML(Runtime.paramsLoad) >= 0)
+            if (loadXML(Runtime.paramsLoad))
             {
                 applyparameters();
                 Runtime.paramsLoad = Runtime.addParamHistory(Runtime.paramsLoad);
@@ -204,19 +206,19 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
             else
             {
                 Runtime.Log("Failed to load parameters " + Runtime.paramsLoad);
-                goto bail_out;
+                Runtime.paramsLoad = "";
             }
         }
-        if (!Runtime.instrumentLoad.empty())
+        else if (Runtime.instrumentLoad.size())
         {
             int loadtopart = 0;
-            if (!part[loadtopart]->loadXMLinstrument(Runtime.instrumentLoad))
+            if (part[loadtopart]->loadXMLinstrument(Runtime.instrumentLoad))
+                Runtime.Log("Instrument file " + Runtime.instrumentLoad + " loaded");
+            else
             {
                 Runtime.Log("Failed to load instrument file " + Runtime.instrumentLoad);
-                goto bail_out;
+                Runtime.instrumentLoad = "";
             }
-            else
-                Runtime.Log("Instrument file " + Runtime.instrumentLoad + " loaded");
         }
     }
     return true;
@@ -225,6 +227,11 @@ bail_out:
     if (fft)
         delete fft;
     fft = NULL;
+    
+    if (vuringbuf)
+        jack_ringbuffer_free(vuringbuf);
+    vuringbuf = NULL;
+
     if (tmpmixl)
         fftwf_free(tmpmixl);
     tmpmixl = NULL;
@@ -298,8 +305,8 @@ void SynthEngine::NoteOn(unsigned char chan, unsigned char note, unsigned char v
                     part[npart]->NoteOn(note, velocity, keyshift);
                     actionLock(unlock);
                 }
-                else
-                    vuoutpeakpart[npart] = -(1+velocity); // ensure it's always negative
+                else if (VUpeak.values.parts[npart] < velocity)
+                    VUpeak.values.parts[npart] = -(0.2 + velocity); // ensure fake is always negative
             }
         }
 }
@@ -328,16 +335,12 @@ void SynthEngine::SetController(unsigned char chan, unsigned int type, short int
 	  128 banks is enough for anybody :-)
         this is configurable to suit different hardware synths
         */
-        bank.msb = (unsigned char)par + 1; //Bank indexes start from 1       
+        bank.msb = (unsigned char)par + 1; // Bank indexes start from 1       
         if(bank.msb <= MAX_NUM_BANKS) {
             if (bank.loadbank(bank.banks[bank.msb].dir))
-            {
                 Runtime.Log("SynthEngine setBank: Loaded " + bank.banks[bank.msb].name);
-            }
             else
-            {
                 Runtime.Log("SynthEngine setBank: No bank " + asString(par));
-            }
         }
         else
             Runtime.Log("SynthEngine setBank: Value is out of range!");
@@ -372,20 +375,17 @@ void SynthEngine::SetProgram(unsigned char chan, unsigned char pgm)
         for(int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
             if(chan == part[npart]->Prcvchn)
             {
+                bank.loadfromslot(pgm, part[npart]); // Programs indexes start from 0
                 if (part[npart]->Penabled == 0 and Runtime.enable_part_on_voice_load != 0)
-                {
                     partonoff(npart, 1);
-                }
-                bank.loadfromslot(pgm, part[npart]); //Programs indexes start from 0
             }
         Runtime.Log("SynthEngine setProgram: Loaded " + bank.getname(pgm));
-        //update UI
+        // update UI
         if (Runtime.showGui)
         {
             guiMaster->updatepanel();
-            if (guiMaster->partui && guiMaster->partui->instrumentlabel && guiMaster->partui->part) {
+            if (guiMaster->partui && guiMaster->partui->instrumentlabel && guiMaster->partui->part)
                 guiMaster->partui->instrumentlabel->copy_label(guiMaster->partui->part->Pname.c_str());
-            }
         }
     }
 }
@@ -397,17 +397,17 @@ void SynthEngine::partonoff(int npart, int what)
         return;
     if (what)
     {
-        vuoutpeakpart[npart] = 1e-9f;
+        VUpeak.values.parts[npart] = 1e-9f;
         part[npart]->Penabled = 1;
     }
     else
     {   // disabled part
-        vuoutpeakpart[npart] = -1;
         part[npart]->Penabled = 0;
         part[npart]->cleanup();
         for (int nefx = 0; nefx < NUM_INS_EFX; ++nefx)
             if (Pinsparts[nefx] == npart)
                 insefx[nefx]->cleanup();
+        VUpeak.values.parts[npart] = -0.2;
     }
 }
 
@@ -416,7 +416,7 @@ void SynthEngine::partonoff(int npart, int what)
 void SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS], float *outr [NUM_MIDI_PARTS])
 {
     int npart;
-    for (npart = 0; npart < (NUM_MIDI_PARTS + 1); ++npart)
+    for (npart = 0; npart < (NUM_MIDI_PARTS + 1); ++npart) // include mains
     {
         memset(outl[npart], 0, bufferbytes);
         memset(outr[npart], 0, bufferbytes);
@@ -429,9 +429,7 @@ void SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS], float *outr [NUM_MID
     // Compute part samples and store them ->partoutl,partoutr
     for (npart = 0; npart < NUM_MIDI_PARTS; ++npart)
         if (part[npart]->Penabled)
-        {
             part[npart]->ComputePartSmps();
-        }
 
     // Insertion effects
     int nefx;
@@ -441,9 +439,7 @@ void SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS], float *outr [NUM_MID
         {
             int efxpart = Pinsparts[nefx];
             if (part[efxpart]->Penabled)
-            {
                 insefx[nefx]->out(part[efxpart]->partoutl, part[efxpart]->partoutr);
-            }
         }
     }
 
@@ -491,8 +487,8 @@ void SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS], float *outr [NUM_MID
         // Mix the channels according to the part settings about System Effect
         for (npart = 0; npart < NUM_MIDI_PARTS; ++npart)
         {
-            // skip if part is disabled or has no output to effect
-            if (part[npart]->Penabled && Psysefxvol[nefx][npart])
+            // skip if part is disabled, doesn't go to main or has no output to effect
+            if (part[npart]->Penabled && Psysefxvol[nefx][npart]&& part[npart]->Paudiodest & 1)
             {
                 // the output volume of each part to system effect
                 float vol = sysefxvol[nefx][npart];
@@ -528,25 +524,22 @@ void SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS], float *outr [NUM_MID
         }
     }
 
-    // Copy all parts
     for (npart = 0; npart < NUM_MIDI_PARTS; ++npart)
     {
-        for (int i = 0; i < buffersize; ++i)
-        {
-            outl[npart][i] = part[npart]->partoutl[i];
-            outr[npart][i] = part[npart]->partoutr[i];
-        }
-    }
+        if (part[npart]->Paudiodest & 2){    // Copy separate parts
 
-    // Mix all parts to mixed outputs
-    for (npart = 0; npart < NUM_MIDI_PARTS; ++npart)
-    {
-        for (int i = 0; i < buffersize; ++i)
-        {   // the volume did not change
-            if (part[npart]->Paudiodest & 1)
+            for (int i = 0; i < buffersize; ++i)
             {
-                outl[NUM_MIDI_PARTS][i] += outl[npart][i];
-                outr[NUM_MIDI_PARTS][i] += outr[npart][i];
+                outl[npart][i] = part[npart]->partoutl[i];
+                outr[npart][i] = part[npart]->partoutr[i];
+            }
+        }
+        if (part[npart]->Paudiodest & 1)    // Mix wanted parts to mains
+        {
+            for (int i = 0; i < buffersize; ++i)
+            {   // the volume did not change
+                outl[NUM_MIDI_PARTS][i] += part[npart]->partoutl[i];
+                outr[NUM_MIDI_PARTS][i] += part[npart]->partoutr[i];
             }
         }
     }
@@ -555,98 +548,89 @@ void SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS], float *outr [NUM_MID
     for (nefx = 0; nefx < NUM_INS_EFX; ++nefx)
     {
         if (Pinsparts[nefx] == -2)
-        {
             insefx[nefx]->out(outl[NUM_MIDI_PARTS], outr[NUM_MIDI_PARTS]);
-        }
     }
-
-    actionLock(unlock);
 
     LFOParams::time++; // update the LFO's time
 
-    //Per output master volume and fade
-    for (npart = 0; npart < NUM_MIDI_PARTS; ++npart)
+    // Master volume, and all output fade
+    float fade;
+    for (int idx = 0; idx < buffersize; ++idx)
     {
-        for (int idx = 0; idx < buffersize; ++idx)
+        outl[NUM_MIDI_PARTS][idx] *= volume; // apply Master Volume
+        outr[NUM_MIDI_PARTS][idx] *= volume;
+        if (shutup) // fade-out
         {
-            outl[npart][idx] *= volume; // apply Master Volume
-            outr[npart][idx] *= volume;
-
-            if (shutup) // fade-out
-            {
-                float fade = (float) (buffersize - idx) / (float) buffersize;
+            fade = (float) (buffersize - idx) / (float) buffersize;
+            for (npart = 0; npart < (NUM_MIDI_PARTS + 1); ++npart) // include mains
+            { 
                 outl[npart][idx] *= fade;
                 outr[npart][idx] *= fade;
             }
         }
     }
 
-    //Master volume and clip calculation for mixed outputs
-
-    vuoutpeakl = 1e-12f;
-    vuoutpeakr = 1e-12f;
-    vurmspeakl = 1e-12f;
-    vurmspeakr = 1e-12f;
+    actionLock(unlock);
+    
+    // Peak calculation for mixed outputs   
+    VUpeak.values.vuRmsPeakL = 1e-12f;
+    VUpeak.values.vuRmsPeakR = 1e-12f;       
     float absval;
-    clipped = 0;
     for (int idx = 0; idx < buffersize; ++idx)
     {
-        outl[NUM_MIDI_PARTS][idx] *= volume; // apply Master Volume
-        outr[NUM_MIDI_PARTS][idx] *= volume;
+        if ((absval = fabsf(outl[NUM_MIDI_PARTS][idx])) > VUpeak.values.vuOutPeakL)
+            VUpeak.values.vuOutPeakL = absval;
+        if ((absval = fabsf(outr[NUM_MIDI_PARTS][idx])) > VUpeak.values.vuOutPeakR)
+            VUpeak.values.vuOutPeakR = absval;
 
-        if ((absval = fabsf(outl[NUM_MIDI_PARTS][idx])) > vuoutpeakl) // Peak computation (for vumeters)
-            vuoutpeakl = absval;
-        if ((absval = fabsf(outr[NUM_MIDI_PARTS][idx])) > vuoutpeakr)
-            vuoutpeakr = absval;
-        vurmspeakl += outl[NUM_MIDI_PARTS][idx] * outl[NUM_MIDI_PARTS][idx]; // RMS Peak
-        vurmspeakr += outr[NUM_MIDI_PARTS][idx] * outr[NUM_MIDI_PARTS][idx];
-
-        // check for clips
-        if (fabsf(outl[NUM_MIDI_PARTS][idx]) > 1.0f)
-            clipped |= 1;
-        if (fabsf(outr[NUM_MIDI_PARTS][idx]) > 1.0f)
-            clipped |= 2;
-
-        if (shutup) // fade-out
-        {
-            float fade = (float) (buffersize - idx) / (float) buffersize;
-            outl[NUM_MIDI_PARTS][idx] *= fade;
-            outr[NUM_MIDI_PARTS][idx] *= fade;
-        }
+        // RMS Peak
+        VUpeak.values.vuRmsPeakL += outl[NUM_MIDI_PARTS][idx] * outl[NUM_MIDI_PARTS][idx];
+        VUpeak.values.vuRmsPeakR += outr[NUM_MIDI_PARTS][idx] * outr[NUM_MIDI_PARTS][idx];
     }
+
     if (shutup)
         ShutUp();
 
-    // Part Peak computation (for Part vu meters/fake part vu meters)
-    vupeakLock(lock);
+    // Part Peak computation (for part vu meters/fake part vu meters)
     for (npart = 0; npart < NUM_MIDI_PARTS; ++npart)
     {       
         if (part[npart]->Penabled)
         {
-            vuoutpeakpart[npart] = 1.0e-9;
-            float *outl = part[npart]->partoutl;
-            float *outr = part[npart]->partoutr;
             for (int i = 0; i < buffersize; ++i)
             {
-                float tmp = fabsf(outl[i] + outr[i]);
-                if (tmp > vuoutpeakpart[npart])
-                    vuoutpeakpart[npart] = tmp;
+                float tmp = fabsf(part[npart]->partoutl[i] + part[npart]->partoutr[i]);
+                if (tmp > VUpeak.values.parts[npart])
+                    VUpeak.values.parts[npart] = tmp;
             }
-            vuoutpeakpart[npart] *= volume; // how is part peak related to master volume??
         }
-        else if (vuoutpeakpart[npart] < -1) // fake peak is a negative value
-            vuoutpeakpart[npart]+= 0.5f;
     }
-    vuOutPeakL = vuoutpeakl;
-    vuOutPeakR = vuoutpeakr;
-    if (vuOutPeakL > vuMaxOutPeakL)
-        vuMaxOutPeakL = vuOutPeakL;
-    if (vuOutPeakR > vuMaxOutPeakR)
-        vuMaxOutPeakR = vuOutPeakR;
-    vuRmsPeakL = vurmspeakl / buffersize;;
-    vuRmsPeakR = vurmspeakr / buffersize;;
-    vuClipped |= clipped;
-    vupeakLock(unlock);
+
+    if (jack_ringbuffer_write_space(vuringbuf) >= sizeof(VUtransfer))
+    {
+        jack_ringbuffer_write(vuringbuf, ( char*)VUpeak.bytes, sizeof(VUtransfer));
+        VUpeak.values.vuOutPeakL = 1e-12f;
+        VUpeak.values.vuOutPeakR = 1e-12f;
+        for (npart = 0; npart < NUM_MIDI_PARTS; ++npart)
+        {
+            if (part[npart]->Penabled)
+                VUpeak.values.parts[npart] = 1.0e-9;
+            else if (VUpeak.values.parts[npart] < -2.2) // fake peak is a negative value
+                VUpeak.values.parts[npart]+= 2;
+        }
+    }
+}
+
+
+bool SynthEngine::fetchMeterData(VUtransfer *VUdata)
+{
+    if (jack_ringbuffer_read_space(vuringbuf) >= sizeof(VUtransfer))
+    {
+        jack_ringbuffer_read(vuringbuf, ( char*)VUdata->bytes, sizeof(VUtransfer));
+        VUdata->values.vuRmsPeakL = sqrt(VUdata->values.vuRmsPeakL / buffersize);
+        VUdata->values.vuRmsPeakR = sqrt(VUdata->values.vuRmsPeakR / buffersize);
+        return true;
+    }
+    return false;
 }
 
 
@@ -686,17 +670,18 @@ void SynthEngine::setPaudiodest(int value)
 
 // Panic! (Clean up all parts and effects)
 void SynthEngine::ShutUp(void)
-{
+{    
+    VUpeak.values.vuOutPeakL = 1e-12f;
+    VUpeak.values.vuOutPeakR = 1e-12f;
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
     {
         part[npart]->cleanup();
-        vuoutpeakpart[npart] = -1;//1e-9f;
+        VUpeak.values.parts[npart] = -0.2;
     }
     for (int nefx = 0; nefx < NUM_INS_EFX; ++nefx)
         insefx[nefx]->cleanup();
     for (int nefx = 0; nefx < NUM_SYS_EFX; ++nefx)
         sysefx[nefx]->cleanup();
-    vuresetpeaks();
     shutup = false;
 }
 
@@ -728,47 +713,6 @@ bool SynthEngine::actionLock(lockset request)
             break;
     }
     return (chk == 0) ? true : false;
-}
-
-
-bool SynthEngine::vupeakLock(lockset request)
-{
-    int chk  = -1;
-    switch (request)
-    {
-        case lock:
-            chk = pthread_mutex_lock(meterLock);
-            break;
-
-        case unlock:
-            chk = pthread_mutex_unlock(meterLock);
-            break;
-
-        default:
-            break;
-    }
-    return (chk == 0) ? true : false;
-}
-
-
-// Reset peaks and clear the "clipped" flag (for VU-meter)
-
-/*
-  We no longer reset the local values (vuoutpeakl etc.)
-  If someone manages to reset part way through the calculations
-  all it would do is make one frame display low in the GUI.
- */
-void SynthEngine::vuresetpeaks(void)
-{
-    vupeakLock(lock);
-    vuOutPeakL = 1e-12f;
-    vuOutPeakR =  1e-12f;
-    vuMaxOutPeakL = 1e-12f;
-    vuMaxOutPeakR = 1e-12f;
-    vuRmsPeakL = 1e-12f;
-    vuRmsPeakR = 1e-12f;
-    vuClipped = 0;
-    vupeakLock(unlock);
 }
 
 
