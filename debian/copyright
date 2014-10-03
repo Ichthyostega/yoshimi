@@ -25,7 +25,7 @@ Copyright:
 License: LGPL-2+
 
 Files:
- src/CMakeList.txt
+ src/CMakeLists.txt
  src/main.cpp
  src/Misc/FileListItem.h
  src/Misc/HistoryListItem.h
