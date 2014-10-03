@@ -2,6 +2,7 @@
     JackEngine.cpp
 
     Copyright 2009-2011, Alan Calvert
+    Copyright 2014, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -15,6 +16,8 @@
 
     You should have received a copy of the GNU General Public License
     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
+    
+    Modified October 2014
 */
 
 #include <errno.h>
@@ -144,7 +147,7 @@ bool JackEngine::Start(void)
         goto bail_out;
     }
 
-    for (int port = 0; port < (2 * NUM_MIDI_PARTS + 2); ++port)
+    for (int port = 0; port < (2 * NUM_MIDI_PARTS + 2); ++port) // include mains
     {
         if (!audio.ports[port])
         {
@@ -166,6 +169,13 @@ bool JackEngine::Start(void)
         Runtime.Log("Failed to activate jack client");
         goto bail_out;
     }
+    
+    if (Runtime.midiEngine  == jack_midi and Runtime.midiDevice.size() and jack_connect(jackClient,Runtime.midiDevice.c_str(),jack_port_name(midi.port)))
+    {
+        Runtime.Log("Didn't find jack MIDI source '" + Runtime.midiDevice + "'");
+        Runtime.midiDevice = "";
+    }
+    
     return true;
 
 bail_out:
@@ -206,10 +216,10 @@ void JackEngine::Close(void)
 
 bool JackEngine::openAudio(void)
 {
-    //Register mixer outputs for all channels
+    // Register mixed outputs
     audio.ports[2 * NUM_MIDI_PARTS] = jack_port_register(jackClient, "left", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
     audio.ports[2 * NUM_MIDI_PARTS + 1] = jack_port_register(jackClient, "right", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
-
+    // And individual parts
     for (int port = 0; port < 2 * NUM_MIDI_PARTS; ++port)
     {
         stringstream portName;
@@ -338,22 +348,24 @@ bool JackEngine::processAudio(jack_nframes_t nframes)
         }
     }
     getAudio();
-    for (int port = 0; port < NUM_MIDI_PARTS; ++port)
+    int framesize = sizeof(float) * nframes;
+    // Part outputs
+    for (int port, idx = 0; port < NUM_MIDI_PARTS; port++ , idx += 2)
     {
         if (synth->part[port]->Paudiodest & 2)
         {
-            memcpy(audio.portBuffs[port * 2], zynLeft[port], sizeof(float) * nframes);
-            memcpy(audio.portBuffs[port * 2 + 1], zynRight[port], sizeof(float) * nframes);
+            memcpy(audio.portBuffs[idx], zynLeft[port], framesize);
+            memcpy(audio.portBuffs[idx + 1], zynRight[port], framesize);
         }
         else
         {
-            memset(audio.portBuffs[port * 2], 0, sizeof(float) * nframes);
-            memset(audio.portBuffs[port * 2 + 1], 0, sizeof(float) * nframes);
+            memset(audio.portBuffs[idx], 0, framesize);
+            memset(audio.portBuffs[idx + 1], 0, framesize);
         }
     }
-    //And mixed outputs
-    memcpy(audio.portBuffs[2 * NUM_MIDI_PARTS], zynLeft[NUM_MIDI_PARTS], sizeof(float) * nframes);
-    memcpy(audio.portBuffs[2 * NUM_MIDI_PARTS + 1], zynRight[NUM_MIDI_PARTS], sizeof(float) * nframes);
+    // And mixed outputs
+    memcpy(audio.portBuffs[2 * NUM_MIDI_PARTS], zynLeft[NUM_MIDI_PARTS], framesize);
+    memcpy(audio.portBuffs[2 * NUM_MIDI_PARTS + 1], zynRight[NUM_MIDI_PARTS], framesize);
     return true;
 }
 
