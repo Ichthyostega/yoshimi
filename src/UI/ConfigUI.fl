@@ -1,5 +1,5 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0300 
+version 1.0302 
 header_name {.h} 
 code_name {.cpp}
 comment {Original ZynAddSubFX author Nasca Octavian Paul
@@ -37,6 +37,15 @@ decl {\#include "Misc/Config.h"} {public local
 decl {\#include "Misc/MiscFuncs.h"} {public local
 } 
 
+decl {\#include "Misc/SynthEngine.h"} {private local
+} 
+
+decl {\#include "Misc/Bank.h"} {private local
+} 
+
+decl {\#include "MasterUI.h"} {private local
+} 
+
 class ConfigUI {open : {private MiscFuncs}
 } {
   Function {make_window()} {open
@@ -44,24 +53,24 @@ class ConfigUI {open : {private MiscFuncs}
     Fl_Window configwindow {
       label {Yoshimi Settings}
       callback {o->hide();} open
-      xywh {789 108 465 335} type Double visible
+      xywh {273 160 465 335} type Double hide
     } {
       Fl_Tabs {} {open
-        xywh {5 5 455 325}
+        xywh {5 5 457 325}
       } {
         Fl_Group {} {
-          label {Main settings} open selected
-          xywh {5 25 455 280} labelsize 12
+          label {Main settings} open
+          xywh {5 25 455 280} labelsize 12 hide
         } {
           Fl_Choice {} {
             label OscilSize
             callback {//
-		unsigned int tmp = Runtime.Oscilsize;
-                Runtime.Oscilsize = 128 << o->value();
-                if (Runtime.Oscilsize != tmp)
+		unsigned int tmp = synth->getRuntime().Oscilsize;
+                synth->getRuntime().Oscilsize = 128 << o->value();
+                if (synth->getRuntime().Oscilsize != tmp)
                 	configChanged = true;}
             tooltip {ADSynth Oscillator Size (samples)} xywh {250 50 100 20} down_box BORDER_BOX labelsize 12 textsize 11
-            code0 {o->value( (int)(logf(Runtime.Oscilsize / 128.0f - 1.0f) / logf(2.0f)) + 1);}
+            code0 {o->value( (int)(logf(synth->getRuntime().Oscilsize / 128.0f - 1.0f) / logf(2.0f)) + 1);}
           } {
             MenuItem {} {
               label 128
@@ -99,12 +108,12 @@ class ConfigUI {open : {private MiscFuncs}
           Fl_Choice {} {
             label {PADsynth Interpolation}
             callback {//
-                int tmp = Runtime.Interpolation;
-                Runtime.Interpolation = (int) o->value();
-                if (Runtime.Interpolation != tmp)
+                int tmp = synth->getRuntime().Interpolation;
+                synth->getRuntime().Interpolation = (int) o->value();
+                if (synth->getRuntime().Interpolation != tmp)
                 	configChanged = true;}
             xywh {250 130 100 20} down_box BORDER_BOX labelsize 12 textsize 12
-            code0 {o->value(Runtime.Interpolation);}
+            code0 {o->value(synth->getRuntime().Interpolation);}
           } {
             MenuItem {} {
               label {Linear(fast)}
@@ -118,12 +127,12 @@ class ConfigUI {open : {private MiscFuncs}
           Fl_Choice {} {
             label {Virtual Keyboard Layout}
             callback {//
-                int tmp = Runtime.VirKeybLayout;
-                Runtime.VirKeybLayout = (int) o->value();
-                if (Runtime.VirKeybLayout != tmp)
+                int tmp = synth->getRuntime().VirKeybLayout;
+                synth->getRuntime().VirKeybLayout = (int) o->value();
+                if (synth->getRuntime().VirKeybLayout != tmp)
                 	configChanged = true;}
             xywh {250 90 100 20} down_box BORDER_BOX labelsize 12 textfont 1 textsize 13
-            code0 {o->value(Runtime.VirKeybLayout);}
+            code0 {o->value(synth->getRuntime().VirKeybLayout);}
           } {
             MenuItem {} {
               label { }
@@ -149,20 +158,20 @@ class ConfigUI {open : {private MiscFuncs}
           Fl_Input SessionStateFile {
             label {Session state save file}
             callback {//
-              Runtime.StateFile = string(o->value());
+              synth->getRuntime().StateFile = string(o->value());
               SessionStateFile->changed();}
             xywh {159 220 220 20} labelsize 12 when 1 textsize 12
-            code0 {o->value(Runtime.StateFile.c_str());}
+            code0 {o->value(synth->getRuntime().StateFile.c_str());}
           }
           Fl_Button StateFileButton {
             label Select
             callback {//
                 const char *filename = fl_file_chooser("Nominate session save state file",
-                                                       NULL, Runtime.StateFile.c_str(), 0);
+                                                       NULL, synth->getRuntime().StateFile.c_str(), 0);
                 if (NULL != filename)
                 {
-                    Runtime.StateFile = string(filename);
-                    SessionStateFile->value(Runtime.StateFile.c_str());
+                    synth->getRuntime().StateFile = string(filename);
+                    SessionStateFile->value(synth->getRuntime().StateFile.c_str());
                     SessionStateFile->changed();
                     configChanged = true;
                 }}
@@ -172,12 +181,12 @@ class ConfigUI {open : {private MiscFuncs}
           Fl_Counter compression {
             label {XML compression level}
             callback {//
-		unsigned int tmp = Runtime.GzipCompression;
-		Runtime.GzipCompression = (unsigned int) o->value();
-		if(Runtime.GzipCompression != tmp)
+		unsigned int tmp = synth->getRuntime().GzipCompression;
+		synth->getRuntime().GzipCompression = (unsigned int) o->value();
+		if(synth->getRuntime().GzipCompression != tmp)
 			configChanged = true;}
             tooltip {gzip compression level (0 - uncompressed)} xywh {280 170 65 20} type Simple align 4 minimum 0 maximum 9 step 1 textsize 12
-            code0 {o->value(Runtime.GzipCompression);}
+            code0 {o->value(synth->getRuntime().GzipCompression);}
           }
           Fl_Box {} {
             label {Most settings changes require a restart}
@@ -186,51 +195,95 @@ class ConfigUI {open : {private MiscFuncs}
         }
         Fl_Group {} {
           label {Bank root dirs} open
-          xywh {5 25 495 287} labelsize 12 hide
+          xywh {5 25 457 305} labelsize 12
         } {
           Fl_Browser rootsbrowse {
-            callback {activatebutton_rootdir(o->value()!=0);}
+            callback {int tmp = o->value();
+activatebutton_rootdir(tmp!=0);
+if (tmp)
+{
+    selectedRootID = reinterpret_cast<long>(o->data(tmp));
+}
+    
+changeIDbutton->value(recoverID());
+oldrootID = changeIDbutton->value();}
             xywh {10 35 445 200} type Hold labelsize 12 textsize 13
           }
           Fl_Button {} {
             label {Add root directory...}
             callback {//
-                const char *dirname;
-                dirname = fl_dir_chooser("Add a root directory for banks:", NULL, 0);
-                if (!dirname)
-                    return;
-                rootsbrowse->add(dirname);
-                configChanged = true;}
-            xywh {15 244 80 35} box THIN_UP_BOX labelsize 12 align 128
+    const char *dirname;
+    dirname = fl_dir_chooser("Add a root directory for banks:", NULL, 0);
+    if (!dirname)
+      return;
+    synth->getBankRef().addRootDir(dirname);
+    readbankcfg();
+    configChanged = true;}
+            xywh {10 244 75 35} box THIN_UP_BOX labelsize 12 align 128
           }
           Fl_Button removerootdirbutton {
             label {Remove root dir...}
             callback {//
-                if (rootsbrowse->value() != 0)
-                    rootsbrowse->remove(rootsbrowse->value());
-                activatebutton_rootdir(false);
-                configChanged = true;}
-            xywh {105 244 80 35} box THIN_UP_BOX labelsize 12 align 128
+    if (selectedRootID >= 0)
+    {
+        synth->getBankRef().removeRoot(selectedRootID);
+        readbankcfg();
+        configChanged = true;
+    }
+    activatebutton_rootdir(false);}
+            xywh {95 244 75 35} box THIN_UP_BOX labelsize 12 align 128 deactivate
             code0 {o->deactivate();}
           }
           Fl_Button makedefaultrootdirbutton {
-            label {Make default}
+            label {Make current}
             callback {//
-                int n = rootsbrowse->value();
-                if (n != 0)
-                {
-                    rootsbrowse->move(1, n);
-                    rootsbrowse->value(1);
-                    rootsbrowse->redraw();
-                }
-                activatebutton_rootdir(true);
-                configChanged = true;}
-            xywh {190 244 80 35} box THIN_UP_BOX labelsize 12 align 128
+    if (selectedRootID >= 0)
+    {
+        synth->getBankRef().setCurrentRootID(selectedRootID);
+        readbankcfg();
+        synth->getGuiMaster()->bankui->rescan_for_banks(false);
+        configChanged = true;
+    }
+    activatebutton_rootdir(false);}
+            xywh {180 244 75 35} box THIN_UP_BOX labelsize 12 align 128 deactivate
             code0 {o->deactivate();}
           }
-          Fl_Box {} {
-            label {Settings changes require a restart}
-            xywh {110 285 267 17} labelfont 1 labelsize 11 labelcolor 38 align 128
+          Fl_Button showdefaultrootdirbutton {
+            label {Open current}
+            callback {//
+    synth->getGuiMaster()->bankui->rootuiwindow->show();
+    if (Fl::event_button() == 3)
+        configwindow->hide();}
+            xywh {265 244 75 35} box THIN_UP_BOX labelsize 12 align 128
+          }
+          Fl_Return_Button changeIDok {
+            label Set
+            callback {//
+    if (changeIDbutton->value() != oldrootID)
+    {
+        if (selectedRootID >= 0)
+        {
+            if (synth->getBankRef().changeRootID(selectedRootID, changeIDbutton->value()))
+            {
+                readbankcfg();
+                synth->getGuiMaster()->bankui->rescan_for_banks(true);
+                configChanged = true;
+            }
+            else
+            {
+                changeIDbutton->value(oldrootID);
+                fl_alert("ID already in use!");
+            }
+        }
+        oldrootID = changeIDbutton->value();
+        activatebutton_rootdir(false);
+    }} selected
+            xywh {350 255 74 20} box NO_BOX labelsize 12 align 8 deactivate
+          }
+          Fl_Spinner changeIDbutton {
+            label {Change ID}
+            xywh {350 256 45 19} labelsize 12 align 5 minimum 0 maximum 127 textsize 12 deactivate
+            code0 {oldrootID = o->value();}
           }
         }
         Fl_Group {} {
@@ -291,10 +344,10 @@ class ConfigUI {open : {private MiscFuncs}
           Fl_Input {} {
             label {Jack Server}
             callback {//
-                Runtime.jackServer = string(o->value());
+                synth->getRuntime().jackServer = string(o->value());
                 configChanged = true;}
             tooltip {Name of the jack server to connect to - default, ...} xywh {218 149 100 22} labelsize 12 textsize 12
-            code0 {o->insert(Runtime.jackServer.c_str());}
+            code0 {o->insert(synth->getRuntime().jackServer.c_str());}
           }
           Fl_Box {} {
             label {Settings changes require a restart}
@@ -308,18 +361,18 @@ class ConfigUI {open : {private MiscFuncs}
           Fl_Input {} {
             label {Alsa Midi Device}
             callback {//
-                Runtime.alsaMidiDevice = string(o->value());
+                synth->getRuntime().alsaMidiDevice = string(o->value());
                 configChanged = true;}
             tooltip {Alsa midi device - default, hw:0, ...} xywh {195 52 120 22} labelsize 12 textsize 12
-            code0 {o->insert(Runtime.alsaMidiDevice.c_str());}
+            code0 {o->insert(synth->getRuntime().alsaMidiDevice.c_str());}
           }
           Fl_Input {} {
             label {Alsa Audio Device}
             callback {//
-                Runtime.alsaAudioDevice = string(o->value());
+                synth->getRuntime().alsaAudioDevice = string(o->value());
                 configChanged = true;}
             tooltip {Alsa audio device - default, hw:0, front:CARD=Live,DEV=0, ...} xywh {195 93 120 22} labelsize 12 textsize 12
-            code0 {o->insert(Runtime.alsaAudioDevice.c_str());}
+            code0 {o->insert(synth->getRuntime().alsaAudioDevice.c_str());}
           }
           Fl_Check_Browser {} {
             label Samplerate
@@ -348,14 +401,14 @@ class ConfigUI {open : {private MiscFuncs}
                         sample_rate = 48000;
                         break;
                 }
-                Runtime.Samplerate = sample_rate;
+                synth->getRuntime().Samplerate = sample_rate;
                 configChanged = true;}
             xywh {195 131 84 50} labelsize 12 align 4 when 1 textsize 12
             code0 {//
                 o->add("96000");
                 o->add("48000");
                 o->add("44100");
-                switch (Runtime.Samplerate)
+                switch (synth->getRuntime().Samplerate)
                 {
                     case 96000: o->set_checked(1); break;
                     case 44100: o->set_checked(3); break;
@@ -386,7 +439,7 @@ class ConfigUI {open : {private MiscFuncs}
                     case 5: buff_size = 1024; break;
                     default: buff_size = 512; break;
                 }
-                Runtime.Buffersize = buff_size;
+                synth->getRuntime().Buffersize = buff_size;
                 configChanged = true;}
             xywh {195 195 76 73} labelsize 12 align 4 when 1 textsize 12
             code0 {//
@@ -395,7 +448,7 @@ class ConfigUI {open : {private MiscFuncs}
                 o->add("256");
                 o->add("512");
                 o->add("1024");
-                switch (Runtime.Buffersize)
+                switch (synth->getRuntime().Buffersize)
                 {
                     case 64: o->set_checked(1); break;
                     case 128: o->set_checked(2); break;
@@ -411,29 +464,115 @@ class ConfigUI {open : {private MiscFuncs}
           }
         }
         Fl_Group {} {
-          label CCs open
+          label CCs
+          callback {//
+    EPCvalue = synth->getRuntime().midi_upper_voice_C;
+    if (EPCvalue >= 128)
+    {
+        EPCspinner->value(110);
+        EPCspinner->deactivate();
+    }
+    else
+    {
+        EPCspinner->value(EPCvalue);
+        EPCspinner->activate();
+    }
+    
+    BankRootvalue = synth->getRuntime().midi_bank_root;
+    if (BankRootvalue >= 128)
+    {
+        BankRoot->value(115);
+        BankRoot->deactivate();
+    }
+    else
+    {
+        BankRoot->value(BankRootvalue);
+        BankRoot->activate();
+    }} open
           tooltip {MIDI CC preferences} xywh {5 25 455 280} labelsize 12 hide
+          code0 {EPCvalue = synth->getRuntime().midi_upper_voice_C;}
+          code1 {BankRootvalue = synth->getRuntime().midi_bank_root;}
         } {
+          Fl_Return_Button BankRootok {
+            label Set
+            callback {//
+    int candidate = BankRoot->value();
+    if (candidate != BankRootvalue)
+    {
+        string name = synth->getRuntime().testCCvalue(candidate);
+        if (!name.empty())
+        {
+            fl_alert("In use for %s",name.c_str());
+            BankRoot->value(BankRootvalue);
+            BankRoot->redraw();
+        }
+        else
+        {
+            synth->getRuntime().midi_bank_root = candidate;
+            BankRootvalue = candidate;
+            configChanged = true;
+        }
+     }
+     o->deactivate();}
+            xywh {275 78 85 22} box NO_BOX labelsize 12 align 8 deactivate
+          }
+          Fl_Spinner BankRoot {
+            label {Bank Root Change}
+            callback {BankRootok->activate();}
+            xywh {275 81 53 18} labelsize 12 minimum 0 maximum 127 value 115 textsize 12
+            code0 {BankRootvalue = synth->getRuntime().midi_bank_root;}
+            code1 {if (BankRootvalue < 128) o->value(BankRootvalue); else o->value(115);}
+          }
+          Fl_Check_Button {} {
+            label {Enable Bank Root Change}
+            callback {//
+    if (o->value() == 0)
+    {
+         synth->getRuntime().midi_bank_root = 128;
+         BankRoot->deactivate();
+    }
+    else
+    {
+         synth->getRuntime().midi_bank_root = 115;
+         BankRoot->activate();
+         BankRoot->value(115);
+    }
+    BankRoot->redraw();
+    configChanged = true;}
+            xywh {275 60 18 18} down_box DOWN_BOX labelsize 12 align 4
+            code0 {o->value((synth->getRuntime().midi_bank_root < 128));}
+            code1 {if (o->value() == 0) { BankRoot->deactivate(); BankRootok->deactivate(); }}
+          }
           Fl_Choice bankchange {
             label {Bank Change}
             callback {//
-		unsigned int tmp = Runtime.midi_bank_C;
-		switch (o->value())
-		{
-			case 0:
-				Runtime.midi_bank_C = 32;
-				break;
-			case 1:
-				Runtime.midi_bank_C = 0;
-				break;
-			default:
-				Runtime.midi_bank_C = 128;
-
-		}
-		if (Runtime.midi_bank_C != tmp)
-			configChanged = true;} open
-            tooltip {CC0 = msb, CC32 = lsb} xywh {270 74 60 24} down_box BORDER_BOX labelsize 12 align 132 textsize 12
-            code0 {if (Runtime.midi_bank_C == 32) o->value(0); else if (Runtime.midi_bank_C == 0) o->value(1); else o->value(2);}
+    int tmp = synth->getRuntime().midi_bank_C;
+    int candidate;
+    switch (o->value())
+    {
+        case 0:
+            candidate = 32;
+            break;
+        case 1:
+            candidate = 0;
+            break;
+        default:
+            candidate = 128;
+    }
+    string name = synth->getRuntime().testCCvalue(candidate);
+    if (name.empty())
+        synth->getRuntime().midi_bank_C = candidate;
+    else
+    {
+    	o->value(oldBank);
+    	o->redraw();
+        fl_alert("In use for %s",name.c_str());
+    }
+    if (synth->getRuntime().midi_bank_C == tmp)
+        configChanged = true;} open
+            tooltip {CC0 = msb, CC32 = lsb} xywh {275 122 60 18} down_box BORDER_BOX labelsize 12 align 132 textsize 12
+            code0 {if (synth->getRuntime().midi_bank_C == 32) o->value(0); else if (synth->getRuntime().midi_bank_C == 0) o->value(1); else o->value(2);}
+            code1 {oldBank = o->value();}
           } {
             MenuItem banklsb {
               label LSB
@@ -451,32 +590,72 @@ class ConfigUI {open : {private MiscFuncs}
           Fl_Check_Button {} {
             label {Enable Program Change}
             callback {//
-		int tmp = Runtime.EnableProgChange;
-		Runtime.EnableProgChange = o->value();
-		if (Runtime.EnableProgChange != tmp)
+		int tmp = synth->getRuntime().EnableProgChange;
+		synth->getRuntime().EnableProgChange = o->value();
+		if (synth->getRuntime().EnableProgChange != tmp)
 			configChanged = true;}
-            tooltip {MIDI program change enable/disable} xywh {270 135 18 15} down_box DOWN_BOX value 1 labelsize 12 align 4
-            code0 {o->value(Runtime.EnableProgChange);}
+            tooltip {MIDI program change enable/disable} xywh {275 162 18 18} down_box DOWN_BOX value 1 labelsize 12 align 4
+            code0 {o->value(synth->getRuntime().EnableProgChange);}
           }
           Fl_Check_Button {} {
-            label {Enable Part On Change}
+            label {Enable Part On Program Change}
             callback {//
-		int tmp = Runtime.enable_part_on_voice_load;
-		Runtime.enable_part_on_voice_load = o->value();
-		if (Runtime.enable_part_on_voice_load != tmp)
+		int tmp = synth->getRuntime().enable_part_on_voice_load;
+		synth->getRuntime().enable_part_on_voice_load = o->value();
+		if (synth->getRuntime().enable_part_on_voice_load != tmp)
 			configChanged = true;}
-            tooltip {Part enabled if MIDI program changed} xywh {270 180 18 15} down_box DOWN_BOX labelsize 12 align 4
-            code0 {o->value(Runtime.enable_part_on_voice_load);}
+            tooltip {Part enabled if MIDI program changed} xywh {275 182 18 18} down_box DOWN_BOX labelsize 12 align 4
+            code0 {o->value(synth->getRuntime().enable_part_on_voice_load);}
           }
-          Fl_Spinner {} {
-            label {Extended Program Change}
+          Fl_Return_Button EPCok {
+            label Set
             callback {//
-		unsigned int tmp = Runtime.midi_upper_voice_C;
-		Runtime.midi_upper_voice_C = o->value();
-		if (Runtime.midi_upper_voice_C != tmp)
-			configChanged = true;}
-            tooltip {128 = off} xywh {270 231 53 24} labelsize 12 minimum 14 maximum 128 value 80 textsize 12
-            code0 {o->value(Runtime.midi_upper_voice_C);}
+    int candidate = EPCspinner->value();
+    if (candidate != EPCvalue)
+    {
+        string name = synth->getRuntime().testCCvalue(candidate);
+        if (!name.empty())
+        {
+            fl_alert("In use for %s",name.c_str());
+            EPCspinner->value(EPCvalue);
+            EPCspinner->redraw();
+        }
+        else
+        {
+            synth->getRuntime().midi_upper_voice_C = candidate;
+            EPCvalue = candidate;
+            configChanged = true;
+        }
+     }
+     o->deactivate();}
+            xywh {275 238 85 22} box NO_BOX labelsize 12 align 8 deactivate
+          }
+          Fl_Spinner EPCspinner {
+            label {Extended Program Change}
+            callback {EPCok->activate();}
+            xywh {275 241 53 18} labelsize 12 minimum 0 maximum 127 value 110 textsize 12
+            code0 {EPCvalue = synth->getRuntime().midi_upper_voice_C;}
+            code1 {if (EPCvalue < 128) o->value(EPCvalue); else o->value(110);}
+          }
+          Fl_Check_Button {} {
+            label {Enable Extended Program Change}
+            callback {//
+    if (o->value() == 0)
+    {
+         synth->getRuntime().midi_upper_voice_C = 128;
+         EPCspinner->deactivate();
+    }
+    else
+    {
+         synth->getRuntime().midi_upper_voice_C = 110;
+         EPCspinner->activate();
+         EPCspinner->value(110);
+    }
+    EPCspinner->redraw();
+    configChanged = true;}
+            xywh {275 220 18 18} down_box DOWN_BOX labelsize 12 align 4
+            code0 {o->value((synth->getRuntime().midi_upper_voice_C < 128));}
+            code1 {if (o->value() == 0) { EPCspinner->deactivate(); EPCok->deactivate(); }}
           }
         }
       }
@@ -494,13 +673,15 @@ configwindow->do_callback();}
       }
     }
   }
-  Function {ConfigUI()} {open
+  Function {ConfigUI(SynthEngine *_synth)} {open
   } {
     code {//
+	synth = _synth;
         configChanged = false;
         make_window();
         readbankcfg();
-        readpresetcfg();} {}
+        readpresetcfg();
+	selectedRootID = -1;} {}
   }
   Function {activatebutton_rootdir(bool active)} {open
   } {
@@ -509,14 +690,19 @@ configwindow->do_callback();}
         {
             removerootdirbutton->activate();
             makedefaultrootdirbutton->activate();
+            changeIDbutton->activate();
+            changeIDok->activate();
         }
         else
         {
             removerootdirbutton->deactivate();
             makedefaultrootdirbutton->deactivate();
+            changeIDbutton->deactivate();
+            changeIDok->deactivate();
         }} {}
   }
-  Function {activatebutton_presetdir(bool active)} {} {
+  Function {activatebutton_presetdir(bool active)} {open
+  } {
     code {//
         if (active)
         {
@@ -529,33 +715,44 @@ configwindow->do_callback();}
             makedefaultpresetbutton->deactivate();
         }} {}
   }
-  Function {readbankcfg()} {} {
+  Function {readbankcfg()} {open
+  } {
     code {//
-        rootsbrowse->clear();
-        for (int i = 0; i < MAX_BANK_ROOT_DIRS; ++i)
-        {
-            if (Runtime.bankRootDirlist[i].size())
-                rootsbrowse->add(Runtime.bankRootDirlist[i].c_str());
-        }} {}
+    string tmp;
+    rootsbrowse->clear();
+    const RootEntryMap &roots = synth->getBankRef().getRoots();
+      RootEntryMap::const_iterator it;
+      for(it = roots.begin(); it != roots.end(); ++it)
+      {
+        tmp = asString(it->first) + ". " + it->second.path;
+        if(it->first == synth->getBankRef().getCurrentRootID())
+      	{
+      	   tmp += " *";
+      	}
+        rootsbrowse->add(tmp.c_str(), reinterpret_cast<void *>(static_cast<long>(it->first)));
+      }} {}
   }
-  Function {writebankcfg()} {} {
+  Function {recoverID()} {open return_type int
+  } {
     code {//
-        Runtime.clearBankrootDirlist();
-        for (int n = 0; n < rootsbrowse->size(); ++n)
-            Runtime.bankRootDirlist[n] = string(rootsbrowse->text(n + 1));} {}
+    if (selectedRootID >= 0)
+    {
+        return selectedRootID;
+    }
+    return 0;} {}
   }
   Function {readpresetcfg()} {} {
     code {//
         presetbrowse->clear();
         for (int i = 0; i < MAX_BANK_ROOT_DIRS; ++i)
-            if (Runtime.presetsDirlist[i].size())
-                presetbrowse->add(Runtime.presetsDirlist[i].c_str());} {}
+            if (synth->getRuntime().presetsDirlist[i].size())
+                presetbrowse->add(synth->getRuntime().presetsDirlist[i].c_str());} {}
   }
   Function {writepresetcfg()} {} {
     code {//
-        Runtime.clearPresetsDirlist();
+        synth->getRuntime().clearPresetsDirlist();
         for (int n = 0; n < presetbrowse->size(); ++n)
-            Runtime.presetsDirlist[n] = string(presetbrowse->text(n + 1));} {}
+            synth->getRuntime().presetsDirlist[n] = string(presetbrowse->text(n + 1));} {}
   }
   Function {Show()} {} {
     code {configwindow->show();} {}
@@ -566,10 +763,21 @@ configwindow->do_callback();}
   Function {savesettings(void)} {open private return_type void
   } {
     code {//
-        Runtime.saveConfig();
-        writebankcfg();
+        synth->getRuntime().saveConfig();
         writepresetcfg();} {}
   }
   decl {bool configChanged;} {public local
+  }
+  decl {SynthEngine *synth;} {private local
+  }
+  decl {long selectedRootID;} {private local
+  }
+  decl {int EPCvalue;} {private local
+  }
+  decl {int BankRootvalue;} {private local
+  }
+  decl {int oldBank;} {private local
+  }
+  decl {int oldrootID;} {private local
   }
 } 

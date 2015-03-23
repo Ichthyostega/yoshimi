@@ -22,6 +22,9 @@
     This file is a derivative of a ZynAddSubFX original, modified October 2010
 */
 
+#ifndef PRESETSSTORE_H
+#define PRESETSSTORE_H
+
 #include "Misc/Config.h"
 #include "Misc/MiscFuncs.h"
 
@@ -31,12 +34,12 @@
 class XMLwrapper;
 class PresetsStore;
 
-extern PresetsStore presetsstore;
+class SynthEngine;
 
 class PresetsStore : MiscFuncs
 {
     public:
-        PresetsStore();
+        PresetsStore(SynthEngine *_synth);
         ~PresetsStore();
     
         // Clipboard stuff
@@ -60,10 +63,15 @@ class PresetsStore : MiscFuncs
     private:
         void clearpresets(void);
     
-        struct {
+        struct _clipboard{
             char *data;
             string type;
-        } clipboard;
+        };
+        static _clipboard clipboard;
     
         const string preset_extension;
+
+        SynthEngine *synth;
 };
+
+#endif //PRESETSSTORE_H

@@ -30,10 +30,12 @@
 #include "Params/FilterParams.h"
 #include "Params/Presets.h"
 
+class SynthEngine;
+
 class SUBnoteParameters : public Presets
 {
     public:
-        SUBnoteParameters();
+        SUBnoteParameters(SynthEngine *_synth);
         ~SUBnoteParameters();
         void setPan(char pan);
         bool randomPan(void) { return !PPanning; }

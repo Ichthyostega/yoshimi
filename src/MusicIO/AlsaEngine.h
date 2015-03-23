@@ -28,24 +28,26 @@ using namespace std;
 
 #include "MusicIO/MusicIO.h"
 
+class SynthEngine;
+
 class AlsaEngine : public MusicIO
 {
     public:
-        AlsaEngine();
-        ~AlsaEngine() { };
+        AlsaEngine(SynthEngine *_synth);
+        ~AlsaEngine() { }
 
         bool openAudio(void);
         bool openMidi(void);
         bool Start(void);
         void Close(void);
 
-        unsigned int getSamplerate(void) { return audio.samplerate; };
-        int getBuffersize(void) { return audio.period_size; };
+        unsigned int getSamplerate(void) { return audio.samplerate; }
+        int getBuffersize(void) { return audio.period_size; }
 
         string audioClientName(void);
         string midiClientName(void);
-        int audioClientId(void) { return audio.alsaId; };
-        int midiClientId(void) { return midi.alsaId; };
+        int audioClientId(void) { return audio.alsaId; }
+        int midiClientId(void) { return midi.alsaId; }
 
     private:
         bool prepHwparams(void);

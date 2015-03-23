@@ -30,7 +30,6 @@
 
 using namespace std;
 
-#include "Misc/Part.h"
 #include "Misc/MiscFuncs.h"
 #include "Misc/SynthHelper.h"
 
@@ -46,12 +45,14 @@ class Microtonal;
 class EffectMgr;
 class FFTwrapper;
 
+class SynthEngine;
+
 class Part : private MiscFuncs, SynthHelper
 {
     public:
         enum NoteStatus { KEY_OFF, KEY_PLAYING, KEY_RELASED_AND_SUSTAINED, KEY_RELASED };
 
-        Part(Microtonal *microtonal_, FFTwrapper *fft_);
+        Part(Microtonal *microtonal_, FFTwrapper *fft_, SynthEngine *_synth);
         ~Part();
         inline float pannedVolLeft(void) { return volume * pangainL; }
         inline float pannedVolRight(void) { return volume * pangainR; }
@@ -70,7 +71,7 @@ class Part : private MiscFuncs, SynthHelper
         void ComputePartSmps(void);
 
         bool saveXML(string filename); // true for load ok, otherwise false
-        bool loadXMLinstrument(string filename);
+        int loadXMLinstrument(string filename);
         void add2XML(XMLwrapper *xml);
         void add2XMLinstrument(XMLwrapper *xml);
         void getfromXML(XMLwrapper *xml);
@@ -99,6 +100,8 @@ class Part : private MiscFuncs, SynthHelper
         void setkititemstatus(int kititem, int Penabled_);
         void setVolume(char value);
         void setDestination(int value);
+
+        SynthEngine *getSynthEngine() {return synth;}
 
         unsigned char Penabled;
         unsigned char Pvolume;
@@ -195,6 +198,8 @@ class Part : private MiscFuncs, SynthHelper
                            // (the list only store note values). For example.
                            // 'monomem[note].velocity' would be the velocity
                            // value of the note 'note'.
+
+        SynthEngine *synth;
 };
 
 #endif

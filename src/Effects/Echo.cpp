@@ -25,7 +25,7 @@
 #include "Misc/SynthEngine.h"
 #include "Effects/Echo.h"
 
-Echo::Echo(bool insertion_, float* efxoutl_, float* efxoutr_) :
+Echo::Echo(bool insertion_, float* efxoutl_, float* efxoutr_, SynthEngine *_synth) :
     Effect(insertion_, efxoutl_, efxoutr_, NULL, 0),
     Pvolume(50),
     Pdelay(60),
@@ -34,7 +34,8 @@ Echo::Echo(bool insertion_, float* efxoutl_, float* efxoutr_) :
     Phidamp(60),
     lrdelay(0),
     ldelay(NULL),
-    rdelay(NULL)
+    rdelay(NULL),
+    synth(_synth)
 {
     setpreset(Ppreset);
     changepar(4, 100); // lrcross
@@ -85,7 +86,7 @@ void Echo::out(float* smpsl, float* smpsr)
     float l, r;
     float ldl = ldelay[kl];
     float rdl = rdelay[kr];
-    for (int i = 0; i < synth->buffersize; ++i)
+    for (int i = 0; i < synth->p_buffersize; ++i)
     {
         ldl = ldelay[kl];
         rdl = rdelay[kr];
@@ -133,7 +134,7 @@ void Echo::setvolume(unsigned char Pvolume_)
 void Echo::setdelay(const unsigned char Pdelay_)
 {
     Pdelay = Pdelay_;
-    delay = 1 + lrintf(Pdelay / 127.0f * synth->samplerate_f * 1.5f); // 0 .. 1.5 sec
+    delay = 1 + (int)truncf(Pdelay / 127.0f * synth->samplerate_f * 1.5f); // 0 .. 1.5 sec
     initdelays();
 }
 

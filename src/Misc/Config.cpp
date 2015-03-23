@@ -5,7 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
     Copyright 2013, Nikita Zlobin
-    Copyright 2014, Will Godfrey
+    Copyright 2014-2015, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -21,7 +21,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is derivative of ZynAddSubFX original code, modified August 2014
+    This file is derivative of ZynAddSubFX original code, last modified January 2015
 */
 
 #include <iostream>
@@ -48,12 +48,8 @@ using namespace std;
 #include "Misc/SynthEngine.h"
 #include "Misc/Config.h"
 
-Config Runtime;
-
-struct sigaction Config::sigAction;
 
 const unsigned short Config::MaxParamsHistory = 25;
-unsigned short Config::nextHistoryIndex = numeric_limits<unsigned int>::max();
 
 static char prog_doc[] =
     "Yoshimi " YOSHIMI_VERSION ", a derivative of ZynAddSubFX - "
@@ -86,7 +82,7 @@ static struct argp_option cmd_options[] = {
 };
 
 
-Config::Config() :
+Config::Config(SynthEngine *_synth, int argc, char **argv) :
     restoreState(false),
     restoreJackSession(false),
     Samplerate(48000),
@@ -106,46 +102,50 @@ Config::Config() :
     alsaAudioDevice("default"),
     alsaMidiDevice("default"),
     BankUIAutoClose(0),
+    RootUIAutoClose(0),
     GzipCompression(3),
     Interpolation(0),
     CheckPADsynth(1),
     EnableProgChange(0), // default will be inverted
     rtprio(50),
+    midi_bank_root(128),
     midi_bank_C(0),
     midi_upper_voice_C(128),
     enable_part_on_voice_load(0),
+    single_row_panel(0),
     deadObjects(NULL),
+    nextHistoryIndex(numeric_limits<unsigned int>::max()),
     sigIntActive(0),
-    ladi1IntActive(0),
-    sse_level(0),
-    programcommand(string("yoshimi"))
+    ladi1IntActive(0),    
+    sse_level(0),    
+    programcommand(string("yoshimi")),
+    synth(_synth),
+    bRuntimeSetupCompleted(false)
 {
-    fesetround(FE_TOWARDZERO); // Special thanks to Lars Luthman for conquering
+    if(!synth->getIsLV2Plugin())
+        fesetround(FE_TOWARDZERO); // Special thanks to Lars Luthman for conquering
                                // the heffalump. We need lrintf() to round
                                // toward zero.
+    //^^^^^^^^^^^^^^^ This call is not needed aymore (at least for lv2 plugin)
+    //as all calls to lrintf() are replaced with (int)truncf()
+    //which befaves exactly the same when flag FE_TOWARDZERO is set
+
     cerr.precision(4);
     deadObjects = new BodyDisposal();
+    bRuntimeSetupCompleted = Setup(argc, argv);
 }
 
 
 bool Config::Setup(int argc, char **argv)
 {
-    memset(&sigAction, 0, sizeof(sigAction));
-    sigAction.sa_handler = sigHandler;
-    if (sigaction(SIGUSR1, &sigAction, NULL))
-        Log("Setting SIGUSR1 handler failed");
-    if (sigaction(SIGINT, &sigAction, NULL))
-        Log("Setting SIGINT handler failed");
-    if (sigaction(SIGHUP, &sigAction, NULL))
-        Log("Setting SIGHUP handler failed");
-    if (sigaction(SIGTERM, &sigAction, NULL))
-        Log("Setting SIGTERM handler failed");
-    if (sigaction(SIGQUIT, &sigAction, NULL))
-        Log("Setting SIGQUIT handler failed");
-    clearBankrootDirlist();
     clearPresetsDirlist();
+    AntiDenormals(true);
+
     if (!loadConfig())
         return false;
+
+    if(synth->getIsLV2Plugin()) //skip further setup for lv2 plugin instance.
+        return true;
     switch (audioEngine)
     {
         case alsa_audio:
@@ -194,8 +194,7 @@ bool Config::Setup(int argc, char **argv)
             no_state0: Log("Invalid state file specified for restore: " + StateFile);
             return false;
         }
-    }
-    AntiDenormals(true);
+    }    
     return true;
 }
 
@@ -263,10 +262,70 @@ string Config::historyFilename(int index)
 }
 
 
-void Config::clearBankrootDirlist(void)
+string Config::testCCvalue(int cc)
 {
-    for (int i = 0; i < MAX_BANK_ROOT_DIRS; ++i)
-        bankRootDirlist[i].clear();
+    string result = "";
+    switch (cc)
+    {
+        case 1:
+            result = "mod wheel";
+            break;
+        case 7:
+            result = "volume";
+            break;
+        case 10:
+            result = "panning";
+            break;
+        case 11:
+            result = "expression";
+            break;
+        case 64:
+            result = "sustain pedal";
+            break;
+        case 65:
+            result = "partamento";
+            break;
+        case 71:
+            result = "filter Q";
+            break;
+        case 74:
+            result = "filter cutoff";
+            break;
+        case 75:
+            result = "bandwidth";
+            break;
+        case 76:
+            result = "FM amplitude";
+            break;
+        case 77:
+            result = "resonance centre";
+            break;
+        case 78:
+            result = "resonance bandwidth";
+            break;
+        case 120:
+            result = "all sounds off";
+            break;
+        case 121:
+            result = "reset all controllers";
+            break;
+        case 123:
+            result = "all notes off";
+            break;
+        default:
+        {
+            if (cc < 128) // don't compare with 'disabled' state
+            {
+                if (cc == synth->getRuntime().midi_bank_C)
+                    result = "bank change";
+                else if (cc == synth->getRuntime().midi_bank_root)
+                    result = "bank root change";
+                else if (cc == synth->getRuntime().midi_upper_voice_C)
+                    result = "extended program change";
+            }
+        }
+    }
+    return result;
 }
 
 
@@ -275,6 +334,7 @@ void Config::clearPresetsDirlist(void)
     for (int i = 0; i < MAX_BANK_ROOT_DIRS; ++i)
         presetsDirlist[i].clear();
 }
+
 
 bool Config::loadConfig(void)
 {
@@ -295,20 +355,25 @@ bool Config::loadConfig(void)
     }
     ConfigFile = ConfigDir + string("/yoshimi.config");
     StateFile = ConfigDir + string("/yoshimi.state");
-    if (!isRegFile(ConfigFile))
+    string resConfigFile = ConfigFile;
+    if(synth->getUniqueId() > 0)
     {
-        Log("ConfigFile " + ConfigFile + " not found");
+        resConfigFile += asString(synth->getUniqueId());
+    }
+    if (!isRegFile(resConfigFile) && !isRegFile(ConfigFile))
+    {
+        Log("ConfigFile " + resConfigFile + " not found");
         string oldConfigFile = string(getenv("HOME")) + string("/.yoshimiXML.cfg");
         if (isRegFile(oldConfigFile))
         {
-            Log("Copying old config file " + oldConfigFile + " to new location: " + ConfigFile);
+            Log("Copying old config file " + oldConfigFile + " to new location: " + resConfigFile);
             FILE *oldfle = fopen (oldConfigFile.c_str(), "r");
-            FILE *newfle = fopen (ConfigFile.c_str(), "w");
+            FILE *newfle = fopen (resConfigFile.c_str(), "w");
             if (oldfle != NULL && newfle != NULL)
                 while (!feof(oldfle))
                     putc(getc(oldfle), newfle);
             else
-                Log("Failed to copy old config file " + oldConfigFile + " to " + ConfigFile);
+                Log("Failed to copy old config file " + oldConfigFile + " to " + resConfigFile);
             if (newfle)
                 fclose(newfle);
             if (oldfle)
@@ -317,23 +382,26 @@ bool Config::loadConfig(void)
     }
 
     bool isok = true;
-    if (!isRegFile(ConfigFile))
-        Log("ConfigFile " + ConfigFile + " still not found, will use default settings");
+    if (!isRegFile(resConfigFile) && !isRegFile(ConfigFile))
+        Log("ConfigFile " + resConfigFile + " still not found, will use default settings");
     else
     {
-        XMLwrapper *xml = new XMLwrapper();
+        XMLwrapper *xml = new XMLwrapper(synth);
         if (!xml)
             Log("loadConfig failed XMLwrapper allocation");
         else
         {
-            if (xml->loadXMLfile(ConfigFile) < 0)
-            {
-                Log("loadConfig loadXMLfile failed");
-                return false;
+            if (!xml->loadXMLfile(resConfigFile))
+            {                
+                if((synth->getUniqueId() > 0) && (!xml->loadXMLfile(ConfigFile)))
+                {
+                    Log("loadConfig loadXMLfile failed");
+                    return false;
+                }
             }
             isok = extractConfigData(xml);
             if (isok)
-                Oscilsize = lrintf(powf(2.0f, ceil(log (Oscilsize - 1.0f) / logf(2.0))));
+                Oscilsize = (int)truncf(powf(2.0f, ceil(log (Oscilsize - 1.0f) / logf(2.0))));
             delete xml;
         }
     }
@@ -359,48 +427,19 @@ bool Config::extractConfigData(XMLwrapper *xml)
                                         MAX_AD_HARMONICS * 2, 131072);
     BankUIAutoClose = xml->getpar("bank_window_auto_close",
                                                BankUIAutoClose, 0, 1);
+    RootUIAutoClose = xml->getpar("root_window_auto_close",
+                                               RootUIAutoClose, 0, 1);
     GzipCompression = xml->getpar("gzip_compression", GzipCompression, 0, 9);
-    currentBankDir = xml->getparstr("bank_current");
     Interpolation = xml->getpar("interpolation", Interpolation, 0, 1);
     CheckPADsynth = xml->getpar("check_pad_synth", CheckPADsynth, 0, 1);
     EnableProgChange = 1 - xml->getpar("ignore_program_change", EnableProgChange, 0, 1); // inverted for Zyn compatibility
     VirKeybLayout = xml->getpar("virtual_keyboard_layout", VirKeybLayout, 0, 10);
 
     // get bank dirs
-    int count = 0;
-    for (int i = 0; i < MAX_BANK_ROOT_DIRS; ++i)
-    {
-        if (xml->enterbranch("BANKROOT", i))
-        {
-            string dir = xml->getparstr("bank_root");
-            if (isDirectory(dir))
-                bankRootDirlist[count++] = dir;
-            xml->exitbranch();
-        }
-    }
-    if (!count)
-    {
-        string bankdirs[] = {
-            "/usr/share/yoshimi/banks",
-            "/usr/local/share/yoshimi/banks",
-            "/usr/share/zynaddsubfx/banks",
-            "/usr/local/share/zynaddsubfx/banks",
-            string(getenv("HOME")) + "/banks",
-            "../banks",
-            "banks"
-        };
-        const int defaultsCount = 7; // as per bankdirs[] size above
-        for (int i = 0; i < defaultsCount; ++i)
-        {
-            if (bankdirs[i].size() && isDirectory(bankdirs[i]))
-                bankRootDirlist[count++] = bankdirs[i];
-        }
-    }
-    if (!currentBankDir.size())
-        currentBankDir = bankRootDirlist[0];
+    synth->getBankRef().parseConfigFile(xml);
 
     // get preset dirs
-    count = 0;
+    int count = 0;
     for (int i = 0; i < MAX_BANK_ROOT_DIRS; ++i)
     {
         if (xml->enterbranch("PRESETSROOT", i))
@@ -436,9 +475,11 @@ bool Config::extractConfigData(XMLwrapper *xml)
     jackServer = xml->getparstr("linux_jack_server");
 
     // midi options
+    midi_bank_root = xml->getpar("midi_bank_root", midi_bank_root, 0, 128);
     midi_bank_C = xml->getpar("midi_bank_C", midi_bank_C, 0, 128);
-    midi_upper_voice_C = xml->getpar("midi_upper_voice_C", midi_upper_voice_C, 14, 128);
+    midi_upper_voice_C = xml->getpar("midi_upper_voice_C", midi_upper_voice_C, 0, 128);
     enable_part_on_voice_load = xml->getpar("enable_part_on_voice_load", enable_part_on_voice_load, 0, 1);
+    single_row_panel = xml->getpar("single_row_panel", single_row_panel, 0, 1);
 
     if (xml->enterbranch("XMZ_HISTORY"))
     {
@@ -464,7 +505,7 @@ bool Config::extractConfigData(XMLwrapper *xml)
 
 void Config::saveConfig(void)
 {
-    XMLwrapper *xmltree = new XMLwrapper();
+    XMLwrapper *xmltree = new XMLwrapper(synth);
     if (!xmltree)
     {
         Log("saveConfig failed xmltree allocation");
@@ -473,8 +514,16 @@ void Config::saveConfig(void)
     addConfigXML(xmltree);
     unsigned int tmp = GzipCompression;
     GzipCompression = 0;
-    if (!xmltree->saveXMLfile(ConfigFile))
-        Log("Failed to save config to " + ConfigFile);
+
+    string resConfigFile = ConfigFile;
+    if(synth->getUniqueId() > 0)
+    {
+        resConfigFile += asString(synth->getUniqueId());
+    }
+    if (!xmltree->saveXMLfile(resConfigFile))
+    {
+        Log("Failed to save config to " + resConfigFile);
+    }
     GzipCompression = tmp;
 
     delete xmltree;
@@ -490,20 +539,14 @@ void Config::addConfigXML(XMLwrapper *xmltree)
     xmltree->addpar("sound_buffer_size", Buffersize);
     xmltree->addpar("oscil_size", Oscilsize);
     xmltree->addpar("bank_window_auto_close", BankUIAutoClose);
+    xmltree->addpar("root_window_auto_close", RootUIAutoClose);
 
     xmltree->addpar("gzip_compression", GzipCompression);
     xmltree->addpar("check_pad_synth", CheckPADsynth);
-    xmltree->addpar("ignore_program_change", (1 - EnableProgChange));
-    xmltree->addparstr("bank_current", currentBankDir);
+    xmltree->addpar("ignore_program_change", (1 - EnableProgChange));    
     xmltree->addpar("virtual_keyboard_layout", VirKeybLayout);
 
-    for (int i = 0; i < MAX_BANK_ROOT_DIRS; ++i)
-        if (bankRootDirlist[i].size())
-        {
-            xmltree->beginbranch("BANKROOT",i);
-            xmltree->addparstr("bank_root", bankRootDirlist[i]);
-            xmltree->endbranch();
-        }
+    synth->getBankRef().saveToConfigFile(xmltree);
 
     for (int i = 0; i < MAX_BANK_ROOT_DIRS; ++i)
         if (presetsDirlist[i].size())
@@ -518,9 +561,11 @@ void Config::addConfigXML(XMLwrapper *xmltree)
     xmltree->addparstr("linux_alsa_midi_dev", alsaMidiDevice);
     xmltree->addparstr("linux_jack_server", jackServer);
 
+    xmltree->addpar("midi_bank_root", midi_bank_root);
     xmltree->addpar("midi_bank_C", midi_bank_C);
     xmltree->addpar("midi_upper_voice_C", midi_upper_voice_C);
     xmltree->addpar("enable_part_on_voice_load", enable_part_on_voice_load);
+    xmltree->addpar("single_row_panel", single_row_panel);
 
     // Parameters history
     if (ParamsHistory.size())
@@ -543,7 +588,7 @@ void Config::addConfigXML(XMLwrapper *xmltree)
 
 void Config::saveSessionData(string savefile)
 {
-    XMLwrapper *xmltree = new XMLwrapper();
+    XMLwrapper *xmltree = new XMLwrapper(synth);
     if (!xmltree)
     {
         Log("saveSessionData failed xmltree allocation", true);
@@ -568,7 +613,7 @@ bool Config::restoreSessionData(string sessionfile)
         Log("Session file " + sessionfile + " not available", true);
         goto end_game;
     }
-    if (!(xml = new XMLwrapper()))
+    if (!(xml = new XMLwrapper(synth)))
     {
         Log("Failed to init xmltree for restoreState", true);
         goto end_game;
@@ -628,7 +673,7 @@ void Config::Log(string msg, bool tostderr)
 }
 
 
-void Config::StartupReport(void)
+void Config::StartupReport(MusicClient *musicClient)
 {
     if (!showGui)
         return;
@@ -680,7 +725,7 @@ void Config::setRtprio(int prio)
 
 // general thread start service
 bool Config::startThread(pthread_t *pth, void *(*thread_fn)(void*), void *arg,
-                         bool schedfifo, char priodec)
+                         bool schedfifo, char priodec, bool create_detached)
 {
     pthread_attr_t attr;
     int chk;
@@ -690,7 +735,11 @@ bool Config::startThread(pthread_t *pth, void *(*thread_fn)(void*), void *arg,
     {
         if (!(chk = pthread_attr_init(&attr)))
         {
-            if (!(chk = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED)))
+            if(create_detached)
+            {
+               chk = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+            }
+            if(!chk)
             {
                 if (schedfifo)
                 {
@@ -757,28 +806,6 @@ bool Config::startThread(pthread_t *pth, void *(*thread_fn)(void*), void *arg,
         break;
     }
     return outcome;
-}
-
-
-void Config::sigHandler(int sig)
-{
-    switch (sig)
-    {
-        case SIGINT:
-        case SIGHUP:
-        case SIGTERM:
-        case SIGQUIT:
-            Runtime.setInterruptActive();
-            break;
-
-        case SIGUSR1:
-            Runtime.setLadi1Active();
-            sigaction(SIGUSR1, &sigAction, NULL);
-            break;
-
-        default:
-            break;
-    }
 }
 
 
@@ -888,6 +915,10 @@ int Config::SSEcapability(void)
 
 void Config::AntiDenormals(bool set_daz_ftz)
 {
+    if(synth->getIsLV2Plugin())
+    {
+        return;// no need to set floating point rules for lv2 - host should control it.
+    }
     #if defined(__SSE__)
         if (set_daz_ftz)
         {
@@ -947,9 +978,9 @@ static error_t parse_cmds (int key, char *arg, struct argp_state *state)
         case 'N': settings->nameTag = string(arg); break;
         case 'l': settings->paramsLoad = string(arg); break;
         case 'L': settings->instrumentLoad = string(arg); break;
-        case 'R': settings->Samplerate = Runtime.string2int(string(arg)); break;
-        case 'b': settings->Buffersize = Runtime.string2int(string(arg)); break;
-        case 'o': settings->Oscilsize = Runtime.string2int(string(arg)); break;
+        case 'R': settings->Samplerate = Config::string2int(string(arg)); break;
+        case 'b': settings->Buffersize = Config::string2int(string(arg)); break;
+        case 'o': settings->Oscilsize = Config::string2int(string(arg)); break;
         case 'A':
             settings->audioEngine = alsa_audio;
             if (arg)

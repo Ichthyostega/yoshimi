@@ -27,7 +27,8 @@
 #include "Misc/SynthEngine.h"
 #include "Effects/EffectMgr.h"
 
-EffectMgr::EffectMgr(const bool insertion_) :
+EffectMgr::EffectMgr(const bool insertion_, SynthEngine *_synth) :
+    Presets(_synth),
     insertion(insertion_),
     filterpars(NULL),
     nefx(0),
@@ -73,28 +74,28 @@ void EffectMgr::changeeffect(int _nefx)
     switch (nefx)
     {
         case 1:
-            efx = new Reverb(insertion, efxoutl, efxoutr);
+            efx = new Reverb(insertion, efxoutl, efxoutr, synth);
             break;
         case 2:
-            efx = new Echo(insertion, efxoutl, efxoutr);
+            efx = new Echo(insertion, efxoutl, efxoutr, synth);
             break;
         case 3:
-            efx = new Chorus(insertion, efxoutl, efxoutr);
+            efx = new Chorus(insertion, efxoutl, efxoutr, synth);
             break;
         case 4:
-            efx = new Phaser(insertion, efxoutl, efxoutr);
+            efx = new Phaser(insertion, efxoutl, efxoutr, synth);
             break;
         case 5:
-            efx = new Alienwah(insertion, efxoutl, efxoutr);
+            efx = new Alienwah(insertion, efxoutl, efxoutr, synth);
             break;
         case 6:
-            efx = new Distorsion(insertion, efxoutl, efxoutr);
+            efx = new Distorsion(insertion, efxoutl, efxoutr, synth);
             break;
         case 7:
-            efx = new EQ(insertion, efxoutl, efxoutr);
+            efx = new EQ(insertion, efxoutl, efxoutr, synth);
             break;
         case 8:
-            efx = new DynamicFilter(insertion, efxoutl, efxoutr);
+            efx = new DynamicFilter(insertion, efxoutl, efxoutr, synth);
             break;
             // put more effect here
         default:
@@ -182,29 +183,23 @@ void EffectMgr::out(float *smpsl, float *smpsr)
     {
         if (!insertion)
         {
-            memset(smpsl, 0, synth->bufferbytes);
-            memset(smpsr, 0, synth->bufferbytes);
-            memset(efxoutl, 0, synth->bufferbytes);
-            memset(efxoutr, 0, synth->bufferbytes);
+            memset(smpsl, 0, synth->p_bufferbytes);
+            memset(smpsr, 0, synth->p_bufferbytes);
+            memset(efxoutl, 0, synth->p_bufferbytes);
+            memset(efxoutr, 0, synth->p_bufferbytes);
         }
         return;
     }
-    memset(efxoutl, 0, synth->bufferbytes);
-    memset(efxoutr, 0, synth->bufferbytes);
+    memset(efxoutl, 0, synth->p_bufferbytes);
+    memset(efxoutr, 0, synth->p_bufferbytes);
     efx->out(smpsl, smpsr);
 
     float volume = efx->volume;
 
     if (nefx == 7)
     {   // this is need only for the EQ effect
-        // aca: another memcpy() candidate
-        //for (int i = 0; i < synth->buffersize; ++i)
-        //{
-         //   smpsl[i] = efxoutl[i];
-         //   smpsr[i] = efxoutr[i];
-        //}
-        memcpy(smpsl, efxoutl, synth->bufferbytes);
-        memcpy(smpsr, efxoutr, synth->bufferbytes);
+        memcpy(smpsl, efxoutl, synth->p_bufferbytes);
+        memcpy(smpsr, efxoutr, synth->p_bufferbytes);
         return;
     }
 
@@ -225,7 +220,7 @@ void EffectMgr::out(float *smpsl, float *smpsr)
 
         if (dryonly)
         {   // this is used for instrument effect only
-            for (int i = 0; i < synth->buffersize; ++i)
+            for (int i = 0; i < synth->p_buffersize; ++i)
             {
                 smpsl[i] *= v1;
                 smpsr[i] *= v1;
@@ -234,14 +229,14 @@ void EffectMgr::out(float *smpsl, float *smpsr)
             }
         } else {
             // normal instrument/insertion effect
-            for (int i = 0; i < synth->buffersize; ++i)
+            for (int i = 0; i < synth->p_buffersize; ++i)
             {
                 smpsl[i] = smpsl[i] * v1 + efxoutl[i] * v2;
                 smpsr[i] = smpsr[i] * v1 + efxoutr[i] * v2;
             }
         }
     } else { // System effect
-        for (int i = 0; i < synth->buffersize; ++i)
+        for (int i = 0; i < synth->p_buffersize; ++i)
         {
             efxoutl[i] *= 2.0f * volume;
             efxoutr[i] *= 2.0f * volume;

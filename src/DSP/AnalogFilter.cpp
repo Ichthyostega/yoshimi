@@ -28,7 +28,7 @@
 #include "Misc/SynthEngine.h"
 #include "DSP/AnalogFilter.h"
 
-AnalogFilter::AnalogFilter(unsigned char Ftype, float Ffreq, float Fq, unsigned char Fstages) :
+AnalogFilter::AnalogFilter(unsigned char Ftype, float Ffreq, float Fq, unsigned char Fstages, SynthEngine *_synth) :
     type(Ftype),
     stages(Fstages),
     freq(Ffreq),
@@ -36,7 +36,8 @@ AnalogFilter::AnalogFilter(unsigned char Ftype, float Ffreq, float Fq, unsigned 
     gain(1.0),
     abovenq(0),
     oldabovenq(0),
-    tmpismp(NULL)
+    tmpismp(NULL),
+    synth(_synth)
 {
 
     for (int i = 0; i < 3; ++i)
@@ -372,7 +373,7 @@ void AnalogFilter::singlefilterout(float *smp, fstage &x, fstage &y, float *c, f
     float y0;
     if (order == 1)
     {   // First order filter
-        for (int i = 0; i < synth->buffersize; ++i)
+        for (int i = 0; i < synth->p_buffersize; ++i)
         {
             y0 = smp[i] * c[0] + x.c1 * c[1] + y.c1 * d[1];
             y.c1 = y0;
@@ -381,7 +382,7 @@ void AnalogFilter::singlefilterout(float *smp, fstage &x, fstage &y, float *c, f
         }
     }
     if (order == 2) { // Second order filter
-        for (int i = 0; i < synth->buffersize; ++i)
+        for (int i = 0; i < synth->p_buffersize; ++i)
         {
             y0 = smp[i] * c[0] + x.c1 * c[1] + x.c2 * c[2] + y.c1 * d[1] + y.c2 * d[2];
             y.c2 = y.c1;
@@ -398,7 +399,7 @@ void AnalogFilter::filterout(float *smp)
 {
     if (needsinterpolation != 0)
     {
-        memcpy(tmpismp, smp, synth->bufferbytes);
+        memcpy(tmpismp, smp, synth->p_bufferbytes);
         for (int i = 0; i < stages + 1; ++i)
             singlefilterout(tmpismp, oldx[i], oldy[i], oldc, oldd);
     }
@@ -408,15 +409,15 @@ void AnalogFilter::filterout(float *smp)
 
     if (needsinterpolation != 0)
     {
-        for (int i = 0; i < synth->buffersize; ++i)
+        for (int i = 0; i < synth->p_buffersize; ++i)
         {
-            float x = (float)i / synth->buffersize_f;
+            float x = (float)i / synth->p_buffersize_f;
             smp[i] = tmpismp[i] * (1.0f - x) + smp[i] * x;
         }
         needsinterpolation = 0;
     }
 
-    for (int i = 0; i < synth->buffersize; ++i)
+    for (int i = 0; i < synth->p_buffersize; ++i)
         smp[i] *= outgain;
 }
 

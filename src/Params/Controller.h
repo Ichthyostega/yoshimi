@@ -28,10 +28,12 @@
 
 class XMLwrapper;
 
+class SynthEngine;
+
 class Controller
 {
     public:
-        Controller();
+        Controller(SynthEngine *_synth);
         ~Controller() { };
         void resetall(void);
 
@@ -132,6 +134,9 @@ class Controller
 
             unsigned char receive;
             unsigned char time;
+            unsigned char proportional;
+            unsigned char propRate;
+            unsigned char propDepth;
             unsigned char pitchthresh;
             unsigned char pitchthreshtype;
 
@@ -157,6 +162,8 @@ class Controller
             float relbw;
             unsigned char depth;
         } resonancebandwidth;
+private:
+        SynthEngine *synth;
 };
 
 #endif

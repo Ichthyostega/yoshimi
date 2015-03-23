@@ -28,12 +28,14 @@
 #include "Misc/XMLwrapper.h"
 #include "Params/Presets.h"
 
+class SynthEngine;
+
 class LFOParams : public Presets
 {
     public:
         LFOParams(float Pfreq_, unsigned char Pintensity_, unsigned char Pstartphase_,
                   unsigned char PLFOtype_, unsigned char Prandomness_,
-                  unsigned char Pdelay_, unsigned char Pcontinous, int fel_);
+                  unsigned char Pdelay_, unsigned char Pcontinous, int fel_, SynthEngine *_synth);
         ~LFOParams() { }
 
         void add2XML(XMLwrapper *xml);
@@ -52,7 +54,7 @@ class LFOParams : public Presets
         unsigned char Pstretch;
 
         int fel;         // kind of LFO - 0 frequency, 1 amplitude, 2 filter
-        static int time; // used by Pcontinous
+       // static int time; // used by Pcontinous - moved to SynthEngine to make it per-instance
 
     private:
         // Default parameters
