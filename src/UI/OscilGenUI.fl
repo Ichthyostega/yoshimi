@@ -1,5 +1,5 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0300 
+version 1.0302 
 header_name {.h} 
 code_name {.cc}
 comment {OscilgenUI.h} {not_in_source in_header
@@ -70,15 +70,19 @@ decl {\#include "Misc/MiscFuncs.h"} {public local
 decl {\#include "Misc/SynthEngine.h"} {public local
 } 
 
+decl {\#include "MasterUI.h"} {selected private global
+} 
+
 class OscilSpectrum {open : {public Fl_Box, MiscFuncs}
 } {
   Function {OscilSpectrum(int x,int y, int w, int h, const char *label=0):Fl_Box(x,y,w,h,label)} {open
   } {
     code {oscil=NULL;} {}
   }
-  Function {init(OscilGen *oscil_,int oscbase_)} {open
+  Function {init(OscilGen *oscil_,int oscbase_, SynthEngine *_synth)} {open
   } {
-    code {oscil = oscil_;
+    code {synth = _synth;
+oscil = oscil_;
         oscbase = oscbase_;} {}
   }
   Function {draw()} {open
@@ -165,6 +169,8 @@ class OscilSpectrum {open : {public Fl_Box, MiscFuncs}
   }
   decl {int oscbase;} {private local
   }
+  decl {SynthEngine *synth;} {private local
+  }
 } 
 
 class PSlider {open : {public Fl_Slider}
@@ -204,15 +210,21 @@ class Oscilloscope {open : {public Fl_Box}
 phase=64;
 oscbase=0;} {}
   }
-  Function {init(OscilGen *oscil_)} {} {
-    code {oscil=oscil_;} {}
+  Function {init(OscilGen *oscil_, SynthEngine *_synth)} {open
+  } {
+    code {synth = _synth;
+oscil=oscil_;} {}
   }
-  Function {init(OscilGen *oscil_,int oscbase_)} {} {
-    code {oscil=oscil_;
+  Function {init(OscilGen *oscil_,int oscbase_, SynthEngine *_synth)} {open
+  } {
+    code {synth = _synth;
+oscil=oscil_;
 oscbase=oscbase_;} {}
   }
-  Function {init(OscilGen *oscil_,int oscbase_,int phase_)} {} {
-    code {oscil=oscil_;
+  Function {init(OscilGen *oscil_,int oscbase_,int phase_, SynthEngine *_synth)} {open
+  } {
+    code {synth = _synth;
+oscil=oscil_;
 oscbase=oscbase_;
 phase=phase_;} {}
   }
@@ -292,6 +304,8 @@ phase=phase_;} {}
   decl {int oscbase;} {private local
   }
   decl {int phase;} {public local
+  }
+  decl {SynthEngine *synth;} {private local
   }
 } 
 
@@ -378,8 +392,10 @@ display=NULL;
 applybutton=NULL;
 cbwidget=NULL;} {}
   }
-  Function {init(OscilGen *oscil_,int n_,Fl_Group *display_,Fl_Widget *oldosc_,Fl_Widget *cbwidget_,Fl_Widget *applybutton_)} {} {
-    code {oscil=oscil_;
+  Function {init(OscilGen *oscil_,int n_,Fl_Group *display_,Fl_Widget *oldosc_,Fl_Widget *cbwidget_,Fl_Widget *applybutton_, SynthEngine *_synth)} {open
+  } {
+    code {synth = _synth;
+oscil=oscil_;
 n=n_;
 display=display_;
 oldosc=oldosc_;
@@ -407,6 +423,8 @@ if (oscil->Phmag[n]==64) mag->selection_color(0);
   decl {int n;} {private local
   }
   decl {Fl_Widget *oldosc,*cbwidget,*applybutton;} {private local
+  }
+  decl {SynthEngine *synth;} {private local
   }
 } 
 
@@ -437,7 +455,7 @@ if (cbapplywidget!=NULL) {
         Fl_Group {} {
           xywh {10 85 350 190} box THIN_DOWN_BOX color 32 selection_color 71 labelcolor 179
           code0 {Oscilloscope *osc=new Oscilloscope(o->x(),o->y(),o->w(),o->h(),"");}
-          code1 {osc->init(oscil);}
+          code1 {osc->init(oscil, synth);}
         } {}
         Fl_Box {} {
           label Oscillator
@@ -454,7 +472,7 @@ oldosc->redraw();}
         Fl_Group {} {
           xywh {10 30 350 50} box THIN_DOWN_BOX color 32 selection_color 218 labelcolor 63
           code0 {OscilSpectrum *spc=new OscilSpectrum(o->x(),o->y(),o->w(),o->h(),"");}
-          code1 {spc->init(oscil,0);}
+          code1 {spc->init(oscil,0, synth);}
         } {}
         Fl_Group {} {
           xywh {246 277 115 25} box ENGRAVED_BOX
@@ -495,7 +513,7 @@ oldosc->redraw();}
         Fl_Group {} {
           xywh {370 85 350 190} box THIN_DOWN_BOX color 32 selection_color 71 labelcolor 179
           code0 {Oscilloscope *osc=new Oscilloscope(o->x(),o->y(),o->w(),o->h(),"");}
-          code1 {osc->init(oscil,1);}
+          code1 {osc->init(oscil,1, synth);}
         } {}
         Fl_Dial bfslider {
           callback {oscil->Pbasefuncpar=(int)o->value()+64;
@@ -589,7 +607,7 @@ if ((oscil->Pcurrentbasefunc==0)||(oscil->Pcurrentbasefunc==127)) basefuncmodula
         Fl_Group {} {
           xywh {370 30 350 50} box THIN_DOWN_BOX color 32 selection_color 218 labelcolor 63
           code0 {OscilSpectrum *spc=new OscilSpectrum (o->x(),o->y(),o->w(),o->h(),"");}
-          code1 {spc->init(oscil,1);}
+          code1 {spc->init(oscil,1, synth);}
         } {}
         Fl_Value_Output bfparval {
           label {Par.}
@@ -1102,12 +1120,12 @@ refresh();}
       }
       Fl_Button {} {
         label C
-        callback {presetsui->copy(oscil);}
+        callback {synth->getGuiMaster()->getPresetsUi()->copy(oscil);}
         xywh {670 545 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 7
       }
       Fl_Button {} {
         label P
-        callback {presetsui->paste(oscil,this);}
+        callback {synth->getGuiMaster()->getPresetsUi()->paste(oscil,this);}
         xywh {700 545 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 7
       }
       Fl_Scroll _this_has_to_be_the_last {
@@ -1115,13 +1133,15 @@ refresh();}
       } {
         Fl_Pack harmonics {
           xywh {10 345 650 225} type HORIZONTAL
-          code0 {for (int i=0;i<MAX_AD_HARMONICS;i++){h[i]=new Oscilharmonic(0,0,20,o->h(),"");h[i]->init(oscil,i,oscildisplaygroup,oldosc,cbwidget,applybutton);}}
+          code0 {for (int i=0;i<MAX_AD_HARMONICS;i++){h[i]=new Oscilharmonic(0,0,20,o->h(),"");h[i]->init(oscil,i,oscildisplaygroup,oldosc,cbwidget,applybutton, synth);}}
         } {}
       }
     }
   }
-  Function {OscilEditor(OscilGen *oscil_,Fl_Widget *oldosc_,Fl_Widget *cbwidget_,Fl_Widget *cbapplywidget_)} {} {
-    code {oscil=oscil_;
+  Function {OscilEditor(OscilGen *oscil_,Fl_Widget *oldosc_,Fl_Widget *cbwidget_,Fl_Widget *cbapplywidget_, SynthEngine *_synth)} {open
+  } {
+    code {synth = _synth;
+oscil=oscil_;
 oldosc=oldosc_;
 cbwidget=cbwidget_;
 cbapplywidget=cbapplywidget_;
@@ -1130,12 +1150,11 @@ make_window();
 refresh();
 osceditUI->show();} {}
   }
-  Function {~OscilEditor()} {open
+  Function {~OscilEditor()} {open return_type virtual
   } {
     code {osceditUI->hide();
 //for (int i=0;i<MAX_AD_HARMONICS;i++) delete (h[i]);
-delete (osceditUI);} {selected
-    }
+delete (osceditUI);} {}
   }
   Function {refresh()} {} {
     code {magtype->value(oscil->Phmagtype);
@@ -1201,5 +1220,7 @@ if (cbwidget!=NULL) {
   decl {Fl_Widget *oldosc,*cbwidget,*cbapplywidget;} {private local
   }
   decl {Oscilharmonic *h[MAX_AD_HARMONICS];} {private local
+  }
+  decl {SynthEngine *synth;} {private local
   }
 } 

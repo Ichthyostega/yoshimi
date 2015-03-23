@@ -26,15 +26,17 @@
 #include "Misc/SynthEngine.h"
 #include "Effects/DynamicFilter.h"
 
-DynamicFilter::DynamicFilter(bool insertion_, float *efxoutl_, float *efxoutr_) :
-    Effect(insertion_, efxoutl_, efxoutr_, new FilterParams(0, 64, 64), 0),
+DynamicFilter::DynamicFilter(bool insertion_, float *efxoutl_, float *efxoutr_, SynthEngine *_synth) :
+    Effect(insertion_, efxoutl_, efxoutr_, new FilterParams(0, 64, 64, _synth), 0),
+    lfo(_synth),
     Pvolume(110),
     Pdepth(0),
     Pampsns(90),
     Pampsnsinv(0),
-    Pampsmooth(60),
+    Pampsmooth(60),    
     filterl(NULL),
-    filterr(NULL)
+    filterr(NULL),
+    synth(_synth)
 {
     setpreset(Ppreset);
     changepar(1, 64); // pan
@@ -65,10 +67,10 @@ void DynamicFilter::out(float *smpsl, float *smpsr)
     float freq = filterpars->getfreq();
     float q = filterpars->getq();
 
-    for (int i = 0; i < synth->buffersize; ++i)
+    for (int i = 0; i < synth->p_buffersize; ++i)
     {
-        memcpy(efxoutl, smpsl, synth->bufferbytes);
-        memcpy(efxoutr, smpsr, synth->bufferbytes);
+        memcpy(efxoutl, smpsl, synth->p_bufferbytes);
+        memcpy(efxoutr, smpsr, synth->p_bufferbytes);
         float x = (fabsf(smpsl[i]) + fabsf(smpsr[i])) * 0.5f;
         ms1 = ms1 * (1.0f - ampsmooth) + x * ampsmooth + 1e-10f;
     }
@@ -89,7 +91,7 @@ void DynamicFilter::out(float *smpsl, float *smpsr)
     filterr->filterout(efxoutr);
 
     // panning
-    for (int i = 0; i < synth->buffersize; ++i)
+    for (int i = 0; i < synth->p_buffersize; ++i)
     {
         efxoutl[i] *= pangainL;
         efxoutr[i] *= pangainR;
@@ -138,8 +140,8 @@ void DynamicFilter::reinitfilter(void)
         delete filterl;
     if (filterr != NULL)
         delete filterr;
-    filterl = new Filter(filterpars);
-    filterr = new Filter(filterpars);
+    filterl = new Filter(filterpars, synth);
+    filterr = new Filter(filterpars, synth);
 }
 
 void DynamicFilter::setpreset(unsigned char npreset)

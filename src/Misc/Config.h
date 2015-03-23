@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2014, Will Godfrey
+    Copyright 2014-2015, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -20,7 +20,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is derivative of ZynAddSubFX original code, modified August 2014
+    This file is derivative of ZynAddSubFX original code, last modified January 2015
 */
 
 #ifndef CONFIG_H
@@ -43,21 +43,29 @@ typedef enum { no_midi = 0, jack_midi, alsa_midi, } midi_drivers;
 class XMLwrapper;
 class BodyDisposal;
 
+class SynthEngine;
+
 class Config : public MiscFuncs
 {
     public:
-        Config();
+        Config(SynthEngine *_synth, int argc, char **argv);
         ~Config();
         bool Setup(int argc, char **argv);
-        void StartupReport(void);
+        void StartupReport(MusicClient *musicClient);
         void Announce(void);
         void Usage(void);
+    #if defined(CONSOLE_ERRORS)
+        void Log(string msg, bool tostderr = false);
+    #else
         void Log(string msg, bool tostderr = true);
+    #endif
         void flushLog(void);
-        void clearBankrootDirlist(void);
+
         void clearPresetsDirlist(void);
+
+        string testCCvalue(int cc);
         void saveConfig(void);
-        void saveState(void) { saveSessionData(StateFile); }
+        void saveState() { saveSessionData(StateFile); }
         void saveState(const string statefile)  { saveSessionData(statefile); }
         bool loadState(const string statefile)
             { return restoreSessionData(statefile); }
@@ -72,11 +80,13 @@ class Config : public MiscFuncs
         void signalCheck(void);
         void setRtprio(int prio);
         bool startThread(pthread_t *pth, void *(*thread_fn)(void*), void *arg,
-                         bool schedfifo, char lowprio);
+                         bool schedfifo, char lowprio, bool create_detached = true);
 
         string addParamHistory(string file);
         string historyFilename(int index);
         string programCmd(void) { return programcommand; }
+
+        bool isRuntimeSetupCompleted() {return bRuntimeSetupCompleted;}
 
         string        ConfigDir;
         string        ConfigFile;
@@ -113,17 +123,19 @@ class Config : public MiscFuncs
         string        nameTag;
 
         int           BankUIAutoClose;
+        int           RootUIAutoClose;
         unsigned int  GzipCompression;
-        int           Interpolation;
-        string        bankRootDirlist[MAX_BANK_ROOT_DIRS];
-        string        currentBankDir;
+        int           Interpolation;        
         string        presetsDirlist[MAX_BANK_ROOT_DIRS];
         int           CheckPADsynth;
+        bool          SimpleCheck;
         int           EnableProgChange;
         int           rtprio;
-        unsigned int  midi_bank_C;
-        unsigned int  midi_upper_voice_C;
+        int           midi_bank_root;
+        int           midi_bank_C;
+        int           midi_upper_voice_C;
         int           enable_part_on_voice_load;
+        int           single_row_panel;
 
         deque<HistoryListItem> ParamsHistory;
         deque<HistoryListItem>::iterator itx;
@@ -144,16 +156,18 @@ class Config : public MiscFuncs
         void AntiDenormals(bool set_daz_ftz);
         void saveJackSession(void);
 
-        static unsigned short nextHistoryIndex;
-        static struct sigaction sigAction;
+        unsigned short nextHistoryIndex;
         int sigIntActive;
         int ladi1IntActive;
         int sse_level;
         int jsessionSave;
         const string programcommand;
         string jackSessionDir;
-};
 
-extern Config Runtime;
+        SynthEngine *synth;
+        bool bRuntimeSetupCompleted;
+
+        friend class YoshimiLV2Plugin;
+};
 
 #endif

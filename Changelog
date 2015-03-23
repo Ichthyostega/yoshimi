@@ -1,5 +1,266 @@
-If you want the latest and (hopefully) greatest, click on the 'code' tab and then 'Download Snapshot'. This will give you a tarball of the current development version.
+yoshimi 1.3.3
 
+2015-3-2 Will
+- Added patch from Jakub Cajka to furthur nail asString ambiguities
+- Added SVG icon image (renamed alternative)
+- Set up for release
+
+2015-2-27 Will
+- Added and updated Docs & Images
+- Prepared for full release
+
+2015-2-27 Andrew
+- Updated splash screen
+
+2015-2-19 Will
+- Small gui code optimisations
+- Removed some confusing, duplicate, redundant & disabled code
+
+2015-2-18 Will
+- Implemented bank rename
+- Added gui buttons for this and instrument renames
+- Close on selection now righthand mouse button
+- bug was slowing down bank swaps -fixed
+
+2015-2-16 Will
+- Added middle button close of banks and instruments
+  as if auto close has been set
+
+2015-2-15 Will
+- Implemented bank complete removal
+
+2015-2-14 Will
+- Bank swaps/ID changes now in place
+  but not checked for unwritable locations
+- Now checked
+- Added highlighing of current bank
+- Implemented adding banks
+- Corrected bugs in bank swaps
+
+2015-2-13 Will
+- Basic structure complete and working
+  but changing IDs etc. not yet implemented
+
+2015-2-12 Will
+- Developed window selection/swapping and forward link from config
+- Fixed bug that created empty banks
+- Added format string to 3 fltk alert calls to silence gcc warnings
+
+2015-2-6 Will
+- Unified root bank instrument log messages
+- Updated MIDI test files
+
+2015-2-3 Andrew
+- Fix png image creation on fltk < 1.3
+
+yoshimi-1.3.2
+
+2015-2-2 Will
+- Final updates to files for full release
+
+yoshimi-1.3.2-rc2
+
+2015-1-31 Andrew
+- Start guis only from main gui thread
+
+2015-1-28 Will
+- Added check to prevent attempt to change non-writable instrument files
+  *before* GUI entries written
+
+2015-1-27 Will
+- Allow instrument name of just 3 chars
+- Bumped version number to rc2
+- Clarified text of error messages
+
+
+2015-1-27 Andrew
+- Added splash window showing current loading status
+- Ignore midi bank/prg change if no bank/prg found
+
+2015-1-26 Andrew
+- make new bank id search start from 127 downwards
+- do not reload bank on id change
+
+2015-1-24 Will
+- Un-numbered instruments now handled as before (placed from 160 downwards)
+- Bumped version number
+- Bug fix in CC tests
+- Removed unnecesary instrument prefix tests when indentifying banks
+- Added early startup comand line message
+
+2015-1-24 Andrew
+- New instance now gets first available unique ID
+- Added menu item to start instance with given ID
+- Sort banks on first start or if mappings are not defined
+- LV2 plugin now uses new bank interface
+
+2015-1-23 Andrew
+- Added per-instance config files support
+- Now saving bank ids in config file too
+
+2015-1-22 Andrew
+- Rewrited Bank/Root handling algorithms to support numbering
+- Fixed PADSynth_used detection algorithm
+
+2015-1-15 Andrew
+- Don't change floating point rules in case of lv2 plugin. Hosts should do it.
+
+2015-1-14 Andrew
+- Fixed lv2 plugin crash on midi event loop transition (frame X to zero)
+
+2015-1-12 Will
+- Applied patches from Harry
+  MIDI channel selection now in sync between main window and panel and
+  right click on panel 'Edit' opens the actual edit menu.
+
+2015-1-8 Andrew
+- Fixed segfault on exit if Alsa audio engine is used
+
+2015-1-5 Andrew
+- MIDI bank root dir change algorithm now uses low priority threads
+- MIDI bank root dir and bank changes are synchronized now
+- GUI is updated accordingly to bank root dir changes
+
+
+2015-1-5 Will
+- MIDI bank root change now in place :)
+  but not currently updating GUI :(
+- Setting of both root and extended program CC now error checked
+  but have to use the spinner up/down arrows - can't seem to
+  reognise the 'Return' key :?
+
+2015-1-3 Andrew
+- Started control interface implementation
+  (logging this for history)
+
+2015-1-3 Will
+- Added warnings if loading patches named 'Simple'Sound.
+- Applied patch from Harry Nakos
+  Volume & Pan now synchronised between main window and panel.
+
+2015-1-3 Andrew
+- Corrected target lib suffix detection for lv2 plugin
+
+2015-1-2 Will
+- Bank root IDs can now be changed in GUI.
+- Cleaned up code.
+
+2015-1-1 Will
+- Settings->Bank root dirs now displays root IDs and marks
+  current root and MIDI banks changes only see current root.
+
+2014-12-21 Will
+- Changed concept of default root dir to current root dir.
+  current root is where new banks are saved to.
+  changing current doesn't alter list order or root ID.
+  ID will be used for MIDI root dir setting & bank access.
+
+2014-12-11 Will
+- Updated parameter & instrument load & save
+    will not save 'empty' files
+    inserts "No Title" when loading untitled instruments
+
+2014-12-9 Andrew
+- lv2 plugin: fixed ringbuffer write when midi message
+  should be splitted into chunks (this is a very rare condition)
+
+yoshimi-1.3.1
+
+2014-12-8 Will
+- A few optimisations in Reverb and Phaser
+- Released V 1.3.1
+
+2014-12-8 Andrew
+- Separated LV2 plugin instances.
+  Yoshimi - stereo mix,
+  Yoshimi-Multi - stereo mix + 32 individual mono (16 stereo) channels.
+
+2014-12-6 Will
+- Corrected long standing bug in unison. Reverb bandwidth OK now!
+
+2014-12-6 Andrew
+- Added multi-channel support for lv2 plugin
+
+2014-12-5 Will
+- Reverb and Phaser additions
+  Reverb bandwidth control sending right numbers
+    but not changing the sound produced :(
+  Phaser additions work correctly, but GUI controls
+    Analog, Hyp., Dist. not sychronised :(
+- Phaser done (silly mistake)
+
+2014-12-1 Andrew
+- Enabled cross-instance copy and paste.
+
+yoshimi-1.3.0
+- Made LV2 plugin ON by default
+- Removed command line control. The reason: useless, not thread-safe code
+- Just a few GUI improvements
+- Made support for variable length runs. This provides sample-accurate midi processing
+  for offline rendering and lv2 plugin.
+- Removed strict requirements of Subnote on 8x multiple buffer size.
+  Adopted SUBnote::filter() method for variable-length runs
+- Initial LV2 plugin support (OFF by default)! Tested in MusE, Ardour 3,
+  Carla and qtractor  - works both plugin and gui.
+- replaced all calls to lrint() with (int)truncf(). When fesetround(FE_TOWARDZERO)
+  was called, lrintf() behaves exactly as (int)truncf() with that difference, that
+  (int)truncf() returns always the same result not depending on external factors.
+- Made command line control for yoshimi instances (OFF by default)
+- Added error message if midi bank changs too close
+- Ported portamento rate and depth to controllers from Zyn.
+- Added state interface support for lv2 interface. now saving/restoring
+  yoshimi lv2 plugin settings works.
+- Added per instance ability to change panel window between 2x8 or 1x16.
+  Haven't decided on best way to store setting.
+- Fixed bug in wide panel window.
+- panel settings saved to yoshimi.config.
+- patch provided by xnakos fixes part enable sync between panel and main window.
+  This revealed it wasn't done properly for MIDI so that's been added too. 
+- removed spammy default midi messages.
+- patch provided by xnakos to fix bug in Simple Sound representation.
+- better resolution yoshimi icon.
+- instrument updates.
+- separated out examples from presets and put in their own directory.
+- a few more GUI adjustments.
+
+yoshimi-1.2.5
+- Made yoshimi support multiple in-process instances:
+  1) Added "New instance" menu item in "Yoshimi" submemu.
+  2) Jack/alsa midi/audio port names are named "yoshimi" + postfix
+     (empty for the first instance and -1,-2,-3 etc.. for the next).
+  3) Windows names (main window, panel, keyboad) are named according
+     to instance number with unique postfix.
+  4) Only main window of the first instance exits process. Other windows
+     deregister instances and closed.
+
+- CMake policy change to stop warning message
+- Small correction in part peak representation
+- Copied some ancient history into Docs
+- Part name always shows at least the words 'Simple Sound' so new users will
+  know what it does.
+- Bank selector always shows a name.
+- MIDI Bank changes now refresh the bank window contents.
+- There is now a compile time switch to direct errors to the console window
+  instead of stderr.
+
+- Moved all global variables to per-instance ones.
+- Implemented multi-instance support:
+  Updated all constructors to take SynthEngine * as last argument and store it
+  in synth member variable. "Runtime" global var (of type Config*) and "guiMaster"
+  (of type MasterUI *) are moved to SynthEngine and accessible via SynthEngine::getRuntime()
+  (which returns reference to per-instance Config class) and SynthEngine::getGuiMaster()
+  (which creates, if not already created, and returns per-instance MasterUI class).
+  PresetsUI class instance is moved from global var to MasterUI class member var
+  and accessible via synth->getGuimaster()->getPresetsUi() method from UI classes.
+- Jack client instances will be named on per-instance basis.
+  Default one is "yoshimi" + "->optional tag" (as before),
+  next is "yosmimi-<optionoal tag>-<instance number>" starting at "1".
+  This may never be used (but who knows? Anyway, this is the more proper way),
+  because the default behavior for the yoshimi app is to create one global
+  SynthEngine instance to go on with it till exit. From the user point of view
+  nothing changed.
+- Gui class destructors made virtual to make recent compilers happy
+- Started initial LV2 plugin interface implementation (cmake option is OFF by default)
 
 yoshimi-1.2.4
 
@@ -25,8 +286,8 @@ yoshimi-1.2.4
 - Improved VU displays.
 - Updated INSTALL instructions and removed duplicates of this and COPYING in /src
 - detached part outputs from main volume and added clip indication in panel (doesn't
-  clear with 'Stop' so fundged).
-- some more minor adjustments.
+  clear with 'Stop' so fundged)
+- some more minor adjustments
 - VU updates completed - and we're away!
 
 

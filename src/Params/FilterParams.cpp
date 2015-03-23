@@ -30,8 +30,8 @@ using namespace std;
 #include "Misc/SynthEngine.h"
 #include "Params/FilterParams.h"
 
-FilterParams::FilterParams(unsigned char Ptype_, unsigned char Pfreq_, unsigned  char Pq_) :
-    Presets(),
+FilterParams::FilterParams(unsigned char Ptype_, unsigned char Pfreq_, unsigned  char Pq_, SynthEngine *_synth) :
+    Presets(_synth),
     changed(false),
     Dtype(Ptype_),
     Dfreq(Pfreq_),
@@ -75,7 +75,7 @@ void FilterParams::defaults(int n)
     int j = n;
     for (int i = 0; i < FF_MAX_FORMANTS; ++i)
     {
-        Pvowels[j].formants[i].freq = lrintf(synth->numRandom() * 127.0f); // some random freqs
+        Pvowels[j].formants[i].freq = (int)truncf(synth->numRandom() * 127.0f); // some random freqs
         Pvowels[j].formants[i].q = 64;
         Pvowels[j].formants[i].amp = 127;
     }

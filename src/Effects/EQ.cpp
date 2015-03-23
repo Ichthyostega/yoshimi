@@ -25,8 +25,9 @@
 #include "Misc/SynthEngine.h"
 #include "Effects/EQ.h"
 
-EQ::EQ(bool insertion_, float *efxoutl_, float *efxoutr_) :
-    Effect(insertion_, efxoutl_, efxoutr_, NULL, 0)
+EQ::EQ(bool insertion_, float *efxoutl_, float *efxoutr_, SynthEngine *_synth) :
+    Effect(insertion_, efxoutl_, efxoutr_, NULL, 0),
+    synth(_synth)
 {
     for (int i = 0; i < MAX_EQ_BANDS; ++i)
     {
@@ -35,8 +36,8 @@ EQ::EQ(bool insertion_, float *efxoutl_, float *efxoutr_) :
         filter[i].Pgain = 64;
         filter[i].Pq = 64;
         filter[i].Pstages = 0;
-        filter[i].l = new AnalogFilter(6, 1000.0, 1.0, 0);
-        filter[i].r = new AnalogFilter(6, 1000.0, 1.0, 0);
+        filter[i].l = new AnalogFilter(6, 1000.0, 1.0, 0, synth);
+        filter[i].r = new AnalogFilter(6, 1000.0, 1.0, 0, synth);
     }
     // default values
     Pvolume = 50;
@@ -58,9 +59,9 @@ void EQ::cleanup(void)
 // Effect output
 void EQ::out(float *smpsl, float *smpsr)
 {
-    memcpy(efxoutl, smpsl, synth->bufferbytes);
-    memcpy(efxoutr, smpsr, synth->bufferbytes);
-    for (int i = 0; i < synth->buffersize; ++i)
+    memcpy(efxoutl, smpsl, synth->p_bufferbytes);
+    memcpy(efxoutr, smpsr, synth->p_bufferbytes);
+    for (int i = 0; i < synth->p_buffersize; ++i)
     {
         efxoutl[i] *= volume;
         efxoutr[i] *= volume;

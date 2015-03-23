@@ -34,27 +34,27 @@
 #include "Misc/SynthEngine.h"
 #include "Params/PADnoteParameters.h"
 
-PADnoteParameters::PADnoteParameters(FFTwrapper *fft_) : Presets()
+PADnoteParameters::PADnoteParameters(FFTwrapper *fft_, SynthEngine *_synth) : Presets(_synth)
 {
     setpresettype("PADnoteParameters");
     fft = fft_;
 
-    resonance = new Resonance();
-    oscilgen = new OscilGen(fft_, resonance);
+    resonance = new Resonance(synth);
+    oscilgen = new OscilGen(fft_, resonance, synth);
     oscilgen->ADvsPAD = true;
 
-    FreqEnvelope = new EnvelopeParams(0, 0);
+    FreqEnvelope = new EnvelopeParams(0, 0, synth);
     FreqEnvelope->ASRinit(64, 50, 64, 60);
-    FreqLfo = new LFOParams(70, 0, 64, 0, 0, 0, 0, 0);
+    FreqLfo = new LFOParams(70, 0, 64, 0, 0, 0, 0, 0, synth);
 
-    AmpEnvelope = new EnvelopeParams(64, 1);
+    AmpEnvelope = new EnvelopeParams(64, 1, synth);
     AmpEnvelope->ADSRinit_dB(0, 40, 127, 25);
-    AmpLfo = new LFOParams(80, 0, 64, 0, 0, 0, 0, 1);
+    AmpLfo = new LFOParams(80, 0, 64, 0, 0, 0, 0, 1, synth);
 
-    GlobalFilter = new FilterParams(2, 94, 40);
-    FilterEnvelope = new EnvelopeParams(0, 1);
+    GlobalFilter = new FilterParams(2, 94, 40, synth);
+    FilterEnvelope = new EnvelopeParams(0, 1, synth);
     FilterEnvelope->ADSRinit_filter(64, 40, 64, 70, 60, 64);
-    FilterLfo = new LFOParams(80, 0, 64, 0, 0, 0, 0, 2);
+    FilterLfo = new LFOParams(80, 0, 64, 0, 0, 0, 0, 2, synth);
 
     for (int i = 0; i < PAD_MAX_SAMPLES; ++i)
         sample[i].smp = NULL;
@@ -318,14 +318,14 @@ float PADnoteParameters::getNhr(int n)
     switch (Phrpos.type)
     {
     case 1:
-        thresh = lrintf(par2 * par2 * 100.0f) + 1;
+        thresh = (int)truncf(par2 * par2 * 100.0f) + 1;
         if (n < thresh)
             result = n;
         else
             result = 1.0f + n0 + (n0 - thresh + 1.0f) * par1 * 8.0f;
         break;
     case 2:
-        thresh = lrintf(par2 * par2 * 100.0f) + 1;
+        thresh = (int)truncf(par2 * par2 * 100.0f) + 1;
         if (n < thresh)
             result = n;
         else
@@ -426,17 +426,17 @@ void PADnoteParameters::generatespectrum_bandwidthMode(float *spectrum,
             break;
         }
         bw = bw * powf(realfreq / basefreq, power);
-        int ibw = lrintf((bw / (synth->samplerate_f * 0.5f) * size)) + 1;
+        int ibw = (int)truncf((bw / (synth->samplerate_f * 0.5f) * size)) + 1;
         float amp = harmonics[nh - 1];
         if (resonance->Penabled)
             amp *= resonance->getfreqresponse(realfreq);
         if (ibw > profilesize)
         {   // if the bandwidth is larger than the profilesize
             float rap = sqrtf((float)profilesize / (float)ibw);
-            int cfreq = lrintf(realfreq / (synth->halfsamplerate_f) * size) - ibw / 2;
+            int cfreq = (int)truncf(realfreq / (synth->halfsamplerate_f) * size) - ibw / 2;
             for (int i = 0; i < ibw; ++i)
             {
-                int src = lrintf(i * rap * rap);
+                int src = (int)truncf(i * rap * rap);
                 int spfreq = i + cfreq;
                 if (spfreq < 0)
                     continue;
@@ -510,7 +510,7 @@ void PADnoteParameters::generatespectrum_otherModes(float *spectrum,
         float amp = harmonics[nh - 1];
         if (resonance->Penabled)
             amp *= resonance->getfreqresponse(realfreq);
-        int cfreq = lrintf(realfreq / (synth->halfsamplerate_f) * size);
+        int cfreq = (int)truncf(realfreq / (synth->halfsamplerate_f) * size);
         spectrum[cfreq] = amp + 1e-9f;
     }
 

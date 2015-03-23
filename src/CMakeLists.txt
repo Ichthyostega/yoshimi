@@ -20,7 +20,10 @@ project (Yoshimi)
 cmake_minimum_required (VERSION 2.6)
 cmake_policy (VERSION 2.6)
 cmake_policy (SET CMP0004 OLD)
-set (YOSHIMI_VERSION "1.2.4")
+if (POLICY CMP0046)
+    cmake_policy (SET CMP0046 OLD)
+endif (POLICY CMP0046)
+set (YOSHIMI_VERSION "1.3.3")
 file (WRITE version.txt "${YOSHIMI_VERSION}")
 
 set (CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -60,6 +63,10 @@ set (DefaultMidi jack CACHE STRING "Default midi driver - alsa or jack")
 option (BuildForAMD_X86_64 "Build for AMD x86_64 system" OFF)
 option (BuildForCore2_X86_64 "Build for Intel Core2 x86_64 system" OFF)
 option (BuildForDebug "Include gdb debugging support" OFF)
+option (ReportErrorsToConsole "Show errors in console window" ON)
+
+#option to build lv2 plugin
+option (BuildLV2Plugin "Build yoshimi lv2 plugin interface" ON)
 
 set (FifoDirectory /dev/shm CACHE STRING "Directory for fifos")
 
@@ -235,6 +242,7 @@ set (Params_sources
     Params/FilterParams.cpp  Params/LFOParams.cpp
     Params/SUBnoteParameters.cpp  Params/PADnoteParameters.cpp
     Params/Controller.cpp  Params/Presets.cpp Params/PresetsStore.cpp
+    Params/ControlInterface.cpp
 )
 
 set (Synth_sources
@@ -313,6 +321,13 @@ else (JackSessionSupport)
     message(STATUS "Without jack session support")
 endif (JackSessionSupport)
 
+if (ReportErrorsToConsole)
+    message(STATUS "Errors shown in console window")
+    add_definitions(-DCONSOLE_ERRORS)
+else (ReportErrorsToConsole)
+    message(STATUS "Errors sent to stderr")
+endif (ReportErrorsToConsole)
+
 # Check for jack latency API >= 0.120.1
 check_c_source_compiles (
     "#include <jack/jack.h>
@@ -379,6 +394,17 @@ install (DIRECTORY ../banks DESTINATION share/yoshimi
         WORLD_READ WORLD_EXECUTE
 )
 
+install (DIRECTORY ../examples DESTINATION share/yoshimi
+    FILE_PERMISSIONS
+        OWNER_READ OWNER_WRITE
+        GROUP_READ GROUP_WRITE
+        WORLD_READ
+    DIRECTORY_PERMISSIONS
+        OWNER_READ OWNER_WRITE OWNER_EXECUTE
+        GROUP_READ GROUP_WRITE GROUP_EXECUTE
+        WORLD_READ WORLD_EXECUTE
+)
+
 install (DIRECTORY ../presets DESTINATION share/yoshimi
     FILE_PERMISSIONS
         OWNER_READ OWNER_WRITE
@@ -395,6 +421,8 @@ install (FILES ${CMAKE_CURRENT_BINARY_DIR}/yoshimi.desktop
 install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/yoshimi.png
     DESTINATION share/pixmaps)
 install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/yoshimi.svg
+    DESTINATION share/icons)
+install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/yoshimi_alt.svg
     DESTINATION share/icons)
 install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/yoshimi.appdata.xml
     DESTINATION share/appdata)
@@ -421,4 +449,18 @@ add_custom_target (distclean
     COMMAND find ${CMAKE_SOURCE_DIR} -type f -name "*.marks" | xargs -r rm -f
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
-add_dependencies (distclean clean)
+
+
+if (BuildLV2Plugin)
+
+include(GNUInstallDirs)
+
+set(LV2_INSTALL_DIR ${CMAKE_INSTALL_LIBDIR}/lv2 CACHE PATH "Specifies where the LV2 libraries should be installed")
+pkg_check_modules(LV2 REQUIRED lv2>=1.0.0)
+if (LV2_FOUND)
+    message (STATUS "Found lv2 package ${LV2_VERSION}")
+else (LV2_FOUND)
+    message (FATAL_ERROR "lv2 package required but not found (version 1.0.0 needed)")
+endif (LV2_FOUND)
+add_subdirectory(LV2_Plugin)
+endif (BuildLV2Plugin)

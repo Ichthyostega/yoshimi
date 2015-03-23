@@ -28,8 +28,10 @@
 
 #define MAX_CHORUS_DELAY 250.0f // ms
 
-Chorus::Chorus(bool insertion_, float *const efxoutl_, float *efxoutr_) :
-    Effect(insertion_, efxoutl_, efxoutr_, NULL, 0)
+Chorus::Chorus(bool insertion_, float *const efxoutl_, float *efxoutr_, SynthEngine *_synth) :
+    Effect(insertion_, efxoutl_, efxoutr_, NULL, 0),
+    lfo(_synth),
+    synth(_synth)
 {
     dlk = drk = 0;
     maxdelay = (int)(MAX_CHORUS_DELAY / 1000.0f * synth->samplerate_f);
@@ -52,7 +54,7 @@ float Chorus::getdelay(float xlfo)
     //check if it is too big delay (caused bu erroneous setDelay() and setDepth()
     if ((result + 0.5) >= maxdelay)
     {
-        Runtime.Log("WARNING: Chorus.C::getDelay(..) too big delay (see setdelay and setdepth funcs.)");
+        synth->getRuntime().Log("WARNING: Chorus.C::getDelay(..) too big delay (see setdelay and setdepth funcs.)");
         result = maxdelay - 1.0;
     }
     return result;
@@ -71,7 +73,7 @@ void Chorus::out(float *smpsl, float *smpsr)
     dr2 = getdelay(lfor);
 
     float inL, inR, tmpL, tmpR, tmp;
-    for (int i = 0; i < synth->buffersize; ++i)
+    for (int i = 0; i < synth->p_buffersize; ++i)
     {
         tmpL = smpsl[i];
         tmpR = smpsr[i];
@@ -82,12 +84,12 @@ void Chorus::out(float *smpsl, float *smpsr)
         // Left channel
 
         // compute the delay in samples using linear interpolation between the lfo delays
-        mdel = (dl1 * (synth->buffersize - i) + dl2 * i) / synth->buffersize_f;
+        mdel = (dl1 * (synth->p_buffersize - i) + dl2 * i) / synth->p_buffersize_f;
         if (++dlk >= maxdelay)
             dlk = 0;
         tmp = dlk - mdel + maxdelay * 2.0f; // where should I get the sample from
         // F2I(tmp, dlhi);
-        dlhi = (tmp > 0.0f) ? lrintf(tmp) : lrintf(tmp - 1.0f);
+        dlhi = (tmp > 0.0f) ? (int)truncf(tmp) : (int)truncf(tmp - 1.0f);
         dlhi %= maxdelay;
 
         dlhi2 = (dlhi - 1 + maxdelay) % maxdelay;
@@ -98,12 +100,12 @@ void Chorus::out(float *smpsl, float *smpsr)
         // Right channel
 
         // compute the delay in samples using linear interpolation between the lfo delays
-        mdel = (dr1 * (synth->buffersize - i) + dr2 * i) / synth->buffersize_f;
+        mdel = (dr1 * (synth->p_buffersize - i) + dr2 * i) / synth->p_buffersize_f;
         if (++drk >= maxdelay)
             drk = 0;
         tmp = drk * 1.0f - mdel + maxdelay * 2.0f; // where should I get the sample from
         // F2I(tmp, dlhi);
-        dlhi = (tmp > 0.0f) ? lrintf(tmp) : lrintf(tmp - 1.0f);
+        dlhi = (tmp > 0.0f) ? (int)truncf(tmp) : (int)truncf(tmp - 1.0f);
         dlhi %= maxdelay;
         dlhi2 = (dlhi - 1 + maxdelay) % maxdelay;
         dllo = 1.0f - fmodf(tmp, one);
@@ -112,13 +114,13 @@ void Chorus::out(float *smpsl, float *smpsr)
     }
 
     if (Poutsub)
-        for (int i = 0; i < synth->buffersize; ++i)
+        for (int i = 0; i < synth->p_buffersize; ++i)
         {
             efxoutl[i] *= -1.0f;
             efxoutr[i] *= -1.0f;
         }
 
-    for (int i = 0; i < synth->buffersize; ++i)
+    for (int i = 0; i < synth->p_buffersize; ++i)
     {
         efxoutl[i] *= pangainL;
         efxoutr[i] *= pangainR;

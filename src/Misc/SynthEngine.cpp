@@ -5,7 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
     Copyright 2009, James Morris
-    Copyright 2014, Will Godfrey
+    Copyright 2014, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -21,11 +21,12 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is derivative of original ZynAddSubFX code, modified October 2014
+    This file is derivative of original ZynAddSubFX code, last modified January 2015
 */
 
 #include<stdio.h>
 #include <sys/time.h>
+#include <set>
 
 using namespace std;
 
@@ -33,12 +34,43 @@ using namespace std;
 #include "Misc/SynthEngine.h"
 #include "Misc/Config.h"
 
-SynthEngine *synth = NULL;
+#include <iostream>
 
-char SynthEngine::random_state[256] = { 0, };
-struct random_data SynthEngine::random_buf;
 
-SynthEngine::SynthEngine() :
+static unsigned int getRemoveSynthId(bool remove = false, unsigned int idx = 0)
+{
+    static set<unsigned int> idMap;
+    if(remove)
+    {
+        if(idMap.count(idx) > 0)
+        {
+            idMap.erase(idx);
+        }
+        return 0;
+    }
+    else if(idx > 0)
+    {
+        if(idMap.count(idx) == 0)
+        {
+            idMap.insert(idx);
+            return idx;
+        }
+    }
+    set<unsigned int>::const_iterator itEnd = idMap.end();
+    set<unsigned int>::const_iterator it;
+    unsigned int nextId = 0;
+    for(it = idMap.begin(); it != itEnd && nextId == *it; ++it, ++nextId)
+    {}
+    idMap.insert(nextId);
+    return nextId;
+}
+
+SynthEngine::SynthEngine(int argc, char **argv, bool _isLV2Plugin, unsigned int forceId) :
+    uniqueId(getRemoveSynthId(false, forceId)),
+    isLV2Plugin(_isLV2Plugin),
+    bank(this),
+    Runtime(this, argc, argv),
+    presetsstore(this),
     shutup(false),
     samplerate(48000),
     samplerate_f(samplerate),
@@ -49,16 +81,32 @@ SynthEngine::SynthEngine() :
     oscilsize_f(oscilsize),
     halfoscilsize(oscilsize / 2),
     halfoscilsize_f(halfoscilsize),
+    processOffset(0),
+    p_buffersize(0),
+    p_bufferbytes(0),
+    p_buffersize_f(0),
     ctl(NULL),
-    fft(NULL),
+    microtonal(this),    
+    fft(NULL),    
     muted(0xFF),
     tmpmixl(NULL),
     tmpmixr(NULL),
     processLock(NULL),
     vuringbuf(NULL),
-    stateXMLtree(NULL)
-{
-    ctl = new Controller();
+    stateXMLtree(NULL),
+    guiMaster(NULL),
+    guiClosedCallback(NULL),
+    guiCallbackArg(NULL),
+    LFOtime(0),
+    windowTitle("Yoshimi" + asString(uniqueId))
+{    
+    if(bank.roots.empty())
+    {
+        bank.addDefaultRootDirs();
+    }
+    memset(&random_state, 0, sizeof(random_state));
+
+    ctl = new Controller(this);
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
         part[npart] = NULL;
     for (int nefx = 0; nefx < NUM_INS_EFX; ++nefx)
@@ -71,6 +119,7 @@ SynthEngine::SynthEngine() :
 
 SynthEngine::~SynthEngine()
 {
+    closeGui();
     if (vuringbuf)
         jack_ringbuffer_free(vuringbuf);
     
@@ -94,6 +143,7 @@ SynthEngine::~SynthEngine()
     pthread_mutex_destroy(&processMutex);
     if (ctl)
         delete ctl;
+    getRemoveSynthId(true, uniqueId);
 }
 
 
@@ -114,6 +164,10 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
         processLock = NULL;
         goto bail_out;
     }
+
+
+    memset(random_state, 0, sizeof(random_state));
+    memset(&random_buf, 0, sizeof(random_buf));
 
     if (initstate_r(samplerate + buffersize + oscilsize, random_state,
                     sizeof(random_state), &random_buf))
@@ -138,8 +192,8 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
         goto bail_out;
     }
 
-     tmpmixl = (float*)fftwf_malloc(synth->bufferbytes);
-     tmpmixr = (float*)fftwf_malloc(synth->bufferbytes);
+     tmpmixl = (float*)fftwf_malloc(bufferbytes);
+     tmpmixr = (float*)fftwf_malloc(bufferbytes);
     if (!tmpmixl || !tmpmixr)
     {
         Runtime.Log("SynthEngine tmpmix allocations failed");
@@ -148,7 +202,7 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
 
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
     {
-        part[npart] = new Part(&microtonal, fft);
+        part[npart] = new Part(&microtonal, fft, this);
         if (!part[npart])
         {
             Runtime.Log("Failed to allocate new Part");
@@ -160,7 +214,7 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
     // Insertion Effects init
     for (int nefx = 0; nefx < NUM_INS_EFX; ++nefx)
     {
-        if (!(insefx[nefx] = new EffectMgr(1)))
+        if (!(insefx[nefx] = new EffectMgr(1, this)))
         {
             Runtime.Log("Failed to allocate new Insertion EffectMgr");
             goto bail_out;
@@ -170,7 +224,7 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
     // System Effects init
     for (int nefx = 0; nefx < NUM_SYS_EFX; ++nefx)
     {
-        if (!(sysefx[nefx] = new EffectMgr(0)))
+        if (!(sysefx[nefx] = new EffectMgr(0, this)))
         {
             Runtime.Log("Failed to allocate new System Effects EffectMgr");
             goto bail_out;
@@ -305,7 +359,7 @@ void SynthEngine::NoteOn(unsigned char chan, unsigned char note, unsigned char v
                     part[npart]->NoteOn(note, velocity, keyshift);
                     actionLock(unlock);
                 }
-                else if (VUpeak.values.parts[npart] < velocity)
+                else if (VUpeak.values.parts[npart] > (-velocity))
                     VUpeak.values.parts[npart] = -(0.2 + velocity); // ensure fake is always negative
             }
         }
@@ -328,67 +382,144 @@ void SynthEngine::NoteOff(unsigned char chan, unsigned char note)
 
 
 // Controllers
-void SynthEngine::SetController(unsigned char chan, unsigned int type, short int par)
+void SynthEngine::SetController(unsigned char chan, int type, short int par)
 {
     if (type == Runtime.midi_bank_C) {
-        /*  we use either msb or lsb for bank changes
-	  128 banks is enough for anybody :-)
-        this is configurable to suit different hardware synths
-        */
-        bank.msb = (unsigned char)par + 1; // Bank indexes start from 1       
-        if(bank.msb <= MAX_NUM_BANKS) {
-            if (bank.loadbank(bank.banks[bank.msb].dir))
-                Runtime.Log("SynthEngine setBank: Loaded " + bank.banks[bank.msb].name);
-            else
-                Runtime.Log("SynthEngine setBank: No bank " + asString(par));
-        }
-        else
-            Runtime.Log("SynthEngine setBank: Value is out of range!");
-        return;        
+        SetBank(par); //shouldn't get here. Banks are set directly via SetBank method from MusicIO class
     }
     else
     { // bank change doesn't directly affect parts.
-	for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
-	{   // Send the controller to all part assigned to the channel
-	    if (chan == part[npart]->Prcvchn && part[npart]->Penabled)
-		part[npart]->SetController(type, par);
-	}
+        for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
+        {   // Send the controller to all part assigned to the channel
+            if (chan == part[npart]->Prcvchn && part[npart]->Penabled)
+                part[npart]->SetController(type, par);
+        }
 
-	if (type == C_allsoundsoff)
-	{   // cleanup insertion/system FX
-	    for (int nefx = 0; nefx < NUM_SYS_EFX; ++nefx)
-		sysefx[nefx]->cleanup();
-	    for (int nefx = 0; nefx < NUM_INS_EFX; ++nefx)
-		insefx[nefx]->cleanup();
-	}
+        if (type == C_allsoundsoff)
+        {   // cleanup insertion/system FX
+            for (int nefx = 0; nefx < NUM_SYS_EFX; ++nefx)
+                sysefx[nefx]->cleanup();
+            for (int nefx = 0; nefx < NUM_INS_EFX; ++nefx)
+                insefx[nefx]->cleanup();
+        }
     }
 }
 
+
+void SynthEngine::SetBankRoot(int rootnum)
+{
+    if(bank.setCurrentRootID(rootnum))
+    {
+        Runtime.Log("SynthEngine setBank: Set root " + asString(rootnum) + " " + bank.getRootPath(bank.getCurrentRootID()));
+    }
+    else
+    {
+        Runtime.Log("SynthEngine setBank: No match for root ID " + asString(rootnum));
+    }
+    if (Runtime.showGui)
+    {
+        guiMaster->updateBankRootDirs();
+        guiMaster->bankui->rescan_for_banks(false);
+    }
+
+
+}
+
+
+void SynthEngine::SetBank(int banknum)
+{
+    /*  we use either msb or lsb for bank changes
+    128 banks is enough for anybody :-)
+    this is configurable to suit different hardware synths
+    */
+    
+    //new implementation uses only 1 call :)
+    if(bank.setCurrentBankID(banknum, true))
+    {
+        if(Runtime.showGui && guiMaster && guiMaster->bankui)
+        {
+            guiMaster->bankui->set_bank_slot();
+            guiMaster->bankui->refreshmainwindow();
+        }
+        Runtime.Log("SynthEngine setBank: Set bank " + asString(banknum) + " " + bank.roots [bank.currentRootID].banks [banknum].dirname);
+
+    }
+    else
+    {
+        Runtime.Log("SynthEngine setBank: No bank " + asString(banknum)+ " in this root");
+    }
+
+
+    /*
+    int offset = 0;
+#warning this needs improving.
+    for (int idx = 0; idx < MAX_NUM_BANKS; ++ idx)
+    {
+        if (bank.banks[idx].ID == Runtime.currentRootID and offset == banknum)
+        {
+            banknum = idx; // Set absolute bank location
+            break;
+        }
+        else if (bank.banks[idx].ID == Runtime.currentRootID)
+            offset += 1;
+    }
+
+    if(banknum <= MAX_NUM_BANKS) {
+        if (bank.loadbank(bank.banks[banknum].dir))
+            Runtime.Log("SynthEngine setBank: No bank " + asString(banknum));
+        if (Runtime.showGui)
+        {
+            guiMaster->bankui->set_bank_slot();
+            guiMaster->bankui->refreshmainwindow();
+        }
+        else
+            Runtime.Log("SynthEngine setBank: No bank " + asString(banknum));
+    }
+    else
+        Runtime.Log("SynthEngine setBank: Value is out of range!");
+    return;
+    */
+}
+
+
 void SynthEngine::SetProgram(unsigned char chan, unsigned char pgm)
 {
+    bool partOK = false;
     if (bank.getname(pgm) < "!") // can't get a program name less than this
     {
-        Runtime.Log("SynthEngine setProgram: No Program " + asString(pgm));
+        Runtime.Log("SynthEngine setProgram: No Program " + asString(pgm) + " in this bank");
     }
     else
     {
         for(int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
             if(chan == part[npart]->Prcvchn)
             {
-                bank.loadfromslot(pgm, part[npart]); // Programs indexes start from 0
-                if (part[npart]->Penabled == 0 and Runtime.enable_part_on_voice_load != 0)
+                partOK = bank.loadfromslot(pgm, part[npart]); // Programs indexes start from 0
+                if (partOK and part[npart]->Penabled == 0 and Runtime.enable_part_on_voice_load != 0)
+                {
                     partonoff(npart, 1);
+                    if (Runtime.showGui && guiMaster)
+                    {
+                        guiMaster->partui->partgroupui->activate();
+                        guiMaster->partui->partGroupEnable->value(1);
+                    }
+                }
+           }
+        if (partOK){
+            Runtime.Log("SynthEngine setProgram: Loaded " + asString(pgm) + " " + bank.getname(pgm));
+            // update UI
+            if (Runtime.showGui && guiMaster)
+            {
+                guiMaster->updatepanel();
+                if (guiMaster->partui && guiMaster->partui->instrumentlabel && guiMaster->partui->part)
+                    guiMaster->partui->instrumentlabel->copy_label(guiMaster->partui->part->Pname.c_str());
             }
-        Runtime.Log("SynthEngine setProgram: Loaded " + bank.getname(pgm));
-        // update UI
-        if (Runtime.showGui)
-        {
-            guiMaster->updatepanel();
-            if (guiMaster->partui && guiMaster->partui->instrumentlabel && guiMaster->partui->part)
-                guiMaster->partui->instrumentlabel->copy_label(guiMaster->partui->part->Pname.c_str());
         }
+        else // I think XML traps this. Should it?
+            Runtime.Log("SynthEngine setProgram: Invalid program data");
     }
 }
+
 
 // Enable/Disable a part
 void SynthEngine::partonoff(int npart, int what)
@@ -413,211 +544,239 @@ void SynthEngine::partonoff(int npart, int what)
 
 
 // Master audio out (the final sound)
-void SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS], float *outr [NUM_MIDI_PARTS])
-{
+void SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS], float *outr [NUM_MIDI_PARTS], int to_process)
+{    
+
+    p_buffersize = buffersize;
+    p_bufferbytes = bufferbytes;
+    p_buffersize_f = buffersize_f;
+
+    if(to_process > 0)
+    {
+        p_buffersize = to_process;
+        p_bufferbytes = p_buffersize * sizeof(float);
+        p_buffersize_f = p_buffersize;
+
+        if(p_buffersize + processOffset > buffersize)
+        {
+            p_buffersize = buffersize;
+            p_bufferbytes = bufferbytes;
+            p_buffersize_f = buffersize_f;
+        }
+    }
+
     int npart;
     for (npart = 0; npart < (NUM_MIDI_PARTS + 1); ++npart) // include mains
     {
-        memset(outl[npart], 0, bufferbytes);
-        memset(outr[npart], 0, bufferbytes);
+        memset(outl[npart], 0, p_bufferbytes);
+        memset(outr[npart], 0, p_bufferbytes);
     }
-    if (isMuted())
-        return;
 
-    actionLock(lock);
-
-    // Compute part samples and store them ->partoutl,partoutr
-    for (npart = 0; npart < NUM_MIDI_PARTS; ++npart)
-        if (part[npart]->Penabled)
-            part[npart]->ComputePartSmps();
-
-    // Insertion effects
-    int nefx;
-    for (nefx = 0; nefx < NUM_INS_EFX; ++nefx)
+    if (!isMuted())
     {
-        if (Pinsparts[nefx] >= 0)
+
+        actionLock(lock);
+
+        // Compute part samples and store them ->partoutl,partoutr
+        for (npart = 0; npart < NUM_MIDI_PARTS; ++npart)
+            if (part[npart]->Penabled)
+                part[npart]->ComputePartSmps();
+
+        // Insertion effects
+        int nefx;
+        for (nefx = 0; nefx < NUM_INS_EFX; ++nefx)
         {
-            int efxpart = Pinsparts[nefx];
-            if (part[efxpart]->Penabled)
-                insefx[nefx]->out(part[efxpart]->partoutl, part[efxpart]->partoutr);
-        }
-    }
-
-    // Apply the part volumes and pannings (after insertion effects)
-    for (npart = 0; npart < NUM_MIDI_PARTS; ++npart)
-    {
-        if (!part[npart]->Penabled)
-            continue;
-
-        float oldvol_l = part[npart]->oldvolumel;
-        float oldvol_r = part[npart]->oldvolumer;
-        float newvol_l = part[npart]->pannedVolLeft();
-        float newvol_r = part[npart]->pannedVolRight();
-        if (aboveAmplitudeThreshold(oldvol_l, newvol_l) || aboveAmplitudeThreshold(oldvol_r, newvol_r))
-        {   // the volume or the panning has changed and needs interpolation
-            for (int i = 0; i < buffersize; ++i)
+            if (Pinsparts[nefx] >= 0)
             {
-                float vol_l = interpolateAmplitude(oldvol_l, newvol_l, i, buffersize);
-                float vol_r = interpolateAmplitude(oldvol_r, newvol_r, i, buffersize);
-                part[npart]->partoutl[i] *= vol_l;
-                part[npart]->partoutr[i] *= vol_r;
-            }
-            part[npart]->oldvolumel = newvol_l;
-            part[npart]->oldvolumer = newvol_r;
-        }
-        else
-        {
-            for (int i = 0; i < buffersize; ++i)
-            {   // the volume did not change
-                part[npart]->partoutl[i] *= newvol_l;
-                part[npart]->partoutr[i] *= newvol_r;
+                int efxpart = Pinsparts[nefx];
+                if (part[efxpart]->Penabled)
+                    insefx[nefx]->out(part[efxpart]->partoutl, part[efxpart]->partoutr);
             }
         }
-    }
-    // System effects
-    for (nefx = 0; nefx < NUM_SYS_EFX; ++nefx)
-    {
-        if (!sysefx[nefx]->geteffect())
-            continue; // is disabled
 
-        // Clean up the samples used by the system effects
-        memset(tmpmixl, 0, bufferbytes);
-        memset(tmpmixr, 0, bufferbytes);
-
-        // Mix the channels according to the part settings about System Effect
+        // Apply the part volumes and pannings (after insertion effects)
         for (npart = 0; npart < NUM_MIDI_PARTS; ++npart)
         {
-            // skip if part is disabled, doesn't go to main or has no output to effect
-            if (part[npart]->Penabled && Psysefxvol[nefx][npart]&& part[npart]->Paudiodest & 1)
-            {
-                // the output volume of each part to system effect
-                float vol = sysefxvol[nefx][npart];
-                for (int i = 0; i < buffersize; ++i)
+            if (!part[npart]->Penabled)
+                continue;
+
+            float oldvol_l = part[npart]->oldvolumel;
+            float oldvol_r = part[npart]->oldvolumer;
+            float newvol_l = part[npart]->pannedVolLeft();
+            float newvol_r = part[npart]->pannedVolRight();
+            if (aboveAmplitudeThreshold(oldvol_l, newvol_l) || aboveAmplitudeThreshold(oldvol_r, newvol_r))
+            {   // the volume or the panning has changed and needs interpolation
+                for (int i = 0; i < p_buffersize; ++i)
                 {
-                    tmpmixl[i] += part[npart]->partoutl[i] * vol;
-                    tmpmixr[i] += part[npart]->partoutr[i] * vol;
+                    float vol_l = interpolateAmplitude(oldvol_l, newvol_l, i, p_buffersize);
+                    float vol_r = interpolateAmplitude(oldvol_r, newvol_r, i, p_buffersize);
+                    part[npart]->partoutl[i] *= vol_l;
+                    part[npart]->partoutr[i] *= vol_r;
+                }
+                part[npart]->oldvolumel = newvol_l;
+                part[npart]->oldvolumer = newvol_r;
+            }
+            else
+            {
+                for (int i = 0; i < p_buffersize; ++i)
+                {   // the volume did not change
+                    part[npart]->partoutl[i] *= newvol_l;
+                    part[npart]->partoutr[i] *= newvol_r;
+                }
+            }
+        }
+        // System effects
+        for (nefx = 0; nefx < NUM_SYS_EFX; ++nefx)
+        {
+            if (!sysefx[nefx]->geteffect())
+                continue; // is disabled
+
+            // Clean up the samples used by the system effects
+            memset(tmpmixl, 0, p_bufferbytes);
+            memset(tmpmixr, 0, p_bufferbytes);
+
+            // Mix the channels according to the part settings about System Effect
+            for (npart = 0; npart < NUM_MIDI_PARTS; ++npart)
+            {
+                // skip if part is disabled, doesn't go to main or has no output to effect
+                if (part[npart]->Penabled && Psysefxvol[nefx][npart]&& part[npart]->Paudiodest & 1)
+                {
+                    // the output volume of each part to system effect
+                    float vol = sysefxvol[nefx][npart];
+                    for (int i = 0; i < p_buffersize; ++i)
+                    {
+                        tmpmixl[i] += part[npart]->partoutl[i] * vol;
+                        tmpmixr[i] += part[npart]->partoutr[i] * vol;
+                    }
+                }
+            }
+
+            // system effect send to next ones
+            for (int nefxfrom = 0; nefxfrom < nefx; ++nefxfrom)
+            {
+                if (Psysefxsend[nefxfrom][nefx])
+                {
+                    float v = sysefxsend[nefxfrom][nefx];
+                    for (int i = 0; i < p_buffersize; ++i)
+                    {
+                        tmpmixl[i] += sysefx[nefxfrom]->efxoutl[i] * v;
+                        tmpmixr[i] += sysefx[nefxfrom]->efxoutr[i] * v;
+                    }
+                }
+            }
+            sysefx[nefx]->out(tmpmixl, tmpmixr);
+
+            // Add the System Effect to sound output
+            float outvol = sysefx[nefx]->sysefxgetvolume();
+            for (int i = 0; i < p_buffersize; ++i)
+            {
+                outl[NUM_MIDI_PARTS][i] += tmpmixl[i] * outvol;
+                outr[NUM_MIDI_PARTS][i] += tmpmixr[i] * outvol;
+            }
+        }
+
+        for (npart = 0; npart < NUM_MIDI_PARTS; ++npart)
+        {
+            if (part[npart]->Paudiodest & 2){    // Copy separate parts
+
+                for (int i = 0; i < p_buffersize; ++i)
+                {
+                    outl[npart][i] = part[npart]->partoutl[i];
+                    outr[npart][i] = part[npart]->partoutr[i];
+                }
+            }
+            if (part[npart]->Paudiodest & 1)    // Mix wanted parts to mains
+            {
+                for (int i = 0; i < p_buffersize; ++i)
+                {   // the volume did not change
+                    outl[NUM_MIDI_PARTS][i] += part[npart]->partoutl[i];
+                    outr[NUM_MIDI_PARTS][i] += part[npart]->partoutr[i];
                 }
             }
         }
 
-        // system effect send to next ones
-        for (int nefxfrom = 0; nefxfrom < nefx; ++nefxfrom)
+        // Insertion effects for Master Out
+        for (nefx = 0; nefx < NUM_INS_EFX; ++nefx)
         {
-            if (Psysefxsend[nefxfrom][nefx])
+            if (Pinsparts[nefx] == -2)
+                insefx[nefx]->out(outl[NUM_MIDI_PARTS], outr[NUM_MIDI_PARTS]);
+        }
+
+        LFOtime++; // update the LFO's time
+
+        // Master volume, and all output fade
+        float fade;
+        for (int idx = 0; idx < p_buffersize; ++idx)
+        {
+            outl[NUM_MIDI_PARTS][idx] *= volume; // apply Master Volume
+            outr[NUM_MIDI_PARTS][idx] *= volume;
+            if (shutup) // fade-out
             {
-                float v = sysefxsend[nefxfrom][nefx];
-                for (int i = 0; i < buffersize; ++i)
+                fade = (float) (p_buffersize - idx) / (float) p_buffersize;
+                for (npart = 0; npart < (NUM_MIDI_PARTS + 1); ++npart) // include mains
                 {
-                    tmpmixl[i] += sysefx[nefxfrom]->efxoutl[i] * v;
-                    tmpmixr[i] += sysefx[nefxfrom]->efxoutr[i] * v;
+                    outl[npart][idx] *= fade;
+                    outr[npart][idx] *= fade;
                 }
             }
         }
-        sysefx[nefx]->out(tmpmixl, tmpmixr);
 
-        // Add the System Effect to sound output
-        float outvol = sysefx[nefx]->sysefxgetvolume();
-        for (int i = 0; i < buffersize; ++i)
+        actionLock(unlock);
+
+        // Peak calculation for mixed outputs
+        VUpeak.values.vuRmsPeakL = 1e-12f;
+        VUpeak.values.vuRmsPeakR = 1e-12f;
+        float absval;
+        for (int idx = 0; idx < p_buffersize; ++idx)
         {
-            outl[NUM_MIDI_PARTS][i] += tmpmixl[i] * outvol;
-            outr[NUM_MIDI_PARTS][i] += tmpmixr[i] * outvol;
+            if ((absval = fabsf(outl[NUM_MIDI_PARTS][idx])) > VUpeak.values.vuOutPeakL)
+                VUpeak.values.vuOutPeakL = absval;
+            if ((absval = fabsf(outr[NUM_MIDI_PARTS][idx])) > VUpeak.values.vuOutPeakR)
+                VUpeak.values.vuOutPeakR = absval;
+
+            // RMS Peak
+            VUpeak.values.vuRmsPeakL += outl[NUM_MIDI_PARTS][idx] * outl[NUM_MIDI_PARTS][idx];
+            VUpeak.values.vuRmsPeakR += outr[NUM_MIDI_PARTS][idx] * outr[NUM_MIDI_PARTS][idx];
         }
-    }
 
-    for (npart = 0; npart < NUM_MIDI_PARTS; ++npart)
-    {
-        if (part[npart]->Paudiodest & 2){    // Copy separate parts
+        if (shutup)
+            ShutUp();
 
-            for (int i = 0; i < buffersize; ++i)
-            {
-                outl[npart][i] = part[npart]->partoutl[i];
-                outr[npart][i] = part[npart]->partoutr[i];
-            }
-        }
-        if (part[npart]->Paudiodest & 1)    // Mix wanted parts to mains
-        {
-            for (int i = 0; i < buffersize; ++i)
-            {   // the volume did not change
-                outl[NUM_MIDI_PARTS][i] += part[npart]->partoutl[i];
-                outr[NUM_MIDI_PARTS][i] += part[npart]->partoutr[i];
-            }
-        }
-    }
-
-    // Insertion effects for Master Out
-    for (nefx = 0; nefx < NUM_INS_EFX; ++nefx)
-    {
-        if (Pinsparts[nefx] == -2)
-            insefx[nefx]->out(outl[NUM_MIDI_PARTS], outr[NUM_MIDI_PARTS]);
-    }
-
-    LFOParams::time++; // update the LFO's time
-
-    // Master volume, and all output fade
-    float fade;
-    for (int idx = 0; idx < buffersize; ++idx)
-    {
-        outl[NUM_MIDI_PARTS][idx] *= volume; // apply Master Volume
-        outr[NUM_MIDI_PARTS][idx] *= volume;
-        if (shutup) // fade-out
-        {
-            fade = (float) (buffersize - idx) / (float) buffersize;
-            for (npart = 0; npart < (NUM_MIDI_PARTS + 1); ++npart) // include mains
-            { 
-                outl[npart][idx] *= fade;
-                outr[npart][idx] *= fade;
-            }
-        }
-    }
-
-    actionLock(unlock);
-    
-    // Peak calculation for mixed outputs   
-    VUpeak.values.vuRmsPeakL = 1e-12f;
-    VUpeak.values.vuRmsPeakR = 1e-12f;       
-    float absval;
-    for (int idx = 0; idx < buffersize; ++idx)
-    {
-        if ((absval = fabsf(outl[NUM_MIDI_PARTS][idx])) > VUpeak.values.vuOutPeakL)
-            VUpeak.values.vuOutPeakL = absval;
-        if ((absval = fabsf(outr[NUM_MIDI_PARTS][idx])) > VUpeak.values.vuOutPeakR)
-            VUpeak.values.vuOutPeakR = absval;
-
-        // RMS Peak
-        VUpeak.values.vuRmsPeakL += outl[NUM_MIDI_PARTS][idx] * outl[NUM_MIDI_PARTS][idx];
-        VUpeak.values.vuRmsPeakR += outr[NUM_MIDI_PARTS][idx] * outr[NUM_MIDI_PARTS][idx];
-    }
-
-    if (shutup)
-        ShutUp();
-
-    // Part Peak computation (for part vu meters/fake part vu meters)
-    for (npart = 0; npart < NUM_MIDI_PARTS; ++npart)
-    {       
-        if (part[npart]->Penabled)
-        {
-            for (int i = 0; i < buffersize; ++i)
-            {
-                float tmp = fabsf(part[npart]->partoutl[i] + part[npart]->partoutr[i]);
-                if (tmp > VUpeak.values.parts[npart])
-                    VUpeak.values.parts[npart] = tmp;
-            }
-        }
-    }
-
-    if (jack_ringbuffer_write_space(vuringbuf) >= sizeof(VUtransfer))
-    {
-        jack_ringbuffer_write(vuringbuf, ( char*)VUpeak.bytes, sizeof(VUtransfer));
-        VUpeak.values.vuOutPeakL = 1e-12f;
-        VUpeak.values.vuOutPeakR = 1e-12f;
+        // Peak computation for part vu meters
         for (npart = 0; npart < NUM_MIDI_PARTS; ++npart)
         {
             if (part[npart]->Penabled)
-                VUpeak.values.parts[npart] = 1.0e-9;
-            else if (VUpeak.values.parts[npart] < -2.2) // fake peak is a negative value
-                VUpeak.values.parts[npart]+= 2;
+            {
+                for (int idx = 0; idx < p_buffersize; ++idx)
+                {
+                    if ((absval = fabsf(part[npart]->partoutl[idx])) > VUpeak.values.parts[npart])
+                        VUpeak.values.parts[npart] = absval;
+                    if ((absval = fabsf(part[npart]->partoutr[idx])) > VUpeak.values.parts[npart])
+                        VUpeak.values.parts[npart] = absval;
+                }
+            }
+        }
+
+        VUpeak.values.p_buffersize = p_buffersize;
+
+        if (jack_ringbuffer_write_space(vuringbuf) >= sizeof(VUtransfer))
+        {
+            jack_ringbuffer_write(vuringbuf, ( char*)VUpeak.bytes, sizeof(VUtransfer));
+            VUpeak.values.vuOutPeakL = 1e-12f;
+            VUpeak.values.vuOutPeakR = 1e-12f;
+            for (npart = 0; npart < NUM_MIDI_PARTS; ++npart)
+            {
+                if (part[npart]->Penabled)
+                    VUpeak.values.parts[npart] = 1.0e-9;
+                else if (VUpeak.values.parts[npart] < -2.2) // fake peak is a negative value
+                    VUpeak.values.parts[npart]+= 2;
+            }
         }
     }
+
+    processOffset += p_buffersize;
+    if(processOffset >= buffersize)
+        processOffset = 0;
 }
 
 
@@ -625,14 +784,14 @@ bool SynthEngine::fetchMeterData(VUtransfer *VUdata)
 {
     if (jack_ringbuffer_read_space(vuringbuf) >= sizeof(VUtransfer))
     {
+
         jack_ringbuffer_read(vuringbuf, ( char*)VUdata->bytes, sizeof(VUtransfer));
-        VUdata->values.vuRmsPeakL = sqrt(VUdata->values.vuRmsPeakL / buffersize);
-        VUdata->values.vuRmsPeakR = sqrt(VUdata->values.vuRmsPeakR / buffersize);
+        VUdata->values.vuRmsPeakL = sqrt(VUdata->values.vuRmsPeakL / VUdata->values.p_buffersize);
+        VUdata->values.vuRmsPeakR = sqrt(VUdata->values.vuRmsPeakR / VUdata->values.p_buffersize);
         return true;
     }
     return false;
 }
-
 
 // Parameter control
 void SynthEngine::setPvolume(char control_value)
@@ -724,6 +883,23 @@ void SynthEngine::applyparameters(void)
 }
 
 
+int SynthEngine::loadParameters(string fname)
+{
+    int result = 0;
+    Runtime.SimpleCheck = false;
+    actionLock(lockmute);
+    defaults(); // clear all parameters
+    if(loadXML(fname)) // load the data
+    {
+        result = 1; // this is messy, but can't trust bool to int conversions
+        if (Runtime.SimpleCheck)
+            result = 3;
+    }
+    actionLock(unlock);
+    return result;
+}
+
+
 void SynthEngine::add2XML(XMLwrapper *xml)
 {
     xml->beginbranch("MASTER");
@@ -786,7 +962,7 @@ void SynthEngine::add2XML(XMLwrapper *xml)
 
 int SynthEngine::getalldata(char **data)
 {
-    XMLwrapper *xml = new XMLwrapper();
+    XMLwrapper *xml = new XMLwrapper(this);
     add2XML(xml);
     *data = xml->getXMLdata();
     delete xml;
@@ -794,31 +970,32 @@ int SynthEngine::getalldata(char **data)
 }
 
 
-void SynthEngine::putalldata(char *data, int size)
+void SynthEngine::putalldata(const char *data, int size)
 {
-    XMLwrapper *xml = new XMLwrapper();
+    XMLwrapper *xml = new XMLwrapper(this);
     if (!xml->putXMLdata(data))
     {
         Runtime.Log("SynthEngine putXMLdata failed");
         delete xml;
         return;
     }
-    if (xml->enterbranch("MASTER"))
-    {
+    //if (xml->enterbranch("MASTER"))
+    //{
         actionLock(lock);
+        defaults();
         getfromXML(xml);
         actionLock(unlock);
         xml->exitbranch();
-    }
-    else
-        Runtime.Log("Master putAllData failed to enter MASTER branch");
+    //}
+    //else
+        //Runtime.Log("Master putAllData failed to enter MASTER branch");
     delete xml;
 }
 
 
 bool SynthEngine::saveXML(string filename)
 {
-    XMLwrapper *xml = new XMLwrapper();
+    XMLwrapper *xml = new XMLwrapper(this);
     add2XML(xml);
     bool result = xml->saveXMLfile(filename);
     delete xml;
@@ -828,7 +1005,7 @@ bool SynthEngine::saveXML(string filename)
 
 bool SynthEngine::loadXML(string filename)
 {
-    XMLwrapper *xml = new XMLwrapper();
+    XMLwrapper *xml = new XMLwrapper(this);
     if (NULL == xml)
     {
         Runtime.Log("failed to init xml tree");
@@ -972,4 +1149,52 @@ float SynthHelper::getDetune(unsigned char type, unsigned short int coarsedetune
     return det;
 }
 
+MasterUI *SynthEngine::getGuiMaster(bool createGui)
+{
+    if(guiMaster == NULL && createGui)
+    {
+        guiMaster = new MasterUI(this);
+    }
+    return guiMaster;
+}
+
+void SynthEngine::guiClosed(bool stopSynth)
+{
+    if(stopSynth && !isLV2Plugin)
+        Runtime.runSynth = false;    
+    if(guiClosedCallback != NULL)
+        guiClosedCallback(guiCallbackArg);
+}
+
+void SynthEngine::closeGui()
+{
+    if(guiMaster != NULL)
+    {
+        delete guiMaster;
+        guiMaster = NULL;
+        Runtime.showGui = false;
+    }
+}
+
+std::string SynthEngine::makeUniqueName(const char *name)
+{
+    char strUniquePostfix [1024];
+    std::string newUniqueName = name;
+    memset(strUniquePostfix, 0, sizeof(strUniquePostfix));
+    if(uniqueId > 0)
+    {
+        snprintf(strUniquePostfix, sizeof(strUniquePostfix), "-%d", uniqueId);
+    }
+
+    newUniqueName += strUniquePostfix;
+    return newUniqueName;
+}
+
+void SynthEngine::setWindowTitle(string _windowTitle)
+{
+    if(!_windowTitle.empty())
+    {
+        windowTitle = _windowTitle;
+    }
+}
 

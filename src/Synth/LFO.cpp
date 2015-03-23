@@ -28,7 +28,8 @@
 #include "Synth/LFO.h"
 
 
-LFO::LFO(LFOParams *lfopars, float basefreq)
+LFO::LFO(LFOParams *lfopars, float basefreq, SynthEngine *_synth):
+    synth(_synth)
 {
     if (lfopars->Pstretch == 0)
         lfopars->Pstretch = 1;
@@ -47,7 +48,7 @@ LFO::LFO(LFOParams *lfopars, float basefreq)
     }
     else
     {
-        float tmp = fmodf(lfopars->time * incx, 1.0f);
+        float tmp = fmodf(synth->getLFOtime() * incx, 1.0f);
         x = fmodf((((int)lfopars->Pstartphase - 64) / 127.0f + 1.0f + tmp), 1.0f);
     }
 

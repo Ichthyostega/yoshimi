@@ -29,14 +29,15 @@
 #include "DSP/SVFilter.h"
 
 SVFilter::SVFilter(unsigned char Ftype, float Ffreq, float Fq,
-                   unsigned char Fstages) :
+                   unsigned char Fstages, SynthEngine *_synth) :
     type(Ftype),
     stages(Fstages),
     freq(Ffreq),
     q(Fq),
     gain(1.0f),
     needsinterpolation(0),
-    firsttime(1)
+    firsttime(1),
+    synth(_synth)
 {
     if (stages >= MAX_FILTER_STAGES)
         stages = MAX_FILTER_STAGES;
@@ -66,7 +67,7 @@ void SVFilter::computefiltercoefs(void)
     par.f = freq / synth->samplerate_f * 4.0f;
     if (par.f > 0.99999f)
         par.f = 0.99999f;
-    par.q = 1.0f - atanf(sqrtf(q)) * HALFPI;
+    par.q = 1.0f - atanf(sqrtf(q)) * 2.0f / PI;
     par.q = powf(par.q, 1.0f / (stages + 1));
     par.q_sqrt = sqrtf(par.q);
 }
@@ -149,7 +150,7 @@ void SVFilter::singlefilterout(float *smp, fstage &x, parameters &par)
             break;
     }
 
-    for (int i = 0; i < synth->buffersize; ++i)
+    for (int i = 0; i < synth->p_buffersize; ++i)
     {
         x.low = x.low + par.f * x.band;
         x.high = par.q_sqrt * smp[i] - x.low - par.q * x.band;
@@ -163,7 +164,7 @@ void SVFilter::filterout(float *smp)
 {
     if (needsinterpolation)
     {
-        memcpy(tmpismp, smp, synth->bufferbytes);
+        memcpy(tmpismp, smp, synth->p_bufferbytes);
         for (int i = 0; i < stages + 1; ++i)
             singlefilterout(tmpismp, st[i],ipar);
     }
@@ -173,13 +174,13 @@ void SVFilter::filterout(float *smp)
 
     if (needsinterpolation)
     {
-        for (int i = 0; i < synth->buffersize; ++i)
+        for (int i = 0; i < synth->p_buffersize; ++i)
         {
-            float x = (float)i / synth->buffersize_f;
+            float x = (float)i / synth->p_buffersize_f;
             smp[i] = tmpismp[i] * (1.0f - x) + smp[i] * x;
         }
         needsinterpolation = 0;
     }
-    for (int i = 0; i < synth->buffersize; ++i)
+    for (int i = 0; i < synth->p_buffersize; ++i)
         smp[i] *= outgain;
 }

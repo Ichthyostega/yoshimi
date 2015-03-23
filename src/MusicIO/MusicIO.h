@@ -23,11 +23,13 @@
 
 #include "Misc/SynthEngine.h"
 
+class SynthEngine;
+
 class MusicIO : virtual protected MiscFuncs
 {
     public:
-        MusicIO();
-        ~MusicIO();
+        MusicIO(SynthEngine *_synth);
+        virtual ~MusicIO();
         virtual unsigned int getSamplerate(void) = 0;
         virtual int getBuffersize(void) = 0;
         virtual bool Start(void) = 0;
@@ -38,8 +40,10 @@ class MusicIO : virtual protected MiscFuncs
         void getAudio(void) { if (synth) synth->MasterAudio(zynLeft, zynRight); }
         void InterleaveShorts(void);
         int getMidiController(unsigned char b);
-        void setMidiController(unsigned char ch, unsigned int ctrl, int param);
-        void setMidiProgram(unsigned char ch, int pgm);
+        void setMidiController(unsigned char ch, int ctrl, int param, bool in_place = false);
+        //if setBank is false then set RootDir number else current bank number
+        void setMidiBankOrRootDir(unsigned int bank_or_root_num, bool in_place = false, bool setRootDir = false);
+        void setMidiProgram(unsigned char ch, int prg, bool in_place = false);
         void setMidiNote(unsigned char chan, unsigned char note);
         void setMidiNote(unsigned char chan, unsigned char note, unsigned char velocity);
 
@@ -47,6 +51,25 @@ class MusicIO : virtual protected MiscFuncs
         float *zynRight [NUM_MIDI_PARTS + 1];
         short int *interleavedShorts;
         int rtprio;
+
+        SynthEngine *synth;
+    private:
+        pthread_t pBankOrRootDirThread;
+        int bankOrRootDirToChange;
+        bool isRootDirChangeRequested; // if true then thread will change current bank root dir, else current bank
+        struct _prgChangeCmd
+        {            
+            int ch;
+            int prg;
+            MusicIO *_this_;
+            pthread_t pPrgThread;
+        };
+        _prgChangeCmd prgChangeCmd [NUM_MIDI_PARTS];
+
+        void *bankOrRootDirChange_Thread();
+        void *prgChange_Thread(_prgChangeCmd *pCmd);
+        static void *static_BankOrRootDirChangeThread(void *arg);
+        static void *static_PrgChangeThread(void *arg);
 };
 
 #endif

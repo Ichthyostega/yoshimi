@@ -70,6 +70,14 @@ int MiscFuncs::string2int(string str)
     return intval;
 }
 
+unsigned int MiscFuncs::string2uint(string str)
+{
+    istringstream machine(str);
+    unsigned int intval;
+    machine >> intval;
+    return intval;
+}
+
 // make a filename legal
 void MiscFuncs::legit_filename(string& fname)
 {
@@ -87,6 +95,13 @@ void MiscFuncs::legit_filename(string& fname)
 }
 
 
+void invSignal(float *sig, size_t len)
+{
+    for(size_t i = 0; i < len; ++i)
+        sig[i] *= -1.0f;
+}
+
+
 string MiscFuncs::asString(int n)
 {
    ostringstream oss;
@@ -101,7 +116,14 @@ string MiscFuncs::asString(long long n)
    oss << n;
    return string(oss.str());
 }
-
+#if !defined( __arm__ ) && !defined( __i386__ )
+string MiscFuncs::asString(size_t n)
+{
+    ostringstream oss;
+    oss << n;
+    return string(oss.str());
+}
+#endif
 
 string MiscFuncs::asString(long n)
 {

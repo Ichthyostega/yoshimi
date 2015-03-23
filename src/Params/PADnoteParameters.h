@@ -35,10 +35,12 @@ class EnvelopeParams;
 class LFOParams;
 class FilterParams;
 
+class SynthEngine;
+
 class PADnoteParameters : public Presets
 {
     public:
-        PADnoteParameters(FFTwrapper *fft_);
+        PADnoteParameters(FFTwrapper *fft_, SynthEngine *_synth);
         ~PADnoteParameters();
 
         void defaults(void);
@@ -139,7 +141,6 @@ class PADnoteParameters : public Presets
         float getNhr(int n); // gets the n-th overtone position relatively to N harmonic
 
         void applyparameters(bool islocked);
-
         OscilGen *oscilgen;
         Resonance *resonance;
 
