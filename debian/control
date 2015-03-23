@@ -24,7 +24,7 @@ Build-Depends:
  libxinerama-dev,
  libcairo2-dev,
  sharutils
-Standards-Version: 3.9.5
+Standards-Version: 3.9.6
 Vcs-Git: git://anonscm.debian.org/pkg-multimedia/yoshimi.git
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=pkg-multimedia/yoshimi.git
 Homepage: http://yoshimi.sourceforge.net
