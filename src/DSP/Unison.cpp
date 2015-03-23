@@ -24,24 +24,26 @@
 
 #include <cmath>
 #include <cstring>
+#include <stdio.h>
 
 using namespace std;
 
 #include "Misc/Config.h"
 #include "DSP/Unison.h"
 
-Unison::Unison(int update_period_samples_, float max_delay_sec_) :
+Unison::Unison(int update_period_samples_, float max_delay_sec_, SynthEngine *_synth) :
     unison_size(0),
     base_freq(1.0f),
     uv(NULL),
     update_period_samples(update_period_samples_),
     update_period_sample_k(0),
-    max_delay(lrintf(synth->samplerate_f * max_delay_sec_) + 1),
+    max_delay((int)truncf(_synth->samplerate_f * max_delay_sec_) + 1),
     delay_k(0),
     first_time(false),
     delay_buffer(NULL),
     unison_amplitude_samples(0.0f),
-    unison_bandwidth_cents(10.0f)
+    unison_bandwidth_cents(10.0f),
+    synth(_synth)
 {
     if(max_delay < 10)
         max_delay = 10;
@@ -66,7 +68,10 @@ void Unison::setSize(int new_size)
     unison_size = new_size;
     if (uv)
         delete [] uv;
-    uv = new UnisonVoice[unison_size];
+    uv = new UnisonVoice [unison_size];
+    for(int i = 0; i < unison_size; ++i) {
+        uv [i].setPosition(synth->numRandom() * 1.8f - 0.9f);
+    }
     first_time = true;
     updateParameters();
 }
@@ -85,6 +90,7 @@ void Unison::setBandwidth(float bandwidth)
         bandwidth = 0.0f;
     if (bandwidth > 1200.0f)
         bandwidth = 1200.0f;
+//    printf("band %f\n", bandwidth);
     //#warning
     //    : todo: if bandwidth is too small the audio will be self canceled (because of the sign change of the outputs)
     unison_bandwidth_cents = bandwidth;
@@ -94,7 +100,7 @@ void Unison::setBandwidth(float bandwidth)
 
 void Unison::updateParameters(void)
 {
-    if(uv)
+    if(!uv)
         return;
     float increments_per_second = synth->samplerate_f / (float)update_period_samples;
 //	printf("#%g, %g\n",increments_per_second,base_freq);
@@ -111,6 +117,7 @@ void Unison::updateParameters(void)
     }
 
     float max_speed = powf(2.0f, unison_bandwidth_cents / 1200.0f);
+//    printf("speed %f\n", max_speed);
     unison_amplitude_samples = 0.125f * (max_speed - 1.0f) * synth->samplerate_f / base_freq;
 
     //#warning
@@ -148,11 +155,14 @@ void Unison::process(int bufsize, float *inbuf, float *outbuf)
             float vpos = uv[k].realpos1 * (1.0f - xpos) + uv[k].realpos2 * xpos;
             float pos  = (float)(delay_k + max_delay) - vpos - 1.0f;
             // F2I(pos, posi);
-            int posi = (pos > 0.0f) ? lrintf(pos) : lrintf(pos - 1.0f);
+            int posi = (pos > 0.0f) ? (int)truncf(pos) : (int)truncf(pos - 1.0f);
+            int posi_next = posi + 1;
             if (posi >= max_delay)
                 posi -= max_delay;
+            if(posi_next >= max_delay)
+                posi_next -= max_delay;
             float posf = pos - floorf(pos);
-            out += ((1.0f - posf) * delay_buffer[posi] + posf * delay_buffer[posi + 1]) * sign;
+            out += ((1.0f - posf) * delay_buffer[posi] + posf * delay_buffer[posi_next]) * sign;
             sign = -sign;
         }
         outbuf[i] = out * volume;

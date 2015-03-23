@@ -27,10 +27,12 @@ using namespace std;
 #include "Misc/SynthEngine.h"
 #include "Effects/Alienwah.h"
 
-Alienwah::Alienwah(bool insertion_, float *efxoutl_, float *efxoutr_) :
+Alienwah::Alienwah(bool insertion_, float *efxoutl_, float *efxoutr_, SynthEngine *_synth) :
     Effect(insertion_, efxoutl_, efxoutr_, NULL, 0),
+    lfo(_synth),
     oldl(NULL),
-    oldr(NULL)
+    oldr(NULL),
+    synth(_synth)
 {
     setpreset(Ppreset);
     cleanup();
@@ -60,9 +62,9 @@ void Alienwah::out(float *smpsl, float *smpsr)
     clfol = complex<float>(cosf(lfol + phase) * fb, sinf(lfol + phase) * fb); //rework
     clfor = complex<float>(cosf(lfor + phase) * fb, sinf(lfor + phase) * fb); //rework
 
-    for (int i = 0; i < synth->buffersize; ++i)
+    for (int i = 0; i < synth->p_buffersize; ++i)
     {
-        float x = (float)i / synth->buffersize_f;
+        float x = (float)i / synth->p_buffersize_f;
         float x1 = 1.0f - x;
         // left
         tmp = clfol * x + oldclfol * x1;

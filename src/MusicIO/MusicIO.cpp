@@ -28,16 +28,36 @@ using namespace std;
 #include "MusicIO/MidiControl.h"
 #include "MusicIO/MusicIO.h"
 
-MusicIO::MusicIO() :
+#include <unistd.h>
+#include <iostream>
+
+MusicIO::MusicIO(SynthEngine *_synth) :
     interleavedShorts(NULL),
-    rtprio(25)
+    rtprio(25),
+    synth(_synth),
+    pBankOrRootDirThread(0)
 {
-    memset(zynLeft, 0, sizeof(float) * (NUM_MIDI_PARTS + 1));
-    memset(zynRight, 0, sizeof(float) * (NUM_MIDI_PARTS + 1));
+    memset(zynLeft, 0, sizeof(float *) * (NUM_MIDI_PARTS + 1));
+    memset(zynRight, 0, sizeof(float *) * (NUM_MIDI_PARTS + 1));
+    memset(&prgChangeCmd, 0, sizeof(prgChangeCmd));
 }
 
 MusicIO::~MusicIO()
 {
+    pthread_t tmpBankThread = 0;
+    pthread_t tmpPrgThread = 0;
+    void *threadRet = NULL;
+    tmpBankThread = __sync_fetch_and_add(&pBankOrRootDirThread, 0);
+    if(tmpBankThread != 0)
+        pthread_join(tmpBankThread, &threadRet);
+    for(int i = 0; i < NUM_MIDI_PARTS; ++i)
+    {
+        threadRet = NULL;
+        tmpPrgThread = __sync_fetch_and_add(&prgChangeCmd [i].pPrgThread, 0);
+        if(tmpPrgThread != 0)
+            pthread_join(tmpPrgThread, &threadRet);
+    }
+
     for (int npart = 0; npart < (NUM_MIDI_PARTS + 1); ++npart)
     {
         if (zynLeft[npart])
@@ -135,23 +155,71 @@ int MusicIO::getMidiController(unsigned char b)
 }
 
 
-void MusicIO::setMidiController(unsigned char ch, unsigned int ctrl, int param)
+void MusicIO::setMidiController(unsigned char ch, int ctrl, int param, bool in_place)
 {
-    if (ctrl != Runtime.midi_upper_voice_C)
-    {
+    if (ctrl == synth->getRuntime().midi_bank_root)
+        setMidiBankOrRootDir(param, in_place, true);
+    else if (ctrl == synth->getRuntime().midi_bank_C)
+        setMidiBankOrRootDir(param, in_place);
+    else if (ctrl == synth->getRuntime().midi_upper_voice_C)
+        setMidiProgram(ch, (param & 0x1f) | 0x80, in_place); // it's really an upper set program change
+    else
         synth->SetController(ch, ctrl, param);
-    }
-    else if (Runtime.EnableProgChange) // it's really an upper set program change
-    {
-        synth->SetProgram(ch, (param & 0x1f) | 0x80);
+}
+
+//bank change and root dir change change share the same thread
+//to make changes consistent
+void MusicIO::setMidiBankOrRootDir(unsigned int bank_or_root_num, bool in_place, bool setRootDir)
+{
+    if (setRootDir && (bank_or_root_num == synth->getBankRef().getCurrentRootID()))
+        return; // nothing to do!
+    if(in_place)
+        setRootDir ? synth->SetBankRoot(bank_or_root_num) : synth->SetBank(bank_or_root_num);
+    else
+    {        
+        pthread_t tmpBankOrRootDirThread = 0;
+        tmpBankOrRootDirThread = __sync_fetch_and_add(&pBankOrRootDirThread, 0);
+        if(tmpBankOrRootDirThread == 0) // don't allow more than one bank change/root dir change process at a time
+        {
+            isRootDirChangeRequested = setRootDir;
+            bankOrRootDirToChange = bank_or_root_num;
+            if(!synth->getRuntime().startThread(&pBankOrRootDirThread, MusicIO::static_BankOrRootDirChangeThread, this, false, 0, false))
+            {
+                synth->getRuntime().Log("MusicIO::setMidiBankOrRootDir: failed to start midi bank/root dir change thread!");
+            }
+        }
+        else
+            synth->getRuntime().Log("Midi bank/root dir changes too close together");
     }
 }
 
-void MusicIO::setMidiProgram(unsigned char ch, int pgm)
+
+void MusicIO::setMidiProgram(unsigned char ch, int prg, bool in_place)
 {
-    if (Runtime.EnableProgChange)
-        synth->SetProgram(ch, pgm);
+    if(ch >= NUM_MIDI_PARTS)
+        return;
+    if (synth->getRuntime().EnableProgChange)
+    {
+        if(in_place)
+            synth->SetProgram(ch, prg);
+        else
+        {
+            pthread_t tmpPrgThread = 0;
+            tmpPrgThread = __sync_fetch_and_add(&prgChangeCmd [ch].pPrgThread , 0);
+            if(tmpPrgThread == 0) // don't allow more than one program change process at a time
+            {
+                prgChangeCmd [ch].ch = ch;
+                prgChangeCmd [ch].prg = prg;
+                prgChangeCmd [ch]._this_ = this;
+                if(!synth->getRuntime().startThread(&prgChangeCmd [ch].pPrgThread, MusicIO::static_PrgChangeThread, &prgChangeCmd [ch], false, 0, false))
+                {
+                    synth->getRuntime().Log("MusicIO::setMidiProgram: failed to start midi program change thread!");
+                }
+            }
+        }
+    }
 }
+
 
 void MusicIO::setMidiNote(unsigned char channel, unsigned char note,
                            unsigned char velocity)
@@ -192,7 +260,7 @@ bool MusicIO::prepBuffers(bool with_interleaved)
     }
 
 bail_out:
-    Runtime.Log("Failed to allocate audio buffers, size " + asString(buffersize));
+    synth->getRuntime().Log("Failed to allocate audio buffers, size " + asString(buffersize));
     for (int part = 0; part < (NUM_MIDI_PARTS + 1); part++)
     {
         if (zynLeft[part])
@@ -213,3 +281,42 @@ bail_out:
     }
     return false;
 }
+
+
+void *MusicIO::bankOrRootDirChange_Thread()
+{
+    //std::cerr << "MusicIO::bankChange_Thread(). banknum = " << bankToChange << std::endl;
+    isRootDirChangeRequested ? synth->SetBankRoot(bankOrRootDirToChange) : synth->SetBank(bankOrRootDirToChange);
+    pBankOrRootDirThread = 0; // done
+    return NULL;
+}
+
+void *MusicIO::prgChange_Thread(_prgChangeCmd *pCmd)
+{
+    pthread_t tmpBankThread = 0;
+    tmpBankThread = __sync_fetch_and_add(&pBankOrRootDirThread, 0);
+    if(tmpBankThread != 0) // wait for active bank thread to finish before continue
+    {
+        //std::cerr << "Waiting for MusicIO::bankChange_Thread()..." << std::endl;
+        void *threadRet = NULL;
+        pthread_join(pBankOrRootDirThread, &threadRet);
+    }
+
+    //std::cerr << "MusicIO::prgChange_Thread(). ch = " << pCmd->ch << ", prg = " << pCmd->prg << std::endl;
+
+    synth->SetProgram(pCmd->ch, pCmd->prg);
+    pCmd->pPrgThread = 0; //done
+    return NULL;
+}
+
+void *MusicIO::static_BankOrRootDirChangeThread(void *arg)
+{
+    return static_cast<MusicIO *>(arg)->bankOrRootDirChange_Thread();
+}
+
+void *MusicIO::static_PrgChangeThread(void *arg)
+{
+    _prgChangeCmd *pCmd = static_cast<_prgChangeCmd *>(arg);
+    return pCmd->_this_->prgChange_Thread(pCmd);
+}
+

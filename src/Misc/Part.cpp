@@ -45,13 +45,14 @@ using namespace std;
 #include "Synth/BodyDisposal.h"
 #include "Misc/Part.h"
 
-Part::Part(Microtonal *microtonal_, FFTwrapper *fft_) :
+Part::Part(Microtonal *microtonal_, FFTwrapper *fft_, SynthEngine *_synth) :
     microtonal(microtonal_),
     fft(fft_),
     partMuted(0),
-    killallnotes(false)
+    killallnotes(false),
+    synth(_synth)
 {
-    ctl = new Controller();
+    ctl = new Controller(synth);
     partoutl = (float*)fftwf_malloc(synth->bufferbytes);
     memset(partoutl, 0, synth->bufferbytes);
     partoutr = (float*)fftwf_malloc(synth->bufferbytes);
@@ -69,13 +70,13 @@ Part::Part(Microtonal *microtonal_, FFTwrapper *fft_) :
         kit[n].padpars = NULL;
     }
 
-    kit[0].adpars = new ADnoteParameters(fft);
-    kit[0].subpars = new SUBnoteParameters();
-    kit[0].padpars = new PADnoteParameters(fft);
+    kit[0].adpars = new ADnoteParameters(fft, synth);
+    kit[0].subpars = new SUBnoteParameters(synth);
+    kit[0].padpars = new PADnoteParameters(fft, synth);
 
     // Part's Insertion Effects init
     for (int nefx = 0; nefx < NUM_PART_EFX; ++nefx)
-        partefx[nefx] = new EffectMgr(1);
+        partefx[nefx] = new EffectMgr(1, synth);
 
     for (int n = 0; n < NUM_PART_EFX + 1; ++n)
     {
@@ -136,7 +137,7 @@ void Part::defaults(void)
 
 void Part::defaultsinstrument(void)
 {
-    Pname.clear();
+    Pname = "Simple Sound";
 
     info.Ptype = 0;
     info.Pauthor.clear();
@@ -276,8 +277,8 @@ void Part::NoteOn(int note, int velocity, int masterkeyshift)
     {
         if (Ppolymode && Plegatomode)
         {
-            Runtime.Log("Warning, poly and legato modes are both on.");
-            Runtime.Log("That should not happen, so disabling legato mode");
+            synth->getRuntime().Log("Warning, poly and legato modes are both on.");
+            synth->getRuntime().Log("That should not happen, so disabling legato mode");
             Plegatomode = 0;
         }
         else
@@ -330,7 +331,7 @@ void Part::NoteOn(int note, int velocity, int masterkeyshift)
     if (pos == -1)
     {
         // test
-        Runtime.Log("Too may notes - notes > poliphony, PartNoteOn()");
+        synth->getRuntime().Log("Too may notes - notes > poliphony, PartNoteOn()");
     }
     else
     {
@@ -510,15 +511,15 @@ void Part::NoteOn(int note, int velocity, int masterkeyshift)
             if (kit[0].Padenabled)
                 partnote[pos].kititem[0].adnote =
                     new ADnote(kit[0].adpars, ctl, notebasefreq, vel,
-                                portamento, note, false ); // not silent
+                                portamento, note, false, synth); // not silent
             if (kit[0].Psubenabled)
                 partnote[pos].kititem[0].subnote =
                     new SUBnote(kit[0].subpars, ctl, notebasefreq, vel,
-                                portamento, note, false);
+                                portamento, note, false, synth);
             if (kit[0].Ppadenabled)
                 partnote[pos].kititem[0].padnote =
                     new PADnote(kit[0].padpars, ctl, notebasefreq, vel,
-                                portamento, note, false);
+                                portamento, note, false, synth);
             if (kit[0].Padenabled || kit[0].Psubenabled || kit[0].Ppadenabled)
                 partnote[pos].itemsplaying++;
 
@@ -529,15 +530,15 @@ void Part::NoteOn(int note, int velocity, int masterkeyshift)
                 if (kit[0].Padenabled)
                     partnote[posb].kititem[0].adnote =
                         new ADnote(kit[0].adpars, ctl, notebasefreq, vel,
-                                    portamento, note, true); // silent
+                                    portamento, note, true, synth); // silent
                 if (kit[0].Psubenabled)
                     partnote[posb].kititem[0].subnote =
                         new SUBnote(kit[0].subpars, ctl, notebasefreq, vel,
-                                    portamento, note, true);
+                                    portamento, note, true, synth);
                 if (kit[0].Ppadenabled)
                     partnote[posb].kititem[0].padnote =
                         new PADnote(kit[0].padpars, ctl, notebasefreq, vel,
-                                    portamento, note, true);
+                                    portamento, note, true, synth);
                 if (kit[0].Padenabled || kit[0].Psubenabled || kit[0].Ppadenabled)
                     partnote[posb].itemsplaying++;
             }
@@ -563,17 +564,17 @@ void Part::NoteOn(int note, int velocity, int masterkeyshift)
                 {
                     partnote[pos].kititem[ci].adnote =
                         new ADnote(kit[item].adpars, ctl, notebasefreq, vel,
-                                    portamento, note, false); // not silent
+                                    portamento, note, false, synth); // not silent
                 }
                 if (kit[item].subpars && kit[item].Psubenabled)
                     partnote[pos].kititem[ci].subnote =
                         new SUBnote(kit[item].subpars, ctl, notebasefreq, vel,
-                                    portamento, note, false);
+                                    portamento, note, false, synth);
 
                 if (kit[item].padpars && kit[item].Ppadenabled)
                     partnote[pos].kititem[ci].padnote =
                         new PADnote(kit[item].padpars, ctl, notebasefreq, vel,
-                                    portamento, note, false);
+                                    portamento, note, false, synth);
 
                 // Spawn another note (but silent) if legatomodevalid==true
                 if (legatomodevalid)
@@ -587,16 +588,16 @@ void Part::NoteOn(int note, int velocity, int masterkeyshift)
                     {
                         partnote[posb].kititem[ci].adnote =
                             new ADnote(kit[item].adpars, ctl, notebasefreq, 
-                                        vel, portamento, note, true); // silent
+                                        vel, portamento, note, true, synth); // silent
                     }
                     if (kit[item].subpars && kit[item].Psubenabled)
                         partnote[posb].kititem[ci].subnote =
                             new SUBnote(kit[item].subpars, ctl, notebasefreq,
-                                        vel, portamento, note, true);
+                                        vel, portamento, note, true, synth);
                     if (kit[item].padpars && kit[item].Ppadenabled)
                         partnote[posb].kititem[ci].padnote =
                             new PADnote(kit[item].padpars, ctl, notebasefreq,
-                                        vel, portamento, note, true);
+                                        vel, portamento, note, true, synth);
 
                     if (kit[item].adpars || kit[item].subpars)
                         partnote[posb].itemsplaying++;
@@ -814,17 +815,17 @@ void Part::KillNotePos(int pos)
     {
         if (partnote[pos].kititem[j].adnote)
         {
-            Runtime.deadObjects->addBody(partnote[pos].kititem[j].adnote);
+            synth->getRuntime().deadObjects->addBody(partnote[pos].kititem[j].adnote);
             partnote[pos].kititem[j].adnote = NULL;
         }
         if (partnote[pos].kititem[j].subnote)
         {
-            Runtime.deadObjects->addBody(partnote[pos].kititem[j].subnote);
+            synth->getRuntime().deadObjects->addBody(partnote[pos].kititem[j].subnote);
             partnote[pos].kititem[j].subnote = NULL;
         }
         if (partnote[pos].kititem[j].padnote)
         {
-            Runtime.deadObjects->addBody(partnote[pos].kititem[j].padnote);
+            synth->getRuntime().deadObjects->addBody(partnote[pos].kititem[j].padnote);
             partnote[pos].kititem[j].padnote = NULL;
         }
     }
@@ -879,8 +880,8 @@ void Part::ComputePartSmps(void)
 {
     if (isMuted())
     {
-        memset(partoutl, 0, synth->bufferbytes);
-        memset(partoutr, 0, synth->bufferbytes);
+        memset(partoutl, 0, synth->p_bufferbytes);
+        memset(partoutr, 0, synth->p_bufferbytes);
         return;
     }
 
@@ -888,8 +889,8 @@ void Part::ComputePartSmps(void)
     int noteplay; // 0 if there is nothing activated
     for (int nefx = 0; nefx < NUM_PART_EFX + 1; ++nefx)
     {
-        memset(partfxinputl[nefx], 0, synth->bufferbytes);
-        memset(partfxinputr[nefx], 0, synth->bufferbytes);
+        memset(partfxinputl[nefx], 0, synth->p_bufferbytes);
+        memset(partfxinputr[nefx], 0, synth->p_bufferbytes);
     }
 
     for (k = 0; k < POLIPHONY; ++k)
@@ -913,15 +914,15 @@ void Part::ComputePartSmps(void)
                     adnote->noteout(tmpoutl, tmpoutr);
                 else
                 {
-                    memset(tmpoutl, 0, synth->bufferbytes);
-                    memset(tmpoutr, 0, synth->bufferbytes);
+                    memset(tmpoutl, 0, synth->p_bufferbytes);
+                    memset(tmpoutr, 0, synth->p_bufferbytes);
                 }
                 if (adnote->finished())
                 {
-                    Runtime.deadObjects->addBody(partnote[k].kititem[item].adnote);
+                    synth->getRuntime().deadObjects->addBody(partnote[k].kititem[item].adnote);
                     partnote[k].kititem[item].adnote = NULL;
                 }
-                for (int i = 0; i < synth->buffersize; ++i)
+                for (int i = 0; i < synth->p_buffersize; ++i)
                 {   // add the ADnote to part(mix)
                     partfxinputl[sendcurrenttofx][i] += tmpoutl[i];
                     partfxinputr[sendcurrenttofx][i] += tmpoutr[i];
@@ -935,17 +936,17 @@ void Part::ComputePartSmps(void)
                     subnote->noteout(tmpoutl, tmpoutr);
                 else
                 {
-                    memset(tmpoutl, 0, synth->bufferbytes);
-                    memset(tmpoutr, 0, synth->bufferbytes);
+                    memset(tmpoutl, 0, synth->p_bufferbytes);
+                    memset(tmpoutr, 0, synth->p_bufferbytes);
                 }
-                for (int i = 0; i < synth->buffersize; ++i)
+                for (int i = 0; i < synth->p_buffersize; ++i)
                 {   // add the SUBnote to part(mix)
                     partfxinputl[sendcurrenttofx][i] += tmpoutl[i];
                     partfxinputr[sendcurrenttofx][i] += tmpoutr[i];
                 }
                 if (subnote->finished())
                 {
-                    Runtime.deadObjects->addBody(partnote[k].kititem[item].subnote);
+                    synth->getRuntime().deadObjects->addBody(partnote[k].kititem[item].subnote);
                     partnote[k].kititem[item].subnote = NULL;
                 }
             }
@@ -959,15 +960,15 @@ void Part::ComputePartSmps(void)
                 }
                 else
                 {
-                    memset(tmpoutl, 0, synth->bufferbytes);
-                    memset(tmpoutr, 0, synth->bufferbytes);
+                    memset(tmpoutl, 0, synth->p_bufferbytes);
+                    memset(tmpoutr, 0, synth->p_bufferbytes);
                 }
                 if (padnote->finished())
                 {
-                    Runtime.deadObjects->addBody(partnote[k].kititem[item].padnote);
+                    synth->getRuntime().deadObjects->addBody(partnote[k].kititem[item].padnote);
                     partnote[k].kititem[item].padnote = NULL;
                 }
-                for (int i = 0 ; i < synth->buffersize; ++i)
+                for (int i = 0 ; i < synth->p_buffersize; ++i)
                 {   // add the PADnote to part(mix)
                     partfxinputl[sendcurrenttofx][i] += tmpoutl[i];
                     partfxinputr[sendcurrenttofx][i] += tmpoutr[i];
@@ -987,7 +988,7 @@ void Part::ComputePartSmps(void)
             partefx[nefx]->out(partfxinputl[nefx], partfxinputr[nefx]);
             if (Pefxroute[nefx] == 2)
             {
-                for (int i = 0; i < synth->buffersize; ++i)
+                for (int i = 0; i < synth->p_buffersize; ++i)
                 {
                     partfxinputl[nefx + 1][i] += partefx[nefx]->efxoutl[i];
                     partfxinputr[nefx + 1][i] += partefx[nefx]->efxoutr[i];
@@ -995,26 +996,26 @@ void Part::ComputePartSmps(void)
             }
         }
         int routeto = (Pefxroute[nefx] == 0) ? nefx + 1 : NUM_PART_EFX;
-        for (int i = 0; i < synth->buffersize; ++i)
+        for (int i = 0; i < synth->p_buffersize; ++i)
         {
             partfxinputl[routeto][i] += partfxinputl[nefx][i];
             partfxinputr[routeto][i] += partfxinputr[nefx][i];
         }
     }
-    memcpy(partoutl, partfxinputl[NUM_PART_EFX], synth->bufferbytes);
-    memcpy(partoutr, partfxinputr[NUM_PART_EFX], synth->bufferbytes);
+    memcpy(partoutl, partfxinputl[NUM_PART_EFX], synth->p_bufferbytes);
+    memcpy(partoutr, partfxinputr[NUM_PART_EFX], synth->p_bufferbytes);
 
     // Kill All Notes if killallnotes true
     if (killallnotes)
     {
-        for (int i = 0; i < synth->buffersize; ++i)
+        for (int i = 0; i < synth->p_buffersize; ++i)
         {
-            float tmp = (synth->buffersize - i) / synth->buffersize_f;
+            float tmp = (synth->p_buffersize - i) / synth->p_buffersize_f;
             partoutl[i] *= tmp;
             partoutr[i] *= tmp;
         }
-        memset(tmpoutl, 0, synth->bufferbytes);
-        memset(tmpoutr, 0, synth->bufferbytes);
+        memset(tmpoutl, 0, synth->p_bufferbytes);
+        memset(tmpoutr, 0, synth->p_bufferbytes);
 
         for (int k = 0; k < POLIPHONY; ++k)
             KillNotePos(k);
@@ -1079,11 +1080,11 @@ void Part::setkititemstatus(int kititem, int Penabled_)
     else
     {
         if (!kit[kititem].adpars)
-            kit[kititem].adpars = new ADnoteParameters(fft);
+            kit[kititem].adpars = new ADnoteParameters(fft, synth);
         if (!kit[kititem].subpars)
-            kit[kititem].subpars = new SUBnoteParameters();
+            kit[kititem].subpars = new SUBnoteParameters(synth);
         if (!kit[kititem].padpars)
-            kit[kititem].padpars = new PADnoteParameters(fft);
+            kit[kititem].padpars = new PADnoteParameters(fft, synth);
     }
 
     if (resetallnotes)
@@ -1094,6 +1095,8 @@ void Part::setkititemstatus(int kititem, int Penabled_)
 
 void Part::add2XMLinstrument(XMLwrapper *xml)
 {
+    if (Pname == "Simple Sound")
+        return;
     xml->beginbranch("INFO");
     xml->addparstr("name", Pname);
     xml->addparstr("author", info.Pauthor);
@@ -1201,12 +1204,14 @@ void Part::add2XML(XMLwrapper *xml)
 
 bool Part::saveXML(string filename)
 {
-    XMLwrapper *xml = new XMLwrapper();
+    XMLwrapper *xml = new XMLwrapper(synth);
     if (!xml)
     {
-        Runtime.Log("Error, Part::saveXML failed to instantiate new XMLwrapper");
+        synth->getRuntime().Log("Error, Part::saveXML failed to instantiate new XMLwrapper");
         return false;
     }
+    if (Pname < "!") // this shouldn't be possible
+        Pname = "No Title";
     xml->beginbranch("INSTRUMENT");
     add2XMLinstrument(xml);
     xml->endbranch();
@@ -1216,25 +1221,26 @@ bool Part::saveXML(string filename)
 }
 
 
-bool Part::loadXMLinstrument(string filename)
+int Part::loadXMLinstrument(string filename)
 {
-    XMLwrapper *xml = new XMLwrapper();
+    synth->getRuntime().SimpleCheck = false;
+    XMLwrapper *xml = new XMLwrapper(synth);
     if (!xml)
     {
-        Runtime.Log("Error, Part failed to instantiate new XMLwrapper");
-        return false;
+        synth->getRuntime().Log("Error, Part failed to instantiate new XMLwrapper");
+        return 0;
     }
 
     if (!xml->loadXMLfile(filename))
     {
-        Runtime.Log("Error, Part failed to load instrument file " + filename);
+        synth->getRuntime().Log("Error, Part failed to load instrument file " + filename);
         delete xml;
-        return false;
+        return 0;
     }
     if (xml->enterbranch("INSTRUMENT") == 0)
     {
-        Runtime.Log(filename + " is not an instrument file");
-        return false;
+        synth->getRuntime().Log(filename + " is not an instrument file");
+        return 0;
     }
     Mute();
     defaultsinstrument();
@@ -1243,7 +1249,9 @@ bool Part::loadXMLinstrument(string filename)
     Unmute();
     xml->exitbranch();
     delete xml;
-    return true;
+    if (synth->getRuntime().SimpleCheck)
+        return 3;
+    return 1;
 }
 
 
@@ -1260,6 +1268,10 @@ void Part::getfromXMLinstrument(XMLwrapper *xml)
     if (xml->enterbranch("INFO"))
     {
         Pname = xml->getparstr("name");
+        if (Pname < "!")
+            Pname = "No Title";
+        else if (Pname == "Simple Sound") // there should be a better way to do this!
+            synth->getRuntime().SimpleCheck = true;
         info.Pauthor = xml->getparstr("author");
         info.Pcomments = xml->getparstr("comments");
         info.Ptype = xml->getpar("type", info.Ptype, 0, 16);

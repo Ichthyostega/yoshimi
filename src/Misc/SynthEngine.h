@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2014, Will Godfrey
+    Copyright 2014-2015, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -20,7 +20,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is derivative of ZynAddSubFX original code, modified August 2014
+    This file is derivative of ZynAddSubFX original code, last modified January 2015
 */
 
 #ifndef SYNTHENGINE_H
@@ -38,6 +38,9 @@ using namespace std;
 #include "Misc/Bank.h"
 #include "Misc/SynthHelper.h"
 
+#include "Misc/Config.h"
+#include "Params/PresetsStore.h"
+
 typedef enum { init, trylock, lock, unlock, lockmute, destroy } lockset;
 
 class EffectMgr;
@@ -45,10 +48,18 @@ class Part;
 class XMLwrapper;
 class Controller;
 
+class MasterUI;
+
 class SynthEngine : private SynthHelper, MiscFuncs
 {
+    private:    
+        unsigned int uniqueId;
+        bool isLV2Plugin;
+        Bank bank;
+        Config Runtime;
+        PresetsStore presetsstore;
     public:
-        SynthEngine();
+        SynthEngine(int argc, char **argv, bool _isLV2Plugin = false, unsigned int forceId = 0);
         ~SynthEngine();
         bool Init(unsigned int audiosrate, int audiobufsize);
         bool actionLock(lockset request);
@@ -59,20 +70,23 @@ class SynthEngine : private SynthHelper, MiscFuncs
 
         bool loadXML(string filename);
         void applyparameters(void);
-
+        int loadParameters(string filename);
+        
         bool getfromXML(XMLwrapper *xml);
 
         int getalldata(char **data);
-        void putalldata(char *data, int size);
+        void putalldata(const char *data, int size);
 
         void NoteOn(unsigned char chan, unsigned char note, unsigned char velocity);
         void NoteOff(unsigned char chan, unsigned char note);
-        void SetController(unsigned char chan, unsigned int type, short int par);
+        void SetController(unsigned char chan, int type, short int par);
+        void SetBankRoot(int rootnum);
+        void SetBank(int banknum);
         void SetProgram(unsigned char chan, unsigned char pgm);
         float numRandom(void);
         unsigned int random(void);
         void ShutUp(void);
-        void MasterAudio(float *outl [NUM_MIDI_PARTS], float *outr [NUM_MIDI_PARTS]);
+        void MasterAudio(float *outl [NUM_MIDI_PARTS], float *outr [NUM_MIDI_PARTS], int to_process = 0);
         void partonoff(int npart, int what);
         void Mute(void) { __sync_or_and_fetch(&muted, 0xFF); }
         void Unmute(void) { __sync_and_and_fetch(&muted, 0); }
@@ -92,6 +106,11 @@ class SynthEngine : private SynthHelper, MiscFuncs
         float oscilsize_f;
         int halfoscilsize;
         float halfoscilsize_f;
+
+        int processOffset; //used for variable length runs
+        int p_buffersize; //used for variable length runs
+        int p_bufferbytes; //used for variable length runs
+        float p_buffersize_f; //used for variable length runs
 
         unsigned char Pvolume;
         int           Paudiodest;
@@ -118,8 +137,7 @@ class SynthEngine : private SynthHelper, MiscFuncs
 
         // others ...
         Controller *ctl;
-        Microtonal microtonal;
-        Bank bank;
+        Microtonal microtonal;        
         FFTwrapper *fft;
 
         // peaks for VU-meters        
@@ -130,6 +148,7 @@ class SynthEngine : private SynthHelper, MiscFuncs
                 float vuRmsPeakL;
                 float vuRmsPeakR;
                 float parts[NUM_MIDI_PARTS];
+                int p_buffersize;
             } values;
             char bytes [sizeof(values)];
         };
@@ -137,7 +156,25 @@ class SynthEngine : private SynthHelper, MiscFuncs
         
         bool fetchMeterData(VUtransfer *VUdata);
 
+        inline bool getIsLV2Plugin() {return isLV2Plugin; }
+        inline Config &getRuntime() {return Runtime;}
+        inline PresetsStore &getPresetsStore() {return presetsstore;}
+        unsigned int getUniqueId() {return uniqueId;}
+        MasterUI *getGuiMaster(bool createGui = true);
+        void guiClosed(bool stopSynth);
+        void setGuiClosedCallback(void( *_guiClosedCallback)(void*), void *arg)
+        {
+            guiClosedCallback = _guiClosedCallback;
+            guiCallbackArg = arg;
+        }
+        void closeGui();
+        int getLFOtime() {return LFOtime;}
+        std::string makeUniqueName(const char *name);
 
+        Bank &getBankRef() {return bank;}
+        Bank *getBankPtr() {return &bank;}
+        string getWindowTitle() {return windowTitle;}
+        void setWindowTitle(string _windowTitle = "");
     private:
         int muted;
         float volume;
@@ -154,13 +191,18 @@ class SynthEngine : private SynthHelper, MiscFuncs
         
         XMLwrapper *stateXMLtree;
         
-        static char random_state[];
-        static struct random_data random_buf;
+        char random_state[256];
+        struct random_data random_buf;
         int32_t random_result;
         float random_0_1;
-};
 
-extern SynthEngine *synth;
+        MasterUI *guiMaster;
+        void( *guiClosedCallback)(void*);
+        void *guiCallbackArg;
+
+        int LFOtime; // used by Pcontinous
+        string windowTitle;
+};
 
 inline float SynthEngine::numRandom(void)
 {
