@@ -218,18 +218,7 @@ static void *mainGuiThread(void *arg)
                 boxLb.copy_label(splashMessages.front().c_str());
                 splashMessages.pop_front();
             }
-            void *msg = Fl::thread_message();
-            if(msg)
-            {
-                SynthEngine *synth = ((SynthEngine *)msg);
-                MasterUI *guiMaster = synth->getGuiMaster();
-                if(!guiMaster)
-                {
-                    cerr << "Error starting Main UI!" << endl;
-                    return (void *)1;
-                }
-                guiMaster->Init(guiMaster->getSynth()->getWindowTitle().c_str());
-            }
+            GuiThreadMsg::processGuiMessages();
         }
         else
             usleep(33333);
@@ -277,7 +266,7 @@ bool mainCreateNewInstance(unsigned int forceId)
     if (synth->getRuntime().showGui)
     {
         synth->setWindowTitle(musicClient->midiClientName());
-        Fl::awake((void *)synth);
+        GuiThreadMsg::sendMessage(synth, GuiThreadMsg::NewSynthEngine, 0);
     }
 
     synth->getRuntime().StartupReport(musicClient);
@@ -291,7 +280,7 @@ bool mainCreateNewInstance(unsigned int forceId)
 
 bail_out:
     synth->getRuntime().runSynth = false;
-    synth->getRuntime().Log("Yoshimi stages a strategic retreat :-(");
+    synth->getRuntime().Log("Bail: Yoshimi stages a strategic retreat :-(");
     if (musicClient)
     {
         musicClient->Close();
@@ -380,7 +369,7 @@ bail_out:
         _synth->getRuntime().runSynth = false;
         if(!bExitSuccess)
         {
-            _synth->getRuntime().Log("Yoshimi stages a strategic retreat :-(");
+            _synth->getRuntime().Log("Bail: Yoshimi stages a strategic retreat :-(");
         }
 
         if (_client)

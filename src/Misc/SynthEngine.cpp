@@ -392,7 +392,16 @@ void SynthEngine::SetController(unsigned char chan, int type, short int par)
         for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
         {   // Send the controller to all part assigned to the channel
             if (chan == part[npart]->Prcvchn && part[npart]->Penabled)
+            {
                 part[npart]->SetController(type, par);
+                if (type == 7 || type == 10) // currently only volume and pan
+                {
+                    if (Runtime.showGui && guiMaster && guiMaster->partui && guiMaster->partui->part)
+                    {
+                        GuiThreadMsg::sendMessage(this, GuiThreadMsg::UpdatePanelItem, npart);
+                    }
+                }
+            } 
         }
 
         if (type == C_allsoundsoff)
@@ -448,37 +457,6 @@ void SynthEngine::SetBank(int banknum)
     {
         Runtime.Log("SynthEngine setBank: No bank " + asString(banknum)+ " in this root");
     }
-
-
-    /*
-    int offset = 0;
-#warning this needs improving.
-    for (int idx = 0; idx < MAX_NUM_BANKS; ++ idx)
-    {
-        if (bank.banks[idx].ID == Runtime.currentRootID and offset == banknum)
-        {
-            banknum = idx; // Set absolute bank location
-            break;
-        }
-        else if (bank.banks[idx].ID == Runtime.currentRootID)
-            offset += 1;
-    }
-
-    if(banknum <= MAX_NUM_BANKS) {
-        if (bank.loadbank(bank.banks[banknum].dir))
-            Runtime.Log("SynthEngine setBank: No bank " + asString(banknum));
-        if (Runtime.showGui)
-        {
-            guiMaster->bankui->set_bank_slot();
-            guiMaster->bankui->refreshmainwindow();
-        }
-        else
-            Runtime.Log("SynthEngine setBank: No bank " + asString(banknum));
-    }
-    else
-        Runtime.Log("SynthEngine setBank: Value is out of range!");
-    return;
-    */
 }
 
 
@@ -491,29 +469,23 @@ void SynthEngine::SetProgram(unsigned char chan, unsigned char pgm)
     }
     else
     {
-        for(int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
+        for(int npart = 0; npart < NUM_MIDI_CHANNELS; ++npart)
             if(chan == part[npart]->Prcvchn)
             {
-                partOK = bank.loadfromslot(pgm, part[npart]); // Programs indexes start from 0
-                if (partOK and part[npart]->Penabled == 0 and Runtime.enable_part_on_voice_load != 0)
+                if (bank.loadfromslot(pgm, part[npart])) // Program indexes start from 0
                 {
-                    partonoff(npart, 1);
-                    if (Runtime.showGui && guiMaster)
+                    partOK = true; 
+                    if (part[npart]->Penabled == 0 && Runtime.enable_part_on_voice_load != 0)
+                        partonoff(npart, 1);
+                    if (Runtime.showGui && guiMaster && guiMaster->partui && guiMaster->partui->instrumentlabel && guiMaster->partui->part)
                     {
-                        guiMaster->partui->partgroupui->activate();
-                        guiMaster->partui->partGroupEnable->value(1);
+                        GuiThreadMsg::sendMessage(this, GuiThreadMsg::UpdatePartProgram, npart);
                     }
                 }
-           }
-        if (partOK){
-            Runtime.Log("SynthEngine setProgram: Loaded " + asString(pgm) + " " + bank.getname(pgm));
-            // update UI
-            if (Runtime.showGui && guiMaster)
-            {
-                guiMaster->updatepanel();
-                if (guiMaster->partui && guiMaster->partui->instrumentlabel && guiMaster->partui->part)
-                    guiMaster->partui->instrumentlabel->copy_label(guiMaster->partui->part->Pname.c_str());
             }
+        if (partOK)
+        {
+            Runtime.Log("SynthEngine setProgram: Loaded " + asString(pgm) + " " + bank.getname(pgm) + " to " + asString(chan & 0x7f));
         }
         else // I think XML traps this. Should it?
             Runtime.Log("SynthEngine setProgram: Invalid program data");
@@ -975,7 +947,7 @@ void SynthEngine::putalldata(const char *data, int size)
     XMLwrapper *xml = new XMLwrapper(this);
     if (!xml->putXMLdata(data))
     {
-        Runtime.Log("SynthEngine putXMLdata failed");
+        Runtime.Log("SynthEngine: putXMLdata failed");
         delete xml;
         return;
     }
@@ -1008,7 +980,7 @@ bool SynthEngine::loadXML(string filename)
     XMLwrapper *xml = new XMLwrapper(this);
     if (NULL == xml)
     {
-        Runtime.Log("failed to init xml tree");
+        Runtime.Log("Failed to init xml tree");
         return false;
     }
     if (!xml->loadXMLfile(filename))

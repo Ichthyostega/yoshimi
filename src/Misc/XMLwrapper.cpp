@@ -62,7 +62,14 @@ XMLwrapper::XMLwrapper(SynthEngine *_synth) :
 
     mxmlElementSetAttr(root, "version-major", "1");
     mxmlElementSetAttr(root, "version-minor", "1");
-//    mxmlElementSetAttr(root, "ZynAddSubFX-author", "Alan Calvert");
+    mxmlElementSetAttr(root, "ZynAddSubFX-author", "Nasca Octavian Paul");
+
+    mxmlElementSetAttr(root, "Yoshimi-author", "Alan Ernest Calvert");
+    string tmp = YOSHIMI_VERSION;
+    string::size_type pos1 = tmp.find('.'); // != string::npos
+    string::size_type pos2 = tmp.find('.',pos1+1);
+    mxmlElementSetAttr(root, "Yoshimi-major", tmp.substr(0, pos1).c_str());
+    mxmlElementSetAttr(root, "Yoshimi-minor", tmp.substr(pos1+1, pos2-pos1-1).c_str());
 
     info = addparams0("INFORMATION"); // specifications
     beginbranch("BASE_PARAMETERS");
@@ -153,7 +160,7 @@ bool XMLwrapper::saveXMLfile(const string& filename)
     char *xmldata = getXMLdata();
     if (!xmldata)
     {
-        synth->getRuntime().Log("Error, failed to allocate xml data space");
+        synth->getRuntime().Log("XML: Failed to allocate xml data space");
         return false;
     }
     unsigned int compression = synth->getRuntime().GzipCompression;
@@ -162,7 +169,7 @@ bool XMLwrapper::saveXMLfile(const string& filename)
         FILE *xmlfile = fopen(filename.c_str(), "w");
         if (!xmlfile)
         {
-            synth->getRuntime().Log("Error, failed to open xml file " + filename + " for save");
+            synth->getRuntime().Log("XML: Failed to open xml file " + filename + " for save");
             return false;
         }
         fputs(xmldata, xmlfile);
@@ -179,7 +186,7 @@ bool XMLwrapper::saveXMLfile(const string& filename)
         gzfile = gzopen(filename.c_str(), options);
         if (gzfile == NULL)
         {
-            synth->getRuntime().Log("Error, gzopen() == NULL");
+            synth->getRuntime().Log("XML: gzopen() == NULL");
             return false;
         }
         gzputs(gzfile, xmldata);
@@ -264,25 +271,35 @@ bool XMLwrapper::loadXMLfile(const string& filename)
     const char *xmldata = doloadfile(filename);
     if (xmldata == NULL)
     {
-        synth->getRuntime().Log("Could not load xml file: " + filename);
+        synth->getRuntime().Log("XML: Could not load xml file: " + filename);
          return false;
     }
     root = tree = mxmlLoadString(NULL, xmldata, MXML_OPAQUE_CALLBACK);
     delete [] xmldata;
     if (!tree)
     {
-        synth->getRuntime().Log("File " + filename + " is not XML");
+        synth->getRuntime().Log("XML: File " + filename + " is not XML");
         return false;
     }
     node = root = mxmlFindElement(tree, tree, "ZynAddSubFX-data", NULL, NULL, MXML_DESCEND);
     if (!root)
     {
-        synth->getRuntime().Log("File " + filename + " doesn't contain valid data in this context");
+        synth->getRuntime().Log("XML: File " + filename + " doesn't contain valid data in this context");
         return false;
     }
     push(root);
     xml_version.major = string2int(mxmlElementGetAttr(root, "version-major"));
     xml_version.minor = string2int(mxmlElementGetAttr(root, "version-minor"));
+    if (mxmlElementGetAttr(root, "Yoshimi-major"))
+    {
+        xml_version.y_major = string2int(mxmlElementGetAttr(root, "Yoshimi-major"));
+//        synth->getRuntime().Log("XML: Yoshimi " + asString(xml_version.y_major));
+    }
+    if (mxmlElementGetAttr(root, "Yoshimi-minor"))
+    {
+        xml_version.y_minor = string2int(mxmlElementGetAttr(root, "Yoshimi-minor"));
+//        synth->getRuntime().Log("XML: Yoshimi " + asString(xml_version.y_minor));
+    }
     return true;
 }
 
@@ -293,7 +310,7 @@ char *XMLwrapper::doloadfile(const string& filename)
     gzFile gzf  = gzopen(filename.c_str(), "rb");
     if (!gzf)
     {
-        synth->getRuntime().Log("Failed to open xml file " + filename + " for load, errno: "
+        synth->getRuntime().Log("XML: Failed to open xml file " + filename + " for load, errno: "
                     + asString(errno) + "  " + string(strerror(errno)));
         return NULL;
     }
@@ -314,9 +331,9 @@ char *XMLwrapper::doloadfile(const string& filename)
         else if (this_read < 0)
         {
             int errnum;
-            synth->getRuntime().Log("Read error in zlib: " + string(gzerror(gzf, &errnum)));
+            synth->getRuntime().Log("XML: Read error in zlib: " + string(gzerror(gzf, &errnum)));
             if (errnum == Z_ERRNO)
-                synth->getRuntime().Log("Filesystem error: " + string(strerror(errno)));
+                synth->getRuntime().Log("XML: Filesystem error: " + string(strerror(errno)));
             quit = true;
         }
         else if (total_bytes > 0)
@@ -497,7 +514,7 @@ void XMLwrapper::push(mxml_node_t *node)
 {
     if (stackpos >= STACKSIZE - 1)
     {
-        synth->getRuntime().Log("Not good, XMLwrapper push on a full parentstack");
+        synth->getRuntime().Log("XML: Not good, XMLwrapper push on a full parentstack");
         return;
     }
     stackpos++;
@@ -509,7 +526,7 @@ mxml_node_t *XMLwrapper::pop(void)
 {
     if (stackpos <= 0)
     {
-        synth->getRuntime().Log("Not good, XMLwrapper pop on empty parentstack");
+        synth->getRuntime().Log("XML: Not good, XMLwrapper pop on empty parentstack");
         return root;
     }
     mxml_node_t *node = parentstack[stackpos];
@@ -523,7 +540,7 @@ mxml_node_t *XMLwrapper::peek(void)
 {
     if (stackpos <= 0)
     {
-        synth->getRuntime().Log("Not good, XMLwrapper peek on an empty parentstack");
+        synth->getRuntime().Log("XML: Not good, XMLwrapper peek on an empty parentstack");
         return root;
     }
     return parentstack[stackpos];

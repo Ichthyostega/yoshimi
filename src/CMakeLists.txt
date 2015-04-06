@@ -23,7 +23,7 @@ cmake_policy (SET CMP0004 OLD)
 if (POLICY CMP0046)
     cmake_policy (SET CMP0046 OLD)
 endif (POLICY CMP0046)
-set (YOSHIMI_VERSION "1.3.3")
+set (YOSHIMI_VERSION "1.3.4")
 file (WRITE version.txt "${YOSHIMI_VERSION}")
 
 set (CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -63,7 +63,6 @@ set (DefaultMidi jack CACHE STRING "Default midi driver - alsa or jack")
 option (BuildForAMD_X86_64 "Build for AMD x86_64 system" OFF)
 option (BuildForCore2_X86_64 "Build for Intel Core2 x86_64 system" OFF)
 option (BuildForDebug "Include gdb debugging support" OFF)
-option (ReportErrorsToConsole "Show errors in console window" ON)
 
 #option to build lv2 plugin
 option (BuildLV2Plugin "Build yoshimi lv2 plugin interface" ON)
@@ -234,7 +233,7 @@ set (Effects_sources
 
 set (Misc_sources
     Misc/Config.cpp  Misc/SynthEngine.cpp  Misc/Bank.cpp  Misc/Microtonal.cpp
-    Misc/Part.cpp  Misc/XMLwrapper.cpp  Misc/MiscFuncs.cpp
+    Misc/Part.cpp  Misc/XMLwrapper.cpp  Misc/MiscFuncs.cpp   Misc/WavFile.cpp
 )
 
 set (Params_sources
@@ -320,13 +319,6 @@ if (JackSessionSupport)
 else (JackSessionSupport)
     message(STATUS "Without jack session support")
 endif (JackSessionSupport)
-
-if (ReportErrorsToConsole)
-    message(STATUS "Errors shown in console window")
-    add_definitions(-DCONSOLE_ERRORS)
-else (ReportErrorsToConsole)
-    message(STATUS "Errors sent to stderr")
-endif (ReportErrorsToConsole)
 
 # Check for jack latency API >= 0.120.1
 check_c_source_compiles (
