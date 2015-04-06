@@ -362,7 +362,7 @@ void Part::NoteOn(int note, int velocity, int masterkeyshift)
         else
             notebasefreq = microtonal->getNoteFreq(note);
 
-        if (Pfrand > 0.005)  // effective range 0.01 to 0.1
+        if (Pfrand > 0.002)  // effective range 0.005 to 0.1
         {
           notebasefreq *= (1 + ((synth->numRandom() - 0.5f) * Pfrand));
         }
@@ -683,11 +683,8 @@ void Part::SetController(unsigned int type, int par)
             ctl->setfmamp(par);
             break;
         case C_volume:
-            ctl->setvolume(par);
             if (ctl->volume.receive)
-                volume = ctl->volume.volume;
-            else
-                setVolume(Pvolume);
+                setVolume(par * ctl->volume.volume);
             break;
         case C_sustain:
             ctl->setsustain(par);
@@ -703,8 +700,6 @@ void Part::SetController(unsigned int type, int par)
         case C_resetallcontrollers:
             ctl->resetall();
             RelaseSustainedKeys();
-            if (ctl->volume.receive)
-                volume = ctl->volume.volume;
             setVolume(Pvolume);
             setPan(Ppanning);
 
@@ -1028,10 +1023,10 @@ void Part::ComputePartSmps(void)
 
 
 // Parameter control
-void Part::setVolume(char value)
+void Part::setVolume(float value)
 {
-    Pvolume = value;
-    volume  = dB2rap((Pvolume - 96.0f) / 96.0f * 40.0f) * ctl->expression.relvolume;
+    Pvolume = (int)value;
+    volume  = dB2rap((value - 96.0f) / 96.0f * 40.0f) * ctl->expression.relvolume;
 }
 
 void Part::setDestination(int value)
@@ -1207,7 +1202,7 @@ bool Part::saveXML(string filename)
     XMLwrapper *xml = new XMLwrapper(synth);
     if (!xml)
     {
-        synth->getRuntime().Log("Error, Part::saveXML failed to instantiate new XMLwrapper");
+        synth->getRuntime().Log("Part: saveXML failed to instantiate new XMLwrapper");
         return false;
     }
     if (Pname < "!") // this shouldn't be possible
@@ -1227,13 +1222,13 @@ int Part::loadXMLinstrument(string filename)
     XMLwrapper *xml = new XMLwrapper(synth);
     if (!xml)
     {
-        synth->getRuntime().Log("Error, Part failed to instantiate new XMLwrapper");
+        synth->getRuntime().Log("Part: loadXML failed to instantiate new XMLwrapper");
         return 0;
     }
 
     if (!xml->loadXMLfile(filename))
     {
-        synth->getRuntime().Log("Error, Part failed to load instrument file " + filename);
+        synth->getRuntime().Log("Part: loadXML failed to load instrument file " + filename);
         delete xml;
         return 0;
     }

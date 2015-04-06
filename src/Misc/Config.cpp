@@ -47,6 +47,7 @@ using namespace std;
 #include "Misc/XMLwrapper.h"
 #include "Misc/SynthEngine.h"
 #include "Misc/Config.h"
+#include "MasterUI.h"
 
 
 const unsigned short Config::MaxParamsHistory = 25;
@@ -101,15 +102,14 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
     connectJackaudio(false),
     alsaAudioDevice("default"),
     alsaMidiDevice("default"),
-    BankUIAutoClose(0),
-    RootUIAutoClose(0),
     GzipCompression(3),
     Interpolation(0),
     CheckPADsynth(1),
-    EnableProgChange(0), // default will be inverted
+    EnableProgChange(1), // default will be inverted
+    consoleMenuItem(1),
     rtprio(50),
-    midi_bank_root(128),
-    midi_bank_C(0),
+    midi_bank_root(128), // 128 is used as 'disabled'
+    midi_bank_C(128),
     midi_upper_voice_C(128),
     enable_part_on_voice_load(0),
     single_row_panel(0),
@@ -191,7 +191,7 @@ bool Config::Setup(int argc, char **argv)
         if (! isRegFile(StateFile))
         {
             no_state1: delete (fp);
-            no_state0: Log("Invalid state file specified for restore: " + StateFile);
+            no_state0: Log("Invalid state file specified for restore " + StateFile);
             return false;
         }
     }    
@@ -316,11 +316,11 @@ string Config::testCCvalue(int cc)
         {
             if (cc < 128) // don't compare with 'disabled' state
             {
-                if (cc == synth->getRuntime().midi_bank_C)
+                if (cc == midi_bank_C)
                     result = "bank change";
-                else if (cc == synth->getRuntime().midi_bank_root)
+                else if (cc == midi_bank_root)
                     result = "bank root change";
-                else if (cc == synth->getRuntime().midi_upper_voice_C)
+                else if (cc == midi_upper_voice_C)
                     result = "extended program change";
             }
         }
@@ -363,10 +363,17 @@ bool Config::loadConfig(void)
     if (!isRegFile(resConfigFile) && !isRegFile(ConfigFile))
     {
         Log("ConfigFile " + resConfigFile + " not found");
+        Log("Trying for old config file");
         string oldConfigFile = string(getenv("HOME")) + string("/.yoshimiXML.cfg");
+        if (!isRegFile(oldConfigFile))
+        {
+            Log("Old config file " + resConfigFile + " not found");
+            Log("Trying for ZynAddSubFX config file");
+            oldConfigFile = string(getenv("HOME")) + string("/.zynaddsubfxXML.cfg");
+        }
         if (isRegFile(oldConfigFile))
         {
-            Log("Copying old config file " + oldConfigFile + " to new location: " + resConfigFile);
+            Log("Copying old config file " + oldConfigFile + " to new location " + resConfigFile);
             FILE *oldfle = fopen (oldConfigFile.c_str(), "r");
             FILE *newfle = fopen (resConfigFile.c_str(), "w");
             if (oldfle != NULL && newfle != NULL)
@@ -425,14 +432,11 @@ bool Config::extractConfigData(XMLwrapper *xml)
     Buffersize = xml->getpar("sound_buffer_size", Buffersize, 64, 4096);
     Oscilsize = xml->getpar("oscil_size", Oscilsize,
                                         MAX_AD_HARMONICS * 2, 131072);
-    BankUIAutoClose = xml->getpar("bank_window_auto_close",
-                                               BankUIAutoClose, 0, 1);
-    RootUIAutoClose = xml->getpar("root_window_auto_close",
-                                               RootUIAutoClose, 0, 1);
     GzipCompression = xml->getpar("gzip_compression", GzipCompression, 0, 9);
     Interpolation = xml->getpar("interpolation", Interpolation, 0, 1);
     CheckPADsynth = xml->getpar("check_pad_synth", CheckPADsynth, 0, 1);
     EnableProgChange = 1 - xml->getpar("ignore_program_change", EnableProgChange, 0, 1); // inverted for Zyn compatibility
+    consoleMenuItem = xml->getpar("reports_destination", consoleMenuItem, 0, 1);
     VirKeybLayout = xml->getpar("virtual_keyboard_layout", VirKeybLayout, 0, 10);
 
     // get bank dirs
@@ -479,6 +483,7 @@ bool Config::extractConfigData(XMLwrapper *xml)
     midi_bank_C = xml->getpar("midi_bank_C", midi_bank_C, 0, 128);
     midi_upper_voice_C = xml->getpar("midi_upper_voice_C", midi_upper_voice_C, 0, 128);
     enable_part_on_voice_load = xml->getpar("enable_part_on_voice_load", enable_part_on_voice_load, 0, 1);
+    consoleMenuItem = xml->getpar("enable_console_window", consoleMenuItem, 0, 1);
     single_row_panel = xml->getpar("single_row_panel", single_row_panel, 0, 1);
 
     if (xml->enterbranch("XMZ_HISTORY"))
@@ -538,12 +543,11 @@ void Config::addConfigXML(XMLwrapper *xmltree)
     xmltree->addpar("sample_rate", Samplerate);
     xmltree->addpar("sound_buffer_size", Buffersize);
     xmltree->addpar("oscil_size", Oscilsize);
-    xmltree->addpar("bank_window_auto_close", BankUIAutoClose);
-    xmltree->addpar("root_window_auto_close", RootUIAutoClose);
 
     xmltree->addpar("gzip_compression", GzipCompression);
     xmltree->addpar("check_pad_synth", CheckPADsynth);
-    xmltree->addpar("ignore_program_change", (1 - EnableProgChange));    
+    xmltree->addpar("ignore_program_change", (1 - EnableProgChange));
+    xmltree->addpar("reports_destination", consoleMenuItem);
     xmltree->addpar("virtual_keyboard_layout", VirKeybLayout);
 
     synth->getBankRef().saveToConfigFile(xmltree);
@@ -565,6 +569,7 @@ void Config::addConfigXML(XMLwrapper *xmltree)
     xmltree->addpar("midi_bank_C", midi_bank_C);
     xmltree->addpar("midi_upper_voice_C", midi_upper_voice_C);
     xmltree->addpar("enable_part_on_voice_load", enable_part_on_voice_load);
+    xmltree->addpar("enable_console_window", consoleMenuItem);
     xmltree->addpar("single_row_panel", single_row_panel);
 
     // Parameters history
@@ -666,8 +671,15 @@ void Config::addRuntimeXML(XMLwrapper *xml)
 
 void Config::Log(string msg, bool tostderr)
 {
-    if (showGui && !tostderr)
-        LogList.push_back(msg);
+    int pos;
+    if (showGui && !tostderr && consoleMenuItem)
+    {
+        pos = msg.find(":");
+        if (pos > 1)
+            LogList.push_back(msg.substr(pos + 2));
+        else
+            LogList.push_back(msg);
+    }
     else
         cerr << msg << endl;
 }
@@ -679,8 +691,8 @@ void Config::StartupReport(MusicClient *musicClient)
         return;
 
     Log(string(argp_program_version));
-    Log("Clientname: " + musicClient->midiClientName());
-    string report = "Audio: ";
+    Log("Config: Clientname: " + musicClient->midiClientName());
+    string report = "Config: Audio: ";
     switch (audioEngine)
     {
         case jack_audio:
@@ -694,7 +706,7 @@ void Config::StartupReport(MusicClient *musicClient)
     }
     report += (" -> '" + audioDevice + "'");
     Log(report);
-    report = "Midi: ";
+    report = "Config: Midi: ";
     switch (midiEngine)
     {
         case jack_midi:
@@ -710,9 +722,9 @@ void Config::StartupReport(MusicClient *musicClient)
         midiDevice = "default";
     report += (" -> '" + midiDevice + "'");
     Log(report);
-    Log("Oscilsize: " + asString(synth->oscilsize));
-    Log("Samplerate: " + asString(synth->samplerate));
-    Log("Period size: " + asString(synth->buffersize));
+    Log("Config: Oscilsize: " + asString(synth->oscilsize));
+    Log("Config: Samplerate: " + asString(synth->samplerate));
+    Log("Config: Period size: " + asString(synth->buffersize));
 }
 
 
@@ -745,7 +757,7 @@ bool Config::startThread(pthread_t *pth, void *(*thread_fn)(void*), void *arg,
                 {
                     if ((chk = pthread_attr_setschedpolicy(&attr, SCHED_FIFO)))
                     {
-                        Log("Failed to set SCHED_FIFO policy in thread attribute: "
+                        Log("Failed to set SCHED_FIFO policy in thread attribute "
                                     + string(strerror(errno))
                                     + " (" + asString(chk) + ")", true);
                         schedfifo = false;
@@ -753,7 +765,7 @@ bool Config::startThread(pthread_t *pth, void *(*thread_fn)(void*), void *arg,
                     }
                     if ((chk = pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED)))
                     {
-                        Log("Failed to set inherit scheduler thread attribute: "
+                        Log("Failed to set inherit scheduler thread attribute "
                                     + string(strerror(errno)) + " ("
                                     + asString(chk) + ")", true);
                         schedfifo = false;
@@ -766,7 +778,7 @@ bool Config::startThread(pthread_t *pth, void *(*thread_fn)(void*), void *arg,
                     prio_params.sched_priority = (prio > 0) ? prio : 0;
                     if ((chk = pthread_attr_setschedparam(&attr, &prio_params)))
                     {
-                        Log("Failed to set thread priority attribute: ("
+                        Log("Failed to set thread priority attribute ("
                                     + asString(chk) + ")  "
                                     + string(strerror(errno)), true);
                         schedfifo = false;
@@ -787,20 +799,20 @@ bool Config::startThread(pthread_t *pth, void *(*thread_fn)(void*), void *arg,
                 break;
             }
             else
-                Log("Failed to set thread detach state: " + asString(chk), true);
+                Log("Failed to set thread detach state " + asString(chk), true);
             pthread_attr_destroy(&attr);
         }
         else
-            Log("Failed to initialise thread attributes: " + asString(chk), true);
+            Log("Failed to initialise thread attributes " + asString(chk), true);
 
         if (schedfifo)
         {
-            Log("Failed to start thread (sched_fifo): " + asString(chk)
+            Log("Failed to start thread (sched_fifo) " + asString(chk)
                 + "  " + string(strerror(errno)), true);
             schedfifo = false;
             continue;
         }
-        Log("Failed to start thread (sched_other): " + asString(chk)
+        Log("Failed to start thread (sched_other) " + asString(chk)
             + "  " + string(strerror(errno)), true);
         outcome = false;
         break;
@@ -1039,4 +1051,67 @@ void Config::loadCmdArgs(int argc, char **argv)
     argp_parse(&cmd_argp, argc, argv, 0, 0, this);
     if (jackSessionUuid.size() && jackSessionFile.size())
         restoreJackSession = true;
+}
+
+void GuiThreadMsg::processGuiMessages()
+{
+    GuiThreadMsg *msg = (GuiThreadMsg *)Fl::thread_message();
+    if(msg)
+    {
+        switch(msg->type)
+        {
+        case GuiThreadMsg::NewSynthEngine:
+        {
+            SynthEngine *synth = ((SynthEngine *)msg->data);
+            MasterUI *guiMaster = synth->getGuiMaster();
+            if(!guiMaster)
+            {
+                cerr << "Error starting Main UI!" << endl;
+            }
+            else
+            {
+                guiMaster->Init(guiMaster->getSynth()->getWindowTitle().c_str());
+            }
+        }
+            break;
+        case GuiThreadMsg::UpdatePanel:
+        {
+            SynthEngine *synth = ((SynthEngine *)msg->data);
+            MasterUI *guiMaster = synth->getGuiMaster(false);
+            if(guiMaster)
+            {
+                guiMaster->updatepanel();
+            }
+        }
+            break;
+        case GuiThreadMsg::UpdatePanelItem:
+            if(msg->index < NUM_MIDI_CHANNELS && msg->data)
+            {
+                SynthEngine *synth = ((SynthEngine *)msg->data);
+                MasterUI *guiMaster = synth->getGuiMaster(false);
+                if(guiMaster)
+                {
+                    guiMaster->panellistitem[msg->index]->refresh();
+                    guiMaster->updatepart();
+                }
+            }
+            break;
+        case GuiThreadMsg::UpdatePartProgram:
+            if(msg->index < NUM_MIDI_CHANNELS && msg->data)
+            {
+                SynthEngine *synth = ((SynthEngine *)msg->data);
+                MasterUI *guiMaster = synth->getGuiMaster(false);
+                if(guiMaster)
+                {
+                    guiMaster->updatepartprogram(msg->index);
+                }
+            }
+            break;
+        default:
+            break;
+        }
+        delete msg;
+    }
+
+
 }
