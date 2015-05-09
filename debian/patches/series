@@ -1,1 +1,2 @@
 01-gcc_flags.patch
+02-fix_build_on_mips_mipsel_powerpc.patch

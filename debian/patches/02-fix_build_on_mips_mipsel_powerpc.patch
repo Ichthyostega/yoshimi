@@ -1,0 +1,20 @@
+Author: Jaromír Mikeš <mira.mikes@seznam.cz>
+Origin: Upstream
+Description: Fix build on mips mipsel and powerpc archs.
+Forwarded: no
+
+Index: yoshimi/src/LV2_Plugin/YoshimiLV2Plugin.cpp
+===================================================================
+--- yoshimi.orig/src/LV2_Plugin/YoshimiLV2Plugin.cpp
++++ yoshimi/src/LV2_Plugin/YoshimiLV2Plugin.cpp
+@@ -145,9 +145,7 @@ void YoshimiLV2Plugin::process(uint32_t
+                 }
+                 else
+                 {
+-                    _synth->getRuntime().Log("Bad write to midi ringbuffer: "
+-                                + asString(wrote) + " / "
+-                                + asString((int)sizeof(struct midi_event)));
++                    _synth->getRuntime().Log("Bad write to midi ringbuffer: ");
+                 }
+ 
+             }
