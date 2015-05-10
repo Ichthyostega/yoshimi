@@ -1,3 +1,9 @@
+yoshimi (1.3.4-3) unstable; urgency=medium
+
+  * Fix build on mips mipsel and powerpc archs 2nd attempt.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Sun, 10 May 2015 21:36:24 +0200
+
 yoshimi (1.3.4-2) unstable; urgency=medium
 
   * Refresh patch
