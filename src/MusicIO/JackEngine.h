@@ -6,7 +6,7 @@
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
     Public License as published by the Free Software Foundation, either
-    version 3 of the License, or (at your option) any later version.
+    version 2 of the License, or (at your option) any later version.
 
     yoshimi is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -51,6 +51,7 @@ class JackEngine : public MusicIO
         int getBuffersize(void) { return audio.jackNframes; }
         string clientName(void);
         int clientId(void);
+        void registerJackPort(int portnum);
 
     private:
         bool openJackClient(string server);

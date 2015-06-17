@@ -6,7 +6,7 @@
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
     Public License as published by the Free Software Foundation, either
-    version 3 of the License, or (at your option) any later version.
+    version 2 of the License, or (at your option) any later version.
 
     yoshimi is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -32,13 +32,14 @@ class MiscFuncs
         ~MiscFuncs() { }
         string asString(int n);
         string asString(long long n);
-#if !defined( __i386__ ) && !defined( __arm__ )
+//#if !defined( __i386__ ) && !defined( __arm__ )
         //remove ambiguity while compiling for most 64-bit/32-bit arches
-        string asString(size_t n);
-#endif
+        //string asString(size_t n);
+        string asString(unsigned long n);
+//#endif
         string asString(long n);
         string asString(unsigned int n, unsigned int width = 0);
-        string asString(unsigned char c) { return asString((unsigned int)c); }
+        string asString(unsigned char c);// { return asString((unsigned int)c); }
         string asString(float n);
         string asLongString(float n);
         string asHexString(int x);

@@ -53,6 +53,8 @@ XMLwrapper::XMLwrapper(SynthEngine *_synth) :
     synth(_synth)
 {
     information.PADsynth_used = 0;
+    information.ADDsynth_used = 0;
+    information.SUBsynth_used = 0;
     memset(&parentstack, 0, sizeof(parentstack));
     tree = mxmlNewElement(MXML_NO_PARENT, "?xml version=\"1.0\" encoding=\"UTF-8\"?");
     mxml_node_t *doctype = mxmlNewElement(tree, "!DOCTYPE");
@@ -73,7 +75,7 @@ XMLwrapper::XMLwrapper(SynthEngine *_synth) :
 
     info = addparams0("INFORMATION"); // specifications
     beginbranch("BASE_PARAMETERS");
-    addpar("max_midi_parts", NUM_MIDI_PARTS);
+    addpar("max_midi_parts", synth->getRuntime().NumAvailableParts);
     addpar("max_kit_items_per_instrument", NUM_KIT_ITEMS);
 
     addpar("max_system_effects", NUM_SYS_EFX);
@@ -103,53 +105,136 @@ bool XMLwrapper::checkfileinformation(const string& filename)
     char *xmldata = doloadfile(filename);
     if (!xmldata)
         return -1;
+    
+    bool bRet = false; // we're not actually using this!
     char *start = strstr(xmldata, "<INFORMATION>");
     char *end = strstr(xmldata, "</INFORMATION>");
-    if (!start || !end || start > end)
+    if (!start || !end || start >= end)
     {
+        bRet = slowinfosearch(xmldata);
         delete [] xmldata;
-        return false;
+        return bRet;
     }
-    //Andrew: just make it simple
-    bool bRet = false;
-    if(strstr(start, "name=\"PADsynth_used\" value=\"yes\""))
+
+    // Andrew: just make it simple
+    // Will: but not too simple :)
+    char *idx = start;
+    *end = 0; // fiddle to limit search - I can't find a better way :(
+    unsigned short names = 0;
+    
+    /* the following could be in any order. We are checking for
+     * the actual exisitence of the fields as well as their value.
+     */
+    idx = strstr(start, "name=\"ADDsynth_used\"");
+    if (idx != NULL)
     {
-        information.PADsynth_used = 1;
+        names |= 2;
+        if(strstr(idx, "name=\"ADDsynth_used\" value=\"yes\""))
+            information.ADDsynth_used = 1;
+    }
+    
+    idx = strstr(start, "name=\"SUBsynth_used\"");
+    if (idx != NULL)
+    {
+        names |= 4;
+        if(strstr(idx, "name=\"SUBsynth_used\" value=\"yes\""))
+            information.SUBsynth_used = 1;
+    }
+    
+    idx = strstr(start, "name=\"PADsynth_used\"");
+    if (idx != NULL)
+    {
+        names |= 1;
+        if(strstr(idx, "name=\"PADsynth_used\" value=\"yes\""))
+            information.PADsynth_used = 1;
+    }
+    
+    if (names == 7)
+    {
         bRet = true;
+//        if (information.SUBsynth_used)
+//                synth->getRuntime().Log("Sub found");
+    }
+    else
+    {
+//        if (strstr(idx, "<INSTRUMENT_KIT>"))
+//            synth->getRuntime().Log("Oops! Shouldn't find it.");
+        *end = 0x3c; // restore full length
+        bRet = slowinfosearch(xmldata);
     }
     delete [] xmldata;
     return bRet;
+}
 
 
+bool XMLwrapper::slowinfosearch(char *idx)
+{
+    idx = strstr(idx, "<INSTRUMENT_KIT>");
+    if (idx == NULL)
+        return false;
+    
+    string mark;
+    int max = NUM_KIT_ITEMS;
+    
     /*
-    end += strlen("</INFORMATION>");
-    //end[0] = '\0';
-    //tree = mxmlNewElement(MXML_NO_PARENT, "?xml version=\"1.0\" encoding=\"UTF-8\"?");
-    tree = node = root = mxmlLoadString(NULL, xmldata, MXML_OPAQUE_CALLBACK);
-    if (!root)
-    {
-        delete [] xmldata;
-        mxmlDelete(tree);
-        node = root = tree = NULL;
+     * The following *must* exist, otherwise the file is corrupted.
+     * They will always be in this order, which means we only need
+     * to scan once through the file.
+     * We can stop if we get to a point where ADD, SUB and PAD
+     * have all been enabled.
+     */
+    idx = strstr(idx, "name=\"kit_mode\"");
+    if (idx == NULL)
         return false;
-    }
-    root = mxmlFindElement(tree, tree, "INFORMATION", NULL, NULL, MXML_DESCEND);
-    push(root);
-    if (!root)
+    if (strncmp(idx + 16 , "value=\"0\"", 9) == 0)
+        max = 1;
+
+    for (int kitnum = 0; kitnum < max; ++kitnum)
     {
-        delete [] xmldata;
-        mxmlDelete(tree);
-        node = root = tree = NULL;
-        return false;
+        mark = "<INSTRUMENT_KIT_ITEM id=\"" + asString(kitnum) + "\">";
+        idx = strstr(idx, mark.c_str());
+        if (idx == NULL)
+            return false;
+        
+        idx = strstr(idx, "name=\"enabled\"");
+        if (idx == NULL)
+            return false;
+        if (!strstr(idx, "name=\"enabled\" value=\"yes\""))
+            continue;
+        
+        if (!information.ADDsynth_used)
+        {
+            idx = strstr(idx, "name=\"add_enabled\"");
+            if (idx == NULL)
+                return false;
+            if (strncmp(idx + 26 , "yes", 3) == 0)
+                information.ADDsynth_used = 1;
+        }
+        if (!information.SUBsynth_used)
+        {
+            idx = strstr(idx, "name=\"sub_enabled\"");
+            if (idx == NULL)
+                return false;
+            if (strncmp(idx + 26 , "yes", 3) == 0)
+                information.SUBsynth_used = 1;
+        }
+        if (!information.PADsynth_used)
+        {
+            idx = strstr(idx, "name=\"pad_enabled\"");
+            if (idx == NULL)
+                return false;
+            if (strncmp(idx + 26 , "yes", 3) == 0)
+                information.PADsynth_used = 1;
+        }
+        if (information.ADDsynth_used
+          & information.SUBsynth_used
+          & information.PADsynth_used)
+        {
+//            synth->getRuntime().Log("Kit count " + asString(kitnum));
+            break;
+        }
     }
-    information.PADsynth_used = getparbool("PADsynth_used",0);
-    exitbranch();
-    if (tree)
-        mxmlDelete(tree);
-    delete [] xmldata;
-    node = root = tree = NULL;
-    return true;
-    */
+  return true;
 }
 
 
@@ -203,6 +288,8 @@ char *XMLwrapper::getXMLdata()
     memset(tabs, 0, STACKSIZE + 2);
     mxml_node_t *oldnode=node;
     node = info;
+    addparbool("ADDsynth_used", information.ADDsynth_used);
+    addparbool("SUBsynth_used", information.SUBsynth_used);
     addparbool("PADsynth_used", information.PADsynth_used);
     node = oldnode;
     char *xmldata = mxmlSaveAllocString(tree, XMLwrapper_whitespace_callback);

@@ -1,0 +1,56 @@
+Vector control is only possible if you have 32 or 64 parts active.
+
+In vector mode parts will still play together but the vector controls can change their volume, pan, filter cutoff in pairs, controlled by user defined CCs set up with NRPNs
+
+You must set the X axis CC before Y, but if you don't set Y at all you can run just a single axis. If yuo only have 32 parts active Y settings are ignored.
+
+e.g.
+Parts 1 and 17 can be set as x1 & x2 (volume only) while parts 33 and 49 can be y1 & y2 (pan only)
+
+Independently of this Parts 2 & 18 could use filter and pan from another CC
+
+Setting up is currently done as follows.
+
+In the required channel send:
+NRPN MSB (99)  set to 64
+NRPN LSB (98)  1
+Data MSB ( 6) set mode
+              0 = X CC
+              1 = Y CC
+              2 = X features
+              3 = Y features
+              4 = x1 instrument (optional)
+              5 = x2 instrument (optional)
+              6 = y1 instrument (optional)
+              7 = y2 instrument (optional)
+Setting CC for X enables vector control any value oustide the above list disables it.
+
+Data LSB (38) value to set
+
+features:
+    1 = Volume
+    2 = Pan
+    4 = Filter Cutoff (Brightness)
+
+ 
+An Example:
+
+From channel 1, send the following CCs
+
+CC      Value
+99       64
+98        1
+ 6        0
+38       14
+ 6        1
+38       15
+ 6        2
+38        1
+ 6        3
+38        2
+
+This will set up CC14 as the X axis incoming controller and CC15 as Y, with X set to volume control and Y set to pan control.
+
+You can either go on with the NRPNs to set the instruments (this will load and
+enable instruments from the current bank) or enable and load them by hand.
+For channel 1 this would be part 1 and 17 for X and part 33 and 49 for Y
