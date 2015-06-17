@@ -1,4 +1,153 @@
+yoshimi 1.3.x
+
+2015-6-19 Will
+- bugfix set typecast in BankUI to enable build witj fltk 1.1
+- bugfix changed MasterUI so that main window is refreshed when
+  'State' is loaded.
+
+yoshimi 1.3.5
+- Finalised for release and tagged.
+- Added more details to docs.
+
+yoshimi 1.3.5-rc4
+
+- Fixed failure of Insert Effect part list length to update when
+  number of parts changed.
+
+yoshimi 1.3.5-rc3
+
+2015-6-13 Will
+- Fixed regression that was messing up pitch change.
+
+yoshimi 1.3.5-rc2
+
+2015-6-11 Will
+- Fixed gui bug, disappearing 'Bypass Global F.' when Addsynth Voice
+  Filter checkbutton clicked.
+- Vector checks and sets related part channel numbers instead of
+  assuming default values.
+
+yoshimi 1.3.5-rc
+
+2015-6-7 Will
+- Jack port only registered if direct part output is set as well as 
+  the part being enabled.
+- Mixer panel refresh button hidden (redundant).
+  Will eventually be removed if no problems seen.
+
+2015-6-5 Will
+- Improved engine colour sync, and also responds to kit part edits.
+
+2015-6-1 Will
+- Common Add,Sub,Pad colours now defines in CMakeLists.txt
+
+2015-5-30 Will
+- Vector control volume 'swap' now uses an inverse square law to keep the
+  overall level fairly constant.
+- More improvements to instrument engine colours.
+
+2015-5-30 Will
+- Bugfix! Only part 1 was responding to gui instument selection.
+
+2015-5-29 Will
+- Fixed regression that stopped mixer panel updating on MIDI program change.
+- Moved max part control from parameters menu to alongside part number.
+- Refactored part gui calls to improve updates.
+- Implemented colour based engine IDs in mixer panel window
+- 'Clear All Parameters' now resets NRPNs and vector control.
+
+2015-5-27 Will
+- Trial for colour based engine IDs in main window.
+- Fixed bug that caused banks to be initialied twice on startup.
+- Hid (redundant) refesh button from instrument banks window.
+  Will remove it completely if no problems show up.
+
+2015-5-23 Will
+- Small improvement to synth ID discovery.
+- Prompts at foot of window.
+- Removed old style new bank creation.
+
+2015-5-21 Will
+- Implemented identification of all three synth engines.
+- Made workaround for corrupted instrument headers.
+
+2015-5-15 Will
+- Implemented max part & part group control.
+
+2015-5-13 Andrew
+- On-demand jack ports registering (only if part is enabled)
+
+2015-5-12 Will
+- fixed asString bug that still appeared on some architectures.
+  Thanks to Stephen Parry for identifying the cause.
+
+2015-5-7 Will
+- Improved bank root and extended program change CC setting method.
+- Corrected NRPN gui display issues
+- Updated Docs
+
+2015-5-6 Will
+- Implemented Zyn-compatible NRPNs with extension for effect type and destination
+  part number change.  (some gui improvements needed)
+- Updated Docs.
+
+2015-5-2 Will
+- Improved NRPN handling of 14bit NRPNs and 'full' NRPNs with reversed
+  data byte order.
+
+2015-4-30 Will
+- Fixed regression in distortion level.
+- Added voice number to AddSynth oscillator editor.
+- Implemented NRPN data increment and decrement.
+
+2015-4-27 Will
+- Fixed bug that stopped some rotary controls responding to mouse wheel.
+- Re-orderd part effects window to more closely match system & insert.
+- Made 'panic' stop fade at a fixed rate so it is now click free even for
+  very high sample rate and small buffer size.
+
+2015-4-25 Will
+- Added part number and name to editing window title bars.
+- Made it possible to silently disconnect/reconnect a part from all MIDI input.
+- Improved config settings for Bank Root & Extended Program Change.
+
+2015-4-24 Will
+- Implemented 14bit NRPNs
+- Implemented scroll wheel control of knobs
+- Implemented X as well as Y knob control
+
+2015-4-21 Will (vector)
+- Some more small optimisations
+
+2015-4-19 Will (vector)
+- Fixed regressions caused by mixer gui changes!
+- More adjustments giving greater flexibility to NRPNs
+
+2015-4-18 Will (vector)
+- Added NRPN and vector error checks and warnings
+- Updated docs
+- Very specific segfault with Rosegarden V12.4 and 'RootBankChange'
+  test file has cleared! Confirmed it is still there on yoshimi 1.3.3
+  puzzling :(
+- Rationalised mixer panel gui, removing duplicates
+
+2015-4-17 Will (vector)
+- Implemented direct part channel change
+- Corrected license anomalies
+- Updated docs
+
+2015-4-15 Will (vector)
+- Implemented direct part CC change
+- Corrected and updated Docs
+
+2015-4-3 Will (vector)
+- Implemented direct part program change
+- Vector controls only enabled if NUM_MIDI_PARTS set to 64
+
 yoshimi 1.3.4
+
+2015-4-1 Will (vector)
+- Bugfix corrected merge errors
 
 2015-4-1 Will
 - Tidied up for release on such an auspicious date!
@@ -62,12 +211,24 @@ yoshimi 1.3.4
 2015-3-10 Will
 - Panel window bugfix
 
-yoshimi 1.3.3
-
 2015-3-2 Will
 - Added patch from Jakub Cajka to furthur nail asString ambiguities
 - Added SVG icon image (renamed alternative)
 - Set up for release
+
+2015-3-1 Will (vector)
+- Moved all NRPN and Vectore code to MusicOI
+- Added 'Brightness' control
+- GUI freeze still not resolved :(
+
+2015-2-28 Will (vector)
+- Further separated out controls, and also enabled setting instruments
+  however this is very experimental and *not RT safe*
+- improved this now, but discovered a gui bug if the panel
+  is open when a vector program change takes place - gui freezes :(
+- got rid of a warning message in jack engine :)
+
+yoshimi 1.3.3
 
 2015-2-27 Will
 - Added and updated Docs & Images
@@ -75,6 +236,34 @@ yoshimi 1.3.3
 
 2015-2-27 Andrew
 - Updated splash screen
+
+2015-2-26 Will
+- Some fine tuning
+- Updated documentation
+
+2015-2-25 Will (vector)
+- Separated X & Y to independent NRPNs
+  NRPN msb = 64, lsb = 1 for X
+  NRPN msb = 64, lsb = 2 for Y
+  DATA lsb = CC, msb = operation(s)
+                1 = volume
+                2 = pan
+
+2015-2-24 Will (vector)
+- Seems stable now - crashes were due to mixture of
+  channel and part limits.
+- Mixer panel now shows groups of 16 parts.
+- Volume sweeps implemented but need balancing better.
+
+2015-2-23 Will (vector)
+- First attempt at vector control
+  Setting NRPNs and vector CCs seems fine.
+  Only implimented volume control.
+  Getting a lot of crashes in use though when changing settings via the gui.
+  Panel window only shows 1st 16 parts.
+  Part control (rather than channel) works much better.
+  GUI problems probably due to some use of NUM_MIDI_CHANNELS
+  where NUM_MIDI_PARTS should be in the original code.
 
 2015-2-19 Will
 - Small gui code optimisations
@@ -135,7 +324,6 @@ yoshimi-1.3.2-rc2
 - Allow instrument name of just 3 chars
 - Bumped version number to rc2
 - Clarified text of error messages
-
 
 2015-1-27 Andrew
 - Added splash window showing current loading status

@@ -57,7 +57,7 @@ class SynthEngine : private SynthHelper, MiscFuncs
         bool isLV2Plugin;
         Bank bank;
         Config Runtime;
-        PresetsStore presetsstore;
+        PresetsStore presetsstore;        
     public:
         SynthEngine(int argc, char **argv, bool _isLV2Plugin = false, unsigned int forceId = 0);
         ~SynthEngine();
@@ -80,13 +80,17 @@ class SynthEngine : private SynthHelper, MiscFuncs
         void NoteOn(unsigned char chan, unsigned char note, unsigned char velocity);
         void NoteOff(unsigned char chan, unsigned char note);
         void SetController(unsigned char chan, int type, short int par);
+        void SetZynControls();
         void SetBankRoot(int rootnum);
         void SetBank(int banknum);
-        void SetProgram(unsigned char chan, unsigned char pgm);
+        void SetProgram(unsigned char chan, unsigned short pgm);
+        void SetPartChan(unsigned char npart, unsigned char nchan);
+        void SetPartDestination(unsigned char npart, unsigned char dest);
+        void ClearNRPNs(void);
         float numRandom(void);
         unsigned int random(void);
         void ShutUp(void);
-        void MasterAudio(float *outl [NUM_MIDI_PARTS], float *outr [NUM_MIDI_PARTS], int to_process = 0);
+        void MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_MIDI_PARTS + 1], int to_process = 0);
         void partonoff(int npart, int what);
         void Mute(void) { __sync_or_and_fetch(&muted, 0xFF); }
         void Unmute(void) { __sync_and_and_fetch(&muted, 0); }
@@ -94,6 +98,8 @@ class SynthEngine : private SynthHelper, MiscFuncs
 
         Part *part[NUM_MIDI_PARTS];
         bool shutup;
+        float fadeStep;
+        float fadeLevel;
 
         // parameters
         unsigned int samplerate;
@@ -202,6 +208,7 @@ class SynthEngine : private SynthHelper, MiscFuncs
 
         int LFOtime; // used by Pcontinous
         string windowTitle;
+        MusicClient *musicClient;
 };
 
 inline float SynthEngine::numRandom(void)

@@ -49,6 +49,7 @@ using namespace std;
 #include "Misc/Config.h"
 #include "MasterUI.h"
 
+extern void mainRegisterAudioPort(SynthEngine *s, int portnum);
 
 const unsigned short Config::MaxParamsHistory = 25;
 
@@ -104,7 +105,7 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
     alsaMidiDevice("default"),
     GzipCompression(3),
     Interpolation(0),
-    CheckPADsynth(1),
+    checksynthengines(1),
     EnableProgChange(1), // default will be inverted
     consoleMenuItem(1),
     rtprio(50),
@@ -113,6 +114,10 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
     midi_upper_voice_C(128),
     enable_part_on_voice_load(0),
     single_row_panel(0),
+    NumAvailableParts(NUM_MIDI_CHANNELS),
+    nrpnL(127),
+    nrpnH(127),
+    nrpnActive(false),
     deadObjects(NULL),
     nextHistoryIndex(numeric_limits<unsigned int>::max()),
     sigIntActive(0),
@@ -434,7 +439,7 @@ bool Config::extractConfigData(XMLwrapper *xml)
                                         MAX_AD_HARMONICS * 2, 131072);
     GzipCompression = xml->getpar("gzip_compression", GzipCompression, 0, 9);
     Interpolation = xml->getpar("interpolation", Interpolation, 0, 1);
-    CheckPADsynth = xml->getpar("check_pad_synth", CheckPADsynth, 0, 1);
+    checksynthengines = xml->getpar("check_pad_synth", checksynthengines, 0, 1);
     EnableProgChange = 1 - xml->getpar("ignore_program_change", EnableProgChange, 0, 1); // inverted for Zyn compatibility
     consoleMenuItem = xml->getpar("reports_destination", consoleMenuItem, 0, 1);
     VirKeybLayout = xml->getpar("virtual_keyboard_layout", VirKeybLayout, 0, 10);
@@ -545,7 +550,7 @@ void Config::addConfigXML(XMLwrapper *xmltree)
     xmltree->addpar("oscil_size", Oscilsize);
 
     xmltree->addpar("gzip_compression", GzipCompression);
-    xmltree->addpar("check_pad_synth", CheckPADsynth);
+    xmltree->addpar("check_pad_synth", checksynthengines);
     xmltree->addpar("ignore_program_change", (1 - EnableProgChange));
     xmltree->addpar("reports_destination", consoleMenuItem);
     xmltree->addpar("virtual_keyboard_layout", VirKeybLayout);
@@ -1085,19 +1090,19 @@ void GuiThreadMsg::processGuiMessages()
         }
             break;
         case GuiThreadMsg::UpdatePanelItem:
-            if(msg->index < NUM_MIDI_CHANNELS && msg->data)
+            if(msg->index < NUM_MIDI_PARTS && msg->data)
             {
                 SynthEngine *synth = ((SynthEngine *)msg->data);
                 MasterUI *guiMaster = synth->getGuiMaster(false);
                 if(guiMaster)
                 {
-                    guiMaster->panellistitem[msg->index]->refresh();
+                    guiMaster->panellistitem[(msg->index) % NUM_MIDI_CHANNELS]->refresh();
                     guiMaster->updatepart();
                 }
             }
             break;
         case GuiThreadMsg::UpdatePartProgram:
-            if(msg->index < NUM_MIDI_CHANNELS && msg->data)
+            if(msg->index < NUM_MIDI_PARTS && msg->data)
             {
                 SynthEngine *synth = ((SynthEngine *)msg->data);
                 MasterUI *guiMaster = synth->getGuiMaster(false);
@@ -1107,11 +1112,27 @@ void GuiThreadMsg::processGuiMessages()
                 }
             }
             break;
+        case GuiThreadMsg::UpdateEffects:
+            if(msg->data)
+            {
+                SynthEngine *synth = ((SynthEngine *)msg->data);
+                MasterUI *guiMaster = synth->getGuiMaster(false);
+                if(guiMaster)
+                {
+                    guiMaster->updateeffects(msg->index);
+                }
+            }
+            break;
+        case GuiThreadMsg::RegisterAudioPort:
+            if(msg->data)
+            {
+                SynthEngine *synth = ((SynthEngine *)msg->data);
+                mainRegisterAudioPort(synth, msg->index);
+            }
+            break;
         default:
             break;
         }
         delete msg;
     }
-
-
 }

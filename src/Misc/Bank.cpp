@@ -326,15 +326,15 @@ bool Bank::loadbank(size_t rootID, size_t banknum)
     return true;
 }
 
-
+// no longer used.
 // Makes a new bank, put it on a file and makes it current bank
-bool Bank::newbank(string newbankdir)
+/*bool Bank::newbank(string newbankdir)
 {
     if (!newbankfile(newbankdir))
         return false;
     currentBankID = add_bank(newbankdir, newbankdir, currentRootID);
     return true;
-}
+}*/
 
 
 // Makes a new bank with known ID. Does *not* make it current
@@ -654,13 +654,17 @@ bool Bank::addtobank(size_t rootID, size_t bankID, int pos, const string filenam
     instrRef.name = name;
     instrRef.filename = filename;
     instrRef.PADsynth_used = false;
+    instrRef.ADDsynth_used = false;
+    instrRef.SUBsynth_used = false;
 
-    // see if PADsynth is used
-    if (synth->getRuntime().CheckPADsynth)
+    // see which engines are used
+    if (synth->getRuntime().checksynthengines)
     {
         XMLwrapper *xml = new XMLwrapper(synth);
         xml->checkfileinformation(getFullPath(rootID, bankID, pos));
         instrRef.PADsynth_used = xml->information.PADsynth_used;
+        instrRef.ADDsynth_used = xml->information.ADDsynth_used;
+        instrRef.SUBsynth_used = xml->information.SUBsynth_used;
         delete xml;
     }
     return 0;
@@ -721,11 +725,14 @@ void Bank::addDefaultRootDirs()
         "/usr/share/zynaddsubfx/banks",
         "/usr/local/share/zynaddsubfx/banks",
         string(getenv("HOME")) + "/banks",
-        "../banks"
+        "../banks",
+        "end"
     };
-    for (unsigned int i = 0; i < (sizeof(bankdirs) / sizeof(bankdirs [0])); ++i)
+    int i = 0;
+    while (bankdirs [i] != "end")
     {
         addRootDir(bankdirs [i]);
+        ++ i;
     }
 }
 
@@ -850,9 +857,12 @@ const BankEntry &Bank::getBank(size_t bankID)
 }
 
 
-bool Bank::isPADsynth_used(unsigned int ninstrument)
+int Bank::engines_used(unsigned int ninstrument)
 {
-    return getInstrumentReference(ninstrument).PADsynth_used;
+    int tmp = getInstrumentReference(ninstrument).ADDsynth_used
+            | (getInstrumentReference(ninstrument).SUBsynth_used << 1)
+            | (getInstrumentReference(ninstrument).PADsynth_used << 2);
+    return tmp;
 }
 
 

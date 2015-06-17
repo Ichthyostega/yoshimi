@@ -122,7 +122,7 @@ class Config : public MiscFuncs
         unsigned int  GzipCompression;
         int           Interpolation;        
         string        presetsDirlist[MAX_BANK_ROOT_DIRS];
-        int           CheckPADsynth;
+        int           checksynthengines;
         bool          SimpleCheck;
         int           EnableProgChange;
         bool          consoleMenuItem;
@@ -132,7 +132,23 @@ class Config : public MiscFuncs
         int           midi_upper_voice_C;
         int           enable_part_on_voice_load;
         int           single_row_panel;
-
+        int           NumAvailableParts;
+        unsigned char nrpnL;
+        unsigned char nrpnH;
+        unsigned char dataL;
+        unsigned char dataH;
+        bool          nrpnActive;
+        
+        struct IOdata{
+            unsigned short vectorXaxis[NUM_MIDI_CHANNELS];
+            unsigned short vectorYaxis[NUM_MIDI_CHANNELS];
+            int Part;
+            int Controller;
+            bool vectorEnabled[NUM_MIDI_CHANNELS];
+        };
+        
+        IOdata nrpndata;
+        
         deque<HistoryListItem> ParamsHistory;
         deque<HistoryListItem>::iterator itx;
         static const unsigned short MaxParamsHistory;
@@ -183,6 +199,8 @@ public:
         UpdatePanel,
         UpdatePanelItem,
         UpdatePartProgram,
+        UpdateEffects,
+        RegisterAudioPort,
         UNDEFINED = 9999
     };
     void *data; //custom data, must be static or handled by called, does nod freed by receiver

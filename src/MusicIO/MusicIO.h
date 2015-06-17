@@ -3,11 +3,12 @@
 
     Copyright 2009-2011, Alan Calvert
     Copyright 2009, James Morris
+    Copyright 2014-2015, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
     Public License as published by the Free Software Foundation, either
-    version 3 of the License, or (at your option) any later version.
+    version 2 of the License, or (at your option) any later version.
 
     yoshimi is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -41,6 +42,11 @@ class MusicIO : virtual protected MiscFuncs
         void InterleaveShorts(void);
         int getMidiController(unsigned char b);
         void setMidiController(unsigned char ch, int ctrl, int param, bool in_place = false);
+        bool nrpnRunVector(unsigned char ch, int ctrl, int param);
+        void nrpnProcessData(unsigned char chan, int type, int par);
+        void nrpnDirectPart(int dHigh, int par);
+        void nrpnSetVector(int dHigh, unsigned char chan,  int par);
+
         //if setBank is false then set RootDir number else current bank number
         void setMidiBankOrRootDir(unsigned int bank_or_root_num, bool in_place = false, bool setRootDir = false);
         void setMidiProgram(unsigned char ch, int prg, bool in_place = false);
