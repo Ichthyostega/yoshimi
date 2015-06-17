@@ -7,7 +7,7 @@ comment {Copyright 2011, Alan Calvert
 This file is part of yoshimi, which is free software: you can
 redistribute it and/or modify it under the terms of the GNU General
 Public License as published by the Free Software Foundation, either
-version 3 of the License, or (at your option) any later version.
+version 2 of the License, or (at your option) any later version.
 
 yoshimi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -40,11 +40,11 @@ class ConsoleUI {open
   } {
     Fl_Window logConsole {
       label {yoshimi console}
-      callback {o->hide()} open
+      callback {o->hide()} open selected
       xywh {5 20 385 185} type Double color 54 selection_color 36 labelfont 13 labelsize 13 align 0 when 1 hide resizable
     } {
       Fl_Text_Display logText {
-        label {log text} selected
+        label {log text}
         xywh {0 0 385 185} color 54 labeltype NO_LABEL labelfont 13 labelsize 13 when 1 textfont 13 textsize 12 textcolor 35
       }
     }

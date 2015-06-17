@@ -7,7 +7,7 @@
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
     Public License as published by the Free Software Foundation, either
-    version 3 of the License, or (at your option) any later version.
+    version 2 of the License, or (at your option) any later version.
 
     yoshimi is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -161,6 +161,7 @@ bool JackEngine::Start(void)
         goto bail_out;
     }
 
+    /*
     for (int port = 0; port < (2 * NUM_MIDI_PARTS + 2); ++port) // include mains
     {
         if (!audio.ports[port])
@@ -169,6 +170,7 @@ bool JackEngine::Start(void)
             break;
         }
     }
+    */
 
     if (!jack_activate(jackClient) && jackPortsRegistered)
     {
@@ -243,29 +245,61 @@ void JackEngine::Close(void)
     }
 }
 
+void JackEngine::registerJackPort(int partnum)
+{
+    int portnum = partnum * 2;
+    if(partnum >=0 && partnum < NUM_MIDI_PARTS)
+    {
+        if(audio.ports [portnum] != NULL)
+        {
+            //port already registered
+            //synth->getRuntime().Log("Jack port " + asString(partnum) + " already registered!");
+            return;
+        }
+        if(synth->part [partnum] && synth->part [partnum]->Penabled)
+        {
+            string portName = "track_" + asString(partnum + 1) + "_r";
+            audio.ports[portnum + 1] = jack_port_register(jackClient, portName.c_str(), JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
+            portName = "track_" + asString(partnum + 1) + "_l";
+            audio.ports[portnum] = jack_port_register(jackClient, portName.c_str(), JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
+
+            if(audio.ports [portnum])
+            {
+                synth->getRuntime().Log("Registered jack port " + asString(partnum));
+            }
+            else
+            {
+                synth->getRuntime().Log("Error registering jack port " + asString(partnum));
+            }
+        }
+    }
+}
 
 bool JackEngine::openAudio(void)
 {
     // Register mixed outputs
     audio.ports[2 * NUM_MIDI_PARTS] = jack_port_register(jackClient, "left", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
     audio.ports[2 * NUM_MIDI_PARTS + 1] = jack_port_register(jackClient, "right", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
-    // And individual parts
-    for (int port = 0; port < 2 * NUM_MIDI_PARTS; ++port)
-    {
-        stringstream portName;
-        portName << "track_" << ((port / 2) + 1) << ((port % 2) ? "_r" : "_l");
-        audio.ports[port] = jack_port_register(jackClient, portName.str().c_str(), JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
-    }
 
-    bool jackPortsRegistered = true;
-    for (int port = 0; port < (2 * NUM_MIDI_PARTS + 2); ++port)
+    // And individual parts
+/* this section is now reduntant!
+    for (int port = 0; port < NUM_MIDI_PARTS; ++port)
     {
+        //stringstream portName;
+        //portName << "track_" << ((port / 2) + 1) << ((port % 2) ? "_r" : "_l");
+        //audio.ports[port] = jack_port_register(jackClient, portName.str().c_str(), JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
+        registerJackPort(port);
+    }
+*/
+    bool jackPortsRegistered = true;
+    /*for (int port = 0; port < (2 * NUM_MIDI_PARTS + 2); ++port)
+    {        
         if (!audio.ports[port])
         {
             jackPortsRegistered = false;
             break;
         }
-    }
+    }*/
 
     if (jackPortsRegistered)
         return prepBuffers(false) && latencyPrep();
@@ -312,7 +346,7 @@ bool JackEngine::connectJackPorts(void)
         return false;
 	}
     int ret;
-    for (int port = 0; port < 2 && (NULL != audio.ports[port]); ++port)
+    for (int port = 0; port < 2 && (NULL != audio.ports[port + NUM_MIDI_PARTS*2]); ++port)
     {
         const char *port_name = jack_port_name(audio.ports[port + NUM_MIDI_PARTS * 2]);
         if ((ret = jack_connect(jackClient, port_name, playback_ports[port])))
@@ -325,7 +359,6 @@ bool JackEngine::connectJackPorts(void)
     }
     return true;
 }
-
 
 int JackEngine::clientId(void)
 {
@@ -367,30 +400,55 @@ int JackEngine::processCallback(jack_nframes_t nframes)
 
 bool JackEngine::processAudio(jack_nframes_t nframes)
 {
-    for (int port = 0; port < (2*NUM_MIDI_PARTS+2); ++port)
+    // Part buffers
+    for (int port = 0; port < 2 * NUM_MIDI_PARTS; ++port)
     {
-        audio.portBuffs[port] =
-            (float*)jack_port_get_buffer(audio.ports[port], nframes);
-        if (!audio.portBuffs[port])
+        if(audio.ports [port])
         {
-            synth->getRuntime().Log("Failed to get jack audio port buffer: " + asString(port));
-            return false;
+            audio.portBuffs[port] =
+                    (float*)jack_port_get_buffer(audio.ports[port], nframes);
+            if (!audio.portBuffs[port])
+            {
+                synth->getRuntime().Log("Failed to get jack audio port buffer: " + asString(port));
+                return false;
+            }
         }
     }
+    // And mixed outputs
+    audio.portBuffs[2 * NUM_MIDI_PARTS] = (float*)jack_port_get_buffer(audio.ports[2 * NUM_MIDI_PARTS], nframes);
+    if (!audio.portBuffs[2 * NUM_MIDI_PARTS])
+    {
+        synth->getRuntime().Log("Failed to get jack audio port buffer: " + asString(2 * NUM_MIDI_PARTS));
+        return false;
+    }
+    audio.portBuffs[2 * NUM_MIDI_PARTS + 1] = (float*)jack_port_get_buffer(audio.ports[2 * NUM_MIDI_PARTS + 1], nframes);
+    if (!audio.portBuffs[2 * NUM_MIDI_PARTS + 1])
+    {
+        synth->getRuntime().Log("Failed to get jack audio port buffer: " + asString(2 * NUM_MIDI_PARTS + 1));
+        return false;
+    }
+
     getAudio();
     int framesize = sizeof(float) * nframes;
     // Part outputs
-    for (int port = 0, idx = 0; port < NUM_MIDI_PARTS; port++ , idx += 2)
+    int currentmax = synth->getRuntime().NumAvailableParts;
+    for (int port = 0, idx = 0; idx < 2 * NUM_MIDI_PARTS; port++ , idx += 2)
     {
-        if (synth->part[port]->Paudiodest & 2)
+        if(audio.ports [idx])
         {
-            memcpy(audio.portBuffs[idx], zynLeft[port], framesize);
-            memcpy(audio.portBuffs[idx + 1], zynRight[port], framesize);
-        }
-        else
-        {
-            memset(audio.portBuffs[idx], 0, framesize);
-            memset(audio.portBuffs[idx + 1], 0, framesize);
+            if (jack_port_connected(audio.ports[idx])) // just a few % improvement.
+            {
+                if ((synth->part[port]->Paudiodest & 2) && port < currentmax)
+                {
+                    memcpy(audio.portBuffs[idx], zynLeft[port], framesize);
+                    memcpy(audio.portBuffs[idx + 1], zynRight[port], framesize);
+                }
+                else
+                {
+                    memset(audio.portBuffs[idx], 0, framesize);
+                    memset(audio.portBuffs[idx + 1], 0, framesize);
+                }
+            }
         }
     }
     // And mixed outputs

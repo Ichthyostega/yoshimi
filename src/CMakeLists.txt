@@ -6,7 +6,7 @@
 #   This file is part of yoshimi, which is free software: you can
 #   redistribute it and/or modify it under the terms of the GNU General
 #   Public License as published by the Free Software Foundation, either
-#   version 3 of the License, or (at your option) any later version.
+#   version 2 of the License, or (at your option) any later version.
 #
 #   yoshimi is distributed in the hope that it will be useful,
 #   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -23,7 +23,7 @@ cmake_policy (SET CMP0004 OLD)
 if (POLICY CMP0046)
     cmake_policy (SET CMP0046 OLD)
 endif (POLICY CMP0046)
-set (YOSHIMI_VERSION "1.3.4")
+set (YOSHIMI_VERSION "1.3.5")
 file (WRITE version.txt "${YOSHIMI_VERSION}")
 
 set (CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -268,7 +268,11 @@ add_definitions (-DMAX_BANK_ROOT_DIRS=128)
 add_definitions (-DMAX_AD_HARMONICS=128)
 add_definitions (-DMAX_SUB_HARMONICS=64)
 add_definitions (-DPAD_MAX_SAMPLES=96)
-add_definitions (-DNUM_MIDI_PARTS=16)
+add_definitions (-DADD_COLOUR=0xdfafbf00)
+add_definitions (-DBASE_COLOUR=0xbfbfbf00)
+add_definitions (-DSUB_COLOUR=0xafcfdf00)
+add_definitions (-DPAD_COLOUR=0xcfdfaf00)
+add_definitions (-DNUM_MIDI_PARTS=64)
 add_definitions (-DNUM_MIDI_CHANNELS=16)
 add_definitions (-DMAX_ENVELOPE_POINTS=40)
 
@@ -398,6 +402,17 @@ install (DIRECTORY ../examples DESTINATION share/yoshimi
 )
 
 install (DIRECTORY ../presets DESTINATION share/yoshimi
+    FILE_PERMISSIONS
+        OWNER_READ OWNER_WRITE
+        GROUP_READ GROUP_WRITE
+        WORLD_READ
+    DIRECTORY_PERMISSIONS
+        OWNER_READ OWNER_WRITE OWNER_EXECUTE
+        GROUP_READ GROUP_WRITE GROUP_EXECUTE
+        WORLD_READ WORLD_EXECUTE
+)
+
+install (DIRECTORY ../doc/ DESTINATION share/doc/yoshimi
     FILE_PERMISSIONS
         OWNER_READ OWNER_WRITE
         GROUP_READ GROUP_WRITE
