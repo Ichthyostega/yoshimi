@@ -1,6 +1,7 @@
-yoshimi (1.3.5-1) UNRELEASED; urgency=medium
+yoshimi (1.3.5-1) unstable; urgency=medium
 
-  * Start new upload.
+  * Patch applied upstream.
+  * Update build deps.
 
  -- Jaromír Mikeš <mira.mikes@seznam.cz>  Wed, 17 Jun 2015 13:24:40 +0200
 
