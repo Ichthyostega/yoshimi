@@ -33,7 +33,7 @@ using namespace std;
 #include <iostream>
 
 MusicIO::MusicIO(SynthEngine *_synth) :
-    interleavedShorts(NULL),
+    interleaved(NULL),
     rtprio(25),
     synth(_synth),
     pBankOrRootDirThread(0)
@@ -49,13 +49,13 @@ MusicIO::~MusicIO()
     pthread_t tmpPrgThread = 0;
     void *threadRet = NULL;
     tmpBankThread = __sync_fetch_and_add(&pBankOrRootDirThread, 0);
-    if(tmpBankThread != 0)
+    if (tmpBankThread != 0)
         pthread_join(tmpBankThread, &threadRet);
-    for(int i = 0; i < NUM_MIDI_PARTS; ++i)
+    for (int i = 0; i < NUM_MIDI_PARTS; ++i)
     {
         threadRet = NULL;
         tmpPrgThread = __sync_fetch_and_add(&prgChangeCmd [i].pPrgThread, 0);
-        if(tmpPrgThread != 0)
+        if (tmpPrgThread != 0)
             pthread_join(tmpPrgThread, &threadRet);
     }
 
@@ -71,23 +71,6 @@ MusicIO::~MusicIO()
             fftwf_free(zynRight[npart]);
             zynRight[npart] = NULL;
         }
-    }
-    if (interleavedShorts)
-        delete[] interleavedShorts;
-}
-
-
-void MusicIO::InterleaveShorts(void)
-{
-    int buffersize = getBuffersize();
-    int idx = 0;
-    double scaled;
-    for (int frame = 0; frame < buffersize; ++frame)
-    {   // with a grateful nod to libsamplerate ...
-        scaled = zynLeft[NUM_MIDI_PARTS][frame] * (8.0 * 0x10000000);
-        interleavedShorts[idx++] = (short int) (lrint(scaled) >> 16);
-        scaled = zynRight[NUM_MIDI_PARTS][frame] * (8.0 * 0x10000000);
-        interleavedShorts[idx++] = (short int) (lrint(scaled) >> 16);
     }
 }
 
@@ -185,21 +168,27 @@ void MusicIO::setMidiController(unsigned char ch, int ctrl, int param, bool in_p
     else if (ctrl == synth->getRuntime().midi_upper_voice_C)
         // it's really an upper set program change
         setMidiProgram(ch, (param & 0x1f) | 0x80, in_place);
-    else if(ctrl == C_nrpnL || ctrl == C_nrpnH)
+    else if (ctrl == C_nrpnL || ctrl == C_nrpnH)
     {
         if (ctrl == C_nrpnL)
         {
-            synth->getRuntime().nrpnL = param;
+            if (synth->getRuntime().nrpnL != param)
+            {
+                synth->getRuntime().nrpnL = param;
+                synth->getRuntime().Log("Set nrpn LSB to " + asString(param));
+            }
             nLow = param;
             nHigh = synth->getRuntime().nrpnH;
-            synth->getRuntime().Log("Set nrpn LSB to " + asString(nLow));
         }
         else
         {
-            synth->getRuntime().nrpnH = param;
+            if (synth->getRuntime().nrpnH != param)
+            {
+                synth->getRuntime().nrpnH = param;
+                synth->getRuntime().Log("Set nrpn MSB to " + asString(param));
+            }
             nHigh = param;
             nLow = synth->getRuntime().nrpnL;
-            synth->getRuntime().Log("Set nrpn MSB to " + asString(nHigh));
         }
 
         synth->getRuntime().dataL = 0x80; //  we've changed the NRPN
@@ -270,55 +259,80 @@ void MusicIO::setMidiController(unsigned char ch, int ctrl, int param, bool in_p
 
 bool MusicIO::nrpnRunVector(unsigned char ch, int ctrl, int param)
 {
-    int Xopps = synth->getRuntime().nrpndata.vectorXaxis[ch];
-    int Xtype = Xopps & 0xff;
-    int Yopps = synth->getRuntime().nrpndata.vectorYaxis[ch];
-    int Ytype = Yopps & 0xff;
-    if(ctrl != Xtype && ctrl != Ytype)
-        return false;
+    int Xopps = synth->getRuntime().nrpndata.vectorXfeatures[ch];
+    int Yopps = synth->getRuntime().nrpndata.vectorYfeatures[ch];
+    int p_rev = 127 - param;
+    int swap1;
+    int swap2;
+    unsigned char type;
 
-    Xopps = Xopps >> 8;
-    Yopps = Yopps >> 8;
-    if(Xtype == ctrl)
+    if (ctrl == synth->getRuntime().nrpndata.vectorXaxis[ch])
     {
-//        synth->getRuntime().Log("X D H " + asString(Xopps)  + "   D L " + asString(Xtype) + "  V " + asString(param));
-        if (Xopps & 1) // volume
+        if (Xopps & 1) // fixed as volume
         {
-            int rev = 127 - param;
-            synth->SetController(ch | 0x80, C_volume,127 - (rev * rev / 127));
+            synth->SetController(ch | 0x80, C_volume,127 - (p_rev * p_rev / 127));
             synth->SetController(ch | 0x90, C_volume, 127 - (param * param / 127));
         }
-        if (Xopps & 2) // pan
+        if (Xopps & 2) // default is pan
         {
-            synth->SetController(ch | 0x80, C_panning, param);
-            synth->SetController(ch | 0x90, C_panning, 127 - param);
+            type = synth->getRuntime().nrpndata.vectorXcc2[ch];
+            swap1 = (Xopps & 0x10) | 0x80;
+            swap2 = swap1 ^ 0x10;
+            synth->SetController(ch | swap1, type, param);
+            synth->SetController(ch | swap2, type, p_rev);
         }
-        if (Xopps & 4) // 'brightness'
+        if (Xopps & 4) // default is 'brightness'
         {
-            synth->SetController(ch | 0x80, C_filtercutoff, param);
-            synth->SetController(ch | 0x90, C_filtercutoff, 127 - param);
+            type = synth->getRuntime().nrpndata.vectorXcc4[ch];
+            swap1 = ((Xopps >> 1) & 0x10) | 0x80;
+            swap2 = swap1 ^ 0x10;
+            synth->SetController(ch | swap1, type, param);
+            synth->SetController(ch | swap2, type, p_rev);
         }
+        if (Xopps & 8) // default is mod wheel
+        {
+            type = synth->getRuntime().nrpndata.vectorXcc8[ch];
+            swap1 = ((Xopps >> 2) & 0x10) | 0x80;
+            swap2 = swap1 ^ 0x10;
+            synth->SetController(ch | swap1, type, param);
+            synth->SetController(ch | swap2, type, p_rev);
+        }
+        return true;
     }
-    else // if Y hasn't been set these commands will be ignored
-    {
-//        synth->getRuntime().Log("Y D H " + asString(Yopps)  + "   D L " + asString(Ytype) + "  V " + asString(param));
-        if (Yopps & 1) // volume
+    else if (ctrl == synth->getRuntime().nrpndata.vectorYaxis[ch])
+    { // if Y hasn't been set these commands will be ignored
+        if (Yopps & 1) // fixed as volume
         {
-            synth->SetController(ch | 0xa0, C_volume, param);
-            synth->SetController(ch | 0xb0, C_volume, 127 - param);
+            synth->SetController(ch | 0xa0, C_volume,127 - (p_rev * p_rev / 127));
+            synth->SetController(ch | 0xb0, C_volume, 127 - (param * param / 127));
         }
-        if (Yopps & 2) // pan
+        if (Yopps & 2) // default is pan
         {
-            synth->SetController(ch | 0xa0, C_panning, param);
-            synth->SetController(ch | 0xb0, C_panning, 127 - param);
+            type = synth->getRuntime().nrpndata.vectorYcc2[ch];
+            swap1 = (Yopps & 0x10) | 0xa0;
+            swap2 = swap1 ^ 0x10;
+            synth->SetController(ch | swap1, type, param);
+            synth->SetController(ch | swap2, type, p_rev);
         }
-        if (Yopps & 4) // 'brightness'
+        if (Yopps & 4) // default is 'brightness'
         {
-            synth->SetController(ch | 0xa0, C_filtercutoff, param);
-            synth->SetController(ch | 0xb0, C_filtercutoff, 127 - param);
+            type = synth->getRuntime().nrpndata.vectorYcc4[ch];
+            swap1 = ((Yopps >> 1) & 0x10) | 0xa0;
+            swap2 = swap1 ^ 0x10;
+            synth->SetController(ch | swap1, type, param);
+            synth->SetController(ch | swap2, type, p_rev);
         }
+        if (Yopps & 8) // default is mod wheel
+        {
+            type = synth->getRuntime().nrpndata.vectorYcc8[ch];
+            swap1 = ((Yopps >> 2) & 0x10) | 0xa0;
+            swap2 = swap1 ^ 0x10;
+            synth->SetController(ch | swap1, type, param);
+            synth->SetController(ch | swap2, type, p_rev);
+        }
+        return true;
     }
-    return true;
+    return false;
 }
 
 
@@ -374,9 +388,11 @@ void MusicIO::nrpnProcessData(unsigned char chan, int type, int par)
     if (nLow == 0) // direct part change
         nrpnDirectPart(dHigh, par);
 
-    else if (nLow == 1 && synth->getRuntime().NumAvailableParts > NUM_MIDI_CHANNELS)
-        // it's vector control
+    else if (nLow == 1) // it's vector control
         nrpnSetVector(dHigh, chan, par);
+    
+    else if (nLow == 2) // system settings
+        synth->SetSystemValue(dHigh, par);
 }
 
 
@@ -385,7 +401,6 @@ void MusicIO::nrpnDirectPart(int dHigh, int par)
     switch (dHigh)
     {
         case 0: // set part number
-        {
             if (par < synth->getRuntime().NumAvailableParts)
             {
                 synth->getRuntime().dataL = par;
@@ -395,105 +410,55 @@ void MusicIO::nrpnDirectPart(int dHigh, int par)
                 synth->getRuntime().dataL = 128;
                 synth->getRuntime().dataH = 128;
             break;
-        }
         case 1: // Program Change
-        {
             setMidiProgram(synth->getRuntime().nrpndata.Part | 0x80, par);
             break;
-        }
         case 2: // Set controller number
-        {
             synth->getRuntime().nrpndata.Controller = par;
             synth->getRuntime().dataL = par;
             break;
-        }
         case 3: // Set controller value
-        {
             synth->SetController(synth->getRuntime().nrpndata.Part | 0x80, synth->getRuntime().nrpndata.Controller, par);
             break;
-        }
         case 4: // Set part's channel number
-        {
-             synth->SetPartChan(synth->getRuntime().nrpndata.Part, par);
-             break;
-        }
+            synth->SetPartChan(synth->getRuntime().nrpndata.Part, par);
+            break;
+        case 5: // Set part's audio destination
+            if (par > 0 and par < 4)
+                synth->SetPartDestination(synth->getRuntime().nrpndata.Part, par);
+            break;
     }
 }
 
 
 void MusicIO:: nrpnSetVector(int dHigh, unsigned char chan,  int par)
 {
+
+    if (synth->vectorInit(dHigh, chan, par))
+        return;
+
     switch (dHigh)
     {
-        case 0:
-        {
-            synth->getRuntime().nrpndata.vectorXaxis[chan]
-            = (synth->getRuntime().nrpndata.vectorXaxis[chan] & 0xff00) | par;
-            if (!synth->getRuntime().nrpndata.vectorEnabled[chan])
-            {
-                synth->getRuntime().nrpndata.vectorEnabled[chan] = true;
-                synth->getRuntime().Log("Vector control enabled");
-                // enabling is only done with a valid X CC
-                synth->SetPartChan(chan, chan);
-                synth->SetPartChan(chan | 16, chan);
-            }
-            break;
-        }
-        case 1:
-        {
-            if ((synth->getRuntime().nrpndata.vectorXaxis[chan] & 0xff) == 0xff)
-                synth->getRuntime().Log("Vector X axis must be set before Y");
-            else
-            {
-                synth->getRuntime().nrpndata.vectorYaxis[chan]
-                = (synth->getRuntime().nrpndata.vectorYaxis[chan] & 0xff00) | par;
-                synth->SetPartChan(chan | 32, chan);
-                synth->SetPartChan(chan | 48, chan);
-            }
-            break;
-        }
-        case 2:
-        {
-            synth->getRuntime().nrpndata.vectorXaxis[chan]
-            = (synth->getRuntime().nrpndata.vectorXaxis[chan] & 0xff) | (par << 8);
-            break;
-        }
-        case 3:
-        {
-            if (synth->getRuntime().NumAvailableParts > NUM_MIDI_CHANNELS * 2)
-            {
-                synth->getRuntime().nrpndata.vectorYaxis[chan]
-                = (synth->getRuntime().nrpndata.vectorYaxis[chan] & 0xff) | (par << 8);
-            }
-            break;
-        }
+        /*
+         * these have to go through the program change
+         * thread otherwise they could block following
+         * MIDI messages
+         */
         case 4:
-        {
             setMidiProgram(chan | 0x80, par);
             break;
-        }
         case 5:
-        {
             setMidiProgram(chan | 0x90, par);
             break;
-        }
         case 6:
-        {
             setMidiProgram(chan | 0xa0, par);
             break;
-        }
         case 7:
-        {
             setMidiProgram(chan | 0xb0, par);
             break;
-        }
         default:
-        {
-            synth->getRuntime().nrpndata.vectorEnabled[chan] = false;
-            synth->getRuntime().nrpndata.vectorXaxis[chan] = 0xff;
-            synth->getRuntime().nrpndata.vectorYaxis[chan] = 0xff;
-            synth->getRuntime().Log("Vector control disabled");
-        }
+            synth->vectorSet(dHigh, chan, par);
+            break;
     }
 }
 
@@ -504,17 +469,17 @@ void MusicIO::setMidiBankOrRootDir(unsigned int bank_or_root_num, bool in_place,
 {
     if (setRootDir && (bank_or_root_num == synth->getBankRef().getCurrentRootID()))
         return; // nothing to do!
-    if(in_place)
+    if (in_place)
         setRootDir ? synth->SetBankRoot(bank_or_root_num) : synth->SetBank(bank_or_root_num);
     else
     {        
         pthread_t tmpBankOrRootDirThread = 0;
         tmpBankOrRootDirThread = __sync_fetch_and_add(&pBankOrRootDirThread, 0);
-        if(tmpBankOrRootDirThread == 0) // don't allow more than one bank change/root dir change process at a time
+        if (tmpBankOrRootDirThread == 0) // don't allow more than one bank change/root dir change process at a time
         {
             isRootDirChangeRequested = setRootDir;
             bankOrRootDirToChange = bank_or_root_num;
-            if(!synth->getRuntime().startThread(&pBankOrRootDirThread, MusicIO::static_BankOrRootDirChangeThread, this, false, 0, false))
+            if (!synth->getRuntime().startThread(&pBankOrRootDirThread, MusicIO::static_BankOrRootDirChangeThread, this, false, 0, false))
             {
                 synth->getRuntime().Log("MusicIO::setMidiBankOrRootDir: failed to start midi bank/root dir change thread!");
             }
@@ -532,22 +497,22 @@ void MusicIO::setMidiProgram(unsigned char ch, int prg, bool in_place)
         partnum = ch;
     else
         partnum = ch & 0x7f; // this is for direct part access instead of channel
-    if(partnum >= synth->getRuntime().NumAvailableParts)
+    if (partnum >= synth->getRuntime().NumAvailableParts)
         return;
     if (synth->getRuntime().EnableProgChange)
     {
-        if(in_place)
+        if (in_place)
             synth->SetProgram(ch, prg);
         else
         {
             pthread_t tmpPrgThread = 0;
             tmpPrgThread = __sync_fetch_and_add(&prgChangeCmd [partnum].pPrgThread , 0);
-            if(tmpPrgThread == 0) // don't allow more than one program change process at a time
+            if (tmpPrgThread == 0) // don't allow more than one program change process at a time
             {
                 prgChangeCmd [partnum].ch = ch;
                 prgChangeCmd [partnum].prg = prg;
                 prgChangeCmd [partnum]._this_ = this;
-                if(!synth->getRuntime().startThread(&prgChangeCmd [partnum].pPrgThread, MusicIO::static_PrgChangeThread, &prgChangeCmd [partnum], false, 0, false))
+                if (!synth->getRuntime().startThread(&prgChangeCmd [partnum].pPrgThread, MusicIO::static_PrgChangeThread, &prgChangeCmd [partnum], false, 0, false))
                 {
                     synth->getRuntime().Log("MusicIO::setMidiProgram: failed to start midi program change thread!");
                 }
@@ -570,7 +535,7 @@ void MusicIO::setMidiNote(unsigned char channel, unsigned char note)
 }
 
 
-bool MusicIO::prepBuffers(bool with_interleaved)
+bool MusicIO::prepBuffers(void)
 {
     int buffersize = getBuffersize();
     if (buffersize > 0)
@@ -584,13 +549,6 @@ bool MusicIO::prepBuffers(bool with_interleaved)
             memset(zynLeft[part], 0, buffersize * sizeof(float));
             memset(zynRight[part], 0, buffersize * sizeof(float));
 
-        }
-        if (with_interleaved)
-        {
-            interleavedShorts = new short int[buffersize * 2];
-            if (NULL == interleavedShorts)
-                goto bail_out;
-            memset(interleavedShorts, 0, sizeof(short int) * buffersize * 2);
         }
         return true;
     }
@@ -610,10 +568,10 @@ bail_out:
             zynRight[part] = NULL;
         }
     }
-    if (interleavedShorts)
+    if (interleaved)
     {
-        delete[] interleavedShorts;
-        interleavedShorts = NULL;
+        delete[] interleaved;
+        interleaved = NULL;
     }
     return false;
 }
@@ -631,7 +589,7 @@ void *MusicIO::prgChange_Thread(_prgChangeCmd *pCmd)
 {
     pthread_t tmpBankThread = 0;
     tmpBankThread = __sync_fetch_and_add(&pBankOrRootDirThread, 0);
-    if(tmpBankThread != 0) // wait for active bank thread to finish before continue
+    if (tmpBankThread != 0) // wait for active bank thread to finish before continue
     {
         //std::cerr << "Waiting for MusicIO::bankChange_Thread()..." << std::endl;
         void *threadRet = NULL;

@@ -6,7 +6,7 @@
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
     Public License as published by the Free Software Foundation, either
-    version 3 of the License, or (at your option) any later version.
+    version 2 of the License, or (at your option) any later version.
 
     yoshimi is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,6 +18,9 @@
 */
 
 #include <iostream>
+#include <stdio.h>
+#include <sys/types.h>
+#include <fcntl.h>
 
 using namespace std;
 
@@ -49,6 +52,39 @@ static Config *firstRuntime = NULL;
 static int globalArgc = 0;
 static char **globalArgv = NULL;
 bool bShowGui = true;
+
+int commandStyle;
+int commandCount;
+char commandChr;
+char commandBuffer[COMMAND_SIZE + 2]; // allow for overcount and terminator
+
+
+bool commandProcess(char chr)
+{
+    if (chr >= 0x20 && chr < 0x7f && commandCount < COMMAND_SIZE)
+    {
+        commandBuffer[commandCount] = chr;
+        printf("%c", chr);
+        ++commandCount;
+    }
+    else if (chr == 0x7f)
+    {
+        if (commandCount > 0)
+        {
+            printf("%c %c", 0x08, 0x08);
+            --commandCount;
+            commandBuffer[commandCount] = 0;
+        }
+    }
+    else
+    {
+        commandBuffer[commandCount] = 0;
+        commandCount = 0;
+        return true;
+    }
+    return false;
+}
+
 
 //Andrew Deryabin: signal handling moved to main from Config Runtime
 //It's only suitable for single instance app support
@@ -83,9 +119,9 @@ void splashTimeout(void *splashWin)
 static void *mainGuiThread(void *arg)
 {
 
-    for(int i = 0; i < globalArgc; ++i)
+    for (int i = 0; i < globalArgc; ++i)
     {
-        if(!strcmp(globalArgv [i], "-i")
+        if (!strcmp(globalArgv [i], "-i")
            || !strcmp(globalArgv [i], "--no-gui")
            || !strcmp(globalArgv [i], "--help")
            || !strcmp(globalArgv [i], "-?"))
@@ -102,17 +138,17 @@ static void *mainGuiThread(void *arg)
     fl_register_images();
 #if (FL_MAJOR_VERSION == 1 && FL_MINOR_VERSION < 3)
     char *fname = tmpnam(NULL);
-    if(fname)
+    if (fname)
     {
         FILE *f = fopen(fname, "wb");
-        if(f)
+        if (f)
         {
             fwrite(yoshimi_logo_png, sizeof(yoshimi_logo_png), 1, f);
             fclose(f);
         }
     }
     Fl_PNG_Image pix(fname);
-    if(fname)
+    if (fname)
     unlink(fname);
 #else
     Fl_PNG_Image pix("yoshimi_logo_png", yoshimi_logo_png, sizeof(yoshimi_logo_png));
@@ -140,21 +176,21 @@ static void *mainGuiThread(void *arg)
     winSplash.clear_border();
     winSplash.border(false);
 
-    if(bShowGui)
+    if (bShowGui)
     {
         //o->Rectangle::set(Fl_Monitor::find(0,0),o->w(),o->h(),fltk::ALIGN_CENTER);
         winSplash.position((Fl::w() - winSplash.w()) / 2, (Fl::h() - winSplash.h()) / 2);
         winSplash.show();
-        Fl::add_timeout(2.0, splashTimeout, &winSplash);
+        Fl::add_timeout(2.5, splashTimeout, &winSplash);
 
     }
 
     do
     {
-        if(bShowGui)
+        if (bShowGui)
         {
             Fl::wait(0.033333);
-            while(!splashMessages.empty())
+            while (!splashMessages.empty())
             {
                 boxLb.copy_label(splashMessages.front().c_str());
                 splashMessages.pop_front();
@@ -167,17 +203,20 @@ static void *mainGuiThread(void *arg)
 
     while (firstSynth->getRuntime().runSynth)
     {        
-        if(firstSynth->getUniqueId() == 0)
+        if (firstSynth->getUniqueId() == 0)
         {
             firstSynth->getRuntime().signalCheck();
+            if (read(0, &commandChr, 1) > 0)
+                if (commandProcess(commandChr))
+                    firstSynth->DecodeCommands( commandBuffer);//getRuntime().Log(commandBuffer);
         }
 
-        for(it = synthInstances.begin(); it != synthInstances.end(); ++it)
+        for (it = synthInstances.begin(); it != synthInstances.end(); ++it)
         {
             SynthEngine *_synth = it->first;
             MusicClient *_client = it->second;
             _synth->getRuntime().deadObjects->disposeBodies();
-            if(!_synth->getRuntime().runSynth && _synth->getUniqueId() > 0)
+            if (!_synth->getRuntime().runSynth && _synth->getUniqueId() > 0)
             {
                 if (_client)
                 {
@@ -201,7 +240,7 @@ static void *mainGuiThread(void *arg)
                 for (int i = 0; !_synth->getRuntime().LogList.empty() && i < 5; ++i)
                 {
                     MasterUI *guiMaster = _synth->getGuiMaster(false);
-                    if(guiMaster)
+                    if (guiMaster)
                     {
                         guiMaster->Log(_synth->getRuntime().LogList.front());
                         _synth->getRuntime().LogList.pop_front();
@@ -211,10 +250,10 @@ static void *mainGuiThread(void *arg)
         }
 
         // where all the action is ...
-        if(bShowGui)
+        if (bShowGui)
         {
             Fl::wait(0.033333);
-            while(!splashMessages.empty())
+            while (!splashMessages.empty())
             {
                 boxLb.copy_label(splashMessages.front().c_str());
                 splashMessages.pop_front();
@@ -288,6 +327,7 @@ bool mainCreateNewInstance(unsigned int forceId)
     return true;
 
 bail_out:
+    fcntl(0, F_SETFL, commandStyle);
     synth->getRuntime().runSynth = false;
     synth->getRuntime().Log("Bail: Yoshimi stages a strategic retreat :-(");
     if (musicClient)
@@ -306,6 +346,12 @@ bail_out:
 
 int main(int argc, char *argv[])
 {
+    commandCount = 0;
+    commandStyle = fcntl(0, F_GETFL, 0);
+    fcntl (0, F_SETFL, (commandStyle | O_NDELAY)); 
+    
+    
+    cout << "Yoshimi is starting" << endl; // guaranteed start message
     globalArgc = argc;
     globalArgv = argv;
     bool bExitSuccess = false;    
@@ -316,9 +362,9 @@ int main(int argc, char *argv[])
     sem_t semGui;
     if(sem_init(&semGui, 0, 0) == 0)
     {
-        if(pthread_attr_init(&attr) == 0)
+        if (pthread_attr_init(&attr) == 0)
         {
-            if(pthread_create(&thr, &attr, mainGuiThread, (void *)&semGui) == 0)
+            if (pthread_create(&thr, &attr, mainGuiThread, (void *)&semGui) == 0)
             {
                 guiStarted = true;
             }
@@ -326,16 +372,13 @@ int main(int argc, char *argv[])
         }
     }
 
-    if(!guiStarted)
+    if (!guiStarted)
     {        
         cout << "Yoshimi can't start main gui loop!" << endl;
         goto bail_out;
     }
     sem_wait(&semGui);
     sem_destroy(&semGui);
-
-    //cout << "Yoshimi is starting" << endl;
-    splashMessages.push_back("Starting synth engine...");
 
     if (!mainCreateNewInstance(0))
     {
@@ -370,8 +413,11 @@ int main(int argc, char *argv[])
     cout << "\nGoodbye - Play again soon?\n";
     bExitSuccess = true;
 
-bail_out:    
-    for(it = synthInstances.begin(); it != synthInstances.end(); ++it)
+bail_out:
+    fcntl(0, F_SETFL, commandStyle);
+    if (bShowGui && !bExitSuccess) // this could be done better!
+        usleep(2000000);
+    for (it = synthInstances.begin(); it != synthInstances.end(); ++it)
     {
         SynthEngine *_synth = it->first;
         MusicClient *_client = it->second;
@@ -394,7 +440,7 @@ bail_out:
             delete _synth;
         }
     }
-    if(bExitSuccess)
+    if (bExitSuccess)
         exit(EXIT_SUCCESS);
     else
         exit(EXIT_FAILURE);
@@ -402,10 +448,10 @@ bail_out:
 
 void mainRegisterAudioPort(SynthEngine *s, int portnum)
 {
-    if(s && (portnum < NUM_MIDI_PARTS) && (portnum >= 0))
+    if (s && (portnum < NUM_MIDI_PARTS) && (portnum >= 0))
     {
         map<SynthEngine *, MusicClient *>::iterator it = synthInstances.find(s);
-        if(it != synthInstances.end())
+        if (it != synthInstances.end())
         {
             it->second->registerAudioPort(portnum);
         }

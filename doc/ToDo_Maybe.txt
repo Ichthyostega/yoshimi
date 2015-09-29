@@ -2,23 +2,33 @@
 restoreJsession() -> restoreSessionData() -> extractConfigData()
 Should this refetch entire bank structure?
 
-Direct part control should be able to change audio routing.
+Make command line adding and removing root paths update gui.
+Check other command/gui updates.
+
+Allow headless compilation.
+
+Allow new root path creation to include the ID value.
+
+Provide NRPNs to change root & bank IDs - probably not actually.
+
+RPNs (channel based)
+
+101,0 (MSB)
+
+100,0 Pitch bend range
+100,1 Fine detune
+100,2 Coarse detune
+
+Maybe a NRPN variation of this for global fine tuning.
+
 
 Add 'Ignore MIDI Reset All' to deal with brain dead sequencers :(
 
-Add reverse vector control features Data MSB.
-10 = X
-11 = y
-
 Gui to set up vector control!
-
-Review mapping of SubSynth harmonic faders.
 
 Review tooltips.
 
 Consider enabling and disabling tooltips.
-
-Change numeric menus to spin boxes.
 
 Consider scroll wheel control of sliders.
 
