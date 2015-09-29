@@ -25,7 +25,6 @@ Build-Depends:
  libcairo2-dev,
  sharutils,
  lv2-dev,
- libjpeg9-dev,
  libxft-dev
 Standards-Version: 3.9.6
 Vcs-Git: git://anonscm.debian.org/pkg-multimedia/yoshimi.git
