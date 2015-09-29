@@ -19,6 +19,7 @@
 
 #include <sys/stat.h>
 #include <sstream>
+#include <string.h>
 
 using namespace std;
 
@@ -188,4 +189,37 @@ string MiscFuncs::asHexString(unsigned int x)
    ostringstream oss;
    oss << hex << x;
    return string(oss.str());
+}
+
+
+char *MiscFuncs::skipSpace(char *buf)
+{
+    while (buf[0] == 0x20)
+    {
+        ++ buf;
+    }
+    return buf;
+}
+
+char *MiscFuncs::skipChars(char *buf)
+{
+    while (buf[0] > 0x20) // will also stop on line ends
+    {
+        ++ buf;
+    }
+    if (buf[0] == 0x20)
+        buf = skipSpace(buf);
+    return buf;
+}
+
+
+int MiscFuncs::matchWord(char *buf, const char *word)
+{
+    int newp = 0;
+    int size = strlen(word);
+    while (buf[newp] > 0x20 && buf[newp] < 0x7f && newp < size && (buf[newp] | 0x20) == word[newp])
+            ++ newp;
+    if (newp == size)
+        return size;
+    return 0;
 }

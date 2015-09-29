@@ -85,7 +85,7 @@ decl {extern bool mainCreateNewInstance(unsigned int forceId);} {private global
 decl {class MasterUI;} {public local
 } 
 
-class MasterUI {selected : {private MiscFuncs}
+class MasterUI {: {private MiscFuncs}
 } {
   Function {MasterUI(SynthEngine *_synth)} {} {
     code {//
@@ -202,7 +202,7 @@ class MasterUI {selected : {private MiscFuncs}
                   synth->getRuntime().saveConfig();
                   synth->guiClosed(true);
           }}
-      xywh {4 20 385 465} type Double labelfont 13 labelsize 12 hide xclass Yoshimi
+      xywh {4 20 385 465} type Double labelfont 13 labelsize 12 xclass Yoshimi visible
     } {
       Fl_Menu_Bar mastermenu {
         xywh {-4 0 400 25} labelsize 13
@@ -327,7 +327,7 @@ mainCreateNewInstance(forceId);}
           }
         }
         Submenu Parameters {
-          label {&Parameters}
+          label {&Patch Sets}
           xywh {0 0 70 21} labelsize 12
           code0 {o = o; // suppress warning
               if (synth->getRuntime().ParamsHistory.empty())
@@ -492,10 +492,7 @@ mainCreateNewInstance(forceId);}
 	              	}
               	}              	
               }
-              synth->actionLock(lockmute);
-              synth->shutup = 1;
-              synth->fadeLevel = 1.0f;
-              synth->actionLock(unlock);}
+              synth->allStop();}
           tooltip {Cease all sound immediately!} xywh {11 46 50 20} box PLASTIC_UP_BOX color 88 selection_color 32 labelfont 1 labelsize 11 align 16
         }
         Fl_Dial mastervolumedial {
@@ -819,7 +816,7 @@ ZynAddSubFX}
         code0 {o->copy_label(string("Copyright (c) 2002-2009 Nasca O. PAUL and others"
                                "\\nCopyright 2009-2011, Alan Calvert"
                                "\\nCopyright 2012-2013, Jeremy Jongepier and others"
-                               "\\nCopyright 2014, Will Godfrey and others"
+                               "\\nCopyright 2014-2015, Will Godfrey and others"
                                "\\nLV2 plugin Copyright 2014, Andrew Deryabin"
                                "\\nSplash Image Copyright 2015, James Fraser").c_str());}
       }
@@ -1191,7 +1188,11 @@ updatepanel();}
         microtonalui = new MicrotonalUI(&synth->microtonal);
         updatesendwindow();
         updatepanel();
-        bankui->Hide();} {}
+        bankui->Hide();
+        if (synth->getRuntime().consoleMenuItem == false)
+            Reports->deactivate();
+        else
+             Reports->activate();} {}
   }
   Function {checkmaxparts()} {private
   } {

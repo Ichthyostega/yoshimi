@@ -26,8 +26,6 @@
 #include "Params/EnvelopeParams.h"
 #include "Synth/Envelope.h"
 
-#define MIN_ENVELOPE_DB -60
-
 Envelope::Envelope(EnvelopeParams *envpars, float basefreq, SynthEngine *_synth):
     synth(_synth)
 {
@@ -42,7 +40,7 @@ Envelope::Envelope(EnvelopeParams *envpars, float basefreq, SynthEngine *_synth)
     if (!envpars->Pfreemode)
         envpars->converttofree();
 
-    float bufferdt = synth->buffersize_f / synth->samplerate_f;
+    float bufferdt = synth->p_all_buffersize_f / synth->samplerate_f;
 
     int mode = envpars->Envmode;
 

@@ -56,29 +56,32 @@ const unsigned short Config::MaxParamsHistory = 25;
 static char prog_doc[] =
     "Yoshimi " YOSHIMI_VERSION ", a derivative of ZynAddSubFX - "
     "Copyright 2002-2009 Nasca Octavian Paul and others, "
-    "Copyright 2009-2011 Alan Calvert";
+    "Copyright 2009-2011 Alan Calvert, "
+    "Copyright 20012-2013 Jeremy Jongepier and others, "
+    "Copyright 20014-2015 Will Godfrey and others";
 
 const char* argp_program_version = "Yoshimi " YOSHIMI_VERSION;
 
 static struct argp_option cmd_options[] = {
-    {"alsa-audio",        'A',  "<device>", 0x1,  "use alsa audio output" },
-    {"alsa-midi",         'a',  "<device>", 0x1,  "use alsa midi input" },
-    {"buffersize",        'b',  "<size>",     0,  "set alsa audio buffer size" },
+    {"alsa-audio",        'A',  "<device>",   1,  "use alsa audio output" },
+    {"alsa-midi",         'a',  "<device>",   1,  "use alsa midi input" },
+    {"define-root",       'D',  "<path>",     0,  "define path to new bank root"},
+    {"buffersize",        'b',  "<size>",     0,  "set internal buffer size" },
     {"show-console",      'c',  NULL,         0,  "show console on startup" },
     {"no-gui",            'i',  NULL,         0,  "no gui"},
-    {"jack-audio",        'J',  "<server>", 0x1,  "use jack audio output" },
-    {"jack-midi",         'j',  "<device>", 0x1,  "use jack midi input" },
+    {"jack-audio",        'J',  "<server>",   1,  "use jack audio output" },
+    {"jack-midi",         'j',  "<device>",   1,  "use jack midi input" },
     {"autostart-jack",    'k',  NULL,         0,  "auto start jack server" },
     {"auto-connect",      'K',  NULL,         0,  "auto connect jack audio" },
     {"load",              'l',  "<file>",     0,  "load .xmz file" },
     {"load-instrument",   'L',  "<file>",     0,  "load .xiz file" },
     {"name-tag",          'N',  "<tag>",      0,  "add tag to clientname" },
     {"samplerate",        'R',  "<rate>",     0,  "set alsa audio sample rate" },
-    {"oscilsize",         'o',  "<size>",     0,  "set oscilsize" },
-    {"state",             'S',  "<file>",   0x1,  "load state from <file>, defaults to '$HOME/.config/yoshimi/yoshimi.state'" },
+    {"oscilsize",         'o',  "<size>",     0,  "set AddSynth oscilator size" },
+    {"state",             'S',  "<file>",     1,  "load saved state, defaults to '$HOME/.config/yoshimi/yoshimi.state'" },
     #if defined(JACK_SESSION)
         {"jack-session-uuid", 'U',  "<uuid>",     0,  "jack session uuid" },
-        {"jack-session-file", 'u',  "<file>",     0,  "load jack session file" },
+        {"jack-session-file", 'u',  "<file>",     0,  "load named jack session file" },
     #endif
     { 0, }
 };
@@ -107,13 +110,13 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
     Interpolation(0),
     checksynthengines(1),
     EnableProgChange(1), // default will be inverted
-    consoleMenuItem(1),
+    consoleMenuItem(0),
     rtprio(50),
-    midi_bank_root(128), // 128 is used as 'disabled'
-    midi_bank_C(128),
+    midi_bank_root(0), // 128 is used as 'disabled'
+    midi_bank_C(32),
     midi_upper_voice_C(128),
-    enable_part_on_voice_load(0),
-    single_row_panel(0),
+    enable_part_on_voice_load(1),
+    single_row_panel(1),
     NumAvailableParts(NUM_MIDI_CHANNELS),
     nrpnL(127),
     nrpnH(127),
@@ -154,8 +157,10 @@ bool Config::Setup(int argc, char **argv)
     switch (audioEngine)
     {
         case alsa_audio:
+        {
             audioDevice = string(alsaAudioDevice);
             break;
+        }
         case jack_audio:
             audioDevice = string(jackServer);
             break;
@@ -275,20 +280,14 @@ string Config::testCCvalue(int cc)
         case 1:
             result = "mod wheel";
             break;
-        case 7:
-            result = "volume";
-            break;
         case 10:
             result = "panning";
             break;
         case 11:
             result = "expression";
             break;
-        case 64:
-            result = "sustain pedal";
-            break;
-        case 65:
-            result = "partamento";
+        case 38:
+            result = "data lsb";
             break;
         case 71:
             result = "filter Q";
@@ -307,6 +306,45 @@ string Config::testCCvalue(int cc)
             break;
         case 78:
             result = "resonance bandwidth";
+            break;
+        default:
+            result = masterCCtest(cc);
+    }
+    return result;
+}
+
+
+string Config::masterCCtest(int cc)
+{
+    string result = "";
+    switch (cc)
+    {
+         case 6:
+            result = "data msb";
+            break;
+        case 7:
+            result = "volume";
+            break;
+        case 38:
+            result = "data lsb";
+            break;
+        case 64:
+            result = "sustain pedal";
+            break;
+        case 65:
+            result = "portamento";
+            break;
+        case 96:
+            result = "data increment";
+            break;
+        case 97:
+            result = "data decrement";
+            break;
+        case 98:
+            result = "NRPN lsb";
+            break;
+        case 99:
+            result = "NRPN msb";
             break;
         case 120:
             result = "all sounds off";
@@ -336,7 +374,7 @@ string Config::testCCvalue(int cc)
 
 void Config::clearPresetsDirlist(void)
 {
-    for (int i = 0; i < MAX_BANK_ROOT_DIRS; ++i)
+    for (int i = 0; i < MAX_PRESETS; ++i)
         presetsDirlist[i].clear();
 }
 
@@ -395,7 +433,10 @@ bool Config::loadConfig(void)
 
     bool isok = true;
     if (!isRegFile(resConfigFile) && !isRegFile(ConfigFile))
+    {
         Log("ConfigFile " + resConfigFile + " still not found, will use default settings");
+        saveConfig();
+    }
     else
     {
         XMLwrapper *xml = new XMLwrapper(synth);
@@ -434,7 +475,7 @@ bool Config::extractConfigData(XMLwrapper *xml)
         return false;
     }
     Samplerate = xml->getpar("sample_rate", Samplerate, 44100, 96000);
-    Buffersize = xml->getpar("sound_buffer_size", Buffersize, 64, 4096);
+    Buffersize = xml->getpar("sound_buffer_size", Buffersize, 32, 1024);
     Oscilsize = xml->getpar("oscil_size", Oscilsize,
                                         MAX_AD_HARMONICS * 2, 131072);
     GzipCompression = xml->getpar("gzip_compression", GzipCompression, 0, 9);
@@ -449,7 +490,7 @@ bool Config::extractConfigData(XMLwrapper *xml)
 
     // get preset dirs
     int count = 0;
-    for (int i = 0; i < MAX_BANK_ROOT_DIRS; ++i)
+    for (int i = 0; i < MAX_PRESETS; ++i)
     {
         if (xml->enterbranch("PRESETSROOT", i))
         {
@@ -557,7 +598,7 @@ void Config::addConfigXML(XMLwrapper *xmltree)
 
     synth->getBankRef().saveToConfigFile(xmltree);
 
-    for (int i = 0; i < MAX_BANK_ROOT_DIRS; ++i)
+    for (int i = 0; i < MAX_PRESETS; ++i)
         if (presetsDirlist[i].size())
         {
             xmltree->beginbranch("PRESETSROOT",i);
@@ -692,9 +733,6 @@ void Config::Log(string msg, bool tostderr)
 
 void Config::StartupReport(MusicClient *musicClient)
 {
-    if (!showGui)
-        return;
-
     Log(string(argp_program_version));
     Log("Config: Clientname: " + musicClient->midiClientName());
     string report = "Config: Audio: ";
@@ -989,24 +1027,47 @@ LinuxSampler src/common/Features.cpp, licensed thus -
 static error_t parse_cmds (int key, char *arg, struct argp_state *state)
 {
     Config *settings = (Config*)state->input;
+    if (arg && arg[0] == 0x3d)
+        ++ arg;
+    int num;
+
     switch (key)
     {
         case 'c': settings->showConsole = true; break;
         case 'N': settings->nameTag = string(arg); break;
         case 'l': settings->paramsLoad = string(arg); break;
         case 'L': settings->instrumentLoad = string(arg); break;
-        case 'R': settings->Samplerate = Config::string2int(string(arg)); break;
-        case 'b': settings->Buffersize = Config::string2int(string(arg)); break;
-        case 'o': settings->Oscilsize = Config::string2int(string(arg)); break;
         case 'A':
             settings->audioEngine = alsa_audio;
             if (arg)
                 settings->audioDevice = string(arg);
+            else
+                settings->audioDevice = settings->alsaAudioDevice;
             break;
         case 'a':
             settings->midiEngine = alsa_midi;
             if (arg)
                 settings->midiDevice = string(arg);
+            break;
+        case 'b': // messy but I can't think of a better way :(
+            num = Config::string2int(string(arg));
+            if (num >= 1024)
+                num = 1024;
+            else if (num >= 512)
+                num = 512;
+            else if (num >= 256)
+                num = 256;
+            else if (num >= 128)
+                num = 128;
+            else if (num >= 64)
+                num = 64;
+            else
+                num = 32;
+            settings->Buffersize = num;
+            break;
+        case 'D':
+            if (arg)
+                settings->rootDefine = string(arg);
             break;
         case 'i':
             settings->showGui = false;
@@ -1024,6 +1085,35 @@ static error_t parse_cmds (int key, char *arg, struct argp_state *state)
             break;
         case 'k': settings->startJack = true; break;
         case 'K': settings->connectJackaudio = true; break;
+        case 'o':
+            num = Config::string2int(string(arg));
+            if (num >= 16384)
+                num = 16384;
+            else if (num >= 8192)
+                num = 8192;
+            else if (num >= 4096)
+                num = 4096;
+            else if (num >= 2048)
+                num = 2048;
+            else if (num >= 1024)
+                num = 1024;
+            else if (num >= 512)
+                num = 512;
+            else if (num >= 256)
+                num = 256;
+            else num = 128;
+            settings->Oscilsize = num;
+            break;
+        case 'R':
+            num = Config::string2int(string(arg));
+            if (num >= 96000)
+                num = 96000;
+            else if (num >= 48000)
+                num = 48000;
+            else
+                num = 44100;
+            settings->Samplerate = num;
+            break;
         case 'S':
             settings->restoreState = true;
             if (arg)
@@ -1042,7 +1132,8 @@ static error_t parse_cmds (int key, char *arg, struct argp_state *state)
         case ARGP_KEY_ARG:
         case ARGP_KEY_END:
             break;
-        default: return ARGP_ERR_UNKNOWN;
+        default:
+            return ARGP_ERR_UNKNOWN;
     }
     return 0;
 }
@@ -1076,6 +1167,26 @@ void GuiThreadMsg::processGuiMessages()
             else
             {
                 guiMaster->Init(guiMaster->getSynth()->getWindowTitle().c_str());
+            }
+        }
+            break;
+        case GuiThreadMsg::UpdateMaster:
+        {
+            SynthEngine *synth = ((SynthEngine *)msg->data);
+            MasterUI *guiMaster = synth->getGuiMaster(false);
+            if(guiMaster)
+            {
+                guiMaster->refresh_master_ui();
+            }
+        }
+            break;
+        case GuiThreadMsg::UpdateConfig:
+        {
+            SynthEngine *synth = ((SynthEngine *)msg->data);
+            MasterUI *guiMaster = synth->getGuiMaster(false);
+            if(guiMaster)
+            {
+                guiMaster->configui->update_config(msg->index);
             }
         }
             break;
