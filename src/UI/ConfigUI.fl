@@ -5,7 +5,7 @@ code_name {.cpp}
 comment {Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009-2011, Alan Calvert
-Copyright 2014, Will Godfrey   
+Copyright 2014 -2015, Will Godfrey   
 
 This file is part of yoshimi, which is free software: you can redistribute
 it and/or modify it under the terms of the GNU Library General Public
@@ -46,29 +46,31 @@ decl {\#include "Misc/Bank.h"} {private local
 decl {\#include "MasterUI.h"} {private local
 } 
 
-class ConfigUI {open : {private MiscFuncs}
+class ConfigUI {selected : {private MiscFuncs}
 } {
-  Function {make_window()} {open
-  } {
+  Function {make_window()} {} {
     Fl_Window configwindow {
       label {Yoshimi Settings}
-      callback {o->hide();} open
-      xywh {273 160 465 330} type Double hide
+      callback {o->hide();}
+      xywh {230 126 465 330} type Double hide
     } {
-      Fl_Tabs {} {open
+      Fl_Tabs {} {
         xywh {5 5 455 297}
       } {
         Fl_Group {} {
-          label {Main settings} open selected
+          label {Main settings}
           xywh {5 25 455 277} labelsize 12
         } {
           Fl_Choice {} {
-            label OscilSize
+            label {AddSynth Oscillator Size}
             callback {//
-		unsigned int tmp = synth->getRuntime().Oscilsize;
-                synth->getRuntime().Oscilsize = 128 << o->value();
-                if (synth->getRuntime().Oscilsize != tmp)
-                	configChanged = true;}
+    unsigned int old = synth->getRuntime().Oscilsize;
+    unsigned int changed = 128 << o->value();
+    if (old != changed)
+    {
+        synth->getRuntime().Oscilsize = changed;
+        configChanged = true;
+    }}
             tooltip {ADSynth Oscillator Size (samples)} xywh {250 45 100 20} down_box BORDER_BOX labelsize 12 textsize 11
             code0 {o->value( (int)(logf(synth->getRuntime().Oscilsize / 128.0f - 1.0f) / logf(2.0f)) + 1);}
           } {
@@ -106,13 +108,70 @@ class ConfigUI {open : {private MiscFuncs}
             }
           }
           Fl_Choice {} {
+            label {Internal Buffer Size}
+            callback {//
+    unsigned int old = synth->getRuntime().Buffersize;
+    unsigned int changed = 32 << o->value();
+    if (old != changed)
+    {
+        synth->getRuntime().Buffersize = changed;
+        configChanged = true;
+    }}
+            tooltip {ADSynth Oscillator Size (samples)} xywh {249 80 100 20} down_box BORDER_BOX labelsize 12 textsize 11
+            code0 {o->value( (int)(logf(synth->getRuntime().Buffersize / 32.0f - 1.0f) / logf(2.0f)) + 1);}
+          } {
+            MenuItem {} {
+              label 32
+              xywh {45 45 100 20} labelfont 1
+            }
+            MenuItem {} {
+              label 64
+              xywh {35 35 100 20} labelfont 1
+            }
+            MenuItem {} {
+              label 128
+              xywh {45 45 100 20} labelfont 1
+            }
+            MenuItem {} {
+              label 256
+              xywh {55 55 100 20} labelfont 1
+            }
+            MenuItem {} {
+              label 512
+              xywh {55 55 100 20} labelfont 1
+            }
+            MenuItem {} {
+              label 1024
+              xywh {65 65 100 20} labelfont 1
+            }
+          }
+          Fl_Choice {} {
+            label {PADsynth Interpolation}
+            callback {//
+                int tmp = synth->getRuntime().Interpolation;
+                synth->getRuntime().Interpolation = (int) o->value();
+                if (synth->getRuntime().Interpolation != tmp)
+                	configChanged = true;}
+            xywh {250 115 100 20} down_box BORDER_BOX labelsize 12 textsize 12
+            code0 {o->value(synth->getRuntime().Interpolation);}
+          } {
+            MenuItem {} {
+              label {Linear(fast)}
+              xywh {0 0 100 20} labelfont 1 labelsize 10
+            }
+            MenuItem {} {
+              label {Cubic(slow)}
+              xywh {10 10 100 20} labelfont 1 labelsize 10
+            }
+          }
+          Fl_Choice {} {
             label {Virtual Keyboard Layout}
             callback {//
                 int tmp = synth->getRuntime().VirKeybLayout;
                 synth->getRuntime().VirKeybLayout = (int) o->value();
                 if (synth->getRuntime().VirKeybLayout != tmp)
                 	configChanged = true;}
-            xywh {250 80 100 20} down_box BORDER_BOX labelsize 12 textfont 1 textsize 13
+            xywh {250 150 100 20} down_box BORDER_BOX labelsize 12 textfont 1 textsize 13
             code0 {o->value(synth->getRuntime().VirKeybLayout);}
           } {
             MenuItem {} {
@@ -136,25 +195,6 @@ class ConfigUI {open : {private MiscFuncs}
               xywh {45 45 100 20} labelfont 1 labelsize 11
             }
           }
-          Fl_Choice {} {
-            label {PADsynth Interpolation}
-            callback {//
-                int tmp = synth->getRuntime().Interpolation;
-                synth->getRuntime().Interpolation = (int) o->value();
-                if (synth->getRuntime().Interpolation != tmp)
-                	configChanged = true;}
-            xywh {250 115 100 20} down_box BORDER_BOX labelsize 12 textsize 12
-            code0 {o->value(synth->getRuntime().Interpolation);}
-          } {
-            MenuItem {} {
-              label {Linear(fast)}
-              xywh {0 0 100 20} labelfont 1 labelsize 10
-            }
-            MenuItem {} {
-              label {Cubic(slow)}
-              xywh {10 10 100 20} labelfont 1 labelsize 10
-            }
-          }
           Fl_Counter compression {
             label {XML compression level}
             callback {//
@@ -162,10 +202,10 @@ class ConfigUI {open : {private MiscFuncs}
 		synth->getRuntime().GzipCompression = (unsigned int) o->value();
 		if(synth->getRuntime().GzipCompression != tmp)
 			configChanged = true;}
-            tooltip {gzip compression level (0 - uncompressed)} xywh {284 150 65 20} type Simple align 4 minimum 0 maximum 9 step 1 textsize 12
+            tooltip {gzip compression level (0 - uncompressed)} xywh {284 185 65 20} type Simple align 4 minimum 0 maximum 9 step 1 textsize 12
             code0 {o->value(synth->getRuntime().GzipCompression);}
           }
-          Fl_Choice {} {
+          Fl_Choice reports {
             label {Send reports to:}
             callback {synth->getRuntime().consoleMenuItem = o->value();
 if (o->value())
@@ -216,7 +256,7 @@ else
           }
         }
         Fl_Group {} {
-          label {Presets dirs} open
+          label {Presets dirs}
           xywh {5 25 455 272} labelsize 12 hide
         } {
           Fl_Browser presetbrowse {
@@ -267,7 +307,7 @@ else
           }
         }
         Fl_Group {} {
-          label Jack open
+          label Jack
           xywh {5 25 455 277} labelsize 12 hide
         } {
           Fl_Input {} {
@@ -284,7 +324,7 @@ else
           }
         }
         Fl_Group {} {
-          label Alsa open
+          label Alsa
           xywh {5 25 455 277} labelsize 12 hide
         } {
           Fl_Input {} {
@@ -345,55 +385,13 @@ else
                     default: o->set_checked(2); break;
                 }}
           }
-          Fl_Check_Browser {} {
-            label {Period Size}
-            callback {//
-                int chk = o->value();
-                if (o->nchecked() < 1)
-                    o->set_checked(4);
-                else if (o->nchecked() > 1)
-                {
-                    if (!chk)
-                        chk = 3;
-                    o->check_none();
-                    o->set_checked(chk);
-                }
-                int buff_size;
-                switch (chk)
-                {
-                    case 1: buff_size = 64; break;
-                    case 2: buff_size = 128; break;
-                    case 3: buff_size = 256; break;
-                    case 4: buff_size = 512; break;
-                    case 5: buff_size = 1024; break;
-                    default: buff_size = 512; break;
-                }
-                synth->getRuntime().Buffersize = buff_size;
-                configChanged = true;}
-            xywh {195 195 76 73} labelsize 12 align 4 when 1 textsize 12
-            code0 {//
-                o->add("64");
-                o->add("128");
-                o->add("256");
-                o->add("512");
-                o->add("1024");
-                switch (synth->getRuntime().Buffersize)
-                {
-                    case 64: o->set_checked(1); break;
-                    case 128: o->set_checked(2); break;
-                    case 256: o->set_checked(3); break;
-                    case 512: o->set_checked(4); break;
-                    case 1024: o->set_checked(5); break;
-                    default: o->set_checked(4); break;
-                }}
-          }
           Fl_Box {} {
             label {Settings changes require a restart}
             xywh {110 285 267 17} labelfont 1 labelsize 11 labelcolor 38 align 128
           }
         }
         Fl_Group {} {
-          label CCs
+          label MIDI
           callback {//
     EPCvalue = synth->getRuntime().midi_upper_voice_C;
     if (EPCvalue >= 128)
@@ -417,7 +415,7 @@ else
     {
         BankRoot->value(BankRootvalue);
         BankRoot->activate();
-    }} open
+    }}
           tooltip {MIDI CC preferences} xywh {5 25 455 275} labelsize 12 hide
           code0 {EPCvalue = synth->getRuntime().midi_upper_voice_C;}
           code1 {BankRootvalue = synth->getRuntime().midi_bank_root;}
@@ -425,7 +423,7 @@ else
           Fl_Spinner BankRoot {
             label {Bank Root Change}
             callback {Rpend->show();}
-            xywh {275 81 53 18} labelsize 12 minimum 0 maximum 127 value 0 textsize 12
+            xywh {275 81 50 18} labelsize 12 minimum 0 maximum 127 value 0 textsize 12
             code0 {BankRootvalue = synth->getRuntime().midi_bank_root;}
             code1 {if (BankRootvalue < 128) o->value(BankRootvalue); else o->value(0);}
           }
@@ -457,7 +455,7 @@ else
     }}
             tooltip {Click to set} xywh {340 81 70 20} box PLASTIC_UP_BOX color 90 labelsize 12 hide
           }
-          Fl_Check_Button {} {
+          Fl_Check_Button rootcheck {
             label {Enable Bank Root Change}
             callback {//
     if (o->value() == 0)
@@ -508,8 +506,8 @@ else
         fl_alert("In use for %s",name.c_str());
     }
     if (synth->getRuntime().midi_bank_C == tmp)
-        configChanged = true;} open
-            tooltip {CC0 = msb, CC32 = lsb} xywh {275 122 60 18} down_box BORDER_BOX labelsize 12 align 132 textsize 12
+        configChanged = true;}
+            tooltip {CC0 = msb, CC32 = lsb} xywh {275 122 53 18} down_box BORDER_BOX labelsize 12 align 132 textsize 12
             code0 {if (synth->getRuntime().midi_bank_C == 32) o->value(0); else if (synth->getRuntime().midi_bank_C == 0) o->value(1); else o->value(2);}
             code1 {oldBank = o->value();}
           } {
@@ -526,7 +524,7 @@ else
               xywh {0 0 34 20} labelsize 12
             }
           }
-          Fl_Check_Button {} {
+          Fl_Check_Button progenable {
             label {Enable Program Change}
             callback {//
 		int tmp = synth->getRuntime().EnableProgChange;
@@ -536,7 +534,7 @@ else
             tooltip {MIDI program change enable/disable} xywh {275 162 18 18} down_box DOWN_BOX value 1 labelsize 12 align 4
             code0 {o->value(synth->getRuntime().EnableProgChange);}
           }
-          Fl_Check_Button {} {
+          Fl_Check_Button progpartenable {
             label {Enable Part On Program Change}
             callback {//
 		int tmp = synth->getRuntime().enable_part_on_voice_load;
@@ -549,7 +547,7 @@ else
           Fl_Spinner EPCspinner {
             label {Extended Program Change}
             callback {Epend->show();}
-            xywh {275 241 53 18} labelsize 12 minimum 0 maximum 127 value 110 textsize 12
+            xywh {275 241 50 18} labelsize 12 minimum 0 maximum 127 value 110 textsize 12
             code0 {EPCvalue = synth->getRuntime().midi_upper_voice_C;}
             code1 {if (EPCvalue < 128) o->value(EPCvalue); else o->value(110);}
           }
@@ -583,7 +581,7 @@ else
     }}
             tooltip {Click to set} xywh {340 241 70 20} box PLASTIC_UP_BOX color 90 labelsize 12 hide
           }
-          Fl_Check_Button {} {
+          Fl_Check_Button Epcheck {
             label {Enable Extended Program Change}
             callback {// for some weird reason this *must* be the last item in the group
     if (o->value() == 0)
@@ -606,6 +604,27 @@ else
             code0 {o->value((synth->getRuntime().midi_upper_voice_C < 128));}
             code1 {if (o->value() == 0) EPCspinner->deactivate();}
           }
+          Fl_Spinner Control {
+            label {Set immediate -- Control}
+            callback {CCpend->show();}
+            xywh {181 272 50 18} labelsize 12 minimum 0 maximum 127 value 0 textsize 12
+          }
+          Fl_Spinner Value {
+            label Value
+            callback {CCpend->show();}
+            xywh {275 272 50 18} labelsize 12 minimum 0 maximum 127 value 0 textsize 12
+          }
+          Fl_Button CCpend {
+            label Pending
+            callback {//
+    o->hide();
+    int cc = (int) Control->value();
+    int val = (int) Value->value();
+    int part = synth->getGuiMaster()->partui->npart;
+    synth->SetController(part, cc, val);
+    synth->getRuntime().Log(" Part " + asString(part) + "  Midi CC " + asString(cc) + " set to " + asString(val));}
+            tooltip {Click to set} xywh {340 272 70 20} box PLASTIC_UP_BOX color 90 labelsize 12 hide
+          }
         }
       }
       Fl_Button {} {
@@ -624,8 +643,7 @@ configwindow->do_callback();}
       }
     }
   }
-  Function {ConfigUI(SynthEngine *_synth)} {open
-  } {
+  Function {ConfigUI(SynthEngine *_synth)} {} {
     code {//
 	synth = _synth;
         configChanged = false;
@@ -633,8 +651,7 @@ configwindow->do_callback();}
         readpresetcfg();
 	selectedRootID = -1;} {}
   }
-  Function {activatebutton_presetdir(bool active)} {open
-  } {
+  Function {activatebutton_presetdir(bool active)} {} {
     code {//
         if (active)
         {
@@ -647,7 +664,7 @@ configwindow->do_callback();}
             makedefaultpresetbutton->deactivate();
         }} {}
   }
-  Function {recoverID()} {open return_type int
+  Function {recoverID()} {return_type int
   } {
     code {//
     if (selectedRootID >= 0)
@@ -659,7 +676,7 @@ configwindow->do_callback();}
   Function {readpresetcfg()} {} {
     code {//
         presetbrowse->clear();
-        for (int i = 0; i < MAX_BANK_ROOT_DIRS; ++i)
+        for (int i = 0; i < MAX_PRESETS; ++i)
             if (synth->getRuntime().presetsDirlist[i].size())
                 presetbrowse->add(synth->getRuntime().presetsDirlist[i].c_str());} {}
   }
@@ -669,13 +686,74 @@ configwindow->do_callback();}
         for (int n = 0; n < presetbrowse->size(); ++n)
             synth->getRuntime().presetsDirlist[n] = string(presetbrowse->text(n + 1));} {}
   }
+  Function {update_config(int tabnumber)} {} {
+    code {//
+    int tmp;
+    switch (tabnumber)
+    {
+        case 1 : //Main
+            reports->value(synth->getRuntime().consoleMenuItem);
+            break;
+        case 2 : // Presets
+            break;
+        case 3 : // Jack
+            break;
+        case 4 : // Alsa
+            break;
+        case 5 : // MIDI
+            tmp = synth->getRuntime().midi_bank_root;
+            if (tmp == 128)
+            {
+                BankRoot->value(0);
+                BankRoot->deactivate();
+                rootcheck->value(0);
+            }
+            else
+            {
+                BankRoot->value(tmp);
+                BankRoot->activate();
+                rootcheck->value(1);
+            }
+            Rpend->hide();
+
+            switch (synth->getRuntime().midi_bank_C)
+            {
+                case 32:
+                    bankchange->value(0);
+                    break;
+                case 0:
+                    bankchange->value(1);
+                    break;
+                default:
+                    bankchange->value(2);
+                    break;
+            }
+	    progenable->value(synth->getRuntime().EnableProgChange);
+	    progpartenable->value(synth->getRuntime().enable_part_on_voice_load);
+	    tmp = synth->getRuntime().midi_upper_voice_C;
+            if (tmp == 128)
+            {
+                EPCspinner->value(110);
+                EPCspinner->deactivate();
+                Epcheck->value(0);
+            }
+            else
+            {
+                EPCspinner->value(tmp);
+                EPCspinner->activate();
+                Epcheck->value(1);
+            }
+            Epend->hide();
+            break;
+    }} {}
+  }
   Function {Show()} {} {
     code {configwindow->show();} {}
   }
   Function {Hide()} {} {
     code {configwindow->hide();} {}
   }
-  Function {savesettings(void)} {open private return_type void
+  Function {savesettings(void)} {private return_type void
   } {
     code {//
         synth->getRuntime().saveConfig();

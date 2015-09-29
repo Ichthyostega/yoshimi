@@ -61,6 +61,7 @@ class Config : public MiscFuncs
         void clearPresetsDirlist(void);
 
         string testCCvalue(int cc);
+        string masterCCtest(int cc);
         void saveConfig(void);
         void saveState() { saveSessionData(StateFile); }
         void saveState(const string statefile)  { saveSessionData(statefile); }
@@ -89,6 +90,7 @@ class Config : public MiscFuncs
         string        ConfigFile;
         string        paramsLoad;
         string        instrumentLoad;
+        string        rootDefine;
         bool          restoreState;
         string        StateFile;
         string        CurrentXMZ;
@@ -121,7 +123,7 @@ class Config : public MiscFuncs
 
         unsigned int  GzipCompression;
         int           Interpolation;        
-        string        presetsDirlist[MAX_BANK_ROOT_DIRS];
+        string        presetsDirlist[MAX_PRESETS];
         int           checksynthengines;
         bool          SimpleCheck;
         int           EnableProgChange;
@@ -140,8 +142,16 @@ class Config : public MiscFuncs
         bool          nrpnActive;
         
         struct IOdata{
-            unsigned short vectorXaxis[NUM_MIDI_CHANNELS];
-            unsigned short vectorYaxis[NUM_MIDI_CHANNELS];
+            unsigned char vectorXaxis[NUM_MIDI_CHANNELS];
+            unsigned char vectorYaxis[NUM_MIDI_CHANNELS];
+            unsigned char vectorXfeatures[NUM_MIDI_CHANNELS];
+            unsigned char vectorYfeatures[NUM_MIDI_CHANNELS];
+            unsigned char vectorXcc2[NUM_MIDI_CHANNELS];
+            unsigned char vectorYcc2[NUM_MIDI_CHANNELS];
+            unsigned char vectorXcc4[NUM_MIDI_CHANNELS];
+            unsigned char vectorYcc4[NUM_MIDI_CHANNELS];
+            unsigned char vectorXcc8[NUM_MIDI_CHANNELS];
+            unsigned char vectorYcc8[NUM_MIDI_CHANNELS];
             int Part;
             int Controller;
             bool vectorEnabled[NUM_MIDI_CHANNELS];
@@ -196,6 +206,8 @@ public:
     enum
     {
         NewSynthEngine = 0,
+        UpdateMaster,
+        UpdateConfig,
         UpdatePanel,
         UpdatePanelItem,
         UpdatePartProgram,

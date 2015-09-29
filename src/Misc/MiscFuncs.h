@@ -44,6 +44,9 @@ class MiscFuncs
         string asLongString(float n);
         string asHexString(int x);
         string asHexString(unsigned int x);
+        char *skipSpace(char *buf);
+        char *skipChars(char *buf);
+        int matchWord(char *point, const char *word);
         static float string2float(string str);
         static int string2int(string str);
         static unsigned int string2uint(string str);

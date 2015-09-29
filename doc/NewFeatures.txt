@@ -1,4 +1,4 @@
-When using the jack audio backend, parts can be individually routed and/or sent to the main L/R outputs. This is controlled from the panel window, and the settings are saved with all the other parameters.
+When using the jack audio backend, parts can be individually routed and/or sent to the main L/R outputs. This is controlled from the panel window, and the settings are saved with all the other data in patch sets.
 
 Direct part outputs carry the part and insertion effects, but not system ones.
 
@@ -54,7 +54,7 @@ Sensitivity to MIDI volume change (CC7) is now variable in 'Controllers' in the 
 
 ###
 
-Yoshimi now stamps instrument and parameter XML files with its own major and minor version numbers so it is possible to tell which version created the files, or whether they were created by ZynAddSubFX.
+Yoshimi now stamps instrument and patch set XML files with its own major and minor version numbers so it is possible to tell which version created the files, or whether they were created by ZynAddSubFX.
 
 ###
 
@@ -80,9 +80,9 @@ Part editing windows carry the part number and voice name in the title bar. For 
 
 ###
 
-Yoshimi now has up to 64 parts in blocks of 16. You can now decide how many you want to have available using the 'Parameters' menu. You can have 16, 32 or 64.
+Yoshimi now has up to 64 parts in blocks of 16. You can now decide how many you want to have available using the spinbox alongside the channel number. You can have 16, 32 or 64.
 
-By default, all the upper parts are mapped to the same MIDI channel numbers as the lowest ones but have independent voice and parameter settings. They can not normally receive independent note or control messages. However, vector control will intelligently work with however many you have set, as will all the NRPN direct part controls.
+By default, all the upper parts are mapped to the same MIDI channel numbers as the lowest ones but have independent voice and patch set values. They can not normally receive independent note or control messages. However, vector control will intelligently work with however many you have set, as will all the NRPN direct part controls.
 
 ###
 
@@ -92,10 +92,27 @@ Red -> AddSynth
 Blue -> SubSynth
 Green -> PadSynth
 
-If the instruments are kits they scanned to find out if *any* member of the kit containes each engine.
+If the instruments are kits they scanned to find out if *any* member of the kit contains each engine.
 
 This is duplicated in the current part, the mixer panel for the currently loaded instruments, and in the Instrument Edit window the same colours highlight the engine names when they are enabled with the check boxes. 
 
 ###
 
+CCs can now be entered from the gui as if they'd been sent by MIDI, although currently this doesn't include NRPNs. The entry is made at the bottom of the 'MIDI' tab in the 'Settings' window.
+
+###
+
+NRPNs have been extended so that via MIDI you can read most of the dynamic system settings (to the Log file). These can now also be set.
+
+###
+
+It is now possible to set up a new bank root path when starting from the command line. This takes the form:
+
+yoshimi -D /home/{username}/{directory}/{subdirectory}/bank
+
+Yoshimi will then immediately scan this path for new banks, but won't make the root 9or any of its banks) current. The final directory doesn't in fact have to be 'banks' but traditionally we have always done this.
+
+Also, when running from the command line there is now access to many of the system and Root, Bank etc. settings.
+
+###
 
