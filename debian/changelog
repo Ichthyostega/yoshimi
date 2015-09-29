@@ -1,6 +1,7 @@
-yoshimi (1.3.6-1) UNRELEASED; urgency=medium
+yoshimi (1.3.6-1) unstable; urgency=medium
 
   * Imported Upstream version 1.3.6
+  * Remove spelling patch - applied upstream.
 
  -- Jaromír Mikeš <mira.mikes@seznam.cz>  Tue, 29 Sep 2015 05:26:55 +0200
 
