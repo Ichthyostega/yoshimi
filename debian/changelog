@@ -1,6 +1,7 @@
-yoshimi (1.3.7-1) UNRELEASED; urgency=medium
+yoshimi (1.3.7-1) unstable; urgency=medium
 
   * Imported Upstream version 1.3.7
+  * Add build dependecies.
 
  -- Jaromír Mikeš <mira.mikes@seznam.cz>  Tue, 17 Nov 2015 09:03:37 +0100
 
