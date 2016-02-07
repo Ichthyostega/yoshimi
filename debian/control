@@ -33,7 +33,7 @@ Homepage: http://yoshimi.sourceforge.net
 Package: yoshimi
 Architecture: any
 Depends:
- yoshimi-data,
+ yoshimi-data (= ${source:Version}),
  ${misc:Depends},
  ${shlibs:Depends}
 Recommends:
