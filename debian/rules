@@ -8,6 +8,3 @@ endif
 
 %:
 	dh $@ --parallel --sourcedirectory=src
-
-override_dh_strip:
-	dh_strip --dbg-package=yoshimi-dbg
