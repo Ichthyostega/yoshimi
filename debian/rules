@@ -9,12 +9,5 @@ endif
 %:
 	dh $@ --parallel --sourcedirectory=src
 
-override_dh_install:
-	dh_install
-	install -d $(CURDIR)/debian/yoshimi/usr/share/applications
-	install -d $(CURDIR)/debian/yoshimi/usr/share/icons
-	install -m 644 $(CURDIR)/debian/yoshimi.desktop $(CURDIR)/debian/yoshimi/usr/share/applications
-	install -m 644 $(CURDIR)/desktop/yoshimi.png $(CURDIR)/debian/yoshimi/usr/share/icons
-
 override_dh_strip:
 	dh_strip --dbg-package=yoshimi-dbg
