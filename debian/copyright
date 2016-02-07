@@ -2,14 +2,14 @@ Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: Yoshimi
 Upstream-Contact: yoshimi-user@lists.sourceforge.net
 Source: http://sourceforge.net/projects/yoshimi/files/
-Files-Excluded: .git/*
 
 Files: *
 License: GPL-2+
 Copyright:
  2009-2011, Alan Calvert
- 2002-2009 Nasca Octavian Paul
- 2009 James Morris
+ 2002-2009, Nasca Octavian Paul and others
+ 2009, James Morris
+ 2014-2016, Will Godfrey and others
 
 Files:
  src/DSP/*
@@ -19,29 +19,18 @@ Files:
  src/Synth/*
  src/UI/*
 Copyright:
- 2002-2009 Nasca Octavian Paul and others
+ 2002-2009, Nasca Octavian Paul and others
  2009-2011, Alan Calvert
  2009, James Morris
+ 2012-2013, Jeremy Jongepier and others
+ 2014-2016, Will Godfrey and others
 License: LGPL-2+
 
 Files:
- src/CMakeLists.txt
- src/main.cpp
- src/Misc/FileListItem.h
- src/Misc/HistoryListItem.h
- src/Misc/MiscFuncs.*
- src/Misc/SynthHelper.h
- src/Misc/Float2Int.h
- src/MusicIO/*
- src/Synth/Carcass.h
- src/Synth/BodyDisposal.*
- src/Synth/LegatoTypes.h
- src/UI/ConsoleUI.fl
  src/UI/ParametersUI.fl
 Copyright:
- 2002-2009 Nasca Octavian Paul
- 2009-2011, Alan Calvert
- 2009, James Morris
+ 2011, Alan Calvert
+ 2014, Will Godfrey
 License: GPL-3+
 
 Files: debian/*
