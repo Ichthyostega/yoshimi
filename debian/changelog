@@ -1,8 +1,10 @@
-yoshimi (1.3.9-1) UNRELEASED; urgency=medium
+yoshimi (1.3.9-1) unstable; urgency=medium
 
   * New upstream release.
+    - Fix build issues with GCC 6 (Closes: 814011)
+  * debian/patches/manpage-fixes.patch: Removed, applied upstream.
 
- -- Sebastian Ramacher <sramacher@debian.org>  Mon, 29 Feb 2016 00:26:22 +0100
+ -- Sebastian Ramacher <sramacher@debian.org>  Mon, 29 Feb 2016 00:38:57 +0100
 
 yoshimi (1.3.8.2-1) unstable; urgency=medium
 
