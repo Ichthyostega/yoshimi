@@ -1,7 +1,7 @@
-yoshimi (1.4.0-1) UNRELEASED; urgency=medium
+yoshimi (1.4.0.1-1) unstable; urgency=medium
 
+  * Imported Upstream version 1.4.0.1
   * Update description.
-  * Imported Upstream version 1.4.0
   * Bump Standards.
   * Patch refreshed.
   * Fix hardening.
