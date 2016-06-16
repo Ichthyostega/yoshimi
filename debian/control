@@ -54,4 +54,7 @@ Recommends:
 Description: Presets for Yoshimi
  Yoshimi is a software synthesizer originally based on ZynAddSubFX2
  .
+ Yoshimi maintains sound and instrument compatibility
+ but now has extended features and accessibility.
+ .
  This package provides banks and presets for Yoshimi.
