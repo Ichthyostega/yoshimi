@@ -2,6 +2,9 @@ yoshimi (1.4.0-1) UNRELEASED; urgency=medium
 
   * Update description.
   * Imported Upstream version 1.4.0
+  * Bump Standards.
+  * Patch refreshed.
+  * Fix hardening.
 
  -- Jaromír Mikeš <mira.mikes@seznam.cz>  Thu, 16 Jun 2016 00:43:48 +0200
 
