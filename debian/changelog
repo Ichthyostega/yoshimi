@@ -1,6 +1,8 @@
-yoshimi (1.4.1-1) UNRELEASED; urgency=medium
+yoshimi (1.4.1-1) unstable; urgency=medium
 
   * New upstream version 1.4.1
+  * Patch refreshed.
+  * Add spelling patch.
 
  -- Jaromír Mikeš <mira.mikes@seznam.cz>  Mon, 05 Sep 2016 21:19:53 +0200
 
