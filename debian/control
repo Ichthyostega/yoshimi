@@ -4,12 +4,13 @@ Priority: optional
 Maintainer: Debian Multimedia Maintainers <pkg-multimedia-maintainers@lists.alioth.debian.org>
 Uploaders:
  Jaromír Mikeš <mira.mikes@seznam.cz>
+Changed-By: Hermann Vosseler <deb@ichthyostega.de>
 Build-Depends:
  cmake,
  debhelper (>= 9),
  fluid,
  libasound2-dev,
- libboost-dev,
+ libboost-dev | libboost1.55-dev,
  libcairo2-dev,
  libfftw3-dev,
  libfltk1.3-dev,
@@ -20,6 +21,8 @@ Build-Depends:
  libmxml-dev,
  libncurses5-dev,
  libreadline-dev,
+ libxft-dev,
+ libxinerama-dev,
  libx11-dev,
  libxext-dev,
  lv2-dev,
