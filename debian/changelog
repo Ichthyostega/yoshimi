@@ -1,3 +1,9 @@
+yoshimi (1.4.1-1~bpo.jessie1) lumiera-jessie-tools; urgency=low
+
+  * Backport to Jessie
+
+ -- Hermann Vosseler <deb@ichthyostega.de>  Fri, 11 Nov 2016 22:41:44 +0100
+
 yoshimi (1.4.1-1) unstable; urgency=medium
 
   * New upstream version 1.4.1
