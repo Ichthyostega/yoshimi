@@ -1,0 +1,91 @@
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Yoshimi
+Upstream-Contact: yoshimi-user@lists.sourceforge.net
+Source: http://sourceforge.net/projects/yoshimi/files/
+
+Files: *
+License: GPL-2+
+Copyright:
+ 2009-2011, Alan Calvert
+ 2002-2009, Nasca Octavian Paul and others
+ 2009, James Morris
+ 2014-2016, Will Godfrey and others
+
+Files:
+ src/DSP/*
+ src/Effects/*
+ src/Misc/*
+ src/Params/*
+ src/Synth/*
+ src/UI/*
+Copyright:
+ 2002-2009, Nasca Octavian Paul and others
+ 2009-2011, Alan Calvert
+ 2009, James Morris
+ 2012-2013, Jeremy Jongepier and others
+ 2014-2016, Will Godfrey and others
+License: LGPL-2+
+
+Files:
+ src/UI/ParametersUI.fl
+Copyright:
+ 2011, Alan Calvert
+ 2014, Will Godfrey
+License: GPL-3+
+
+Files: debian/*
+Copyright:
+ 2010-2011 Alessio Treglia <alessio@debian.org>
+ 2010-2013 Jaromír Mikeš <mira.mikes@seznam.cz>
+License: GPL-2+
+
+License: GPL-2+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 2 of the License, or
+ (at your option) any later version.
+ .
+ This package is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+Comment:
+ On Debian systems, the complete text of the GNU General Public
+ License version 2 can be found in `/usr/share/common-licenses/GPL-2'.
+ .
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+License: GPL-3+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+ .
+ This package is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+Comment:
+ On Debian systems, the complete text of the GNU General Public
+ License version 3 can be found in `/usr/share/common-licenses/GPL-3'.
+ .
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+License: LGPL-2+
+ This library is free software; you can redistribute it and/or modify it
+ under the terms of the GNU Library General Public License as published by
+ the Free Software Foundation; either version 2 of the License, or
+ (at your option) any later version.
+ .
+ This library is distributed in the hope that it will be useful, but
+ WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser
+ General Public License for more details.
+Comment:
+ On Debian systems, the complete text of the GNU Library General Public
+ License version 2 can be found in `/usr/share/common-licenses/LGPL-2'.
+ .
+ You should have received a copy of the GNU Library General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.

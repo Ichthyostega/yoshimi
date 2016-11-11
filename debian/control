@@ -1,0 +1,60 @@
+Source: yoshimi
+Section: sound
+Priority: optional
+Maintainer: Debian Multimedia Maintainers <pkg-multimedia-maintainers@lists.alioth.debian.org>
+Uploaders:
+ Jaromír Mikeš <mira.mikes@seznam.cz>
+Build-Depends:
+ cmake,
+ debhelper (>= 9),
+ fluid,
+ libasound2-dev,
+ libboost-dev,
+ libcairo2-dev,
+ libfftw3-dev,
+ libfltk1.3-dev,
+ libfontconfig1-dev,
+ libgl1-mesa-dev | libgl-dev,
+ libglu1-mesa-dev | libglu-dev,
+ libjack-dev,
+ libmxml-dev,
+ libncurses5-dev,
+ libreadline-dev,
+ libx11-dev,
+ libxext-dev,
+ lv2-dev,
+ sharutils,
+ zlib1g-dev
+Standards-Version: 3.9.8
+Vcs-Git: https://anonscm.debian.org/git/pkg-multimedia/yoshimi.git
+Vcs-Browser: https://anonscm.debian.org/cgit/pkg-multimedia/yoshimi.git
+Homepage: http://yoshimi.sourceforge.net
+
+Package: yoshimi
+Architecture: any
+Depends:
+ yoshimi-data (= ${source:Version}),
+ ${misc:Depends},
+ ${shlibs:Depends}
+Recommends:
+ jackd
+Description: software synthesizer originally based on ZynAddSubFX2
+ Yoshimi is a software synthesizer for GNU/Linux, based on
+ ZynAddSubFX 2.4.0.
+ .
+ Yoshimi maintains sound and instrument compatibility
+ but now has extended features and accessibility.
+
+Package: yoshimi-data
+Architecture: all
+Depends:
+ ${misc:Depends}
+Recommends:
+ yoshimi
+Description: Presets for Yoshimi
+ Yoshimi is a software synthesizer originally based on ZynAddSubFX2
+ .
+ Yoshimi maintains sound and instrument compatibility
+ but now has extended features and accessibility.
+ .
+ This package provides banks and presets for Yoshimi.

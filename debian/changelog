@@ -1,0 +1,322 @@
+yoshimi (1.4.1-1) unstable; urgency=medium
+
+  * New upstream version 1.4.1
+  * Patch refreshed.
+  * Add spelling patch.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Mon, 05 Sep 2016 21:19:53 +0200
+
+yoshimi (1.4.0.1-1) unstable; urgency=medium
+
+  * Imported Upstream version 1.4.0.1
+  * Update description.
+  * Bump Standards.
+  * Patch refreshed.
+  * Fix hardening.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Thu, 16 Jun 2016 00:43:48 +0200
+
+yoshimi (1.3.9-1) unstable; urgency=medium
+
+  * New upstream release.
+    - Fix build issues with GCC 6 (Closes: 814011)
+  * debian/patches/manpage-fixes.patch: Removed, applied upstream.
+
+ -- Sebastian Ramacher <sramacher@debian.org>  Mon, 29 Feb 2016 00:38:57 +0100
+
+yoshimi (1.3.8.2-1) unstable; urgency=medium
+
+  * Team upload.
+
+  [ Alessio Treglia ]
+  * Remove myself from Uploaders.
+
+  [ Sebastian Ramacher ]
+  * New upstream release.
+    - Fix cmake issues. (Closes: #808739)
+  * Switch to automatic dbg packages
+  * debian/yoshimi.install: Use upstream manpage and desktop file.
+  * debian/yoshimi-data.install: Update paths.
+  * debian/copyright: Update copyright info.
+  * debian/control:
+    - Update Vcs-Git.
+    - Update B-D for new upstream version.
+    - Stricter dependency on data package.
+    - Bump Standards-Version.
+  * debian/patches/manpage-fixes.patch: Fix lintian warnings for manpage.
+
+ -- Sebastian Ramacher <sramacher@debian.org>  Sun, 07 Feb 2016 13:31:08 +0100
+
+yoshimi (1.3.7.1-1) unstable; urgency=medium
+
+  * Imported Upstream version 1.3.7.1
+  * Patch refreshed.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Tue, 01 Dec 2015 19:44:28 +0100
+
+yoshimi (1.3.7-1) unstable; urgency=medium
+
+  * Imported Upstream version 1.3.7
+  * Add build dependecies.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Tue, 17 Nov 2015 09:03:37 +0100
+
+yoshimi (1.3.6-2) unstable; urgency=medium
+
+  * Add clean file to enable build twice in row.
+  * Append ldflags properly.
+  * Remove libjpeg9-dev build-dep.(Closes: #800454)
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Tue, 29 Sep 2015 23:29:11 +0200
+
+yoshimi (1.3.6-1) unstable; urgency=medium
+
+  * Imported Upstream version 1.3.6
+  * Remove spelling patch - applied upstream.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Tue, 29 Sep 2015 05:26:55 +0200
+
+yoshimi (1.3.5.2-1) unstable; urgency=medium
+
+  * Imported Upstream version 1.3.5.2
+  * Add spelling patch.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Fri, 04 Sep 2015 05:05:47 +0200
+
+yoshimi (1.3.5.1-2) unstable; urgency=medium
+
+  * Disable build without alsa on non-linux archs.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Wed, 01 Jul 2015 08:02:14 +0200
+
+yoshimi (1.3.5.1-1) unstable; urgency=medium
+
+  * Imported Upstream version 1.3.5.1
+  * Allow build without alsa on non-linux archs.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Wed, 01 Jul 2015 01:00:45 +0200
+
+yoshimi (1.3.5-1) unstable; urgency=medium
+
+  * Patch applied upstream.
+  * Update build deps.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Wed, 17 Jun 2015 13:24:40 +0200
+
+yoshimi (1.3.4-3) unstable; urgency=medium
+
+  * Fix build on mips mipsel and powerpc archs 2nd attempt.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Sun, 10 May 2015 21:36:24 +0200
+
+yoshimi (1.3.4-2) unstable; urgency=medium
+
+  * Refresh patch
+  * Add patch to fix build on mips mipsel and powerpc archs.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Sat, 09 May 2015 20:02:58 +0200
+
+yoshimi (1.3.4-1) unstable; urgency=medium
+
+  * Imported Upstream version 1.3.4
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Mon, 06 Apr 2015 23:37:20 +0200
+
+yoshimi (1.3.3-1) unstable; urgency=medium
+
+  * Imported Upstream version 1.3.3
+  * Bump Standards.
+  * Add lv2-dev as build-dep.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Mon, 23 Mar 2015 17:30:38 +0100
+
+yoshimi (1.2.4-1) unstable; urgency=low
+
+  * Imported Upstream version 1.2.4
+  * Fix typo in copyright file.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Fri, 03 Oct 2014 16:15:24 +0200
+
+yoshimi (1.2.3-1) unstable; urgency=low
+
+  * Imported Upstream version 1.2.3
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Sat, 30 Aug 2014 13:36:09 +0300
+
+yoshimi (1.2.2-1) unstable; urgency=low
+
+  * Imported Upstream version 1.2.2
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Tue, 01 Jul 2014 20:01:45 +0200
+
+yoshimi (1.2.1-1) unstable; urgency=low
+
+  * Imported Upstream version 1.2.1
+  * Removed/Refreshed patches - applied upstream.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Tue, 10 Jun 2014 01:16:11 +0200
+
+yoshimi (1.2.0-1) unstable; urgency=low
+
+  * Imported Upstream version 1.2.0
+  * Bump Standards.
+  * Patch refreshed.
+  * Added patch to fix FTBFS.
+  * Spelling patch removed - not applying anymore.
+  * Added patch to fix hardening.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Thu, 20 Mar 2014 18:39:52 +0100
+
+yoshimi (1.1.0-2) unstable; urgency=low
+
+  * Set dh/compat 9
+  * Small change in patch description.
+  * Added patch to fix FTBS with compat 9.
+    Thanks to Sebastian Ramacher <sramacher@debian.org>.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Mon, 19 Aug 2013 04:30:36 +0200
+
+yoshimi (1.1.0-1) unstable; urgency=low
+
+  * New upstream release.
+  * Added libcairo2-dev as build dep.
+  * Added patch fixing some spelling issues.
+  * Installing new yoshimi icon.
+  * Fix VCS canonical URLs.
+  * Bump standards.
+  * Added Keywords entry to desktop file.
+  * Set dh/compat 8.
+  * .gitignore file tuned.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Tue, 04 Jun 2013 23:47:33 +0200
+
+yoshimi (1.0.0-1) unstable; urgency=low
+
+  * New upstream release.
+  * Remove patches applied upstream:
+    - debian/patches/02-gcc47.patch
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Thu, 19 Jul 2012 15:56:33 +0200
+
+yoshimi (0.060.12-2) unstable; urgency=low
+
+  * Fix missing #includes to solve FTBFS with GCC 4.7. (Closes: #672002)
+  * Update debian/copyright to machine-readable format.
+  * Bump standards.
+
+ -- Alessio Treglia <alessio@debian.org>  Tue, 08 May 2012 15:57:18 -0700
+
+yoshimi (0.060.12-1) unstable; urgency=low
+
+  * New upstream release.
+  * Remove 02-fluid_1.3.patch, applied upstream.
+
+ -- Alessio Treglia <alessio@debian.org>  Thu, 05 Jan 2012 15:12:50 +0100
+
+yoshimi (0.060.10-3) unstable; urgency=low
+
+  * Refresh 01-gcc_flags.patch.
+  * debian/patches/02-fluid_1.3.patch:
+    - Since the 1.3.x series, Fluid no longer produces (empty)
+      implementations for totally empty functions in .fl files.
+      Thank you, Aaron! (Closes: #633476)
+
+ -- Alessio Treglia <alessio@debian.org>  Mon, 11 Jul 2011 15:33:20 +0200
+
+yoshimi (0.060.10-2) unstable; urgency=low
+
+  * Build-Depend on libjack-dev only (Closes: #628711).
+  * Demote jackd to Recommends as yoshimi could be used without it.
+  * Enable parallel builds.
+  * Bump Standards.
+
+ -- Alessio Treglia <alessio@debian.org>  Wed, 01 Jun 2011 12:39:37 +0200
+
+yoshimi (0.060.10-1) unstable; urgency=low
+
+  * New upstream release:
+    - COPYING file updated.
+    - licence anomalies corrected.
+  * Update debian/copyright.
+    - Update licensing,copyright information.
+    - Comply with DEP-5 rev.174.
+
+ -- Alessio Treglia <alessio@debian.org>  Tue, 12 Apr 2011 12:18:22 +0200
+
+yoshimi (0.060.8-2) unstable; urgency=low
+
+  * Provide -DBG package.
+
+ -- Alessio Treglia <alessio@debian.org>  Mon, 11 Apr 2011 20:13:44 +0200
+
+yoshimi (0.060.8-1) unstable; urgency=low
+
+  * New upstream release.
+  * Upload to unstable.
+  * Improve description.
+
+ -- Alessio Treglia <alessio@debian.org>  Wed, 06 Apr 2011 10:00:04 +0200
+
+yoshimi (0.060.5-1) experimental; urgency=low
+
+  * New upstream release.
+  * Bump Standards.
+  * Refresh patch.
+
+ -- Alessio Treglia <alessio@debian.org>  Tue, 28 Dec 2010 13:41:52 +0100
+
+yoshimi (0.060.3.1-1) experimental; urgency=low
+
+  * Imported Upstream version 0.060.3.1
+  * Upstream's changelog is not available anymore.
+  * Install the presets too.
+  * Refresh build flags patch.
+
+ -- Alessio Treglia <alessio@debian.org>  Wed, 22 Dec 2010 09:50:43 +0100
+
+yoshimi (0.060.1-1) experimental; urgency=low
+
+  * New upstream release.
+  * debian/gbp.conf: Add sign-tags = True
+  * Refresh debian/patches/01-gcc_flags.patch.
+  * Drop debian/patches/02-userconfig_path.patch, upstream has acknowledged
+    and fixed the issue another way.
+  * debian/control:
+    - Build against experimental's JACK to have the session support.
+    - Build-depend on libboost-dev.
+
+ -- Alessio Treglia <alessio@debian.org>  Mon, 06 Dec 2010 11:13:40 +0100
+
+yoshimi (0.058.1-1) unstable; urgency=low
+
+  * New upstream release.
+  * Bump Standards.
+  * Add .gitignore file.
+  * Add patch to make yoshimi stores user settings under ~/.config/yoshimi.
+  * Add debian/gbp.conf file.
+
+ -- Alessio Treglia <alessio@debian.org>  Mon, 12 Jul 2010 18:06:40 +0200
+
+yoshimi (0.058-1) unstable; urgency=low
+
+  [ Jaromír Mikeš ]
+  * Recommends on yoshimi for yoshimi-data package added (Closes: #584644).
+
+  [ Alessio Treglia ]
+  * New upstream release.
+
+ -- Alessio Treglia <alessio@debian.org>  Sun, 06 Jun 2010 20:26:45 +0200
+
+yoshimi (0.056-2) unstable; urgency=low
+
+  * Add --as-needed to linking options.
+  * Drop GCC options which are not supported on all architectures;
+    only i386 and amd64 support some of them (Closes: #584492).
+
+ -- Alessio Treglia <alessio@debian.org>  Fri, 04 Jun 2010 03:14:10 +0200
+
+yoshimi (0.056-1) unstable; urgency=low
+
+  * Initial release (Closes: #581155). 
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Sat, 01 May 2010 16:18:45 +0200
