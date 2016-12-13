@@ -1,7 +1,9 @@
-yoshimi (1.4.1-2) UNRELEASED; urgency=medium
+yoshimi (1.4.1-2) unstable; urgency=medium
 
   * Fix patch description.
   * Set dh/compat 10.
+  * Remove redundant amd64 flags.
+  * Sign tags.
 
  -- Jaromír Mikeš <mira.mikes@seznam.cz>  Tue, 13 Dec 2016 17:23:46 +0100
 
