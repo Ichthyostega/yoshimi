@@ -9,4 +9,4 @@ CXXFLAGS+=-msse -msse2 -mfpmath=sse
 endif
 
 %:
-	dh $@ --parallel --sourcedirectory=src
+	dh $@ --sourcedirectory=src
