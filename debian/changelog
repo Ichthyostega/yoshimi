@@ -1,3 +1,9 @@
+yoshimi (1.5.0-1) UNRELEASED; urgency=medium
+
+  * New upstream version 1.5.0
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Sun, 18 Dec 2016 00:27:35 +0100
+
 yoshimi (1.4.1-2) unstable; urgency=medium
 
   * Fix patch description.
