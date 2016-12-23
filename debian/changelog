@@ -2,6 +2,7 @@ yoshimi (1.5.0-2) unstable; urgency=medium
 
   * Install LV2 plugins. (Closes: 849166)
     Thanks to Takeshi Soejima <sohet@mbox.kyoto-inet.or.jp>
+  * Add lintian-overrides file.
 
  -- Jaromír Mikeš <mira.mikes@seznam.cz>  Fri, 23 Dec 2016 10:20:53 +0100
 
