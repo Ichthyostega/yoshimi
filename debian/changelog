@@ -1,6 +1,7 @@
-yoshimi (1.5.0-3) UNRELEASED; urgency=medium
+yoshimi (1.5.0-3) unstable; urgency=medium
 
-  * Start new upload.
+  * Update copyright file.
+  * Add patch to update appdata file.
 
  -- Jaromír Mikeš <mira.mikes@seznam.cz>  Mon, 16 Jan 2017 10:06:53 +0100
 
