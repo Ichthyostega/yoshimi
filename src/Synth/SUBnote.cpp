@@ -5,7 +5,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2009 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2014, Will Godfrey
+    Copyright 2014-2017, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -21,7 +21,8 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is derivative of ZynAddSubFX original code, modified August 2014
+    This file is derivative of ZynAddSubFX original code
+    Modified March 2017
 */
 
 #include <cmath>
@@ -77,11 +78,12 @@ SUBnote::SUBnote(SUBnoteParameters *parameters, Controller *ctl_, float freq,
         randpanL = cosf(t * HALFPI);
         randpanR = cosf((1.0f - t) * HALFPI);
     }
+    else
+        randpanL = randpanR = 0.7f;
     numstages = pars->Pnumstages;
     stereo = pars->Pstereo;
     start = pars->Pstart;
     firsttick = 1;
-    int pos[MAX_SUB_HARMONICS];
 
     if (pars->Pfixedfreq == 0)
         basefreq = freq;
@@ -142,71 +144,7 @@ SUBnote::SUBnote(SUBnoteParameters *parameters, Controller *ctl_, float freq,
     if (stereo != 0)
         rfilter = new bpfilter[numstages * numharmonics];
 
-    // how much the amplitude is normalised (because the harmonics)
-    float reduceamp = 0.0;
-
-    for (int n = 0; n < numharmonics; ++n)
-    {
-        float freq =  basefreq * pars->POvertoneFreqMult[pos[n]];
-        overtone_freq[n] = freq;
-        overtone_rolloff[n] = computerolloff(freq);
-
-        // the bandwidth is not absolute(Hz); it is relative to frequency
-        float bw = powf(10.0f, (pars->Pbandwidth - 127.0f) / 127.0f * 4.0f) * numstages;
-
-        // Bandwidth Scale
-        bw *= powf(1000.0f / freq, (pars->Pbwscale - 64.0f) / 64.0f * 3.0f);
-
-        // Relative BandWidth
-        bw *= powf(100.0f, (pars->Phrelbw[pos[n]] - 64.0f) / 64.0f);
-
-        if (bw > 25.0f)
-            bw = 25.0f;
-
-        // try to keep same amplitude on all freqs and bw. (empirically)
-        float gain = sqrtf(1500.0f / (bw * freq));
-
-        float hmagnew = 1.0f - pars->Phmag[pos[n]] / 127.0f;
-        float hgain;
-
-        switch (pars->Phmagtype)
-        {
-            case 1:
-                hgain = expf(hmagnew * log_0_01);
-                break;
-
-            case 2:
-                hgain = expf(hmagnew * log_0_001);
-                break;
-
-            case 3:
-                hgain = expf(hmagnew * log_0_0001);
-                break;
-
-            case 4:
-                hgain = expf(hmagnew * log_0_00001);
-                break;
-
-            default:
-                hgain = 1.0 - hmagnew;
-        }
-        gain *= hgain;
-        reduceamp += hgain;
-
-        for (int nph = 0; nph < numstages; ++nph)
-        {
-            float amp = 1.0f;
-            if (nph == 0)
-                amp = gain;
-            initfilter(lfilter[nph + n * numstages], freq + OffsetHz, bw, amp, hgain);
-            if (stereo)
-                initfilter(rfilter[nph + n * numstages], freq + OffsetHz, bw, amp, hgain);
-        }
-    }
-
-    if (reduceamp < 0.001f)
-        reduceamp = 1.0f;
-    volume /= reduceamp;
+    initfilterbank();
 
     oldpitchwheel = 0;
     oldbandwidth = 64;
@@ -265,8 +203,8 @@ void SUBnote::SUBlegatonote(float freq, float velocity,
         randpanL = cosf(t * HALFPI);
         randpanR = cosf((1.0f - t) * HALFPI);
     }
-
-    int pos[MAX_SUB_HARMONICS];
+    else
+        randpanL = randpanR = 0.7f;
 
     if (pars->Pfixedfreq == 0)
         basefreq = freq;
@@ -314,68 +252,7 @@ void SUBnote::SUBlegatonote(float freq, float velocity,
         return;
     }
 
-    // how much the amplitude is normalised (because the harmonics)
-    float reduceamp = 0.0;
-    for (int n = 0; n < numharmonics; ++n)
-    {
-        float freq = basefreq * (pos[n] + 1);
-
-        // the bandwidth is not absolute(Hz); it is relative to frequency
-        float bw = powf(10.0f, (pars->Pbandwidth - 127.0f) / 127.0f * 4.0f) * numstages;
-
-        // Bandwidth Scale
-        bw *= powf(1000.0f / freq, ((pars->Pbwscale - 64.0f) / 64.0f * 3.0f));
-
-        // Relative BandWidth
-        bw *= powf(100.0f, (pars->Phrelbw[pos[n]] - 64.0f) / 64.0f);
-
-        if (bw > 25.0f)
-            bw = 25.0f;
-
-        // try to keep same amplitude on all freqs and bw. (empirically)
-        float gain = sqrtf(1500.0f / (bw * freq));
-
-        float hmagnew = 1.0f - pars->Phmag[pos[n]] / 127.0f;
-        float hgain;
-
-        switch (pars->Phmagtype)
-        {
-            case 1:
-                hgain = expf(hmagnew * log_0_01);
-                break;
-
-            case 2:
-                hgain = expf(hmagnew * log_0_001);
-                break;
-
-            case 3:
-                hgain = expf(hmagnew * log_0_0001);
-                break;
-
-            case 4:
-                hgain = expf(hmagnew * log_0_00001);
-                break;
-
-            default:
-                hgain = 1.0f - hmagnew;
-        }
-        gain *= hgain;
-        reduceamp += hgain;
-
-        for (int nph = 0; nph < numstages; ++nph)
-        {
-            float amp = 1.0f;
-            if (nph == 0)
-                amp = gain;
-            initfilter(lfilter[nph + n * numstages], freq, bw, amp, hgain);
-            if (stereo)
-                initfilter(rfilter[nph + n * numstages], freq, bw, amp, hgain);
-        }
-    }
-
-    if (reduceamp < 0.001f)
-        reduceamp = 1.0f;
-    volume /= reduceamp;
+    initfilterbank();
 
     oldpitchwheel = 0;
     oldbandwidth = 64;
@@ -426,7 +303,6 @@ void SUBnote::KillNote(void)
         NoteEnabled = false;
     }
 }
-
 
 // Compute the filters coefficients
 void SUBnote::computefiltercoefs(bpfilter &filter, float freq, float bw, float gain)
@@ -920,3 +796,75 @@ void SUBnote::relasekey(void)
     if (GlobalFilterEnvelope != NULL)
         GlobalFilterEnvelope->relasekey();
 }
+
+void SUBnote::initfilterbank(void)
+{
+    // moved from noteon
+    // how much the amplitude is normalised (because the harmonics)
+    float reduceamp = 0.0;
+
+    for (int n = 0; n < numharmonics; ++n)
+    {
+        float freq =  basefreq * pars->POvertoneFreqMult[pos[n]];
+        overtone_freq[n] = freq;
+        overtone_rolloff[n] = computerolloff(freq);
+
+        // the bandwidth is not absolute(Hz); it is relative to frequency
+        float bw = powf(10.0f, (pars->Pbandwidth - 127.0f) / 127.0f * 4.0f) * numstages;
+
+        // Bandwidth Scale
+        bw *= powf(1000.0f / freq, (pars->Pbwscale - 64.0f) / 64.0f * 3.0f);
+
+        // Relative BandWidth
+        bw *= powf(100.0f, (pars->Phrelbw[pos[n]] - 64.0f) / 64.0f);
+
+        if (bw > 25.0f)
+            bw = 25.0f;
+
+        // try to keep same amplitude on all freqs and bw. (empirically)
+        float gain = sqrtf(1500.0f / (bw * freq));
+
+        float hmagnew = 1.0f - pars->Phmag[pos[n]] / 127.0f;
+        float hgain;
+
+        switch (pars->Phmagtype)
+        {
+            case 1:
+                hgain = expf(hmagnew * log_0_01);
+                break;
+
+            case 2:
+                hgain = expf(hmagnew * log_0_001);
+                break;
+
+            case 3:
+                hgain = expf(hmagnew * log_0_0001);
+                break;
+
+            case 4:
+                hgain = expf(hmagnew * log_0_00001);
+                break;
+
+            default:
+                hgain = 1.0f - hmagnew;
+        }
+        gain *= hgain;
+        reduceamp += hgain;
+
+        for (int nph = 0; nph < numstages; ++nph)
+        {
+            float amp = 1.0f;
+            if (nph == 0)
+                amp = gain;
+            initfilter(lfilter[nph + n * numstages], freq + OffsetHz, bw, amp, hgain);
+            if (stereo)
+                initfilter(rfilter[nph + n * numstages], freq + OffsetHz, bw, amp, hgain);
+        }
+    }
+
+    if (reduceamp < 0.001f)
+        reduceamp = 1.0f;
+    volume /= reduceamp;
+
+}
+

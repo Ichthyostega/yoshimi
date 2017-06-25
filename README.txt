@@ -1,3 +1,67 @@
+V 1.5.2 - Goldfinch
+
+We now implement the fairly new LV2 state:StateChanged URI
+This means any change you make in the Yoshimi GUI will be reported to the host.
+
+
+MIDI-learn improvements:
+
+The current learned list is now included in state saves.
+
+NRPNs can now be set as 7bit (LSB only). This is used by some hardware synths and controllers.
+
+Min and Max values are now shown as percentages and have a resolution of 0.5%
+
+Much of the controllers window, and quite a lot of 'switches' (such as engine enables, kit item mutes) are now learnable and act silently. Most of these are 'next note'.
+
+Learnable checkboxes have a pale blue surround (a similar colour to rotary controls).
+
+Learnable Menus and Selectors have their arrows the same blue colour.
+
+Note. To learn menus you need to make an actual selection with the right mouse button while holding down the Ctrl key.
+
+
+Under the hood:
+
+More Gui controls transferred to the new lock-free system.
+
+The usual round of ancient and modern bugfixes.
+
+To build yoshimi fetch the tarball from either:
+    http://sourceforge.net/projects/yoshimi
+Or:
+    https://github.com/Yoshimi/yoshimi
+
+Our user list archive is at:
+    https://www.freelists.org/archive/yoshimi
+
+
+V 1.5.1 - Jenny Wren
+
+MIDI-learn has been extended so that you can now learn aftertouch, the pitch wheel (to full 14 bit resolution) and most recently NRPNs. A number of hardware devices send these for greater control depth and to provide more than the usual number of controls. Also, there is a 'Settings' option to always open the editing window on a sucessful 'learn'.
+
+Main volume now has interpolation so there is no zipper noise, and part volume and pan have better interpolation for the same reason.
+
+LFO frequency and depth are now fully dynamic.
+
+Four common MIDI controls now have a window (right click on 'Controllers'). This is so that they can be be MIDI-learned. The reason you might want to, is for linking them to aftertouch - a particular benefit to users of wind controllers.
+
+A number of actions are now 'soft' in that a fast fade is performed, then the synth is disabled, the action takes place, and the synth is re-enabled.
+These are 'Stop' and 'Reset' as well as loading Vectors and Patchsets.
+
+The 'Solo' feature now ignores a value of zero if it is in 'Loop' mode. This means you can use a simple on/off switch control to step through the parts only when it gets the 'on' value.
+
+Visually there have been a lot of improvements. Main window key shortcuts work correctly! General layouts have been further harmonised. The AddSynth voice list window is now fully in sync with the voice windows themselves.
+
+More tooltips give real values on hovering. Some also give small graphic representations.
+
+We have a new splash screen, which also doesn't block anymore. There is now also a 'Util' directory which has the tools, instructions and examples to enable you to create a personalised splash.
+
+There is more information for making custom builds.
+
+Both CLI and GUI have been further isolated from the audio thread, and there is now intelligent buffering of incoming MIDI where needed.
+
+
 V 1.5.0 - The Robin
 
 Vector control now has its own dedicated button on the main window.
@@ -31,49 +95,3 @@ To make it easier to position patch changes in a running MIDI file, there is a n
 Vector control settings are now stored in patch set and state files.
 
 We implemented a simpler way to perform channel switching so the 'current' MIDI instrument can seem to be changed instantly, retaining the note tails of the previous one.
-
-
-V 1.4.0
-Diamond Dove
-
-About 18 months ago vector control became a 'thing' for Yoshimi and later, was first demonstrated to a handful of people at LAC 2015. At that time it was only accessible via NRPNs. Then about 6 months ago it became available to command line users as well, and 3 months ago vector saving and loading became possible.
-
-Now however, there is a shiny new window so the poor disadvantaged pointer-pushers can also have full control. This is currently reached via the 'Yoshimi' tab, but we may move it to its own button. Also, saving and loading vectors is now preserved in the recent histories file so you can quickly restore these - the same as you can for saved patch sets, scales and states.
-
-Vector entry via NRPNs and the CLI have also been upgraded slightly, so they will now automatically set the right number of parts available, and enable the required ones with the correct incoming channel number.
-
-
-A new concept is shortform NRPNs. This is where instead of the NRPN setting up for data entry of values, the NRPN is of itself the entire command. With a suitable sequencer like Rosegarden, you start with a two byte value, then only need to enter single byte CCs to change the setting.
-See doc/Shortform_NRPN.txt
-
-This came about through discussion after my demo of channel switching on MiniLAC2016. The idea was liked, but having to mess about with multiple NRPNs and their data settings was a fiddle.
-
-
-Some other usability enhancements:
-
-Some people don't like our splash window - Boo!
-You can now disable it in settings {mutter}{mutter}
-
-Many people didn't realise there were two types of resonance interpolation, determined by whether you click the left or right mouse button. This has now been split into two with better tooltips.
-
-Jack audio autoconnect is now configurable in the GUI and stored so you don't have to set it with a startup argument.
-
-In MIDI settings you can now tell Yoshimi to ignore the 'reset all controllers' message - various bits of hardware and software can send these at the most inappropriate times.
-
-A right click on a button for a child window now closes the parent and a right click on that child's close button re-opens the parent. Use this a few times and you'll wonder how you managed without. Actually, this has been possible for a long time with Root/Bank/Instrument windows :)
-
-A right click on the track of any slider, or on any rotary knob will return it to its home position.
-
-There has been some shuffling in the GUI to make the different windows more consistent and easier to recognise. This has also enabled us to increase the size of the smallest control knobs. Most sliders are now indented - it makes them more obvious.
-
-Scroll wheel behaviour on both knobs and sliders has also been adjusted to be more consistent. By itself movement is pretty fast, but hold down the ctrl key, and you'll get very fine resolution.
-
-Other matters:
-
-Yoshimi now has a build number, and this appears in the startup log. That's probably only of interest to those building the master, or for reporting bugs - whatever they are :P
-
-Actually, there are the usual bugfixes (ancient and modern) and we've also made a small improvement in the way we handle an all-jack environment.
-
-The compatibility work we did for V1.3.8 ensured the all-important instrument files were correct, but we didn't have time to implement all of the controls. These are now in place.
-
-Currently there is quite a lot of preparatory work under way but its not ready for prime time. It's still really proof of concept.

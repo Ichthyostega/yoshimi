@@ -1,9 +1,9 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0303 
-header_name {.h} 
+version 1.0304
+header_name {.h}
 code_name {.cc}
 comment {Copyright 2011, Alan Calvert
-Copyright 2014 - 2016, Will Godfrey
+Copyright 2014 - 2017, Will Godfrey
 
 This file is part of yoshimi, which is free software: you can
 redistribute it and/or modify it under the terms of the GNU General
@@ -18,24 +18,24 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 
-Modified December 2016
+Modified May 2017
 } {in_source in_header
-} 
+}
 
 decl {\#include <set>} {public local
-} 
+}
 
 decl {using namespace std;} {public local
-} 
+}
 
 decl {\#include "Misc/Config.h"} {private global
-} 
+}
 
 decl {\#include "MasterUI.h"} {private global
-} 
+}
 
 decl {\#include "Misc/SynthEngine.h"} {public global
-} 
+}
 
 class ParametersUI {selected
 } {
@@ -66,9 +66,10 @@ class ParametersUI {selected
             synth->getGuiMaster()->vectorui->loadVector(fle);
             break;
         case 4:
-              	CloseRecent->hide();
-                    	Loading->show();
-            synth->addHistory(fle, 4);
+            synth->getGuiMaster()->setState(fle);            
+            CloseRecent->hide();
+            Loading->show();
+            break;
         case 2:
             synth->getGuiMaster()->do_load_master(false, fle.c_str());
             break;
@@ -154,4 +155,4 @@ make_window();} {}
   }
   decl {int H_type;} {private local
   }
-} 
+}
