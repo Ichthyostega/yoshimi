@@ -5,7 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
     Copyright 2013, Nikita Zlobin
-    Copyright 2014-2016, Will Godfrey & others
+    Copyright 2014-2017, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -21,7 +21,9 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is derivative of ZynAddSubFX original code, last modified September 2016
+    This file is derivative of ZynAddSubFX original code.
+
+    Modified April 2017
 */
 
 #include <iostream>
@@ -57,7 +59,7 @@ static char prog_doc[] =
     "Copyright 2002-2009 Nasca Octavian Paul and others, "
     "Copyright 2009-2011 Alan Calvert, "
     "Copyright 20012-2013 Jeremy Jongepier and others, "
-    "Copyright 20014-2016 Will Godfrey and others";
+    "Copyright 20014-2017 Will Godfrey and others";
 string argline = "Yoshimi " + (string) YOSHIMI_VERSION + "\nBuild Number " + to_string(BUILD_NUMBER);
 const char* argp_program_version = argline.c_str();
 
@@ -128,10 +130,11 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
     enable_part_on_voice_load(1),
     ignoreResetCCs(false),
     monitorCCin(false),
+    showLearnedCC(true),
     single_row_panel(1),
     NumAvailableParts(NUM_MIDI_CHANNELS),
     currentPart(0),
-    padApply(0xffff),
+    lastPatchSet(-1),
     channelSwitchType(0),
     channelSwitchCC(128),
     channelSwitchValue(0),
@@ -220,7 +223,7 @@ bool Config::Setup(int argc, char **argv)
         midiDevice = "";
     loadCmdArgs(argc, argv);
     Oscilsize = nearestPowerOf2(Oscilsize, MAX_AD_HARMONICS * 2, 16384);
-    Buffersize = nearestPowerOf2(Buffersize, 16, 1024);
+    Buffersize = nearestPowerOf2(Buffersize, 16, 4096);
     //Log(asString(Oscilsize));
     //Log(asString(Buffersize));
     if (loadDefaultState && !restoreState)
@@ -523,7 +526,7 @@ bool Config::extractBaseParameters(XMLwrapper *xml)
         return false;
     }
     Samplerate = xml->getpar("sample_rate", Samplerate, 44100, 192000);
-    Buffersize = xml->getpar("sound_buffer_size", Buffersize, 16, 1024);
+    Buffersize = xml->getpar("sound_buffer_size", Buffersize, 16, 4096);
     Oscilsize = xml->getpar("oscil_size", Oscilsize, MAX_AD_HARMONICS * 2, 16384);
     GzipCompression = xml->getpar("gzip_compression", GzipCompression, 0, 9);
     showGui = xml->getparbool("enable_gui", showGui);
@@ -603,6 +606,8 @@ bool Config::extractConfigData(XMLwrapper *xml)
     EnableProgChange = 1 - xml->getpar("ignore_program_change", EnableProgChange, 0, 1); // inverted for Zyn compatibility
     enable_part_on_voice_load = xml->getpar("enable_part_on_voice_load", enable_part_on_voice_load, 0, 1);
     ignoreResetCCs = xml->getpar("ignore_reset_all_CCs",ignoreResetCCs,0, 1);
+    monitorCCin = xml->getparbool("monitor-incoming_CCs", monitorCCin);
+    showLearnedCC = xml->getparbool("open_editor_on_learned_CC", showLearnedCC);
 
     //misc
     checksynthengines = xml->getpar("check_pad_synth", checksynthengines, 0, 1);
@@ -673,6 +678,8 @@ void Config::addConfigXML(XMLwrapper *xmltree)
     xmltree->addpar("ignore_program_change", (1 - EnableProgChange));
     xmltree->addpar("enable_part_on_voice_load", enable_part_on_voice_load);
     xmltree->addpar("ignore_reset_all_CCs",ignoreResetCCs);
+    xmltree->addparbool("monitor-incoming_CCs", monitorCCin);
+    xmltree->addparbool("open_editor_on_learned_CC",showLearnedCC);
     xmltree->addpar("check_pad_synth", checksynthengines);
     xmltree->addpar(string("root_current_ID"), synth->ReadBankRoot());
     xmltree->addpar(string("bank_current_ID"), synth->ReadBank());
@@ -694,6 +701,7 @@ void Config::saveSessionData(string savefile)
     }
     addConfigXML(xmltree);
     synth->add2XML(xmltree);
+    synth->midilearn.insertMidiListData(false, xmltree);
     if (xmltree->saveXMLfile(savefile))
         Log("Session data saved to " + savefile);
     else
@@ -705,8 +713,9 @@ bool Config::restoreSessionData(string sessionfile, bool startup)
 {
     XMLwrapper *xml = NULL;
     bool ok = false;
+
     if (sessionfile.size() && !isRegFile(sessionfile))
-        sessionfile += ".state";
+        sessionfile = setExtension(sessionfile, "state");
     if (!sessionfile.size() || !isRegFile(sessionfile))
     {
         Log("Session file " + sessionfile + " not available", 1);
@@ -717,7 +726,6 @@ bool Config::restoreSessionData(string sessionfile, bool startup)
         Log("Failed to init xmltree for restoreState", 1);
         goto end_game;
     }
-
     if (!xml->loadXMLfile(sessionfile))
     {
         Log("Failed to load xml file " + sessionfile);
@@ -729,10 +737,23 @@ bool Config::restoreSessionData(string sessionfile, bool startup)
     {
         ok = extractConfigData(xml); // this still needs improving
         if (ok)
-        {
+        { // mark as soon as anything changes
+            synth->getRuntime().stateChanged = true;
+            for (int npart = 0; npart < NUM_MIDI_PARTS; ++ npart)
+            {
+                synth->part[npart]->defaults();
+                synth->part[npart]->Prcvchn = npart % NUM_MIDI_CHANNELS;
+            }
             ok = synth->getfromXML(xml);
             if (ok)
-                synth->getRuntime().stateChanged = true;
+            {
+                xml->endbranch(); // we shouldn't need this here
+                synth->setAllPartMaps();
+            }
+            bool oklearn = synth->midilearn.extractMidiListData(true, xml);
+            if (oklearn)
+                synth->midilearn.updateGui(2);
+                // handles possibly undefined window
         }
     }
 
@@ -750,7 +771,11 @@ void Config::Log(string msg, char tostderr)
     if (showGui && !(tostderr & 1) && toConsole)
         LogList.push_back(msg);
     else
-        cerr << msg << endl;
+    {
+        cout << msg << endl;
+        cout << CLIstring;
+        cout << flush;
+    }
 }
 
 
@@ -1224,7 +1249,7 @@ void GuiThreadMsg::processGuiMessages()
             {
 
                 case GuiThreadMsg::UpdateMaster:
-                    guiMaster->refresh_master_ui();
+                    guiMaster->refresh_master_ui(msg->index);
                     break;
 
                 case GuiThreadMsg::UpdateConfig:
@@ -1266,6 +1291,11 @@ void GuiThreadMsg::processGuiMessages()
                         guiMaster->updateeffects(msg->index);
                     break;
 
+                case GuiThreadMsg::UpdateControllers:
+                    if (msg->data)
+                        guiMaster->updatecontrollers(msg->index);
+                    break;
+
                 case GuiThreadMsg::UpdateBankRootDirs:
                     if (msg->data)
                         guiMaster->updateBankRootDirs();
@@ -1293,6 +1323,7 @@ void GuiThreadMsg::processGuiMessages()
                 case GuiThreadMsg::GuiAlert:
                     if (msg->data)
                         guiMaster->ShowAlert(msg->index);
+                    break;
 
                 default:
                     break;

@@ -50,9 +50,15 @@ private:
    std::string _bundlePath;
    LV2_URID_Map _uridMap;
    LV2_Atom_Sequence *_midiDataPort;
+   LV2_Atom_Sequence *_notifyDataPortOut;
    LV2_URID _midi_event_id;
    LV2_URID _yosmihi_state_id;
    LV2_URID _atom_string_id;
+   LV2_URID _atom_type_chunk;
+   LV2_URID _atom_type_sequence;
+   LV2_URID _atom_state_changed;
+   LV2_URID _atom_object;
+   LV2_URID _atom_event_transfer;
    uint32_t _bufferPos;
    uint32_t _offsetPos;
    sem_t _midiSem;
@@ -65,7 +71,6 @@ private:
    float *_bFreeWheel;
 
    jack_ringbuffer_t *_midiRingBuf;
-   pthread_t _pMidiThread;
    pthread_t _pIdleThread;
 
    float *lv2Left [NUM_MIDI_PARTS + 1];
@@ -73,11 +78,11 @@ private:
 
    void process(uint32_t sample_count);
    void processMidiMessage(const uint8_t *msg);
-   void *midiThread(void);
    void *idleThread(void);
    std::vector <LV2_Program_Descriptor> flatbankprgs;
+   const LV2_Descriptor *_lv2_desc;
 public:
-   YoshimiLV2Plugin(SynthEngine *synth, double sampleRate, const char *bundlePath, const LV2_Feature *const *features);
+   YoshimiLV2Plugin(SynthEngine *synth, double sampleRate, const char *bundlePath, const LV2_Feature *const *features, const LV2_Descriptor *desc);
    virtual ~YoshimiLV2Plugin();
    bool init();
 
@@ -112,7 +117,6 @@ public:
    const LV2_Program_Descriptor * getProgram(uint32_t index);
    void selectProgramNew(unsigned char channel, uint32_t bank, uint32_t program);
 
-   static void *static_midiThread(void *arg);
    static void *static_idleThread(void *arg);
 
    static LV2_State_Status static_StateSave(LV2_Handle instance, LV2_State_Store_Function store, LV2_State_Handle handle, uint32_t flags, const LV2_Feature *const * features);
@@ -147,6 +151,7 @@ private:
         YoshimiLV2PluginUI *uiInst;
     };
     _externalUI externalUI;
+    LV2UI_Write_Function _write_function;
 public:
     YoshimiLV2PluginUI(const char *, LV2UI_Write_Function, LV2UI_Controller, LV2UI_Widget *widget, const LV2_Feature *const *features);
     ~YoshimiLV2PluginUI();

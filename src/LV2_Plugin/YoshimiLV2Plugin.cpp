@@ -15,6 +15,8 @@
 
     You should have received a copy of the GNU General Public License
     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
+
+    Modified March 2017
 */
 
 #include "YoshimiLV2Plugin.h"
@@ -22,6 +24,7 @@
 #include "Misc/ConfBuild.cpp"
 #include "Misc/SynthEngine.h"
 #include "Interface/InterChange.h"
+#include "Interface/MidiDecode.h"
 #include "MusicIO/MusicClient.h"
 #include "MasterUI.h"
 #include "Synth/BodyDisposal.h"
@@ -46,6 +49,8 @@
 #define YOSHIMI_LV2_OPTIONS__Option          YOSHIMI_LV2_OPTIONS_PREFIX "Option"
 #define YOSHIMI_LV2_OPTIONS__options         YOSHIMI_LV2_OPTIONS_PREFIX "options"
 
+#define YOSHIMI_LV2_STATE__StateChanged      "http://lv2plug.in/ns/ext/state#StateChanged"
+
 typedef enum {
     LV2_OPTIONS_INSTANCE,
     LV2_OPTIONS_RESOURCE,
@@ -65,6 +70,33 @@ typedef struct _Yoshimi_LV2_Options_Option {
 
 
 using namespace std;
+
+
+
+LV2_Descriptor yoshimi_lv2_desc =
+{
+    "http://yoshimi.sourceforge.net/lv2_plugin",
+    YoshimiLV2Plugin::instantiate,
+    YoshimiLV2Plugin::connect_port,
+    YoshimiLV2Plugin::activate,
+    YoshimiLV2Plugin::run,
+    YoshimiLV2Plugin::deactivate,
+    YoshimiLV2Plugin::cleanup,
+    YoshimiLV2Plugin::extension_data
+};
+
+
+LV2_Descriptor yoshimi_lv2_multi_desc =
+{
+    "http://yoshimi.sourceforge.net/lv2_plugin_multi",
+    YoshimiLV2Plugin::instantiate,
+    YoshimiLV2Plugin::connect_port,
+    YoshimiLV2Plugin::activate,
+    YoshimiLV2Plugin::run,
+    YoshimiLV2Plugin::deactivate,
+    YoshimiLV2Plugin::cleanup,
+    YoshimiLV2Plugin::extension_data
+};
 
 
 void YoshimiLV2Plugin::process(uint32_t sample_count)
@@ -130,54 +162,13 @@ void YoshimiLV2Plugin::process(uint32_t sample_count)
             }
             //process this midi event
             const uint8_t *msg = (const uint8_t*)(event + 1);
-            bool bMidiProcessed = false;
             if (_bFreeWheel != NULL)
-            {
-                if (*_bFreeWheel != 0)
-                {
-                    processMidiMessage(msg);
-                    bMidiProcessed = true;
-                }
-            }
-            if (!bMidiProcessed)
-            {
-                intMidiEvent.time = next_frame;
-                memset(intMidiEvent.data, 0, sizeof(intMidiEvent.data));
-                memcpy(intMidiEvent.data, msg, event->body.size);
-                unsigned int wrote = 0;
-                int tries = 0;
-                char *_data = (char *)&intMidiEvent;
-                while (wrote < sizeof(intMidiEvent) && tries < 3)
-                {
-                    int act_write = jack_ringbuffer_write(_midiRingBuf, reinterpret_cast<const char *>(_data), sizeof(intMidiEvent) - wrote);
-                    wrote += act_write;
-                    _data += act_write;
-                    ++tries;
-                }
-                if (wrote == sizeof(struct midi_event))
-                {
-                    if (sem_post(&_midiSem) < 0)
-                        _synth->getRuntime().Log("processMidi semaphore post error, "
-                                    + string(strerror(errno)));
-                }
-                else
-                {
-                    _synth->getRuntime().Log("Bad write to midi ringbuffer: "
-                                + asString(wrote) + " / "
-                                + asString((int)sizeof(struct midi_event)));
-                }
-
-            }
-
+                processMidiMessage(msg);
         }
     }
 
     if (processed < real_sample_count)
     {
-        /*if (processed != 0)
-        {
-            fprintf(stderr, "Processed = %u\n", processed);
-        }*/
         uint32_t to_process = real_sample_count - processed;
         int mastered = 0;
         offs = next_frame;
@@ -194,132 +185,40 @@ void YoshimiLV2Plugin::process(uint32_t sample_count)
         processed += to_process;
 
     }
-
+    
+    LV2_Atom_Sequence *aSeq = static_cast<LV2_Atom_Sequence *>(_notifyDataPortOut);
+    size_t neededAtomSize = sizeof(LV2_Atom_Event) + sizeof(LV2_Atom_Object_Body);
+    size_t paddedSize = (neededAtomSize + 7U) & (~7U);
+    if(synth->getNeedsSaving() && _notifyDataPortOut && aSeq->atom.size >= paddedSize) //notify host about plugin's changes
+    {
+        synth->setNeedsSaving(false);        
+        aSeq->atom.type = _atom_type_sequence;
+        aSeq->atom.size = sizeof(LV2_Atom_Sequence_Body);
+        aSeq->body.unit = 0;
+        aSeq->body.pad = 0;        
+        LV2_Atom_Event *ev = reinterpret_cast<LV2_Atom_Event *>(aSeq + 1);
+        ev->time.frames = 0;
+        LV2_Atom_Object *aObj = reinterpret_cast<LV2_Atom_Object *>(&ev->body);
+        aObj->atom.type = _atom_object;
+        aObj->atom.size = sizeof(LV2_Atom_Object_Body);
+        aObj->body.id = 0;
+        aObj->body.otype =_atom_state_changed;
+        
+        aSeq->atom.size += paddedSize;        
+    }
+    else if(aSeq)
+    {
+        aSeq->atom.size = sizeof(LV2_Atom_Sequence_Body);
+        
+    }
+   
 }
 
 
 void YoshimiLV2Plugin::processMidiMessage(const uint8_t * msg)
 {
-    unsigned char channel, note, velocity;
-    int ctrltype;
-    int par = 0;
-    unsigned int ev;
-    channel = msg[0] & 0x0F;
     bool in_place = _bFreeWheel ? ((*_bFreeWheel == 0) ? false : true) : false;
-    switch ((ev = msg[0] & 0xF0))
-    {
-        case 0x01: // modulation wheel or lever
-            ctrltype = C_modwheel;
-            par = msg[2];
-            setMidiController(channel, ctrltype, par, in_place);
-            break;
-
-        case 0x07: // channel volume (formerly main volume)
-            ctrltype = C_volume;
-            par = msg[2];
-            setMidiController(channel, ctrltype, par, in_place);
-            break;
-
-        case 0x0B: // expression controller
-            ctrltype = C_expression;
-            par = msg[2];
-            setMidiController(channel, ctrltype, par, in_place);
-            break;
-
-        case 0x78: // all sound off
-            ctrltype = C_allsoundsoff;
-            setMidiController(channel, ctrltype, 0, in_place);
-            break;
-
-        case 0x79: // reset all controllers
-            ctrltype = C_resetallcontrollers;
-            setMidiController(channel, ctrltype, 0, in_place);
-            break;
-
-        case 0x7B:  // all notes off
-            ctrltype = C_allnotesoff;
-            setMidiController(channel, ctrltype, 0, in_place);
-            break;
-
-        case 0x80: // note-off
-            note = msg[1];
-            setMidiNote(channel, note);
-            break;
-
-        case 0x90: // note-on
-            if ((note = msg[1])) // skip note == 0
-            {
-                velocity = msg[2];
-                setMidiNote(channel, note, velocity);
-            }
-            break;
-
-        case 0xA0: // key aftertouch
-            ctrltype = C_keypressure;
-            // need to work out how to use key values >> j Event.buffer[1]
-            par = msg[2];
-            setMidiController(channel, ctrltype, par, in_place);
-            break;
-
-        case 0xB0: // controller
-            ctrltype = getMidiController(msg[1]);
-            par = msg[2];
-            setMidiController(channel, ctrltype, par, in_place);
-            break;
-
-        case 0xC0: // program change
-            ctrltype = C_programchange;
-            par = msg[1];
-            setMidiProgram(channel, par, in_place);
-            break;
-
-        case 0xD0: // channel aftertouch
-            ctrltype = C_channelpressure;
-            par = msg[2];
-            setMidiController(channel, ctrltype, par, in_place);
-            break;
-
-
-        case 0xE0: // pitch bend
-            ctrltype = C_pitchwheel;
-            par = ((msg[2] << 7) | msg[1]) - 8192;
-            setMidiController(channel, ctrltype, par, in_place);
-            break;
-
-        case 0xF0: // system exclusive
-            break;
-
-        default: // wot, more?
-            //synth->getRuntime().Log("other event: " + asString((int)ev));
-            break;
-    }
-
-}
-
-
-void *YoshimiLV2Plugin::midiThread()
-{
-    struct midi_event midiEvent;
-    while (synth->getRuntime().runSynth)
-    {
-        if (sem_wait(&_midiSem) < 0)
-        {
-            _synth->getRuntime().Log("midiThread semaphore wait error, "
-                        + string(strerror(errno)));
-            continue;
-        }
-        if (!_synth->getRuntime().runSynth)
-            break;
-        size_t fetch = jack_ringbuffer_read(_midiRingBuf, (char*)&midiEvent, sizeof(struct midi_event));
-        if (fetch != sizeof(struct midi_event))
-        {
-            _synth->getRuntime().Log("Short ringbuffer read, " + asString((float)fetch) + " / "
-                        + asString((int)sizeof(struct midi_event)));
-            continue;
-        }
-        processMidiMessage(reinterpret_cast<const uint8_t *>(midiEvent.data));
-    }
-    return NULL;
+    setMidi(msg[0], msg[1], msg[2], in_place);
 }
 
 
@@ -343,25 +242,26 @@ void *YoshimiLV2Plugin::idleThread()
 //            Fl::wait(0.033333);
 //        else
             usleep(33333);
+            
     }
     return NULL;
 }
 
 
-YoshimiLV2Plugin::YoshimiLV2Plugin(SynthEngine *synth, double sampleRate, const char *bundlePath, const LV2_Feature *const *features):
+YoshimiLV2Plugin::YoshimiLV2Plugin(SynthEngine *synth, double sampleRate, const char *bundlePath, const LV2_Feature *const *features, const LV2_Descriptor *desc):
     MusicIO(synth),
     _synth(synth),
     _sampleRate(static_cast<uint32_t>(sampleRate)),
     _bufferSize(0),
     _bundlePath(bundlePath),
     _midiDataPort(NULL),
+    _notifyDataPortOut(NULL),
     _midi_event_id(0),
     _bufferPos(0),
     _offsetPos(0),
     _bFreeWheel(NULL),
-    _midiRingBuf(NULL),
-    _pMidiThread(0),
-    _pIdleThread(0)
+    _pIdleThread(0),
+    _lv2_desc(desc)
 {
     flatbankprgs.clear();
     _uridMap.handle = NULL;
@@ -389,6 +289,11 @@ YoshimiLV2Plugin::YoshimiLV2Plugin(SynthEngine *synth, double sampleRate, const 
         LV2_URID maxBufSz = _uridMap.map(_uridMap.handle, YOSHIMI_LV2_BUF_SIZE__maxBlockLength);
         LV2_URID minBufSz = _uridMap.map(_uridMap.handle, YOSHIMI_LV2_BUF_SIZE__minBlockLength);
         LV2_URID atomInt = _uridMap.map(_uridMap.handle, LV2_ATOM__Int);
+        _atom_type_chunk = _uridMap.map(_uridMap.handle, LV2_ATOM__Chunk);
+        _atom_type_sequence = _uridMap.map(_uridMap.handle, LV2_ATOM__Sequence);
+        _atom_state_changed = _uridMap.map(_uridMap.handle, YOSHIMI_LV2_STATE__StateChanged);
+        _atom_object = _uridMap.map(_uridMap.handle, LV2_ATOM__Object);
+        _atom_event_transfer = _uridMap.map(_uridMap.handle, LV2_ATOM__eventTransfer);
         while (options->size > 0 && options->value != NULL)
         {
             if (options->context == LV2_OPTIONS_INSTANCE)
@@ -418,15 +323,7 @@ YoshimiLV2Plugin::~YoshimiLV2Plugin()
             getProgram(flatbankprgs.size() + 1);
         }
         _synth->getRuntime().runSynth = false;
-        sem_post(&_midiSem);
-        pthread_join(_pMidiThread, NULL);
         pthread_join(_pIdleThread, NULL);
-        sem_destroy(&_midiSem);
-        if (_midiRingBuf != NULL)
-        {
-            jack_ringbuffer_free(_midiRingBuf);
-            _midiRingBuf = NULL;
-        }
         delete _synth;
         _synth = NULL;
     }
@@ -439,23 +336,6 @@ bool YoshimiLV2Plugin::init()
         return false;
     if (!prepBuffers())
         return false;
-    if (sem_init(&_midiSem, 0, 0) != 0)
-    {
-        _synth->getRuntime().Log("Failed to create midi semaphore");
-        return false;
-    }
-
-    _midiRingBuf = jack_ringbuffer_create(sizeof(struct midi_event) * 4096);
-    if (!_midiRingBuf)
-    {
-        _synth->getRuntime().Log("Failed to create midi ringbuffer");
-        return false;
-    }
-    if (jack_ringbuffer_mlock(_midiRingBuf))
-    {
-        _synth->getRuntime().Log("Failed to lock memory");
-        return false;
-    }
 
     _synth->Init(_sampleRate, _bufferSize);
 
@@ -465,12 +345,6 @@ bool YoshimiLV2Plugin::init()
     memset(lv2Right, 0, sizeof(float *) * (NUM_MIDI_PARTS + 1));
 
     _synth->getRuntime().runSynth = true;
-
-    if (!_synth->getRuntime().startThread(&_pMidiThread, YoshimiLV2Plugin::static_midiThread, this, true, 1, false, "LV2 midi"))
-    {
-        synth->getRuntime().Log("Failed to start midi thread");
-        return false;
-    }
 
     if (!_synth->getRuntime().startThread(&_pIdleThread, YoshimiLV2Plugin::static_idleThread, this, false, 0, false, "LV2 idle"))
     {
@@ -484,12 +358,12 @@ bool YoshimiLV2Plugin::init()
 }
 
 
-LV2_Handle	YoshimiLV2Plugin::instantiate (const struct _LV2_Descriptor *, double sample_rate, const char *bundle_path, const LV2_Feature *const *features)
+LV2_Handle	YoshimiLV2Plugin::instantiate (const struct _LV2_Descriptor *desc, double sample_rate, const char *bundle_path, const LV2_Feature *const *features)
 {
     SynthEngine *synth = new SynthEngine(0, NULL, true);
     if (synth == NULL)
         return NULL;
-    YoshimiLV2Plugin *inst = new YoshimiLV2Plugin(synth, sample_rate, bundle_path, features);
+    YoshimiLV2Plugin *inst = new YoshimiLV2Plugin(synth, sample_rate, bundle_path, features, desc);
     if (inst->init())
         return static_cast<LV2_Handle>(inst);
     else
@@ -513,6 +387,16 @@ void YoshimiLV2Plugin::connect_port(LV2_Handle instance, uint32_t port, void *da
          inst->_bFreeWheel = static_cast<float *>(data_location);
          return;
      }
+     else if (port == 36 && std::string(inst->_lv2_desc->URI) == std::string(yoshimi_lv2_multi_desc.URI)) //notify out port
+     {
+         inst->_notifyDataPortOut = static_cast<LV2_Atom_Sequence *>(data_location);
+         return;
+     }
+     else if (port == 4 && std::string(inst->_lv2_desc->URI) == std::string(yoshimi_lv2_desc.URI)) //notify out port
+     {
+         inst->_notifyDataPortOut = static_cast<LV2_Atom_Sequence *>(data_location);
+         return;
+     }
 
      port -=2;
 
@@ -528,7 +412,6 @@ void YoshimiLV2Plugin::connect_port(LV2_Handle instance, uint32_t port, void *da
          inst->lv2Left[portIndex] = static_cast<float *>(data_location);
      else
          inst->lv2Right[portIndex] = static_cast<float *>(data_location);
-
 }
 
 
@@ -536,7 +419,6 @@ void YoshimiLV2Plugin::activate(LV2_Handle instance)
 {
     YoshimiLV2Plugin *inst = static_cast<YoshimiLV2Plugin *>(instance);
     inst->Start();
-
 }
 
 
@@ -544,7 +426,6 @@ void YoshimiLV2Plugin::deactivate(LV2_Handle instance)
 {
     YoshimiLV2Plugin *inst = static_cast<YoshimiLV2Plugin *>(instance);
     inst->Close();
-
 }
 
 
@@ -603,9 +484,7 @@ LV2_State_Status YoshimiLV2Plugin::stateSave(LV2_State_Store_Function store, LV2
 {
     char *data = NULL;
     int sz = _synth->getalldata(&data);
-    //FILE *f = fopen("/tmp/y1.state", "w+");
-    //fwrite(data, 1, sz, f);
-    //fclose(f);
+
     store(handle, _yosmihi_state_id, data, sz, _atom_string_id, LV2_STATE_IS_POD | LV2_STATE_IS_PORTABLE);
     free(data);
     return LV2_STATE_SUCCESS;
@@ -620,13 +499,8 @@ LV2_State_Status YoshimiLV2Plugin::stateRestore(LV2_State_Retrieve_Function retr
 
     const char *data = (const char *)retrieve(handle, _yosmihi_state_id, &sz, &type, &new_flags);
 
-    //FILE *f = fopen("/tmp/y2.state", "w+");
-    //fwrite(data, 1, sz, f);
-    //fclose(f);
-
     if (sz > 0)
     {
-
         _synth->putalldata(data, sz);
     }
     return LV2_STATE_SUCCESS;
@@ -684,15 +558,9 @@ void YoshimiLV2Plugin::selectProgramNew(unsigned char channel, uint32_t bank, ui
         isFreeWheel = true;
     if (_synth->getRuntime().midi_bank_C != 128)
     {
-        setMidiBankOrRootDir((short)bank, isFreeWheel);
+        synth->mididecode.setMidiBankOrRootDir((short)bank, isFreeWheel);
     }
-    setMidiProgram(channel, program, isFreeWheel);
-}
-
-
-void *YoshimiLV2Plugin::static_midiThread(void *arg)
-{
-    return static_cast<YoshimiLV2Plugin *>(arg)->midiThread();
+    synth->mididecode.setMidiProgram(channel, program, isFreeWheel);
 }
 
 
@@ -747,10 +615,11 @@ LV2_Worker_Status YoshimiLV2Plugin::lv2_wrk_end_run(LV2_Handle instance)
 */
 
 
-YoshimiLV2PluginUI::YoshimiLV2PluginUI(const char *, LV2UI_Write_Function , LV2UI_Controller controller, LV2UI_Widget *widget, const LV2_Feature * const *features)
+YoshimiLV2PluginUI::YoshimiLV2PluginUI(const char *, LV2UI_Write_Function write_function, LV2UI_Controller controller, LV2UI_Widget *widget, const LV2_Feature * const *features)
     :_plugin(NULL),
      _masterUI(NULL),
-     _controller(controller)
+     _controller(controller),
+     _write_function(write_function)
 {
     uiHost.plugin_human_id = NULL;
     uiHost.ui_closed = NULL;
@@ -842,6 +711,7 @@ void YoshimiLV2PluginUI::run()
         Fl::check();
 
         GuiThreadMsg::processGuiMessages();
+        
     }
     else
     {
@@ -899,31 +769,6 @@ void YoshimiLV2PluginUI::static_Hide(_LV2_External_UI_Widget *_this_)
 
 }
 
-
-LV2_Descriptor yoshimi_lv2_desc =
-{
-    "http://yoshimi.sourceforge.net/lv2_plugin",
-    YoshimiLV2Plugin::instantiate,
-    YoshimiLV2Plugin::connect_port,
-    YoshimiLV2Plugin::activate,
-    YoshimiLV2Plugin::run,
-    YoshimiLV2Plugin::deactivate,
-    YoshimiLV2Plugin::cleanup,
-    YoshimiLV2Plugin::extension_data
-};
-
-
-LV2_Descriptor yoshimi_lv2_multi_desc =
-{
-    "http://yoshimi.sourceforge.net/lv2_plugin_multi",
-    YoshimiLV2Plugin::instantiate,
-    YoshimiLV2Plugin::connect_port,
-    YoshimiLV2Plugin::activate,
-    YoshimiLV2Plugin::run,
-    YoshimiLV2Plugin::deactivate,
-    YoshimiLV2Plugin::cleanup,
-    YoshimiLV2Plugin::extension_data
-};
 
 
 extern "C" const LV2_Descriptor *lv2_descriptor(uint32_t index)
