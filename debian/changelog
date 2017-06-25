@@ -1,3 +1,9 @@
+yoshimi (1.5.2.1-1) UNRELEASED; urgency=medium
+
+  * New upstream version 1.5.2.1
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Sun, 25 Jun 2017 19:37:37 +0200
+
 yoshimi (1.5.0-3) unstable; urgency=medium
 
   * Update copyright file.
