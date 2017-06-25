@@ -1,4 +1,6 @@
 yoshimi 1.5.2
+2017-6-22 Will
+* Fixed regression kitmode effect select works again.
 
 2017-5-12 Will
 * Merged in Robs SubSynth Overtones/Legato fix.
@@ -1708,6 +1710,9 @@ yoshimi 1.3.9
 - Minor reorganisations.
 - Only relevant XML files now carry base parameters.
 - CLI no longer sets configChanged when altering the new banks file.
+
+2016-1-22 Will
+- Set bugfix version 1.3.8.2
 
 2016-1-22 Rob
 - Workaround to avoid cmake 3.4.1 bug by using our own routine to
