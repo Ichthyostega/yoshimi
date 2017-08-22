@@ -1,7 +1,5 @@
 # I can't find these spelling errors in source code using grep tool.
 # So overriding them.
-yoshimi: spelling-error-in-binary usr/bin/yoshimi TeH The
 yoshimi: spelling-error-in-binary usr/bin/yoshimi ment meant
-yoshimi: spelling-error-in-binary usr/lib/lv2/yoshimi.lv2/yoshimi_lv2.so TeH The
 yoshimi: spelling-error-in-binary usr/lib/lv2/yoshimi.lv2/yoshimi_lv2.so ment meant
 yoshimi: spelling-error-in-binary usr/bin/yoshimi pres press
