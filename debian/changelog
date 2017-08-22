@@ -1,8 +1,14 @@
-yoshimi (1.5.3-1) UNRELEASED; urgency=medium
+yoshimi (1.5.3-1) unstable; urgency=medium
 
   * New upstream version 1.5.3
+  * Bump Standards.
+  * Update Vcs - use git instead of cgit.
+  * Introduce postclone.sh script to ignore .pc/ dir.
+  * Update install file.
+  * Update override file.
+  * Add spelling patch.
 
- -- Jaromír Mikeš <mira.mikes@seznam.cz>  Tue, 22 Aug 2017 11:22:48 +0200
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Tue, 22 Aug 2017 12:21:46 +0200
 
 yoshimi (1.5.2.1-1) unstable; urgency=medium
 
