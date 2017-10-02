@@ -11,7 +11,7 @@ Index: yoshimi/src/CMakeLists.txt
 ===================================================================
 --- yoshimi.orig/src/CMakeLists.txt
 +++ yoshimi/src/CMakeLists.txt
-@@ -109,6 +109,9 @@ set (BuildOptionsBasic
+@@ -111,6 +111,9 @@ set (BuildOptionsBasic
  set (BuildOptionsDebug
      "-O0 -g3 -ggdb -Wall -Wpointer-arith" CACHE STRING "Debug build flags")
  
@@ -21,7 +21,7 @@ Index: yoshimi/src/CMakeLists.txt
  find_package (PkgConfig REQUIRED)
  if (PKG_CONFIG_FOUND)
      message(STATUS "Found pkg-config ${PKG_CONFIG_EXECUTABLE}")
-@@ -276,6 +279,7 @@ else (BuildForDebug)
+@@ -270,6 +273,7 @@ else (BuildForDebug)
              endif (BuildForNEON)
          endif (BuildForCore2_X86_64)
      endif (BuildForAMD_X86_64)
