@@ -6,7 +6,7 @@ Uploaders:
  Jaromír Mikeš <mira.mikes@seznam.cz>
 Build-Depends:
  cmake,
- debhelper (>= 10),
+ debhelper (>= 10~),
  fluid,
  libasound2-dev,
  libboost-dev,
@@ -25,7 +25,7 @@ Build-Depends:
  lv2-dev,
  sharutils,
  zlib1g-dev
-Standards-Version: 4.1.0
+Standards-Version: 4.1.1
 Vcs-Git: https://anonscm.debian.org/git/pkg-multimedia/yoshimi.git
 Vcs-Browser: https://anonscm.debian.org/git/pkg-multimedia/yoshimi.git
 Homepage: http://yoshimi.sourceforge.net
