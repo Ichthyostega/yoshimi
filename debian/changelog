@@ -1,9 +1,12 @@
-yoshimi (1.5.4.1-1) UNRELEASED; urgency=medium
+yoshimi (1.5.4.1-1) unstable; urgency=medium
 
   * Update watch file to track github repo.
   * New upstream version 1.5.4.1
+  * Remove compresion bz2 from gbp.conf.
+  * Bump Standards.
+  * Install manual.
 
- -- Jaromír Mikeš <mira.mikes@seznam.cz>  Mon, 16 Oct 2017 23:46:34 +0200
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Tue, 17 Oct 2017 02:24:51 +0200
 
 yoshimi (1.5.4-1) unstable; urgency=medium
 
