@@ -2,7 +2,7 @@ yoshimi (1.5.4.1-1) unstable; urgency=medium
 
   * Update watch file to track github repo.
   * New upstream version 1.5.4.1
-  * Remove compresion bz2 from gbp.conf.
+  * Remove compression bz2 from gbp.conf.
   * Bump Standards.
   * Install manual.
 
