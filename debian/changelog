@@ -1,8 +1,11 @@
-yoshimi (1.5.5-1) UNRELEASED; urgency=medium
+yoshimi (1.5.5-1) unstable; urgency=medium
 
   * New upstream version 1.5.5
+  * Use secure uri where possible.
+  * Patch refreshed.
+  * Add more entries to override file.
 
- -- Jaromír Mikeš <mira.mikes@seznam.cz>  Mon, 11 Dec 2017 21:23:36 +0100
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Mon, 11 Dec 2017 22:29:45 +0100
 
 yoshimi (1.5.4.1-1) unstable; urgency=medium
 
@@ -226,7 +229,7 @@ yoshimi (1.2.2-1) unstable; urgency=low
 
 yoshimi (1.2.1-1) unstable; urgency=low
 
-  * Imported Upstream version 1.2.1
+  * Imported Upstream version 1.2.1endif (BuildForAMD_X86_64)
   * Removed/Refreshed patches - applied upstream.
 
  -- Jaromír Mikeš <mira.mikes@seznam.cz>  Tue, 10 Jun 2014 01:16:11 +0200
@@ -392,6 +395,6 @@ yoshimi (0.056-2) unstable; urgency=low
 
 yoshimi (0.056-1) unstable; urgency=low
 
-  * Initial release (Closes: #581155). 
+  * Initial release (Closes: #581155).
 
  -- Jaromír Mikeš <mira.mikes@seznam.cz>  Sat, 01 May 2010 16:18:45 +0200
