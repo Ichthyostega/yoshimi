@@ -1,0 +1,42 @@
+Description: Fix build on non-linux systems
+Author: Will Godfrey <willgodfrey@musically.me.uk>
+Forwarded: not-needed
+
+Index: yoshimi/src/CMakeLists.txt
+===================================================================
+--- yoshimi.orig/src/CMakeLists.txt
++++ yoshimi/src/CMakeLists.txt
+@@ -145,6 +145,7 @@ endif(EXP10F)
+ 
+ check_c_source_compiles (
+     "#include <argp.h>
++     #include <stdlib.h>
+      int main () {
+          int argc=1;
+          char *argv[]={\"test\"};
+Index: yoshimi/src/Misc/Config.cpp
+===================================================================
+--- yoshimi.orig/src/Misc/Config.cpp
++++ yoshimi/src/Misc/Config.cpp
+@@ -1089,7 +1089,7 @@ LinuxSampler src/common/Features.cpp, li
+ **/
+ 
+ 
+-static error_t parse_cmds (int key, char *arg, struct argp_state *state)
++static int parse_cmds (int key, char *arg, struct argp_state *state)
+ {
+     Config *settings = (Config*)state->input;
+     if (arg && arg[0] == 0x3d)
+Index: yoshimi/src/Misc/WaveShapeSamples.h
+===================================================================
+--- yoshimi.orig/src/Misc/WaveShapeSamples.h
++++ yoshimi/src/Misc/WaveShapeSamples.h
+@@ -25,6 +25,8 @@
+ #ifndef WAVESHAPESAMPLES_H
+ #define WAVESHAPESAMPLES_H
+ 
++#include <cmath>
++
+ class WaveShapeSamples
+ {
+     public:
