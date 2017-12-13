@@ -1,4 +1,4 @@
-yoshimi (1.5.5-2) UNRELEASED; urgency=medium
+yoshimi (1.5.5-2) unstable; urgency=medium
 
   * Add patch to fix build on non-linux systems.
 
