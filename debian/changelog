@@ -1,8 +1,13 @@
-yoshimi (1.5.6-1) UNRELEASED; urgency=medium
+yoshimi (1.5.6-1) unstable; urgency=medium
 
   * New upstream version 1.5.6
+  * Patches refreshed/removed.
+  * Bump Standards.
+  * Introduce doc package.
+  * Update overrides file.
+  * Add doc-base file.
 
- -- Jaromír Mikeš <mira.mikes@seznam.cz>  Sun, 17 Dec 2017 12:16:06 +0100
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Sun, 17 Dec 2017 14:49:27 +0100
 
 yoshimi (1.5.5-2) unstable; urgency=medium
 
