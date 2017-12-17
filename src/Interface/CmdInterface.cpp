@@ -141,6 +141,7 @@ string partlist [] = {
     "Pan <n2>",                 "panning",
     "VElocity <n2>",            "velocity sensing sensitivity",
     "OFfset <n2>",              "velocity sense offset",
+    "Breath <s>",              "breath control (Enable {other})",
     "POrtamento <s>",           "portamento (Enable {other})",
     "Mode <s>",                 "key mode (Poly, Mono, Legato)",
     "Note <n2>",                "note polyphony",
@@ -1550,16 +1551,16 @@ int CmdInterface::commandScale()
             Runtime.Log("Write only - use list");
             return done_msg;
         }
-        else if (command <= 0x21)
+        if (command <= 0x21)
         {
             if (matchnMove(3, point, "import"))
                 command += 0x10;
-            name = (string)point;
-            if (name == "")
-                return value_msg;
-            par = 0x80;
-            par2 = miscMsgPush(name);
         }
+        name = (string)point;
+        if (name == "")
+            return value_msg;
+        par = 0x80;
+        par2 = miscMsgPush(name);
     }
     else
     {
@@ -1625,7 +1626,7 @@ int CmdInterface::commandScale()
             }
         }
     }
-
+cout << "par " << int(par) << endl;
     sendDirect(value, type, command, 0xe8, 0xff, 0xff, 0xff, par, par2);
     return reply;
 }
@@ -1764,6 +1765,18 @@ int CmdInterface::commandPart(bool justSet)
         }
         else
             reply = range_msg;
+    }
+    else if (matchnMove(1, point, "breath"))
+    {
+        int type = 0;
+        int value = 0;
+        if(!isRead)
+        {
+            type = 64;
+            value = matchnMove(1, point, "enable");
+        }
+        sendDirect(value, type, 141, npart);
+        return done_msg;
     }
     else if (matchnMove(1, point, "note"))
     {
