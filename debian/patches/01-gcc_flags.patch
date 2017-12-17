@@ -21,7 +21,7 @@ Index: yoshimi/src/CMakeLists.txt
  find_package (PkgConfig REQUIRED)
  if (PKG_CONFIG_FOUND)
      message(STATUS "Found pkg-config ${PKG_CONFIG_EXECUTABLE}")
-@@ -320,6 +323,7 @@ else (BuildForDebug)
+@@ -322,6 +325,7 @@ else (BuildForDebug)
              endif (BuildForCore2_X86_64)
          endif (BuildForAMD_X86_64)
      endif (BuildFor0ld_X86)
