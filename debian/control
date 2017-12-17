@@ -48,6 +48,7 @@ Description: software synthesizer originally based on ZynAddSubFX2
 
 Package: yoshimi-data
 Architecture: all
+Multi-Arch: foreign
 Depends:
  ${misc:Depends}
 Recommends:
