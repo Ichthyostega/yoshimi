@@ -105,7 +105,7 @@ License: GPL-3+
 Files: banks/Drums/0004-Natural?Drum?Kit.xiz
        banks/Drums/0005-Natural?Snare?-?variable?deca.xiz
        banks/Drums/0006-HiHat?closed?-?variable?decay.xiz
-Copyright: no-copyright
+Copyright: 2012, Dario Straulino
 License: GPL-3
 
 Files: src/Misc/Config.cpp
@@ -114,7 +114,7 @@ Copyright: 2009-2011, Alan Calvert
            2014, Andrew Deryabin
            2003-2004, Benno Senoner and Christian Schoenebeck
            2005-2008, Christian Schoenebeck
-           2017, Jesper Lloyd").c_str())
+           2017, Jesper Lloyd
            2002-2009, Nasca O. PAUL and others
            2013, Nikita Zlobin
            2014-2017, Will Godfrey & others
