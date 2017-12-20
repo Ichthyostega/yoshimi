@@ -123,7 +123,7 @@ License: GPL-2+ or LGPL-2+
 Files: Util/YoshimiSplash.svg
        Util/splashreference.svg
 Copyright: no-copyright
-License: CC-BY
+License: CC-BY-3.0
 
 Files: src/LV2_Plugin/lv2extprg.h
 Copyright: 2014, Deryabin Andrew <andrewderyabin@gmail.com>
@@ -134,7 +134,7 @@ Files: desktop/metainfo/*
 Copyright: 2016-2017, Yoshimi project <willgodfrey@musically.me.uk>
 License: CC0 or GPL-2+
 
-License: CC-BY
+License: CC-BY-3.0
  THE WORK (AS DEFINED BELOW) IS PROVIDED UNDER THE TERMS OF THIS
  CREATIVE COMMONS PUBLIC LICENSE ("CCPL" OR "LICENSE"). THE WORK IS
  PROTECTED BY COPYRIGHT AND/OR OTHER APPLICABLE LAW. ANY USE OF THE WORK
