@@ -96,8 +96,7 @@ Copyright: 2010-2011, Alessio Treglia <alessio@debian.org>
            2010-2017, Jaromír Mikeš <mira.mikes@seznam.cz>
 License: GPL-2+
 
-Files: COPYING
-       src/UI/ParametersUI.fl
+Files: src/UI/ParametersUI.fl
        src/UI/VectorUI.fl
 Copyright: 2011, Alan Calvert
            2014-2017, Will Godfrey
@@ -132,7 +131,7 @@ Copyright: 2014, Deryabin Andrew <andrewderyabin@gmail.com>
 License: ISC
 
 Files: desktop/metainfo/*
-Copyright: 2016-2017, Yoshimi project <willgodfrey@musically.me.uk> -->
+Copyright: 2016-2017, Yoshimi project <willgodfrey@musically.me.uk>
 License: CC0 or GPL-2+
 
 License: CC-BY
