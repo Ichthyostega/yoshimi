@@ -103,9 +103,10 @@ Copyright: 2011, Alan Calvert
            2014-2017, Will Godfrey
 License: GPL-3+
 
-Files: banks/Drums/0004-Natural Drum Kit.xiz
-       banks/Drums/0005-Natural Snare - variable deca.xiz
-       banks/Drums/0006-HiHat closed - variable decay.xiz
+Files: banks/Drums/0004-Natural?Drum?Kit.xiz
+       banks/Drums/0005-Natural?Snare?-?variable?deca.xiz
+       banks/Drums/0006-HiHat?closed?-?variable?decay.xiz
+Copyright: no-copyright
 License: GPL-3
 
 Files: src/Misc/Config.cpp
@@ -122,6 +123,7 @@ License: GPL-2+ or LGPL-2+
 
 Files: Util/YoshimiSplash.svg
        Util/splashreference.svg
+Copyright: no-copyright
 License: CC-BY
 
 Files: src/LV2_Plugin/lv2extprg.h
