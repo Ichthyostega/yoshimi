@@ -1,4 +1,11 @@
-yoshimi (1.4.1-1~bpo.jessie1) lumiera-jessie-tools; urgency=low
+yoshimi (1.4.1-1~stretch) Lumiera-stretch-tools; urgency=low
+
+  * Rebuild for private use on Debian-stable(Stretch)
+  * build against jackd2
+
+ -- Hermann Vosseler <deb@ichthyostega.de>  Fri, 04 May 2018 18:06:55 +0200
+
+yoshimi (1.4.1-1~bpo.jessie1) Lumiera-jessie-tools; urgency=low
 
   * Backport to Jessie
 
