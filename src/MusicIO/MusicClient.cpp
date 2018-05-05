@@ -2,6 +2,7 @@
     MusicClient.h
 
     Copyright 2009-2011, Alan Calvert
+    Copyright 2016, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -15,17 +16,29 @@
 
     You should have received a copy of the GNU General Public License
     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
+
+    Modified December 2016
 */
 
 #include "MusicIO/MusicClient.h"
 #include "Misc/SynthEngine.h"
 #include "MusicIO/AlsaEngine.h"
 #include "MusicIO/JackEngine.h"
+#include <iostream>
 #include <stdlib.h>
 #include <set>
+#include <unistd.h>
 
-string audio_drivers_str [] = {"no_audio", "jack_audio", "alsa_audio"};
-string midi_drivers_str [] = {"no_midi", "jack_midi", "alsa_midi"};
+string audio_drivers_str [] = {"no_audio", "jack_audio"
+#if defined(HAVE_ALSA)
+                               , "alsa_audio"
+#endif
+                              };
+string midi_drivers_str [] = {"no_midi", "jack_midi"
+#if defined(HAVE_ALSA)
+                              , "alsa_midi"
+#endif
+                             };
 
 MusicClient *MusicClient::newMusicClient(SynthEngine *_synth)
 {
@@ -86,8 +99,6 @@ MusicClient::MusicClient(SynthEngine *_synth, audio_drivers _audioDrv, midi_driv
     :synth(_synth), timerThreadId(0), timerWorking(false),
     audioDrv(_audioDrv), midiDrv(_midiDrv), audioIO(0), midiIO(0)
 {
-    //synth->getRuntime().Samplerate = NMC_SRATE;
-
     for(int i = 0; i < NUM_MIDI_PARTS + 1; i++)
     {
         buffersL [i] = new float [synth->getRuntime().Buffersize];
@@ -107,10 +118,11 @@ MusicClient::MusicClient(SynthEngine *_synth, audio_drivers _audioDrv, midi_driv
         case jack_audio:
             audioIO = new JackEngine(synth);
             break;
-
+#if defined(HAVE_ALSA)
         case alsa_audio:
             audioIO = new AlsaEngine(synth);
             break;
+#endif
 
         default:
             break;
@@ -122,10 +134,11 @@ MusicClient::MusicClient(SynthEngine *_synth, audio_drivers _audioDrv, midi_driv
             if (audioDrv != jack_audio)
                 midiIO = new JackEngine(synth);
             break;
-
+#if defined(HAVE_ALSA)
         case alsa_midi:
             midiIO = new AlsaEngine(synth);
             break;
+#endif
 
         default:
             break;

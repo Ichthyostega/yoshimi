@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2014-2016, Will Godfrey & others
+    Copyright 2014-2018, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -20,7 +20,9 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is derivative of ZynAddSubFX original code, last modified March 2016
+    This file is derivative of ZynAddSubFX original code.
+
+    Modified February 2018
 */
 
 #ifndef SYNTHENGINE_H
@@ -39,16 +41,17 @@ using namespace std;
 #include "Misc/Bank.h"
 #include "Misc/SynthHelper.h"
 #include "Interface/InterChange.h"
+#include "Interface/MidiLearn.h"
+#include "Interface/MidiDecode.h"
 #include "Misc/Config.h"
 #include "Params/PresetsStore.h"
 
-typedef enum { init, trylock, lock, unlock, lockmute, destroy } lockset;
+typedef enum { init, lockType, unlockType, destroy } lockset;
 
 class EffectMgr;
 class Part;
 class XMLwrapper;
 class Controller;
-class CmdInterface;
 
 class MasterUI;
 
@@ -57,9 +60,12 @@ class SynthEngine : private SynthHelper, MiscFuncs
     private:
         unsigned int uniqueId;
         bool isLV2Plugin;
+        bool needsSaving;
         Bank bank;
     public:
         InterChange interchange;
+        MidiLearn midilearn;
+        MidiDecode mididecode;
     private:
         Config Runtime;
         PresetsStore presetsstore;
@@ -69,24 +75,32 @@ class SynthEngine : private SynthHelper, MiscFuncs
         bool Init(unsigned int audiosrate, int audiobufsize);
         bool actionLock(lockset request);
 
-        bool saveXML(string filename);
+        bool savePatchesXML(string filename);
         void add2XML(XMLwrapper *xml);
+        string manualname();
         void defaults(void);
 
         bool loadXML(string filename);
-        void applyparameters(void);
-        int loadParameters(string filename);
-        int loadPatchSetAndUpdate(string filename);
+        bool loadStateAndUpdate(string filename);
+        bool saveState(string filename);
+        bool loadPatchSetAndUpdate(string filename);
+        bool loadMicrotonal(string fname);
+        bool saveMicrotonal(string fname);
         bool installBanks(int instance);
         bool saveBanks(int instance);
+        void newHistory(string name, int group);
         void addHistory(string name, int group);
-        vector<string> * getHistory(int group);
+        vector<string> *getHistory(int group);
+        string lastItemSeen(int group);
+        void setLastfileAdded(int group, string name);
+        string getLastfileAdded(int group);
         bool loadHistory(void);
         bool saveHistory(void);
-        bool loadVector(unsigned char baseChan, string name, bool full);
-        bool extractVectorData(unsigned char baseChan, bool full, XMLwrapper *xml);
-        bool saveVector(unsigned char baseChan, string name, bool full);
-        bool insertVectorData(unsigned char baseChan, bool full, XMLwrapper *xml);
+        unsigned char loadVectorAndUpdate(unsigned char baseChan, string name);
+        unsigned char loadVector(unsigned char baseChan, string name, bool full);
+        unsigned char extractVectorData(unsigned char baseChan, XMLwrapper *xml, string name);
+        unsigned char saveVector(unsigned char baseChan, string name, bool full);
+        bool insertVectorData(unsigned char baseChan, bool full, XMLwrapper *xml, string name);
 
         bool getfromXML(XMLwrapper *xml);
 
@@ -95,21 +109,14 @@ class SynthEngine : private SynthHelper, MiscFuncs
 
         void NoteOn(unsigned char chan, unsigned char note, unsigned char velocity);
         void NoteOff(unsigned char chan, unsigned char note);
+        int RunChannelSwitch(int value);
         void SetController(unsigned char chan, int type, short int par);
-        void SetZynControls();
-        void SetEffects(unsigned char category, unsigned char command, unsigned char nFX, unsigned char nType, int nPar, unsigned char value);
-        void SetBankRoot(int rootnum);
-        void SetBank(int banknum);
+        void SetZynControls(bool in_place);
+        int RootBank(int rootnum, int banknum);
+        int SetRBP(CommandBlock *getData, bool notinplace = true);
         int ReadBankRoot(void);
         int ReadBank(void);
-
-        void commandFetch(float value, unsigned char type, unsigned char control, unsigned char part, unsigned char kit = 0xff, unsigned char engine = 0xff, unsigned char insert = 0xff, unsigned char insertParam = 0xff);
-
-        void SetProgram(unsigned char chan, unsigned short pgm);
-        bool SetProgramToPart(int npart, int pgm, string fname);
         void SetPartChan(unsigned char npart, unsigned char nchan);
-        void SetPartDestination(unsigned char npart, unsigned char dest);
-        void SetPartShift(unsigned char npart, unsigned char shift);
         void SetPartPortamento(int npart, bool state);
         bool ReadPartPortamento(int npart);
         void SetPartKeyMode(int npart, int mode);
@@ -122,28 +129,37 @@ class SynthEngine : private SynthHelper, MiscFuncs
         void ListVectors(list<string>& msg_buf);
         bool SingleVector(list<string>& msg_buf, int chan);
         void ListSettings(list<string>& msg_buf);
-        void SetSystemValue(int type, int value);
-        void writeRBP(char type, char data0, char data1);
+        int SetSystemValue(int type, int value);
         bool vectorInit(int dHigh, unsigned char chan, int par);
         void vectorSet(int dHigh, unsigned char chan, int par);
         void ClearNRPNs(void);
-        void resetAll(void);
+        void resetAll(bool andML);
         float numRandom(void);
-        unsigned int random(void);
+        unsigned int randomSE(void);
         void ShutUp(void);
-        void allStop();
+        void allStop(unsigned int stopType);
         int MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_MIDI_PARTS + 1], int to_process = 0);
         void partonoffLock(int npart, int what);
         void partonoffWrite(int npart, int what);
-        bool partonoffRead(int npart);
+        char partonoffRead(int npart);
         sem_t partlock;
+        unsigned char legatoPart;
+        void setPartMap(int npart);
+        void setAllPartMaps(void);
 
-        void Mute(void) { __sync_or_and_fetch(&muted, 0xFF); }
-        void Unmute(void) { __sync_and_and_fetch(&muted, 0); }
-        bool isMuted(void) { return (__sync_add_and_fetch(&muted, 0) != 0); }
+        void SetMuteAndWait(void);
+        void Unmute(void);
+        void Mute(void);
+        void mutewrite(int what);
+        bool isMuted(void);
+        sem_t mutelock;
+
+        float getLimits(CommandBlock *getData);
+        float getVectorLimits(CommandBlock *getData);
+        float getConfigLimits(CommandBlock *getData);
 
         Part *part[NUM_MIDI_PARTS];
-        bool shutup;
+        unsigned int fadeAll;
         float fadeStep;
         float fadeLevel;
 
@@ -159,19 +175,20 @@ class SynthEngine : private SynthHelper, MiscFuncs
         int halfoscilsize;
         float halfoscilsize_f;
 
-        int p_buffersize; //used for variable length runs
-        int p_bufferbytes; //used for variable length runs
-        float p_buffersize_f; //used for variable length runs
-        float p_all_buffersize_f; //used for variable length runs (mainly for lv2 - calculate envelopes and lfo)
-
-        unsigned char Pvolume;
+        int sent_buffersize; //used for variable length runs
+        int sent_bufferbytes; //used for variable length runs
+        float sent_buffersize_f; //used for variable length runs
+        float sent_all_buffersize_f; //used for variable length runs (mainly for lv2 - calculate envelopes and lfo)
+        float         TransVolume;
+        float         Pvolume;
+        float         ControlStep;
         int           Paudiodest;
         int           Pkeyshift;
         unsigned char Psysefxvol[NUM_SYS_EFX][NUM_MIDI_PARTS];
         unsigned char Psysefxsend[NUM_SYS_EFX][NUM_SYS_EFX];
 
         // parameters control
-        void setPvolume(char value);
+        void setPvolume(float value);
         void setPkeyshift(int Pkeyshift_);
         void setPsysefxvol(int Ppart, int Pefx, char Pvol);
         void setPsysefxsend(int Pefxfrom, int Pefxto, char Pvol);
@@ -197,13 +214,14 @@ class SynthEngine : private SynthHelper, MiscFuncs
                 float vuRmsPeakL;
                 float vuRmsPeakR;
                 float parts[NUM_MIDI_PARTS];
-                int p_buffersize;
+                int buffersize;
             } values;
             char bytes [sizeof(values)];
         };
-        union VUtransfer VUpeak, VUdata;
-
-        bool fetchMeterData(VUtransfer *VUdata);
+        VUtransfer VUpeak, VUcopy, VUdata;
+        unsigned int VUcount;
+        bool VUready;
+        void fetchMeterData(void);
 
         inline bool getIsLV2Plugin() {return isLV2Plugin; }
         inline Config &getRuntime() {return Runtime;}
@@ -222,50 +240,59 @@ class SynthEngine : private SynthHelper, MiscFuncs
 
         Bank &getBankRef() {return bank;}
         Bank *getBankPtr() {return &bank;}
+        unsigned int exportBank(string exportfile, size_t rootID, unsigned int bankID);
+        unsigned int importBank(string inportfile, size_t rootID, unsigned int bankID);
+        unsigned int removeBank(unsigned int bankID, size_t rootID);
         string getWindowTitle() {return windowTitle;}
         void setWindowTitle(string _windowTitle = "");
+        void setNeedsSaving(bool ns) { needsSaving = ns; }
+        bool getNeedsSaving() { return needsSaving; }
     private:
         int muted;
         float volume;
         float sysefxvol[NUM_SYS_EFX][NUM_MIDI_PARTS];
         float sysefxsend[NUM_SYS_EFX][NUM_SYS_EFX];
-        float *tmpmixl; // Temporary mixing samples for part samples
-        float *tmpmixr; // which are sent to system effect
+        //float *tmpmixl; // Temporary mixing samples for part samples
+        //float *tmpmixr; // which are sent to system effect
         int keyshift;
 
         pthread_mutex_t  processMutex;
         pthread_mutex_t *processLock;
 
-        jack_ringbuffer_t *vuringbuf;
-
-        jack_ringbuffer_t *RBPringbuf;
-        void *RBPthread(void);
-        static void *_RBPthread(void *arg);
-        pthread_t  RBPthreadHandle;
-
-        struct RBP_data {
-            char data[4];
-        };
-
-        XMLwrapper *stateXMLtree;
+        //XMLwrapper *stateXMLtree;
 
         char random_state[256];
-        struct random_data random_buf;
-        int32_t random_result;
         float random_0_1;
 
-        MasterUI *guiMaster;
+#if (HAVE_RANDOM_R)
+        struct random_data random_buf;
+        int32_t random_result;
+#else
+        long int random_result;
+#endif
+
+    public:
+        MasterUI *guiMaster; // need to read this in InterChange::returns
+    private:
         void( *guiClosedCallback)(void*);
         void *guiCallbackArg;
 
         int LFOtime; // used by Pcontinous
         string windowTitle;
-        MusicClient *musicClient;
+        //MusicClient *musicClient;
 };
 
 inline float SynthEngine::numRandom(void)
 {
-    if (!random_r(&random_buf, &random_result))
+    int ret;
+#if (HAVE_RANDOM_R)
+    ret = random_r(&random_buf, &random_result);
+#else
+    random_result = random();
+    ret = 0;
+#endif
+
+    if (!ret)
     {
         random_0_1 = (float)random_result / (float)INT_MAX;
         random_0_1 = (random_0_1 > 1.0f) ? 1.0f : random_0_1;
@@ -275,11 +302,16 @@ inline float SynthEngine::numRandom(void)
     return 0.05f;
 }
 
-inline unsigned int SynthEngine::random(void)
+inline unsigned int SynthEngine::randomSE(void)
 {
+#if (HAVE_RANDOM_R)
     if (!random_r(&random_buf, &random_result))
         return random_result + INT_MAX / 2;
     return INT_MAX / 2;
+#else
+    random_result = random();
+    return (unsigned int)random_result + INT_MAX / 2;
+#endif
 }
 
 #endif

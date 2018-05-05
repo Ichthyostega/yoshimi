@@ -4,6 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009, Alan Calvert
+    Copyright 2017-2018, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -19,7 +20,8 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of a ZynAddSubFX original, modified October 2009
+    This file is a derivative of a ZynAddSubFX original.
+    Modified February 2018
 */
 
 #include "Params/SUBnoteParameters.h"
@@ -34,7 +36,7 @@ SUBnoteParameters::SUBnoteParameters(SynthEngine *_synth) : Presets(_synth)
     BandWidthEnvelope = new EnvelopeParams(64, 0, synth);
     BandWidthEnvelope->ASRinit_bw(100, 70, 64, 60);
 
-    GlobalFilter = new FilterParams(2, 80, 40, synth);
+    GlobalFilter = new FilterParams(2, 80, 40, 0, synth);
     GlobalFilterEnvelope = new EnvelopeParams(0, 1, synth);
     GlobalFilterEnvelope->ADSRinit_filter(64, 40, 64, 70, 60, 64);
     defaults();
@@ -71,6 +73,7 @@ void SUBnoteParameters::defaults(void)
 
     for (int n = 0; n < MAX_SUB_HARMONICS; ++n)
     {
+        PfilterChanged[n] = 0;
         Phmag[n] = 0;
         Phrelbw[n] = 64;
     }
@@ -352,4 +355,206 @@ void SUBnoteParameters::getfromXML(XMLwrapper *xml)
         }
         xml->exitbranch();
     }
+}
+
+
+float SUBnoteParameters::getLimits(CommandBlock *getData)
+{
+    float value = getData->data.value;
+    int request = int(getData->data.type & 3);
+    int control = getData->data.control;
+    int insert = getData->data.insert;
+
+    int min;
+    int max;
+    int def;
+
+    if (insert >= 6 && insert <= 7)
+    { // do harmonics stuff
+        if (insert == 7)
+            def = 64;
+        else if (control == 0)
+            def = 127;
+        else
+            def = 0;
+        getData->data.type |= 0x40; // all learnable
+        min = 0;
+        max = 127;
+        switch (request)
+        {
+            case 0:
+                if(value < 0)
+                    value = 0;
+                else if(value > 127)
+                    value = 127;
+                break;
+            case 1:
+            case 3:
+                value = 0;
+                break;
+            case 2:
+                value = 127;
+                break;
+    }
+    return value;
+    }
+
+    // defaults
+    int type = 0;
+    min = 0;
+    def = 0;
+    max = 127;
+
+    switch (control)
+    {
+        case 0:
+            type = 0x40;
+            def = 96;
+            break;
+
+        case 1:
+            type = 0x40;
+            def = 90;
+            break;
+
+        case 2:
+            type = 0x40;
+            def = 64;
+            break;
+
+        case 8:
+            type = 0x40;
+            max = 1;
+            break;
+
+        case 16:
+            type = 0x40;
+            def = 40;
+            break;
+
+        case 17:
+            type = 0x40;
+            min = -64;
+            max = 63;
+            break;
+
+        case 18:
+            type = 0x40;
+            max = 1;
+            break;
+
+        case 32:
+            type = 0x40;
+            min = -8192;
+            max = 8191;
+            break;
+
+        case 33:
+            type = 0x40;
+            break;
+
+        case 34:
+            max = 1;
+            break;
+
+        case 35:
+            type = 0x40;
+            min = -8;
+            max = 7;
+            break;
+
+        case 36:
+            max = 3;
+            break;
+
+        case 37:
+            min = -64;
+            max = 63;
+            break;
+
+        case 38:
+            type = 0x40;
+            def = 88;
+            break;
+
+        case 39:
+            type = 0x40;
+            def = 64;
+            break;
+
+        case 40:
+            type = 0x40;
+            max = 1;
+            break;
+
+        case 48:
+        case 49:
+        case 50:
+            type = 0x40;
+            max = 255;
+            break;
+
+        case 64:
+            type = 0x40;
+            max = 1;
+            break;
+
+        case 80:
+            min = 1;
+            def = 100;
+            max = 5;
+            break;
+
+        case 81:
+            max = 4;
+            break;
+
+        case 82:
+            def = 100;
+            max = 2;
+            break;
+
+        case 96:
+            max = 0;
+            break;
+
+        case 112:
+            type = 0x40;
+            def = 1;
+            max = 1;
+            break;
+
+
+        default:
+            type |= 4; // error
+            break;
+    }
+    getData->data.type = type;
+    if (type & 4)
+        return 1;
+
+    switch (request)
+    {
+        case 0:
+            if(value < min)
+                value = min;
+            else if(value > max)
+                value = max;
+        break;
+        case 1:
+            value = min;
+            break;
+        case 2:
+            value = max;
+            break;
+        case 3:
+            value = def;
+            break;
+    }
+    return value;
+}
+
+void SUBnoteParameters::postrender(void)
+{
+    return;
 }

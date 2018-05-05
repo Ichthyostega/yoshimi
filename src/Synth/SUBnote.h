@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2010 Alan Calvert
-    Copyright 2014, Will Godfrey
+    Copyright 2014-2017 Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -20,13 +20,13 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of a ZynAddSubFX original, modified August 2014
+    This file is a derivative of a ZynAddSubFX original
+    Modified September 2017
 */
 
 #ifndef SUB_NOTE_H
 #define SUB_NOTE_H
 
-#include "Synth/Carcass.h"
 #include "Misc/SynthHelper.h"
 #include "Synth/LegatoTypes.h"
 
@@ -37,7 +37,7 @@ class Filter;
 
 class SynthEngine;
 
-class SUBnote : public Carcass, private SynthHelper
+class SUBnote : private SynthHelper
 {
     public:
         SUBnote(SUBnoteParameters *parameters, Controller *ctl_,
@@ -59,10 +59,12 @@ class SUBnote : public Carcass, private SynthHelper
         void computecurrentparameters(void);
         void initparameters(float freq);
         void KillNote(void);
+        void initfilterbank(void);
 
         SUBnoteParameters *pars;
 
         bool stereo;
+        int pos[MAX_SUB_HARMONICS]; // chart of non-zero harmonic locations
         int numstages; // number of stages of filters
         int numharmonics; // number of harmonics (after the too higher hamonics are removed)
         int firstnumharmonics; // To keep track of the first note's numharmonics value, useful in legato mode.

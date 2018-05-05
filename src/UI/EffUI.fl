@@ -1,17 +1,17 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0303 
-header_name {.h} 
+version 1.0304
+header_name {.h}
 code_name {.cc}
 comment {EffUI.h} {not_in_source in_header
-} 
+}
 
 comment {EffUI.cc} {in_source not_in_header
-} 
+}
 
 comment {Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009-2010, Alan Calvert
-Copyright 2016, Will Godfrey
+Copyright 2016-2018, Will Godfrey & others
 
 This file is part of yoshimi, which is free software: you can redistribute
 it and/or modify it under the terms of the GNU Library General Public
@@ -27,36 +27,37 @@ You should have received a copy of the GNU General Public License along with
 yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
 Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-This file is a derivative of the ZynAddSubFX original, modified October 2010
-} {in_source in_header
-} 
+This file is a derivative of the ZynAddSubFX original
+
+Modified February 2018} {in_source in_header
+}
 
 decl {\#include <string>} {public local
-} 
+}
 
 decl {\#include <iostream>} {public local
-} 
+}
 
 decl {\#include "UI/MiscGui.h"} {public local
-} 
+}
 
-decl {\#include "WidgetPDialUI.h"} {public local
-} 
+decl {\#include "UI/WidgetPDial.h"} {public local
+}
 
 decl {\#include "EnvelopeUI.h"} {public local
-} 
+}
 
 decl {\#include "FilterUI.h"} {public local
-} 
+}
 
 decl {\#include "Misc/SynthEngine.h"} {public local
-} 
+}
 
 decl {\#include "Effects/EffectMgr.h"} {public local
-} 
+}
 
 decl {\#include "PresetsUI.h"} {public local
-} 
+}
 
 class EQGraph {: {public Fl_Box}
 } {
@@ -199,14 +200,15 @@ eff = eff_;
   }
   decl {SynthEngine *synth;} {private local
   }
-} 
+}
 
 class EffUI {selected : {public Fl_Group,public PresetsUI_}
 } {
   Function {EffUI(int x,int y, int w, int h, const char *label=0):Fl_Group(x,y,w,h,label)} {} {
     code {//
     eff = NULL;
-    filterwindow = NULL;} {}
+    filterwindow = NULL;
+    fwin_filterui = NULL;} {}
   }
   Function {~EffUI()} {} {
     code {effnullwindow->hide();        // delete (effnullwindow);
@@ -227,7 +229,7 @@ class EffUI {selected : {public Fl_Group,public PresetsUI_}
   }
   Function {make_null_window()} {} {
     Fl_Window effnullwindow {
-      xywh {915 700 380 95} type Double box PLASTIC_THIN_UP_BOX color 221 hide
+      xywh {915 700 379 95} type Double box PLASTIC_THIN_UP_BOX color 221 hide
       class Fl_Group
     } {
       Fl_Text_Display {} {
@@ -238,7 +240,7 @@ class EffUI {selected : {public Fl_Group,public PresetsUI_}
   }
   Function {make_reverb_window()} {} {
     Fl_Window effreverbwindow {
-      xywh {1005 24 380 95} type Double box PLASTIC_UP_BOX color 221 labelsize 12 align 33 hide
+      xywh {1005 24 375 95} type Double box PLASTIC_UP_BOX color 221 labelsize 12 align 33 hide
       class Fl_Group
     } {
       Fl_Text_Display {} {
@@ -248,9 +250,7 @@ class EffUI {selected : {public Fl_Group,public PresetsUI_}
       Fl_Choice revp {
         label Preset
         callback {//
-	eff->changepreset((int)o->value());
-        refresh(eff, npart, neff);
-        send_data(16, o->value(), 0);}
+        send_data(16, o->value(), 1, 0xd0);}
         xywh {115 13 90 15} down_box BORDER_BOX color 14 selection_color 0 labelsize 11 textsize 11 textcolor 7
       } {
         MenuItem {} {
@@ -308,10 +308,8 @@ class EffUI {selected : {public Fl_Group,public PresetsUI_}
       }
       Fl_Choice revp10 {
         label Type
-        callback {eff->seteffectpar(10,(int) o->value());
-if (eff->geteffectpar(10)==2) revp12->activate();
-else revp12->deactivate();
-send_data(10, o->value(), 0);}
+        callback {//
+        send_data(10, o->value(), 1, 0xd0);}
         xywh {240 13 75 15} down_box BORDER_BOX color 14 labelsize 11 textsize 11 textcolor 7
       } {
         MenuItem {} {
@@ -329,203 +327,190 @@ send_data(10, o->value(), 0);}
       }
       Fl_Dial revp0 {
         label Vol
-        callback {if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | 0xf0);
-    o->value(eff->geteffectpar(0));
-    o->damage();
-}
-else
-    eff->seteffectpar(0,(int) o->value());
+        callback {//
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | 0xf0);
+            o->value(eff->geteffectpar(0));
+        }
 
-send_data(0, o->value(), 0);}
+        send_data(0, o->value(), 1, 0xd8);}
         tooltip {Effect Volume} xywh {10 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_FXReverbVol);}
         class WidgetPDial
       }
       Fl_Dial revp1 {
         label Pan
-        callback {int butt = 1;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 1;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 0);}
+        send_data(butt, o->value(), 1, 0xd8);}
         xywh {45 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_PanningStd);}
         class WidgetPDial
       }
       Fl_Dial revp2 {
         label Time
-        callback {int butt = 2;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 2;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 0);}
+        send_data(butt, o->value(), 1, 0xd8);}
         tooltip {Duration of Effect} xywh {80 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_FXReverbTime);}
         class WidgetPDial
       }
       Fl_Dial revp3 {
         label {I.del}
-        callback {int butt = 3;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 3;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 0);}
+        send_data(butt, o->value(), 1, 0xd8);}
         tooltip {Initial Delay} xywh {120 40 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_FXReverbIDelay);}
         class WidgetPDial
       }
       Fl_Dial revp4 {
         label {I.delfb}
-        callback {int butt = 4;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 4;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 0);}
+        send_data(butt, o->value(), 1, 0xd8);}
         tooltip {Initial Delay Feedback} xywh {155 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_percent128);}
         class WidgetPDial
       }
       Fl_Dial revp12 {
         label BW
-        callback {int butt = 12;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 12;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 0);}
+        send_data(butt, o->value(), 1, 0xd8);}
         xywh {200 40 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127 deactivate
         code0 {if (eff->geteffectpar(10)==2) o->activate();}
         code1 {o->init(-1);}
+        code2 {o->setValueType(VC_FXReverbBandwidth);}
         class WidgetPDial
       }
       Fl_Dial revp6 {
         label {E/R}
-        callback {int butt = 6;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 6;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 0);}
+        send_data(butt, o->value(), 1, 0xd8);}
         xywh {235 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127 deactivate
         code0 {o->init(0);}
         class WidgetPDial
       }
       Fl_Dial revp7 {
         label LPF
-        callback {int butt = 7;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 7;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 0);}
+        send_data(butt, o->value(), 1, 0xd8);}
         tooltip {Low Pass Filter} xywh {270 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_FXReverbLowPass);}
         class WidgetPDial
       }
       Fl_Dial revp8 {
         label HPF
-        callback {int butt = 8;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 8;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 0);}
+        send_data(butt, o->value(), 1, 0xd8);}
         tooltip {High Pass Filter} xywh {305 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_FXReverbHighPass);}
         class WidgetPDial
       }
       Fl_Dial revp9 {
         label Damp
-        callback {int butt = 9;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 9;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 0);}
+        send_data(butt, o->value(), 1, 0xd8);}
         tooltip Dampening xywh {340 40 30 30} box ROUND_UP_BOX labelsize 11 minimum 64 maximum 127 step 1
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_percent64_127);}
         class WidgetPDial
       }
       Fl_Dial revp11 {
         label {R.S.}
-        callback {int butt = 11;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 11;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 0);}
+        send_data(butt, o->value(), 1, 0xd0);}
         tooltip RoomSize xywh {342 8 25 25} box ROUND_UP_BOX labelsize 10 align 4 minimum 1 maximum 127 step 1
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
     }
   }
   Function {make_echo_window()} {} {
     Fl_Window effechowindow {
-      xywh {1006 149 380 95} type Double box PLASTIC_UP_BOX color 221 labelfont 1 labelsize 12 hide
+      xywh {1006 149 379 95} type Double box PLASTIC_UP_BOX color 221 labelfont 1 labelsize 12 hide
       class Fl_Group
     } {
       Fl_Choice echop {
         label Preset
-        callback {eff->changepreset((int)o->value());
-refresh(eff, npart, neff);
-send_data(16, o->value(), 1);}
+        callback {//
+        send_data(16, o->value(), 2, 0xd0);}
         xywh {102 13 96 15} down_box BORDER_BOX color 14 selection_color 0 labelsize 11 textsize 11 textcolor 7
       } {
         MenuItem {} {
@@ -571,134 +556,126 @@ send_data(16, o->value(), 1);}
       }
       Fl_Dial echop0 {
         label Vol
-        callback {if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | 0xf0);
-    o->value(eff->geteffectpar(0));
-    o->damage();
-}
-else
-    eff->seteffectpar(0,(int) o->value());
+        callback {//
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | 0xf0);
+            o->value(eff->geteffectpar(0));
+        }
 
-send_data(0, o->value(), 1);}
+        send_data(0, o->value(), 2, 0xd8);}
         tooltip {Effect Volume} xywh {10 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_FXEchoVol);}
         class WidgetPDial
       }
       Fl_Dial echop1 {
         label Pan
-        callback {int butt = 1;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 1;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 1);}
+        send_data(butt, o->value(), 2, 0xd8);}
         xywh {59 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_PanningStd);}
         class WidgetPDial
       }
       Fl_Dial echop2 {
         label Delay
-        callback {int butt = 2;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 2;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 1);}
+        send_data(butt, o->value(), 2, 0xd8);}
         xywh {111 40 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_FXEchoDelay);}
         class WidgetPDial
       }
       Fl_Dial echop3 {
         label {LRdl.}
-        callback {int butt = 3;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 3;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 1);}
+        send_data(butt, o->value(), 2, 0xd8);}
         tooltip {Delay Between L/R} xywh {164 40 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_FXEchoLRdel);}
         class WidgetPDial
       }
       Fl_Dial echop4 {
         label {LRc.}
-        callback {int butt = 4;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 4;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 1);}
+        send_data(butt, o->value(), 2, 0xd8);}
         tooltip {L/R Crossover} xywh {218 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
       Fl_Dial echop5 {
         label {Fb.}
-        callback {int butt = 5;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 5;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 1);}
+        send_data(butt, o->value(), 2, 0xd8);}
         tooltip Feedback xywh {273 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
       Fl_Dial echop6 {
         label Damp
-        callback {int butt = 6;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 6;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 1);}
+        send_data(butt, o->value(), 2, 0xd8);}
         tooltip Dampening xywh {334 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
     }
   }
   Function {make_chorus_window()} {} {
     Fl_Window effchoruswindow {
-      xywh {1007 275 380 95} type Double box PLASTIC_UP_BOX color 221 labelfont 1 hide
+      xywh {1007 275 379 95} type Double box PLASTIC_UP_BOX color 221 labelfont 1 hide
       class Fl_Group
     } {
       Fl_Choice chorusp {
         label Preset
-        callback {eff->changepreset((int)o->value());
-refresh(eff, npart, neff);
-send_data(16, o->value(), 2);}
+        callback {//
+        send_data(16, o->value(), 3, 0xd0);}
         xywh {121 13 96 16} down_box BORDER_BOX color 14 selection_color 0 labelsize 11 textsize 11 textcolor 7
       } {
         MenuItem {} {
@@ -748,173 +725,164 @@ send_data(16, o->value(), 2);}
       }
       Fl_Dial chorusp0 {
         label Vol
-        callback {if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | 0xf0);
-    o->value(eff->geteffectpar(0));
-    o->damage();
-}
-else
-    eff->seteffectpar(0,(int) o->value());
+        callback {//
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | 0xf0);
+            o->value(eff->geteffectpar(0));
+        }
 
-send_data(0, o->value(), 2);}
+        send_data(0, o->value(), 3, 0xd8);}
         xywh {10 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_FXdefaultVol);}
         class WidgetPDial
       }
       Fl_Dial chorusp1 {
         label Pan
-        callback {int butt = 1;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 1;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 2);}
+        send_data(butt, o->value(), 3, 0xd8);}
         xywh {45 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_PanningStd);}
         class WidgetPDial
       }
       Fl_Dial chorusp2 {
         label Freq
-        callback {int butt = 2;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 2;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 2);}
+        send_data(butt, o->value(), 3, 0xd8);}
         tooltip {LFO Frequency} xywh {85 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_FXlfofreq);}
         class WidgetPDial
       }
       Fl_Dial chorusp3 {
         label Rnd
-        callback {int butt = 3;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 3;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 2);}
+        send_data(butt, o->value(), 3, 0xd8);}
         tooltip {LFO Randomness} xywh {120 40 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
       Fl_Dial chorusp5 {
         label {St.df}
-        callback {int butt = 5;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 5;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 2);}
+        send_data(butt, o->value(), 3, 0xd8);}
         tooltip {L/R Phase Shift} xywh {200 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_FXlfoStereo);}
         class WidgetPDial
       }
       Fl_Dial chorusp6 {
         label Dpth
-        callback {int butt = 6;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 6;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 2);}
+        send_data(butt, o->value(), 3, 0xd8);}
         tooltip {LFO Depth} xywh {235 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_FXChorusDepth);}
         class WidgetPDial
       }
       Fl_Dial chorusp7 {
         label Delay
-        callback {int butt = 7;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 7;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 2);}
+        send_data(butt, o->value(), 3, 0xd8);}
         xywh {270 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_FXChorusDelay);}
         class WidgetPDial
       }
       Fl_Dial chorusp8 {
         label Fb
-        callback {int butt =8;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt =8;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 2);}
+        send_data(butt, o->value(), 3, 0xd8);}
         tooltip Feedback xywh {305 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_FXdefaultFb);}
         class WidgetPDial
       }
       Fl_Dial chorusp9 {
         label {L/R}
-        callback {int butt = 9;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 9;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 2);}
+        send_data(butt, o->value(), 3, 0xd8);}
         tooltip {Channel Routing} xywh {340 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
       Fl_Check_Button {} {
         label Flange
-        callback {eff->seteffectpar(10,(int) o->value());
-send_data(10, o->value(), 2);}
+        callback {//
+        send_data(10, o->value(), 3, 0xd0);}
         xywh {120 10 55 20} box THIN_UP_BOX down_box DOWN_BOX color 230 labelfont 1 labelsize 10 hide deactivate
         code0 {o->value(eff->geteffectpar(10));}
       }
       Fl_Check_Button chorusp11 {
         label Subtract
-        callback {eff->seteffectpar(11,(int) o->value());
-send_data(11, o->value(), 2);}
+        callback {//
+        send_data(11, o->value(), 3, 0xd0);}
         tooltip {inverts the output} xywh {232 13 83 16} box THIN_UP_BOX down_box DOWN_BOX color 230 labelsize 11
       }
       Fl_Choice chorusp4 {
         label {LFO type}
-        callback {eff->seteffectpar(4,(int) o->value());
-send_data(4, o->value(), 2);}
+        callback {//
+        send_data(4, o->value(), 3, 0xd0);}
         tooltip {LFO function} xywh {154 50 43 15} down_box BORDER_BOX labelsize 10 align 130 textsize 8
       } {
         MenuItem {} {
@@ -930,14 +898,13 @@ send_data(4, o->value(), 2);}
   }
   Function {make_phaser_window()} {} {
     Fl_Window effphaserwindow {
-      xywh {1009 397 380 95} type Double box PLASTIC_UP_BOX color 221 labelsize 11 hide
+      xywh {991 245 375 95} type Double box PLASTIC_UP_BOX color 221 labelsize 11 hide
       class Fl_Group
     } {
       Fl_Choice phaserp {
         label Preset
-        callback {eff->changepreset((int)o->value());
-refresh(eff, npart, neff);
-send_data(16, o->value(), 3);} open
+        callback {//
+        send_data(16, o->value(), 4, 0xd0);}
         xywh {80 21 82 15} box UP_BOX down_box BORDER_BOX color 31 selection_color 7 labelsize 11 align 1 textsize 11
       } {
         MenuItem {} {
@@ -995,75 +962,71 @@ send_data(16, o->value(), 3);} open
       }
       Fl_Dial phaserp0 {
         label Vol
-        callback {if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | 0xf0);
-    o->value(eff->geteffectpar(0));
-    o->damage();
-}
-else
-    eff->seteffectpar(0,(int) o->value());
+        callback {//
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | 0xf0);
+            o->value(eff->geteffectpar(0));
+        }
 
-send_data(0, o->value(), 3);}
+        send_data(0, o->value(), 4, 0xd8);}
         tooltip {Effect Volume} xywh {10 50 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_FXdefaultVol);}
         class WidgetPDial
       }
       Fl_Dial phaserp1 {
         label Pan
-        callback {int butt = 1;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 1;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 3);}
+        send_data(butt, o->value(), 4, 0xd8);}
         xywh {48 50 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_PanningStd);}
         class WidgetPDial
       }
       Fl_Dial phaserp2 {
         label Freq
-        callback {int butt = 2;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 2;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 3);}
+        send_data(butt, o->value(), 4, 0xd8);}
         tooltip {LFO frequency} xywh {86 50 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_FXlfofreq);}
         class WidgetPDial
       }
       Fl_Dial phaserp3 {
         label Rnd
-        callback {int butt = 3;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 3;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 3);}
+        send_data(butt, o->value(), 4, 0xd8);}
         tooltip {LFO randomness} xywh {124 50 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
       Fl_Choice phaserp4 {
         label LFO
-        callback {eff->seteffectpar(4,(int) o->value());
-send_data(4, o->value(), 3);}
+        callback {//
+        send_data(4, o->value(), 4, 0xd0);}
         tooltip {LFO function} xywh {314 60 50 16} down_box BORDER_BOX labelsize 10 align 130 textsize 8
       } {
         MenuItem {} {
@@ -1077,143 +1040,136 @@ send_data(4, o->value(), 3);}
       }
       Fl_Dial phaserp5 {
         label {St.df}
-        callback {int butt = 5;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 5;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 3);}
+        send_data(butt, o->value(), 4, 0xd8);}
         tooltip {Left/Right Channel Phase Shift} xywh {162 50 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_FXlfoStereo);}
         class WidgetPDial
       }
       Fl_Dial phaserp6 {
         label Depth
-        callback {int butt = 6;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 6;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 3);}
+        send_data(butt, o->value(), 4, 0xd8);}
         tooltip {LFO Depth} xywh {181 15 30 30} box ROUND_UP_BOX labelsize 11 align 1 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
       Fl_Dial phaserp7 {
         label Fb
-        callback {int butt = 7;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 7;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 3);}
+        send_data(butt, o->value(), 4, 0xd8);}
         tooltip Feedback xywh {200 50 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_FXdefaultFb);}
         class WidgetPDial
       }
       Fl_Counter phaserp8 {
         label Stages
-        callback {eff->seteffectpar(8,(int) o->value());
-send_data(8, o->value(), 3);}
+        callback {//
+        send_data(8, o->value(), 4, 0xd0);}
         xywh {265 23 35 15} type Simple labelsize 11 align 1 minimum 0 maximum 127 step 1 textfont 1 textsize 11
         code0 {o->range(1,MAX_PHASER_STAGES);}
       }
       Fl_Dial phaserp9 {
         label {L/R}
-        callback {int butt = 9;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 9;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 3);}
+        send_data(butt, o->value(), 4, 0xd8);}
         tooltip {Channel Routing} xywh {238 50 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
       Fl_Check_Button phaserp10 {
         label Subtract
-        callback {eff->seteffectpar(10,(int) o->value());
-send_data(10, o->value(), 3);}
+        callback {//
+        send_data(10, o->value(), 4, 0xd0);}
         tooltip {inverts output} xywh {314 9 40 16} down_box DOWN_BOX color 230 labelsize 11
       }
       Fl_Dial phaserp11 {
         label Phase
-        callback {int butt = 11;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 11;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 3);}
+        send_data(butt, o->value(), 4, 0xd8);}
         xywh {219 15 30 30} box ROUND_UP_BOX labelsize 11 align 1 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
       Fl_Check_Button phaserp12 {
         label hyper
-        callback {eff->seteffectpar(12,(int) o->value());
-send_data(12, o->value(), 3);}
+        callback {//
+        send_data(12, o->value(), 4, 0xd0);}
         tooltip {hyper-sine} xywh {314 25 55 15} down_box DOWN_BOX labelsize 11
       }
       Fl_Dial phaserp13 {
         label dist
-        callback {int butt = 13;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 13;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 3);}
+        send_data(butt, o->value(), 4, 0xd8);}
         tooltip Distortion xywh {276 50 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
       Fl_Check_Button phaserp14 {
         label Analog
-        callback {eff->seteffectpar(14,(int) o->value());
-send_data(14, o->value(), 3);}
+        callback {//
+        send_data(14, o->value(), 4, 0xd0);}
         tooltip {Emulates FET} xywh {314 40 70 15} down_box DOWN_BOX labelsize 11
       }
     }
   }
   Function {make_alienwah_window()} {} {
     Fl_Window effalienwahwindow {
-      xywh {1013 520 380 95} type Double box PLASTIC_UP_BOX color 221 labelfont 1 hide
+      xywh {1013 520 379 95} type Double box PLASTIC_UP_BOX color 221 labelfont 1 hide
       class Fl_Group
     } {
       Fl_Choice awp {
         label Preset
-        callback {eff->changepreset((int)o->value());
-refresh(eff, npart, neff);
-send_data(16, o->value(), 4);}
+        callback {//
+        send_data(16, o->value(), 5, 0xd0);}
         xywh {135 13 96 15} down_box BORDER_BOX color 14 selection_color 0 labelsize 11 textfont 1 textsize 11 textcolor 7
       } {
         MenuItem {} {
@@ -1239,143 +1195,127 @@ send_data(16, o->value(), 4);}
       }
       Fl_Dial awp0 {
         label Vol
-        callback {if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | 0xf0);
-    o->value(eff->geteffectpar(0));
-    o->damage();
-}
-else
-    eff->seteffectpar(0,(int) o->value());
+        callback {//
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | 0xf0);
+            o->value(eff->geteffectpar(0));
+        }
 
-send_data(0, o->value(), 4);}
+        send_data(0, o->value(), 5, 0xd8);}
         tooltip {Effect Volume} xywh {10 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
         class WidgetPDial
       }
       Fl_Dial awp1 {
         label Pan
-        callback {int butt = 1;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 1;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 4);}
+        send_data(butt, o->value(), 5, 0xd8);}
         xywh {45 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
         class WidgetPDial
       }
       Fl_Dial awp2 {
         label Freq
-        callback {int butt = 2;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 2;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 4);}
+        send_data(butt, o->value(), 5, 0xd8);}
         tooltip {LFO Frequency} xywh {85 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
         class WidgetPDial
       }
       Fl_Dial awp3 {
         label Rnd
-        callback {int butt = 3;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 3;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 4);}
+        send_data(butt, o->value(), 5, 0xd8);}
         tooltip {LFO Randomness} xywh {120 40 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127
         code0 {o->init(-1);}
         class WidgetPDial
       }
       Fl_Dial awp5 {
         label {St.df}
-        callback {int butt = 5;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 5;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 4);}
+        send_data(butt, o->value(), 5, 0xd8);}
         tooltip {Left/Right Channel Phase Shift} xywh {200 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
         class WidgetPDial
       }
       Fl_Dial awp6 {
         label Dpth
-        callback {int butt = 6;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 6;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 4);}
+        send_data(butt, o->value(), 5, 0xd8);}
         tooltip Depth xywh {235 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
         class WidgetPDial
       }
       Fl_Dial awp7 {
         label Fb
-        callback {int butt = 7;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 7;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 4);}
+        send_data(butt, o->value(), 5, 0xd8);}
         tooltip Feedback xywh {270 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
         class WidgetPDial
       }
       Fl_Dial awp9 {
         label {L/R}
-        callback {int butt = 9;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 9;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 4);}
+        send_data(butt, o->value(), 5, 0xd8);}
         xywh {345 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
         class WidgetPDial
       }
       Fl_Choice awp4 {
         label {LFO type}
-        callback {eff->seteffectpar(4,(int) o->value());
-send_data(4, o->value(), 4);}
+        callback {//
+        send_data(4, o->value(), 5, 0xd0);}
         tooltip {LFO function} xywh {155 50 43 15} down_box BORDER_BOX labelsize 10 align 130 textsize 8
       } {
         MenuItem {} {
@@ -1389,25 +1329,23 @@ send_data(4, o->value(), 4);}
       }
       Fl_Dial awp10 {
         label Phase
-        callback {int butt = 10;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 10;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 4);}
+        send_data(butt, o->value(), 5, 0xd8);}
         xywh {309 8 26 26} box ROUND_UP_BOX labelsize 11 align 4 maximum 127
         code0 {o->init(-1);}
         class WidgetPDial
       }
       Fl_Counter awp8 {
         label Delay
-        callback {eff->seteffectpar(8,(int) o->value());
-send_data(8, o->value(), 4);}
+        callback {//
+        send_data(8, o->value(), 5, 0xd0);}
         xywh {305 55 35 15} type Simple labelsize 11 minimum 0 maximum 127 step 1 textsize 11
         code0 {o->range(1,MAX_ALIENWAH_DELAY);}
       }
@@ -1415,14 +1353,13 @@ send_data(8, o->value(), 4);}
   }
   Function {make_distorsion_window()} {} {
     Fl_Window effdistorsionwindow {
-      xywh {1013 641 380 95} type Double box PLASTIC_UP_BOX color 221 labelfont 1 hide
+      xywh {1013 641 379 95} type Double box PLASTIC_UP_BOX color 221 labelfont 1 hide
       class Fl_Group
     } {
       Fl_Choice distp {
         label Preset
-        callback {eff->changepreset((int)o->value());
-refresh(eff, npart, neff);
-send_data(16, o->value(), 5);}
+        callback {//
+        send_data(16, o->value(), 6, 0xd0);}
         xywh {139 13 96 16} down_box BORDER_BOX color 14 selection_color 0 labelsize 11 textsize 11 textcolor 7
       } {
         MenuItem {} {
@@ -1456,126 +1393,119 @@ send_data(16, o->value(), 5);}
       }
       Fl_Dial distp0 {
         label Vol
-        callback {if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | 0xf0);
-    o->value(eff->geteffectpar(0));
-    o->damage();
-}
-else
-    eff->seteffectpar(0,(int) o->value());
+        callback {//
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | 0xf0);
+            o->value(eff->geteffectpar(0));
+        }
 
-send_data(0, o->value(), 5);}
+        send_data(0, o->value(), 6, 0xd8);}
         tooltip {Effect Volume} xywh {10 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_FXDistVol);}
         class WidgetPDial
       }
       Fl_Dial distp1 {
         label Pan
-        callback {int butt = 1;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 1;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 5);}
+        send_data(butt, o->value(), 6, 0xd8);}
         xywh {45 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_PanningStd);}
         class WidgetPDial
       }
       Fl_Dial distp2 {
         label {LRc.}
-        callback {int butt = 2;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 2;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 5);}
+        send_data(butt, o->value(), 6, 0xd8);}
         tooltip {L/R Mix} xywh {80 40 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
       Fl_Dial distp3 {
         label Drive
-        callback {int butt = 3;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 3;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 5);}
+        send_data(butt, o->value(), 6, 0xd8);}
         tooltip {Input Amplification} xywh {120 40 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
       Fl_Dial distp4 {
         label Level
-        callback {int butt = 4;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 4;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 5);}
+        send_data(butt, o->value(), 6, 0xd8);}
         tooltip {Output Amplification} xywh {155 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_FXDistLevel);}
         class WidgetPDial
       }
       Fl_Dial distp7 {
         label LPF
-        callback {int butt = 7;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 7;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 5);}
+        send_data(butt, o->value(), 6, 0xd8);}
         tooltip {Low Pass Filter} xywh {285 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_FXDistLowPass);}
         class WidgetPDial
       }
       Fl_Dial distp8 {
         label HPF
-        callback {int butt = 8;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 8;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 5);}
+        send_data(butt, o->value(), 6, 0xd8);}
         tooltip {High Pass Filter} xywh {320 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
+        code1 {o->setValueType(VC_FXDistHighPass);}
         class WidgetPDial
       }
       Fl_Choice distp5 {
         label Type
-        callback {eff->seteffectpar(5,(int) o->value());
-send_data(5, o->value(), 5);}
+        callback {//
+        send_data(5, o->value(), 6, 0xd0);}
         xywh {190 50 60 20} box UP_BOX down_box BORDER_BOX labelsize 11 align 2 textsize 10
       } {
         MenuItem {} {
@@ -1637,27 +1567,27 @@ send_data(5, o->value(), 5);}
       }
       Fl_Check_Button distp6 {
         label {Neg.}
-        callback {eff->seteffectpar(6,(int) o->value());
-send_data(6, o->value(), 5);}
+        callback {//
+        send_data(6, o->value(), 6, 0xd0);}
         xywh {260 55 15 15} down_box DOWN_BOX labelsize 11 align 2
       }
       Fl_Check_Button distp9 {
         label {St.}
-        callback {eff->seteffectpar(9,(int) o->value());
-send_data(9, o->value(), 5);}
+        callback {//
+        send_data(9, o->value(), 6, 0xd0);}
         tooltip Stereo xywh {355 60 15 15} down_box DOWN_BOX labelsize 11 align 2
       }
       Fl_Check_Button distp10 {
         label PF
-        callback {eff->seteffectpar(10,(int) o->value());
-send_data(10, o->value(), 5);}
+        callback {//
+        send_data(10, o->value(), 6, 0xd0);}
         tooltip {Applies the filters(before or after) the distortion} xywh {355 44 15 15} down_box DOWN_BOX labelsize 11 align 1
       }
     }
   }
   Function {make_eq_window()} {} {
     Fl_Window effeqwindow {
-      xywh {1010 762 380 95} type Double box PLASTIC_UP_BOX color 221 labelfont 1 hide
+      xywh {1010 762 375 95} type Double box PLASTIC_UP_BOX color 221 labelfont 1 hide
       class Fl_Group
     } {
       Fl_Text_Display {} {
@@ -1666,39 +1596,17 @@ send_data(10, o->value(), 5);}
       }
       Fl_Dial eqp0 {
         label Gain
-        callback {eff->seteffectpar(0,(int) o->value());
-eqgraph->redraw();
-send_data(0, o->value(), 6);}
+        callback {//
+        send_data(0, o->value(), 7, 0xd8);}
         xywh {10 41 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(67);}
+        code1 {o->setValueType(VC_FXEQgain);}
         class WidgetPDial
       }
       Fl_Counter bandcounter {
         label {B.}
-        callback {eqband=(int) o->value();
-int npb=eqband*5+10;
-
-int type=eff->geteffectpar(npb);
-typechoice->value(type);
-
-if (type>6) gaindial->activate();
- else gaindial->deactivate();
-
-if (type==0) bandgroup->deactivate();
-else bandgroup->activate();
-
-int freq=eff->geteffectpar(npb+1);
-freqdial->value(freq);
-
-int gain=eff->geteffectpar(npb+2);
-gaindial->value(gain);
-
-int q=eff->geteffectpar(npb+3);
-qdial->value(q);
-
-int dbl=eff->geteffectpar(npb+4);
-stagescounter->value(dbl);
-send_data(1, o->value(), 6);}
+        callback {//
+        send_data(1, o->value(), 7, 0xd0);}
         tooltip {Band no.} xywh {263 20 45 15} type Simple labelsize 11 align 1 minimum 0 maximum 1 step 1 textsize 11
         code0 {o->bounds(0,MAX_EQ_BANDS-1);}
       }
@@ -1708,51 +1616,43 @@ send_data(1, o->value(), 6);}
       } {
         Fl_Dial freqdial {
           label Freq
-          callback {int np=eqband*5+11;
-eff->seteffectpar(np,(int) o->value());
-eqgraph->redraw();
-send_data(2, o->value(), 6);}
+          callback {//;
+          send_data(11, o->value(), 7, 0xd8);}
           xywh {250 50 25 25} box ROUND_UP_BOX labelsize 10 when 3 maximum 127
           code0 {o->init(64);}
+          code1 {o->setValueType(VC_FXEQfreq);}
           class WidgetPDial
         }
         Fl_Dial gaindial {
           label Gain
-          callback {int np=eqband*5+12;
-eff->seteffectpar(np,(int) o->value());
-eqgraph->redraw();
-send_data(3, o->value(), 6);}
+          callback {//
+          send_data(12, o->value(), 7, 0xd8);}
           xywh {280 50 25 25} box ROUND_UP_BOX labelsize 10 when 3 maximum 127 step 1
           code0 {o->init(64);}
+          code1 {o->setValueType(VC_FXEQfilterGain);}
           class WidgetPDial
         }
         Fl_Dial qdial {
           label Q
-          callback {int np=eqband*5+13;
-eff->seteffectpar(np,(int) o->value());
-eqgraph->redraw();
-send_data(4, o->value(), 6);}
+          callback {//
+          send_data(13, o->value(), 7, 0xd8);}
           tooltip {Resonance/Bandwidth} xywh {310 50 25 25} box ROUND_UP_BOX labelsize 10 when 3 maximum 127
           code0 {o->init(64);}
+          code1 {o->setValueType(VC_FXEQq);}
           class WidgetPDial
         }
         Fl_Counter stagescounter {
           label {St.}
-          callback {int np=eqband*5+14;
-eff->seteffectpar(np,(int) o->value());
-eqgraph->redraw();
-send_data(5, o->value(), 6);}
+          callback {//
+          send_data(14, o->value(), 7, 0xd0);}
           tooltip {Additional filter stages} xywh {340 60 30 15} type Simple labelsize 10 minimum 1 maximum 127 step 1 textfont 1 textsize 11
           code0 {o->bounds(0,MAX_FILTER_STAGES-1);}
         }
       }
       Fl_Choice typechoice {
         label {T.}
-        callback {int np=eqband*5+10;
-eff->seteffectpar(np,(int) o->value());
-bandcounter->do_callback();
-eqgraph->redraw();
-send_data(6, o->value(), 6);}
+        callback {//
+        send_data(10, o->value(), 7, 0xd0);}
         tooltip Type xywh {323 20 40 15} down_box BORDER_BOX labelsize 11 align 1 when 6 textsize 11
       } {
         MenuItem {} {
@@ -1805,14 +1705,13 @@ send_data(6, o->value(), 6);}
   }
   Function {make_dynamicfilter_window()} {} {
     Fl_Window effdynamicfilterwindow {
-      xywh {1009 883 380 95} type Double box PLASTIC_UP_BOX color 221 labelfont 1 hide
+      xywh {1009 883 375 95} type Double box PLASTIC_UP_BOX color 221 labelfont 1 hide
       class Fl_Group
     } {
       Fl_Choice dfp {
         label Preset
-        callback {eff->changepreset((int)o->value());
-refresh(eff, npart, neff);
-send_data(16, o->value(), 7);}
+        callback {//
+        send_data(16, o->value(), 8, 0xd0);}
         xywh {132 13 90 16} down_box BORDER_BOX color 14 selection_color 0 labelsize 10 textsize 10 textcolor 7
       } {
         MenuItem {} {
@@ -1842,67 +1741,59 @@ send_data(16, o->value(), 7);}
       }
       Fl_Dial dfp0 {
         label Vol
-        callback {if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | 0xf0);
-    o->value(eff->geteffectpar(0));
-    o->damage();
-}
-else
-    eff->seteffectpar(0,(int) o->value());
+        callback {//
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | 0xf0);
+            o->value(eff->geteffectpar(0));
+        }
 
-send_data(0, o->value(), 7);}
+        send_data(0, o->value(), 8, 0xd8);}
         tooltip {Effect Volume} xywh {6 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
         class WidgetPDial
       }
       Fl_Dial dfp1 {
         label Pan
-        callback {int butt = 1;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 1;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 7);}
+        send_data(butt, o->value(), 8, 0xd8);}
         xywh {42 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
         class WidgetPDial
       }
       Fl_Dial dfp2 {
         label Freq
-        callback {int butt = 2;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 2;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 7);}
+        send_data(butt, o->value(), 8, 0xd8);}
         tooltip {LFO Frequency} xywh {80 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
         class WidgetPDial
       }
       Fl_Dial dfp3 {
         label Rnd
-        callback {int butt = 3;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        callback {//
+        int butt = 3;
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 7);}
+        send_data(butt, o->value(), 8, 0xd8);}
         tooltip {LFO Randomness} xywh {118 40 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127
         code0 {o->init(-1);}
         class WidgetPDial
@@ -1910,16 +1801,13 @@ send_data(butt, o->value(), 7);}
       Fl_Dial dfp5 {
         label {St.df}
         callback {int butt = 5;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 7);}
+        send_data(butt, o->value(), 8, 0xd8);}
         tooltip {Left/Right Channel Phase Shift} xywh {205 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
         class WidgetPDial
@@ -1927,24 +1815,21 @@ send_data(butt, o->value(), 7);}
       Fl_Dial dfp6 {
         label LfoD
         callback {int butt = 6;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 7);}
+        send_data(butt, o->value(), 8, 0xd8);}
         tooltip {LFO Depth} xywh {240 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
         code0 {o->init(-1);}
         class WidgetPDial
       }
       Fl_Choice dfp4 {
         label {LFO type}
-        callback {eff->seteffectpar(4,(int) o->value());
-send_data(4, o->value(), 7);}
+        callback {//
+        send_data(4, o->value(), 8, 0xd0);}
         tooltip {LFO function} xywh {152 55 48 15} down_box BORDER_BOX labelsize 10 align 130 textsize 8
       } {
         MenuItem {} {
@@ -1967,16 +1852,13 @@ send_data(4, o->value(), 7);}
         Fl_Dial dfp7 {
           label {A.S.}
           callback {int butt = 7;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+        if (Fl::event_button() == 3)
+        {
+            eff->changepreset(eff->getpreset() | (butt << 4));
+            o->value(eff->geteffectpar(butt));
+        }
 
-send_data(butt, o->value(), 7);}
+        send_data(butt, o->value(), 8, 0xd8);}
           tooltip {Filter vs Amplitude} xywh {280 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
           code0 {o->init(-1);}
           class WidgetPDial
@@ -1984,24 +1866,21 @@ send_data(butt, o->value(), 7);}
         Fl_Dial dfp9 {
           label {A.M}
           callback {int butt = 9;
-if (Fl::event_button() == 3)
-{
-    eff->changepreset(eff->getpreset() | (butt << 4));
-    o->value(eff->geteffectpar(butt));
-    o->damage();
-}
-else
-    eff->seteffectpar(butt,(int) o->value());
+          if (Fl::event_button() == 3)
+          {
+              eff->changepreset(eff->getpreset() | (butt << 4));
+              o->value(eff->geteffectpar(butt));
+          }
 
-send_data(butt, o->value(), 7);}
+          send_data(butt, o->value(), 8, 0xd8);}
           tooltip {rate that  amplitude changes the filter} xywh {316 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
           code0 {o->init(-1);}
           class WidgetPDial
         }
         Fl_Check_Button dfp8 {
           label {Inv.}
-          callback {eff->seteffectpar(8,(int) o->value());
-send_data(8, o->value(), 7);}
+          callback {//
+          send_data(8, o->value(), 8, 0xd0);}
           tooltip {enable for filter frequency to lower with higher input amplitude} xywh {352 55 15 15} down_box DOWN_BOX labelsize 11 align 2
         }
       }
@@ -2012,7 +1891,7 @@ send_data(8, o->value(), 7);}
       label {Filter Parameters for DynFilter Eff.}
       xywh {1109 779 290 110} type Double hide
     } {
-      Fl_Group {} {
+      Fl_Group fwin_filterui {
         label {DynFilter effect  - Filter} open
         xywh {5 5 275 75} box FLAT_BOX color 50 labelsize 12 align 144
         code0 {o->init(eff->filterpars,NULL,NULL, npart, 0x88, neff);}
@@ -2026,211 +1905,581 @@ send_data(8, o->value(), 7);}
       }
     }
   }
-  Function {send_data(int control, float value, int type, bool isInteger = true)} {} {
+  Function {send_data(int control, float value, int group, int type)} {} {
     code {//
-type += 1; // temp fix for wrong start value :(
+    collect_data(synth, value, (Fl::event_button() | type), control, npart, group | 0x80, neff);} {}
+  }
+  Function {returns_update(CommandBlock *getData)} {} {
+    code {//
+    float value = getData->data.value;
+    unsigned char control = getData->data.control;
+    unsigned char efftype = getData->data.kit & 0x7f;
+    bool isdynfilter = (getData->data.engine == 0x88);
 
-collect_data(synth, value, (Fl::event_button() | (isInteger << 7)), control, npart, type | 0x80, neff);} {}
+    //cout << "cont " << (int)control << "  type " << (int)efftype << "  num " << (int)effnum << endl;
+    switch(efftype)
+    {
+        case 0: // no effect
+            break;
+
+        case 1: // reverb
+            switch (control)
+            {
+                case 0:
+                    revp0->value(value);
+                    break;
+                case 1:
+                    revp1->value(value);
+                    break;
+                case 2:
+                    revp2->value(value);
+                    break;
+                case 3:
+                    revp3->value(value);
+                    break;
+                case 4:
+                    revp4->value(value);
+                    break;
+                case 6:
+                    revp6->value(value);
+                    break;
+                case 7:
+                    revp7->value(value);
+                    break;
+                case 8:
+                    revp8->value(value);
+                    break;
+                case 9:
+                    revp9->value(value);
+                    break;
+                case 10:
+                    revp10->value(value);
+                    if (value ==2)
+                        revp12->activate();
+                    else
+                        revp12->deactivate();
+                    break;
+                case 11:
+                    revp11->value(value);
+                    break;
+                case 12:
+                    revp12->value(value);
+                    break;
+                case 16:
+                refresh();
+                break;
+
+            }
+            break;
+
+        case 2: // echo
+            switch (control)
+            {
+                case 0:
+                    echop0->value(value);
+                    break;
+                case 1:
+                    echop1->value(value);
+                    break;
+                case 2:
+                    echop2->value(value);
+                    break;
+                case 3:
+                    echop3->value(value);
+                    break;
+                case 4:
+                    echop4->value(value);
+                    break;
+                case 5:
+                    echop5->value(value);
+                    break;
+                case 6:
+                    echop6->value(value);
+                    break;
+                case 16:
+                    refresh();
+                    break;
+            }
+            break;
+
+        case 3: // chorus
+            switch (control)
+            {
+                case 0:
+                    chorusp0->value(value);
+                    break;
+                case 1:
+                    chorusp1->value(value);
+                    break;
+                case 2:
+                    chorusp2->value(value);
+                    break;
+                case 3:
+                    chorusp3->value(value);
+                    break;
+                case 5:
+                    chorusp5->value(value);
+                    break;
+                case 6:
+                    chorusp6->value(value);
+                    break;
+                case 7:
+                    chorusp7->value(value);
+                    break;
+                case 8:
+                    chorusp8->value(value);
+                    break;
+                case 9:
+                    chorusp9->value(value);
+                    break;
+                case 16:
+                    refresh();
+                    break;
+            }
+            break;
+
+        case 4: // phaser
+            switch (control)
+            {
+                case 0:
+                    phaserp0->value(value);
+                    break;
+                case 1:
+                    phaserp1->value(value);
+                    break;
+                case 2:
+                    phaserp2->value(value);
+                    break;
+                case 3:
+                    phaserp3->value(value);
+                    break;
+                case 5:
+                    phaserp5->value(value);
+                    break;
+                case 6:
+                    phaserp6->value(value);
+                    break;
+                case 7:
+                   phaserp7->value(value);
+                    break;
+                case 9:
+                    phaserp9->value(value);
+                    break;
+                case 11:
+                    phaserp11->value(value);
+                    break;
+                case 13:
+                    phaserp13->value(value);
+                    break;
+                case 16:
+                    refresh();
+                    break;
+            }
+            break;
+
+        case 5: // alien wah
+            switch (control)
+            {
+                case 0:
+                    awp0->value(value);
+                    break;
+                case 1:
+                    awp1->value(value);
+                    break;
+                case 2:
+                    awp2->value(value);
+                    break;
+                case 3:
+                    awp3->value(value);
+                    break;
+                case 5:
+                    awp5->value(value);
+                    break;
+                case 6:
+                    awp6->value(value);
+                    break;
+                case 7:
+                    awp7->value(value);
+                    break;
+                case 9:
+                    awp9->value(value);
+                    break;
+                case 10:
+                    awp10->value(value);
+                    break;
+                case 16:
+                    refresh();
+                    break;
+            }
+            break;
+
+        case 6: // distortion
+            switch (control)
+            {
+                case 0:
+                    distp0->value(value);
+                    break;
+                case 1:
+                    distp1->value(value);
+                    break;
+                case 2:
+                    distp2->value(value);
+                    break;
+                case 3:
+                    distp3->value(value);
+                    break;
+                case 4:
+                    distp4->value(value);
+                    break;
+                case 7:
+                    distp7->value(value);
+                    break;
+                case 8:
+                    distp8->value(value);
+                    break;
+                case 16:
+                    refresh();
+                    break;
+            }
+            break;
+
+        case 7: // EQ
+            //synth->getRuntime().Log("EQ " + to_string(int(value)) + "  " + to_string(int(control)));
+            if(control == 0)
+            {
+                eqp0->value(value);
+            }
+            else if (control == 1)
+            {
+                eqband = value;
+                EQbandUpdate();
+            }
+            else
+            {
+                switch (control)
+                {
+                case 10:
+                    typechoice->value(value);
+                    if (value == 0)
+                        bandgroup->deactivate();
+                    else
+                        bandgroup->activate();
+                    if (value > 2)
+                        qdial->activate();
+                    else
+                        qdial->deactivate();
+                    if (value > 6)
+                        gaindial->activate();
+                    else
+                        gaindial->deactivate();
+                    break;
+                case 11:
+                    freqdial->value(value);
+                    break;
+                case 12:
+                    gaindial->value(value);
+                    break;
+                case 13:
+                    qdial->value(value);
+                    break;
+                case 14:
+                    stagescounter->value(value);
+                }
+            }
+            effeqwindow->redraw();
+            break;
+
+        case 8:
+            if(isdynfilter)
+            {
+                //synth->getRuntime().Log("DyneFilter" );
+                return;
+            }
+            switch (control)
+            {
+                case 0:
+                    dfp0->value(value);
+                    break;
+                case 1:
+                    dfp1->value(value);
+                    break;
+                case 2:
+                    dfp2->value(value);
+                    break;
+                case 3:
+                    dfp3->value(value);
+                    break;
+                case 5:
+                    dfp5->value(value);
+                    break;
+                case 6:
+                    dfp6->value(value);
+                    break;
+                case 7:
+                    dfp7->value(value);
+                    break;
+                case 8:
+                    dfp8->value(value);
+                    break;
+                case 9:
+                    dfp9->value(value);
+                    break;
+                case 16:
+                    refresh();
+                    break;
+            }
+            break;
+    }} {}
   }
   Function {init(EffectMgr *eff_, int npart_, int neff_)} {} {
-    code {eff=eff_;
-npart = npart_;
-neff = neff_;
-synth = eff->getSynthEngine();
+    code {//
+    eff=eff_;
+    npart = npart_;
+    neff = neff_;
+    synth = eff->getSynthEngine();
 
-make_null_window();
-make_reverb_window();
-make_echo_window();
-make_chorus_window();
-make_phaser_window();
-make_alienwah_window();
-make_distorsion_window();
-make_eq_window();
-make_dynamicfilter_window();
+    make_null_window();
+    make_reverb_window();
+    make_echo_window();
+    make_chorus_window();
+    make_phaser_window();
+    make_alienwah_window();
+    make_distorsion_window();
+    make_eq_window();
+    make_dynamicfilter_window();
 
-int px=this->parent()->x();
-int py=this->parent()->y();
+    int px=this->parent()->x();
+    int py=this->parent()->y();
 
-effnullwindow->position(px,py);
-effreverbwindow->position(px,py);
-effechowindow->position(px,py);
-effchoruswindow->position(px,py);
-effphaserwindow->position(px,py);
-effalienwahwindow->position(px,py);
-effdistorsionwindow->position(px,py);
-effeqwindow->position(px,py);
-effdynamicfilterwindow->position(px,py);
+    effnullwindow->position(px,py);
+    effreverbwindow->position(px,py);
+    effechowindow->position(px,py);
+    effchoruswindow->position(px,py);
+    effphaserwindow->position(px,py);
+    effalienwahwindow->position(px,py);
+    effdistorsionwindow->position(px,py);
+    effeqwindow->position(px,py);
+    effdynamicfilterwindow->position(px,py);
 
-refresh(eff, npart, neff);} {}
+    refresh(eff, npart, neff);} {}
   }
   Function {refresh(EffectMgr *eff_, int npart_, int neff_)} {} {
     code {//
-	eff = eff_;
-	npart = npart_;
-	neff = neff_;
-        this->hide();
-        effnullwindow->hide();
-        effreverbwindow->hide();
-        effechowindow->hide();
-        effchoruswindow->hide();
-        effphaserwindow->hide();
-        effalienwahwindow->hide();
-        effdistorsionwindow->hide();
-        effeqwindow->hide();
-        effdynamicfilterwindow->hide();
-        eqband=0;
-        if (filterwindow != NULL)
-        {
-            filterwindow->hide();
-            delete(filterwindow);
-            filterwindow=NULL;
-        }
-        switch(eff->geteffect())
-        {
-            case 1:
-                revp->value(eff->getpreset());
-                revp0->value(eff->geteffectpar(0));
-                if (eff->insertion != 0)
-                    revp0->label("D/W");
-                revp1->value(eff->geteffectpar(1));
-                revp2->value(eff->geteffectpar(2));
-                revp3->value(eff->geteffectpar(3));
-                revp4->value(eff->geteffectpar(4));
-                revp6->value(eff->geteffectpar(6));
-                revp7->value(eff->geteffectpar(7));
-                revp8->value(eff->geteffectpar(8));
-                revp9->value(eff->geteffectpar(9));
-                revp10->value(eff->geteffectpar(10));
-                revp11->value(eff->geteffectpar(11));
-                revp12->value(eff->geteffectpar(12));
-                effreverbwindow->show();
-                break;
-             case 2:
-                echop->value(eff->getpreset());
-                echop0->value(eff->geteffectpar(0));
-                if (eff->insertion != 0)
-                    echop0->label("D/W");
-                echop1->value(eff->geteffectpar(1));
-                echop2->value(eff->geteffectpar(2));
-                echop3->value(eff->geteffectpar(3));
-                echop4->value(eff->geteffectpar(4));
-                echop5->value(eff->geteffectpar(5));
-                echop6->value(eff->geteffectpar(6));
-                effechowindow->show();
-                break;
-             case 3:
-                chorusp->value(eff->getpreset());
-                chorusp0->value(eff->geteffectpar(0));
-                if (eff->insertion != 0)
-                    chorusp0->label("D/W");
-                chorusp1->value(eff->geteffectpar(1));
-                chorusp2->value(eff->geteffectpar(2));
-                chorusp3->value(eff->geteffectpar(3));
-                chorusp4->value(eff->geteffectpar(4));
-                chorusp5->value(eff->geteffectpar(5));
-                chorusp6->value(eff->geteffectpar(6));
-                chorusp7->value(eff->geteffectpar(7));
-                chorusp8->value(eff->geteffectpar(8));
-                chorusp9->value(eff->geteffectpar(9));
-                chorusp11->value(eff->geteffectpar(11));
-                effchoruswindow->show();
-                break;
-             case 4:
-                phaserp->value(eff->getpreset());
-                phaserp0->value(eff->geteffectpar(0));
-                if (eff->insertion != 0)
-                    phaserp0->label("D/W");
-                phaserp1->value(eff->geteffectpar(1));
-                phaserp2->value(eff->geteffectpar(2));
-                phaserp3->value(eff->geteffectpar(3));
-                phaserp4->value(eff->geteffectpar(4));
-                phaserp5->value(eff->geteffectpar(5));
-                phaserp6->value(eff->geteffectpar(6));
-                phaserp7->value(eff->geteffectpar(7));
-                phaserp8->value(eff->geteffectpar(8));
-                phaserp9->value(eff->geteffectpar(9));
-                phaserp10->value(eff->geteffectpar(10));
-                phaserp11->value(eff->geteffectpar(11));
-                phaserp12->value(eff->geteffectpar(12));
-                phaserp13->value(eff->geteffectpar(13));
-                phaserp14->value(eff->geteffectpar(14));
-                effphaserwindow->show();
-                break;
-             case 5:
-                awp->value(eff->getpreset());
-                awp0->value(eff->geteffectpar(0));
-                if (eff->insertion != 0)
-                    awp0->label("D/W");
-                awp1->value(eff->geteffectpar(1));
-                awp2->value(eff->geteffectpar(2));
-                awp3->value(eff->geteffectpar(3));
-                awp4->value(eff->geteffectpar(4));
-                awp5->value(eff->geteffectpar(5));
-                awp6->value(eff->geteffectpar(6));
-                awp7->value(eff->geteffectpar(7));
-                awp8->value(eff->geteffectpar(8));
-                awp9->value(eff->geteffectpar(9));
-                awp10->value(eff->geteffectpar(10));
-                effalienwahwindow->show();
-                break;
-             case 6:
-                distp->value(eff->getpreset());
-                distp0->value(eff->geteffectpar(0));
-                if (eff->insertion != 0)
-                    distp0->label("D/W");
-                distp1->value(eff->geteffectpar(1));
-                distp2->value(eff->geteffectpar(2));
-                distp3->value(eff->geteffectpar(3));
-                distp4->value(eff->geteffectpar(4));
-                distp5->value(eff->geteffectpar(5));
-                distp6->value(eff->geteffectpar(6));
-                distp7->value(eff->geteffectpar(7));
-                distp8->value(eff->geteffectpar(8));
-                distp9->value(eff->geteffectpar(9));
-                distp10->value(eff->geteffectpar(10));
-                effdistorsionwindow->show();
-                break;
-             case 7:
-                eqband = 0;
-                eqp0->value(eff->geteffectpar(0));
-                bandcounter->value(eqband);
-                bandcounter->do_callback();
-                typechoice->value(eff->geteffectpar(10));
-                eqgraph->redraw();
-                freqdial->value(eff->geteffectpar(11));
-                gaindial->value(eff->geteffectpar(12));
-                if (eff->geteffectpar(10) < 6)
-                    gaindial->deactivate();
-                qdial->value(eff->geteffectpar(13));
-                stagescounter->value(eff->geteffectpar(14));
-                eqgraph->init(eff);
-                effeqwindow->show();
-                break;
-             case 8:
-                make_filter_window();
-                dfp->value(eff->getpreset());
-                dfp0->value(eff->geteffectpar(0));
-                if (eff->insertion!=0)
-                    dfp0->label("D/W");
-                dfp1->value(eff->geteffectpar(1));
-                dfp2->value(eff->geteffectpar(2));
-                dfp3->value(eff->geteffectpar(3));
-                dfp4->value(eff->geteffectpar(4));
-                dfp5->value(eff->geteffectpar(5));
-                dfp6->value(eff->geteffectpar(6));
-                dfp7->value(eff->geteffectpar(7));
-                dfp8->value(eff->geteffectpar(8));
-                dfp9->value(eff->geteffectpar(9));
-                effdynamicfilterwindow->show();
-                break;
-            default:
-                effnullwindow->show();
-                break;
-        }
-        this->show();} {}
+    eff = eff_;
+    npart = npart_;
+    neff = neff_;
+    this->hide();
+    effnullwindow->hide();
+    effreverbwindow->hide();
+    effechowindow->hide();
+    effchoruswindow->hide();
+    effphaserwindow->hide();
+    effalienwahwindow->hide();
+    effdistorsionwindow->hide();
+    effeqwindow->hide();
+    effdynamicfilterwindow->hide();
+    eqband=0;
+    if (filterwindow != NULL)
+    {
+        filterwindow->hide();
+        delete(filterwindow);
+        filterwindow=NULL;
+    }
+    switch(eff->geteffect())
+    {
+        case 1:
+            revp->value(eff->getpreset());
+            revp0->value(eff->geteffectpar(0));
+            if (eff->insertion != 0)
+            {
+                revp0->label("D/W");
+                revp0->setValueType(VC_FXReverbDW);
+            }
+            revp1->value(eff->geteffectpar(1));
+            revp2->value(eff->geteffectpar(2));
+            revp3->value(eff->geteffectpar(3));
+            revp4->value(eff->geteffectpar(4));
+            revp6->value(eff->geteffectpar(6));
+            revp7->value(eff->geteffectpar(7));
+            revp8->value(eff->geteffectpar(8));
+            revp9->value(eff->geteffectpar(9));
+            revp10->value(eff->geteffectpar(10));
+            revp11->value(eff->geteffectpar(11));
+            revp12->value(eff->geteffectpar(12));
+            effreverbwindow->show();
+            break;
+        case 2:
+            echop->value(eff->getpreset());
+            echop0->value(eff->geteffectpar(0));
+            if (eff->insertion != 0)
+            {
+                echop0->label("D/W");
+                echop0->setValueType(VC_FXEchoDW);
+            }
+            echop1->value(eff->geteffectpar(1));
+            echop2->value(eff->geteffectpar(2));
+            echop3->value(eff->geteffectpar(3));
+            echop4->value(eff->geteffectpar(4));
+            echop5->value(eff->geteffectpar(5));
+            echop6->value(eff->geteffectpar(6));
+            effechowindow->show();
+            break;
+        case 3:
+            chorusp->value(eff->getpreset());
+            chorusp0->value(eff->geteffectpar(0));
+            if (eff->insertion != 0)
+            {
+                chorusp0->label("D/W");
+                chorusp0->setValueType(VC_FXdefaultDW);
+            }
+            chorusp1->value(eff->geteffectpar(1));
+            chorusp2->value(eff->geteffectpar(2));
+            chorusp3->value(eff->geteffectpar(3));
+            chorusp4->value(eff->geteffectpar(4));
+            chorusp5->value(eff->geteffectpar(5));
+            chorusp6->value(eff->geteffectpar(6));
+            chorusp7->value(eff->geteffectpar(7));
+            chorusp8->value(eff->geteffectpar(8));
+            chorusp9->value(eff->geteffectpar(9));
+            chorusp11->value(eff->geteffectpar(11));
+            effchoruswindow->show();
+            break;
+        case 4:
+            phaserp->value(eff->getpreset());
+            phaserp0->value(eff->geteffectpar(0));
+            if (eff->insertion != 0)
+            {
+                phaserp0->label("D/W");
+                phaserp0->setValueType(VC_FXdefaultDW);
+            }
+            phaserp1->value(eff->geteffectpar(1));
+            phaserp2->value(eff->geteffectpar(2));
+            phaserp3->value(eff->geteffectpar(3));
+            phaserp4->value(eff->geteffectpar(4));
+            phaserp5->value(eff->geteffectpar(5));
+            phaserp6->value(eff->geteffectpar(6));
+            phaserp7->value(eff->geteffectpar(7));
+            phaserp8->value(eff->geteffectpar(8));
+            phaserp9->value(eff->geteffectpar(9));
+            phaserp10->value(eff->geteffectpar(10));
+            phaserp11->value(eff->geteffectpar(11));
+            phaserp12->value(eff->geteffectpar(12));
+            phaserp13->value(eff->geteffectpar(13));
+            phaserp14->value(eff->geteffectpar(14));
+            effphaserwindow->show();
+            break;
+        case 5:
+            awp->value(eff->getpreset());
+            awp0->value(eff->geteffectpar(0));
+            if (eff->insertion != 0)
+                awp0->label("D/W");
+            awp1->value(eff->geteffectpar(1));
+            awp2->value(eff->geteffectpar(2));
+            awp3->value(eff->geteffectpar(3));
+            awp4->value(eff->geteffectpar(4));
+            awp5->value(eff->geteffectpar(5));
+            awp6->value(eff->geteffectpar(6));
+            awp7->value(eff->geteffectpar(7));
+            awp8->value(eff->geteffectpar(8));
+            awp9->value(eff->geteffectpar(9));
+            awp10->value(eff->geteffectpar(10));
+            effalienwahwindow->show();
+            break;
+        case 6:
+            distp->value(eff->getpreset());
+            distp0->value(eff->geteffectpar(0));
+            if (eff->insertion != 0)
+            {
+                distp0->label("D/W");
+                distp0->setValueType(VC_FXdefaultDW);
+            }
+            distp1->value(eff->geteffectpar(1));
+            distp2->value(eff->geteffectpar(2));
+            distp3->value(eff->geteffectpar(3));
+            distp4->value(eff->geteffectpar(4));
+            distp5->value(eff->geteffectpar(5));
+            distp6->value(eff->geteffectpar(6));
+            distp7->value(eff->geteffectpar(7));
+            distp8->value(eff->geteffectpar(8));
+            distp9->value(eff->geteffectpar(9));
+            distp10->value(eff->geteffectpar(10));
+            effdistorsionwindow->show();
+            break;
+        case 7:
+            eqband = 0;
+            eqp0->value(eff->geteffectpar(0));
+            bandcounter->value(eqband);
+            bandcounter->do_callback();
+            typechoice->value(eff->geteffectpar(10));
+            eqgraph->redraw();
+            freqdial->value(eff->geteffectpar(11));
+            gaindial->value(eff->geteffectpar(12));
+            if (eff->geteffectpar(10) < 6)
+                gaindial->deactivate();
+            qdial->value(eff->geteffectpar(13));
+            stagescounter->value(eff->geteffectpar(14));
+            eqgraph->init(eff);
+            effeqwindow->show();
+            break;
+        case 8:
+            make_filter_window();
+            dfp->value(eff->getpreset());
+            dfp0->value(eff->geteffectpar(0));
+            if (eff->insertion!=0)
+                dfp0->label("D/W");
+            dfp1->value(eff->geteffectpar(1));
+            dfp2->value(eff->geteffectpar(2));
+            dfp3->value(eff->geteffectpar(3));
+            dfp4->value(eff->geteffectpar(4));
+            dfp5->value(eff->geteffectpar(5));
+            dfp6->value(eff->geteffectpar(6));
+            dfp7->value(eff->geteffectpar(7));
+            dfp8->value(eff->geteffectpar(8));
+            dfp9->value(eff->geteffectpar(9));
+            effdynamicfilterwindow->show();
+            break;
+        default:
+            effnullwindow->show();
+            break;
+    }
+    this->show();} {}
   }
   Function {refresh()} {} {
     code {refresh(eff, npart, neff);} {}
+  }
+  Function {EQbandUpdate()} {} {
+    code {//
+    int npb = eqband * 5 + 10;
+
+    int type = eff->geteffectpar(npb);
+    typechoice->value(type);
+
+    if (type == 0)
+        bandgroup->deactivate();
+    else
+        bandgroup->activate();
+
+    if (type > 2)
+        qdial->activate();
+    else
+        qdial->deactivate();
+
+    if (type > 6)
+        gaindial->activate();
+    else
+        gaindial->deactivate();
+
+    int freq = eff->geteffectpar(npb + 1);
+    freqdial->value(freq);
+
+    int gain = eff->geteffectpar(npb + 2);
+    gaindial->value(gain);
+
+    int q = eff->geteffectpar(npb + 3);
+    qdial->value(q);
+
+    int dbl = eff->geteffectpar(npb + 4);
+    stagescounter->value(dbl);} {}
   }
   decl {EffectMgr *eff;} {private local
   }
@@ -2242,4 +2491,4 @@ refresh(eff, npart, neff);} {}
   }
   decl {int neff;} {private local
   }
-} 
+}

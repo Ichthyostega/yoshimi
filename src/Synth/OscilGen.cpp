@@ -5,6 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011 Alan Calvert
     Copyright 2009 James Morris
+    Copyright 2016-2018 Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -20,10 +21,13 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of a ZynAddSubFX original, modified March 2011
+    This file is a derivative of a ZynAddSubFX original.
+
+    Modified March 2018
 */
 
 #include <cmath>
+#include <iostream>
 
 using namespace std;
 
@@ -70,7 +74,6 @@ OscilGen::~OscilGen()
 
 void OscilGen::defaults(void)
 {
-
     oldbasefunc = 0;
     oldbasepar = 64;
     oldhmagtype = 0;
@@ -146,7 +149,7 @@ void OscilGen::defaults(void)
 }
 
 
-void OscilGen::convert2sine(int magtype)
+void OscilGen::convert2sine()
 {
     float mag[MAX_AD_HARMONICS], phase[MAX_AD_HARMONICS];
     float oscil[synth->oscilsize];
@@ -945,13 +948,18 @@ void OscilGen::shiftharmonics(void)
 // Prepare the Oscillator
 void OscilGen::prepare(void)
 {
-    //int i, j, k;
     float a, b, c, d, hmagnew;
     memset(random_state, 0, sizeof(random_state));
+#if (HAVE_RANDOM_R)
     memset(&random_buf, 0, sizeof(random_buf));
-    if (initstate_r(synth->random(), random_state,
+    if (initstate_r(synth->randomSE(), random_state,
                     sizeof(random_state), &random_buf))
         synth->getRuntime().Log("OscilGen failed to init general randomness");
+#else
+    if (!initstate(synth->randomSE(), random_state, sizeof(random_state)))
+        synth->getRuntime().Log("OscilGen failed to init general randomness");
+#endif
+
     if (oldbasepar != Pbasefuncpar
         || oldbasefunc != Pcurrentbasefunc
         || oldbasefuncmodulation != Pbasefuncmodulation
@@ -1287,13 +1295,17 @@ int OscilGen::get(float *smps, float freqHz, int resonance)
     // Harmonic Amplitude Randomness
     if (freqHz > 0.1 && !ADvsPAD)
     {
-        // unsigned int realrnd = random();
-//        srandom_r(randseed, &harmonic_random_buf);
         memset(harmonic_random_state, 0, sizeof(harmonic_random_state));
+#if (HAVE_RANDOM_R)
         memset(&harmonic_random_buf, 0, sizeof(harmonic_random_buf));
         if (initstate_r(randseed, harmonic_random_state,
                     sizeof(harmonic_random_state), &harmonic_random_buf))
             synth->getRuntime().Log("OscilGen failed to init harmonic amplitude amplitude randomness");
+#else
+	if (!initstate(randseed, harmonic_random_state, sizeof(harmonic_random_state)))
+            synth->getRuntime().Log("OscilGen failed to init harmonic amplitude amplitude randomness");
+#endif
+
         float power = Pamprandpower / 127.0f;
         float normalize = 1.0f / (1.2f - power);
         switch (Pamprandtype)
@@ -1321,7 +1333,6 @@ int OscilGen::get(float *smps, float freqHz, int resonance)
                 }
                 break;
         }
-        // srandom_r(realrnd + 1, &random_data_buf);
     }
 
     if (freqHz > 0.1 && resonance != 0)
@@ -1603,4 +1614,84 @@ void OscilGen::getfromXML(XMLwrapper *xml)
                 basefuncFFTfreqs.s[i] /= max;
         }
     }
+}
+
+
+float OscilGen::getLimits(CommandBlock *getData)
+{
+    float value = getData->data.value;
+    int request = int(getData->data.type & 3);
+    int control = getData->data.control;
+    int insert = getData->data.insert;
+
+    float min;
+    float max;
+    float def;
+
+    // defaults
+    min = 0;
+    max = 127;
+    def = 0;
+
+    if (insert > 5)
+    { // do harmonics stuff
+        if (insert == 7)
+            def = 64;
+        switch (request)
+        {
+            case 0:
+                if(value < min)
+                    value = min;
+                else if(value > max)
+                    value = max;
+            break;
+            case 1:
+                value = min;
+                break;
+            case 2:
+                value = max;
+                break;
+            case 3:
+                value = def;
+                break;
+        }
+        return value;
+    }
+    switch (control)
+    {
+        case 0:
+        case 16:
+        case 34:
+            min = -64;
+            max = 63;
+            break;
+        case 67:
+            max = 100;
+            break;
+        case 68:
+            max = 255;
+            break;
+        case 69:
+            max = 200;
+            break;
+    }
+    switch (request)
+    {
+        case 0:
+            if(value < min)
+                value = min;
+            else if(value > max)
+                value = max;
+        break;
+        case 1:
+            value = min;
+            break;
+        case 2:
+            value = max;
+            break;
+        case 3:
+            value = def;
+            break;
+    }
+    return value;
 }

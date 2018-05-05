@@ -4,6 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
+    Copyright 2014-2018, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -19,11 +20,14 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is derivative of original ZynAddSubFX code, modified April 2011
+    This file is derivative of original ZynAddSubFX code.
+
+    Modified March 2018
 */
 
 #include <zlib.h>
 #include <sstream>
+#include <iostream>
 
 #include "Misc/Config.h"
 #include "Misc/XMLwrapper.h"
@@ -47,11 +51,12 @@ const char *XMLwrapper_whitespace_callback(mxml_node_t *node, int where)
 }
 
 
-XMLwrapper::XMLwrapper(SynthEngine *_synth) :
-    minimal(true),
+XMLwrapper::XMLwrapper(SynthEngine *_synth, bool _isYoshi) :
     stackpos(0),
+    isYoshi(_isYoshi),
     synth(_synth)
 {
+    minimal = 1 - synth->getRuntime().xmlmax;
     information.PADsynth_used = 0;
     information.ADDsynth_used = 0;
     information.SUBsynth_used = 0;
@@ -59,20 +64,25 @@ XMLwrapper::XMLwrapper(SynthEngine *_synth) :
     tree = mxmlNewElement(MXML_NO_PARENT, "?xml version=\"1.0\" encoding=\"UTF-8\"?");
     mxml_node_t *doctype = mxmlNewElement(tree, "!DOCTYPE");
 
-    if (synth->getRuntime().xmlType <= XML_PRESETS)
+    if (isYoshi)
     {
-        mxmlElementSetAttr(doctype, "ZynAddSubFX-data", NULL);
-        node = root = mxmlNewElement(tree, "ZynAddSubFX-data");
-        mxmlElementSetAttr(root, "version-major", "2");
-        mxmlElementSetAttr(root, "version-minor", "5");
-        mxmlElementSetAttr(root, "ZynAddSubFX-author", "Nasca Octavian Paul");
+        //cout << "Our doctype" << endl;
+        mxmlElementSetAttr(doctype, "Yoshimi-data", NULL);
+        root = mxmlNewElement(tree, "Yoshimi-data");
+        information.yoshiType = 1;
     }
     else
     {
-    mxmlElementSetAttr(doctype, "Yoshimi-data", NULL);
-    node = root = mxmlNewElement(tree, "Yoshimi-data");
+        //cout << "Zyn doctype" << endl;
+        mxmlElementSetAttr(doctype, "ZynAddSubFX-data", NULL);
+        root = mxmlNewElement(tree, "ZynAddSubFX-data");
+        mxmlElementSetAttr(root, "version-major", "3");
+        mxmlElementSetAttr(root, "version-minor", "0");
+        mxmlElementSetAttr(root, "ZynAddSubFX-author", "Nasca Octavian Paul");
+        information.yoshiType = 0;
     }
 
+    node = root;
     mxmlElementSetAttr(root, "Yoshimi-author", "Alan Ernest Calvert");
     string tmp = YOSHIMI_VERSION;
     string::size_type pos1 = tmp.find('.'); // != string::npos
@@ -118,7 +128,7 @@ XMLwrapper::~XMLwrapper()
 }
 
 
-bool XMLwrapper::checkfileinformation(const string& filename)
+void XMLwrapper::checkfileinformation(const string& filename)
 {
     stackpos = 0;
     memset(&parentstack, 0, sizeof(parentstack));
@@ -128,22 +138,22 @@ bool XMLwrapper::checkfileinformation(const string& filename)
     tree = NULL;
     char *xmldata = doloadfile(filename);
     if (!xmldata)
-        return -1;
+        return;
 
-    bool bRet = false; // we're not actually using this!
+    char *first = strstr(xmldata, "<!DOCTYPE Yoshimi-data>");
+    information.yoshiType = (first!= NULL);
     char *start = strstr(xmldata, "<INFORMATION>");
     char *end = strstr(xmldata, "</INFORMATION>");
     if (!start || !end || start >= end)
     {
-        bRet = slowinfosearch(xmldata);
+        slowinfosearch(xmldata);
         delete [] xmldata;
-        return bRet;
+        return;
     }
 
     // Andrew: just make it simple
     // Will: but not too simple :)
     char *idx = start;
-    *end = 0; // fiddle to limit search - I can't find a better way :(
     unsigned short names = 0;
 
     /* the following could be in any order. We are checking for
@@ -173,31 +183,22 @@ bool XMLwrapper::checkfileinformation(const string& filename)
             information.PADsynth_used = 1;
     }
 
-    if (names == 7)
-    {
-        bRet = true;
-    }
-    else
-    {
-//        if (strstr(idx, "<INSTRUMENT_KIT>"))
-//            synth->getRuntime().Log("Oops! Shouldn't find it.");
-        *end = 0x3c; // restore full length
-        bRet = slowinfosearch(xmldata);
-    }
+    if (names != 7)
+        slowinfosearch(xmldata);
+
     delete [] xmldata;
-    return bRet;
+    return;
 }
 
 
-bool XMLwrapper::slowinfosearch(char *idx)
+void XMLwrapper::slowinfosearch(char *idx)
 {
     idx = strstr(idx, "<INSTRUMENT_KIT>");
     if (idx == NULL)
-        return false;
+        return;
 
     string mark;
     int max = NUM_KIT_ITEMS;
-
     /*
      * The following *must* exist, otherwise the file is corrupted.
      * They will always be in this order, which means we only need
@@ -207,7 +208,7 @@ bool XMLwrapper::slowinfosearch(char *idx)
      */
     idx = strstr(idx, "name=\"kit_mode\"");
     if (idx == NULL)
-        return false;
+        return;
     if (strncmp(idx + 16 , "value=\"0\"", 9) == 0)
         max = 1;
 
@@ -216,11 +217,11 @@ bool XMLwrapper::slowinfosearch(char *idx)
         mark = "<INSTRUMENT_KIT_ITEM id=\"" + asString(kitnum) + "\">";
         idx = strstr(idx, mark.c_str());
         if (idx == NULL)
-            return false;
+            return;
 
         idx = strstr(idx, "name=\"enabled\"");
         if (idx == NULL)
-            return false;
+            return;
         if (!strstr(idx, "name=\"enabled\" value=\"yes\""))
             continue;
 
@@ -228,7 +229,7 @@ bool XMLwrapper::slowinfosearch(char *idx)
         {
             idx = strstr(idx, "name=\"add_enabled\"");
             if (idx == NULL)
-                return false;
+                return;
             if (strncmp(idx + 26 , "yes", 3) == 0)
                 information.ADDsynth_used = 1;
         }
@@ -236,7 +237,7 @@ bool XMLwrapper::slowinfosearch(char *idx)
         {
             idx = strstr(idx, "name=\"sub_enabled\"");
             if (idx == NULL)
-                return false;
+                return;
             if (strncmp(idx + 26 , "yes", 3) == 0)
                 information.SUBsynth_used = 1;
         }
@@ -244,7 +245,7 @@ bool XMLwrapper::slowinfosearch(char *idx)
         {
             idx = strstr(idx, "name=\"pad_enabled\"");
             if (idx == NULL)
-                return false;
+                return;
             if (strncmp(idx + 26 , "yes", 3) == 0)
                 information.PADsynth_used = 1;
         }
@@ -252,11 +253,10 @@ bool XMLwrapper::slowinfosearch(char *idx)
           & information.SUBsynth_used
           & information.PADsynth_used)
         {
-//            synth->getRuntime().Log("Kit count " + asString(kitnum));
             break;
         }
     }
-  return true;
+  return;
 }
 
 
@@ -352,6 +352,14 @@ char *XMLwrapper::getXMLdata()
             addparstr("XMLtype", "Recent Files");
             break;
 
+        case XML_VECTOR:
+            addparstr("XMLtype", "Vector Control");
+            break;
+
+        case XML_MIDILEARN:
+            addparstr("XMLtype", "Midi Learn");
+            break;
+
         default:
             addparstr("XMLtype", "Unknown");
             break;
@@ -369,6 +377,16 @@ void XMLwrapper::addpar(const string& name, int val)
 
 
 void XMLwrapper::addparreal(const string& name, float val)
+{
+    union { float in; uint32_t out; } convert;
+    char buf[11];
+    convert.in = val;
+    sprintf(buf, "0x%8X", convert.out);
+    addparams3("par_real", "name", name.c_str(), "value", asLongString(val), "exact_value", buf);
+}
+
+
+void XMLwrapper::addpardouble(const string& name, double val)
 {
     addparams2("par_real","name", name.c_str(), "value", asLongString(val));
 }
@@ -458,13 +476,21 @@ bool XMLwrapper::loadXMLfile(const string& filename)
     {
         xml_version.y_major = string2int(mxmlElementGetAttr(root, "Yoshimi-major"));
         yoshitoo = true;
+
 //        synth->getRuntime().Log("XML: Yoshimi " + asString(xml_version.y_major));
     }
+    else
+        synth->getRuntime().lastXMLmajor = 0;
+
     if (mxmlElementGetAttr(root, "Yoshimi-minor"))
     {
         xml_version.y_minor = string2int(mxmlElementGetAttr(root, "Yoshimi-minor"));
+
 //        synth->getRuntime().Log("XML: Yoshimi " + asString(xml_version.y_minor));
     }
+    else
+        synth->getRuntime().lastXMLminor = 0;
+
     if (synth->getRuntime().logXMLheaders)
     {
         if (zynfile)
@@ -536,7 +562,10 @@ bool XMLwrapper::putXMLdata(const char *xmldata)
     root = tree = mxmlLoadString(NULL, xmldata, MXML_OPAQUE_CALLBACK);
     if (tree == NULL)
         return false;
-    node = root = mxmlFindElement(tree, tree, "ZynAddSubFX-data", NULL, NULL, MXML_DESCEND);
+    root = mxmlFindElement(tree, tree, "ZynAddSubFX-data", NULL, NULL, MXML_DESCEND);
+    if (!root)
+        root = mxmlFindElement(tree, tree, "Yoshimi-data", NULL, NULL, MXML_DESCEND);
+    node = root;
     if (!root)
         return false;
     push(root);
@@ -551,6 +580,11 @@ bool XMLwrapper::enterbranch(const string& name)
     if (!node)
         return false;
     push(node);
+    if (name == "CONFIGURATION")
+    {
+        synth->getRuntime().lastXMLmajor = xml_version.y_major;
+        synth->getRuntime().lastXMLminor = xml_version.y_minor;
+    }
     return true;
 }
 
@@ -640,7 +674,15 @@ float XMLwrapper::getparreal(const string& name, float defaultpar)
                            MXML_DESCEND_FIRST);
     if (!node)
         return defaultpar;
-    const char *strval = mxmlElementGetAttr(node, "value");
+
+    const char *strval = mxmlElementGetAttr(node, "exact_value");
+    if (strval != NULL) {
+        union { float out; uint32_t in; } convert;
+        sscanf(strval+2, "%x", &convert.in);
+        return convert.out;
+    }
+
+    strval = mxmlElementGetAttr(node, "value");
     if (!strval)
         return defaultpar;
     return string2float(string(strval));
@@ -681,6 +723,18 @@ mxml_node_t *XMLwrapper::addparams2(const string& name, const string& par1, cons
     mxml_node_t *element = mxmlNewElement(node, name.c_str());
     mxmlElementSetAttr(element, par1.c_str(), val1.c_str());
     mxmlElementSetAttr(element, par2.c_str(), val2.c_str());
+    return element;
+}
+
+
+mxml_node_t *XMLwrapper::addparams3(const string& name, const string& par1, const string& val1,
+                                    const string& par2, const string& val2,
+                                    const string& par3, const string& val3)
+{
+    mxml_node_t *element = mxmlNewElement(node, name.c_str());
+    mxmlElementSetAttr(element, par1.c_str(), val1.c_str());
+    mxmlElementSetAttr(element, par2.c_str(), val2.c_str());
+    mxmlElementSetAttr(element, par3.c_str(), val3.c_str());
     return element;
 }
 

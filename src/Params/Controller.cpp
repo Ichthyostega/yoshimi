@@ -4,6 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
+    Copyright 2017-2018, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -19,10 +20,13 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is derivative of ZynAddSubFX original code, modified April 2011
+    This file is derivative of ZynAddSubFX original code.
+
+    Modified February 2018
 */
 
 #include <cmath>
+#include <iostream>
 
 using namespace std;
 
@@ -89,7 +93,6 @@ void Controller::resetall()
     setvolume(96);
     sustain.receive = 1;
     setsustain(0);
-    setlegato(0);
     portamentosetup();
     initportamento(440.0f, 440.0f, false);
     setportamento(0);
@@ -224,13 +227,6 @@ void Controller::setsustain(int value)
 }
 
 
-void Controller::setlegato(int value)
-{
-    legato.data = value;
-    legato.legato = (value < 64) ? 0 : 1;
-}
-
-
 void Controller::setportamento(int value)
 {
     portamento.data = value;
@@ -286,7 +282,7 @@ int Controller::initportamento(float oldfreq, float newfreq, bool in_progress)
         portamentotime *= powf(0.1f, (64.0f - portamento.updowntimestretch) / 64.0f);
     }
 
-    portamento.dx = synth->p_all_buffersize_f / (portamentotime * synth->samplerate_f);
+    portamento.dx = synth->sent_all_buffersize_f / (portamentotime * synth->samplerate_f);
     portamento.origfreqrap = oldfreq / newfreq;
 
     float tmprap = (portamento.origfreqrap > 1.0f)
@@ -394,4 +390,143 @@ void Controller::getfromXML(XMLwrapper *xml)
 
     resonancecenter.depth=xml->getpar127("resonance_center_depth",resonancecenter.depth);
     resonancebandwidth.depth=xml->getpar127("resonance_bandwidth_depth",resonancebandwidth.depth);
+}
+
+
+float Controller::getLimits(CommandBlock *getData)
+{
+    float value = getData->data.value;
+    int request = int(getData->data.type & 3);
+    int control = getData->data.control;
+
+    //cout << "ctl control " << control << "  Request " << request << endl;
+
+    // defaults
+    int type = 0x80;
+    int min = 0;
+    float def = 64;
+    int max = 127;
+
+    switch (control)
+    {
+        case 128:
+            min = 64;
+            def = 96;
+            break;
+        case 129:
+            def = 1;
+            max = 1;
+            break;
+        case 130:
+            type |= 0x40;
+            max = 64;
+            break;
+        case 131:
+            def = 80;
+            break;
+        case 132:
+            def = 0;
+            max = 1;
+            break;
+        case 133:
+            type |= 0x40;
+            break;
+        case 134:
+            def = 0;
+            max = 1;
+            break;
+        case 135:
+            def = 1;
+            max = 1;
+            break;
+        case 136:
+            def = 1;
+            max = 1;
+            break;
+        case 137:
+            def = 1;
+            max = 1;
+            break;
+        case 138:
+            type |= 0x40;
+            min = -6400;
+            def = 0;
+            max = 6400;
+            break;
+        case 139:
+            break;
+        case 140:
+            break;
+        case 141:
+            max = 1;
+            def = 1;
+            break;
+        case 144:
+            break;
+        case 145:
+            break;
+        case 160:
+            type |= 0x40;
+            min = 0;
+            break;
+        case 161:
+            type |= 0x40;
+            break;
+        case 162:
+            type |= 0x40;
+            def = 3;
+            break;
+        case 163:
+            min = 0;
+            max = 1;
+            def = 1;
+            break;
+        case 164:
+            def = 0;
+            max = 1;
+            break;
+        case 165:
+            type |= 0x40;
+            def = 80;
+            break;
+        case 166:
+            type |= 0x40;
+            def = 90;
+            break;
+        case 168:
+            def = 1;
+            max = 1;
+            break;
+        case 224:
+            def = 0;
+            max = 0;
+            break;
+
+        default:
+            type |= 4; // error
+            break;
+    }
+    getData->data.type = type;
+    if (type & 4)
+        return 1;
+
+    switch (request)
+    {
+        case 0:
+            if(value < min)
+                value = min;
+            else if(value > max)
+                value = max;
+        break;
+        case 1:
+            value = min;
+            break;
+        case 2:
+            value = max;
+            break;
+        case 3:
+            value = def;
+            break;
+    }
+    return value;
 }

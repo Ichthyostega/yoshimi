@@ -97,7 +97,7 @@ void FormantFilter::setpos(float input)
 {
     int p1, p2;
 
-    if (firsttime != 0)
+    if (firsttime)
         slowinput = input;
     else
         slowinput = slowinput * (1.0f - formantslowness) + input * formantslowness;
@@ -111,26 +111,23 @@ void FormantFilter::setpos(float input)
     } else
         oldinput = input;
 
-    float pos = fmodf(input * sequencestretch, 1.0f);
-    if (pos < 0.0f)
-        pos += 1.0f;
+    float pos = input * sequencestretch;
+    pos -= floorf(pos);
 
-    p2 = float2int(pos * sequencesize);
+    p2 = (int)(pos * sequencesize);
     p1 = p2 - 1;
     if (p1 < 0)
         p1 += sequencesize;
 
-    pos = fmodf(pos * sequencesize, 1.0f);
-    if (pos < 0.0f)
-        pos = 0.0f;
-    else if (pos > 1.0f)
-        pos = 1.0f;
+    pos = pos * sequencesize;
+    pos -= floorf(pos);
+
     pos = (atanf((pos * 2.0f - 1.0f) * vowelclearness) / atanf(vowelclearness) + 1.0f) * 0.5f;
 
     p1 = sequence[p1].nvowel;
     p2 = sequence[p2].nvowel;
 
-    if (firsttime != 0)
+    if (firsttime)
     {
         for (int i = 0; i < numformants; ++i)
         {
@@ -188,32 +185,30 @@ void FormantFilter::setq(float q_)
 
 void FormantFilter::setfreq_and_q(float frequency, float q_)
 {
-/*     //Convert form real freq[Hz]
-    const float freq = (logf(frequency) / logf(2.0)) - 9.96578428f; //log2(1000)=9.95748f.*/
    Qfactor = q_;
-    setpos(frequency); // setpos(freq) // zyn code doesn't seem to do anything ???
+    setpos(frequency);
 }
 
 
 void FormantFilter::filterout(float *smp)
 {
-    memcpy(inbuffer, smp, synth->p_bufferbytes);
-    memset(smp, 0, synth->p_bufferbytes);
+    memcpy(inbuffer, smp, synth->sent_bufferbytes);
+    memset(smp, 0, synth->sent_bufferbytes);
 
     for (int j = 0; j < numformants; ++j)
     {
-        for (int k = 0; k < synth->p_buffersize; ++k)
+        for (int k = 0; k < synth->sent_buffersize; ++k)
             tmpbuf[k] = inbuffer[k] * outgain;
         formant[j]->filterout(tmpbuf);
 
         if (aboveAmplitudeThreshold(oldformantamp[j], currentformants[j].amp))
-            for (int i = 0; i < synth->p_buffersize; ++i)
+            for (int i = 0; i < synth->sent_buffersize; ++i)
                 smp[i] += tmpbuf[i]
                           * interpolateAmplitude(oldformantamp[j],
                                                   currentformants[j].amp, i,
-                                                  synth->p_buffersize);
+                                                  synth->sent_buffersize);
         else
-            for (int i = 0; i < synth->p_buffersize; ++i)
+            for (int i = 0; i < synth->sent_buffersize; ++i)
                 smp[i] += tmpbuf[i] * currentformants[j].amp;
         oldformantamp[j] = currentformants[j].amp;
     }

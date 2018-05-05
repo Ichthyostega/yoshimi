@@ -2,6 +2,7 @@
     MiscFuncs.h
 
     Copyright 2010, Alan Calvert
+    Copyright 2014-2018, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -15,6 +16,8 @@
 
     You should have received a copy of the GNU General Public License
     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
+
+    Modifed March 2018
 */
 
 #ifndef MISCFUNCS_H
@@ -23,6 +26,7 @@
 #include <cmath>
 #include <string>
 #include <list>
+#include <semaphore.h>
 
 using namespace std;
 
@@ -31,8 +35,8 @@ static list<string> miscList;
 class MiscFuncs
 {
     public:
-        MiscFuncs() { }
-        ~MiscFuncs() { }
+        MiscFuncs() {sem_init(&miscmsglock, 0, 1);}
+        ~MiscFuncs() {sem_destroy(&miscmsglock);}
         string asString(int n);
         string asString(long long n);
         string asString(unsigned long n);
@@ -45,6 +49,7 @@ class MiscFuncs
         string asHexString(unsigned int x);
 
         static float string2float(string str);
+        static double string2double(string str);
         static int string2int(string str);
         static int string2int127(string str);
         static unsigned int string2uint(string str);
@@ -54,16 +59,21 @@ class MiscFuncs
         bool isFifo(string chkpath);
         void legit_filename(string& fname);
         void legit_pathname(string& fname);
+        string findfile(string path, string filename, string extension);
         string findleafname(string name);
         int findSplitPoint(string name);
         string setExtension(string fname, string ext);
+        bool copyFile(string source, string destination);
         string localPath(string leaf);
+        bool saveText(string text, string filename);
+        int loadText(string filename);
 
         char *skipSpace(char *buf);
         char *skipChars(char *buf);
         int matchWord(int numChars, char *point, const char *word);
         bool matchnMove(int num, char *&pnt, const char *word);
 
+        void miscMsgInit(void);
         int miscMsgPush(string text);
         string miscMsgPop(int pos);
 
@@ -77,6 +87,7 @@ class MiscFuncs
 
         float dB2rap(float dB);
         float rap2dB(float rap);
+        sem_t miscmsglock;
 };
 
 void invSignal(float *sig, size_t len);
@@ -87,7 +98,28 @@ T limit(T val, T min, T max)
     return val < min ? min : (val > max ? max : val);
 }
 
-inline float MiscFuncs::dB2rap(float dB) { return exp10f((dB) / 20.0f); }
+inline float MiscFuncs::dB2rap(float dB) {
+#if defined(HAVE_EXP10F)
+    return exp10f((dB) / 20.0f);
+#else
+    return powf(10.0, (dB) / 20.0f);
+#endif
+}
 inline float MiscFuncs::rap2dB(float rap) { return 20.0f * log10f(rap); }
+
+union CommandBlock{
+    struct{
+        float value;
+        unsigned char type;
+        unsigned char control;
+        unsigned char part;
+        unsigned char kit;
+        unsigned char engine;
+        unsigned char insert;
+        unsigned char parameter;
+        unsigned char par2;
+    } data;
+    char bytes [sizeof(data)];
+};
 
 #endif

@@ -4,6 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
+    Copyright 2016-2018, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -19,7 +20,9 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is derivative of ZynAddSubFX original code, modified January 2011
+    This file is derivative of ZynAddSubFX original code.
+
+    Modified March 2018
 */
 
 #ifndef MICROTONAL_H
@@ -43,8 +46,8 @@ class Microtonal : private MiscFuncs
         Microtonal(SynthEngine *_synth): synth(_synth) { defaults(); }
         ~Microtonal() { }
         void defaults(void);
-        float getNoteFreq(int note);
         float getNoteFreq(int note, int keyshift);
+        float getFixedNoteFreq(int note);
 
         // Parameters
         unsigned char Pinvertupdown;
@@ -71,10 +74,12 @@ class Microtonal : private MiscFuncs
 
         int getoctavesize(void);
         void tuningtoline(int n, char *line, int maxn);
+        string tuningtotext(void);
+        string keymaptotext(void);
         int loadscl(string filename); // load the tunnings from a .scl file
         int loadkbm(string filename); // load the mapping from .kbm file
         int texttotunings(const char *text);
-        void texttomapping(const char *text);
+        int texttomapping(const char *text);
 
         string Pname;
         string Pcomment;
@@ -85,6 +90,8 @@ class Microtonal : private MiscFuncs
         bool loadXML(string filename);
 
     private:
+        string reformatline(string text);
+        bool validline(const char *line);
         int linetotunings(unsigned int nline, const char *line);
         int loadline(FILE *file, char *line); // loads a line from the text file,
                                               // ignoring the lines beggining with "!"
@@ -92,10 +99,11 @@ class Microtonal : private MiscFuncs
 
         struct {
             unsigned char type; // 1 for cents or 2 for division
-            float tuning;       // the real tuning (eg. +1.05946 for one halftone)
+            double tuning;       // the real tuning (eg. +1.05946 for one halftone)
                                 // or 2.0 for one octave
             unsigned int x1; // the real tunning is x1 / x2
             unsigned int x2;
+            string text;
         } octave[MAX_OCTAVE_SIZE],
           tmpoctave[MAX_OCTAVE_SIZE];
 
@@ -109,9 +117,10 @@ inline int Microtonal::getoctavesize(void)
     return ((Penabled != 0) ? octavesize : 12);
 }
 
-inline float Microtonal::getNoteFreq(int note)
+inline float Microtonal::getFixedNoteFreq(int note)
 {
     return powf(2.0f, (float)(note - PAnote) / 12.0f) * PAfreq;
 }
+
 
 #endif

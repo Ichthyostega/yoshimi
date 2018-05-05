@@ -2,7 +2,7 @@
     MiscFuncs.cpp
 
     Copyright 2010, Alan Calvert
-    Copyright 2014-2016, Will Godfrey
+    Copyright 2014-2018, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -15,8 +15,12 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
+    along with yoshimi.  If not, see <http://www.gnu.org/licenses/>
+
+    Modifed March 2018
 */
+
+//#define REPORT_MISCMSG
 
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -25,8 +29,10 @@
 #include <unistd.h>
 #include <sstream>
 #include <iostream>
+#include <fstream>
 #include <string.h>
 #include <mutex>
+#include <limits.h>
 
 using namespace std;
 
@@ -100,6 +106,8 @@ string MiscFuncs::asString(float n)
 string MiscFuncs::asLongString(float n)
 {
    ostringstream oss;
+   oss.precision(9);
+   oss.width(9);
    oss << n;
    return oss.str();
 }
@@ -109,7 +117,10 @@ string MiscFuncs::asHexString(int x)
 {
    ostringstream oss;
    oss << hex << x;
-   return string(oss.str());
+   string res = string(oss.str());
+   if (res.length() & 1)
+       return "0"+res;
+   return res;
 }
 
 
@@ -117,7 +128,10 @@ string MiscFuncs::asHexString(unsigned int x)
 {
    ostringstream oss;
    oss << hex << x;
-   return string(oss.str());
+   string res = string(oss.str());
+   if (res.length() & 1)
+       return "0"+res;
+   return res;
 }
 
 
@@ -127,6 +141,15 @@ float MiscFuncs::string2float(string str)
     float fval;
     machine >> fval;
     return fval;
+}
+
+
+double MiscFuncs::string2double(string str)
+{
+    istringstream machine(str);
+    double dval;
+    machine >> dval;
+    return dval;
 }
 
 
@@ -225,6 +248,30 @@ void MiscFuncs::legit_pathname(string& fname)
     }
 }
 
+/*
+ * This only intended for calls on the local filesystem
+ * and to known locations, so buffer size should be adequate
+ * and avoids dependency on unreliable macros.
+ */
+string MiscFuncs::findfile(string path, string filename, string extension)
+{
+    if (extension.at(0) != '.')
+        extension = "." + extension;
+    string command = "find " + path + " -name " + filename + extension + " 2>/dev/null -print -quit";
+#pragma message "Using '2>/dev/null' here suppresses *all* error messages"
+    // it's done here to suppress warnings of invalid locations
+    FILE *fp = popen(command.c_str(), "r");
+    if (fp == NULL)
+        return "";
+    char line[1024];
+    fscanf(fp,"%[^\n]", line);
+    pclose(fp);
+
+    if (findleafname(line) == filename)
+        return line;
+    return "";
+}
+
 
 string MiscFuncs::findleafname(string name)
 {
@@ -255,10 +302,11 @@ int MiscFuncs::findSplitPoint(string name)
 // adds or replaces wrong extension with the right one.
 string MiscFuncs::setExtension(string fname, string ext)
 {
-
+    if (ext.at(0) != '.')
+        ext = "." + ext;
     string tmp;                         // return value
     size_t ext_pos = fname.rfind('.');  // period, if any
-    size_t slash_pos = fname.find('/'); // UNIX path-separator
+    size_t slash_pos = fname.rfind('/'); // UNIX path-separator
     if (slash_pos == string::npos)
     {
         // There are no slashes in the string, therefore the last period, if
@@ -270,14 +318,14 @@ string MiscFuncs::setExtension(string fname, string ext)
             // There is no period, therefore there is no extension.
             // Append the extension.
 
-            tmp = fname + "." + ext;
+            tmp = fname + ext;
         }
         else
         {
             // Replace everything after the last period.
 
             tmp = fname.substr(0, ext_pos);
-            tmp += "." + ext;
+            tmp += ext;
         }
     }
     else
@@ -286,31 +334,88 @@ string MiscFuncs::setExtension(string fname, string ext)
         // Add the whole extension.  Otherwise, replace the extension.
 
         if (slash_pos > ext_pos)
-            tmp = fname + "." + ext;
+            tmp = fname + ext;
         else
         {
             tmp = fname.substr(0, ext_pos);
-            tmp += "." + ext;
+            tmp += ext;
         }
     }
     return tmp;
 }
 
 
-// replace 'src' with a different one in the compilation directory
+bool MiscFuncs::copyFile(string source, string destination)
+{
+    ifstream infile (source, ios::in|ios::binary|ios::ate);
+    if (!infile.is_open())
+        return 1;
+    ofstream outfile (destination, ios::out|ios::binary);
+    if (!outfile.is_open())
+        return 1;
+
+    streampos size = infile.tellg();
+    char *memblock = new char [size];
+    infile.seekg (0, ios::beg);
+    infile.read(memblock, size);
+    infile.close();
+    outfile.write(memblock, size);
+    outfile.close();
+    delete memblock;
+    return 0;
+}
+
+
+bool MiscFuncs::saveText(string text, string filename)
+{
+    FILE *writefile = fopen(filename.c_str(), "w");
+    if (!writefile)
+        return 0;
+
+    fputs(text.c_str(), writefile);
+    fclose (writefile);
+    return 1;
+}
+
+
+int MiscFuncs::loadText(string filename)
+{
+    FILE *readfile = fopen(filename.c_str(), "r");
+    if (!readfile)
+        return 0xffff;
+
+    string text = "";
+    char line [1024];
+    while (!feof(readfile))
+    {
+        if(fgets(line , 1024 , readfile))
+            text += string(line);
+    }
+    fclose (readfile);
+    text.erase(text.find_last_not_of(" \n\r\t")+1);
+    return miscMsgPush(text);
+}
+
+
+// replace build directory with a different
+// one in the compilation directory
 string MiscFuncs::localPath(string leaf)
 {
-    char *tmpath;
-    tmpath = (char*) malloc(PATH_MAX);
-    getcwd (tmpath, PATH_MAX);
+    char *tmpath = getcwd (NULL, 0);
+    if (tmpath == NULL)
+       return "";
+
     string path = (string) tmpath;
-    size_t found = path.rfind("/src");
-    if (found != string::npos)
-        path.replace (found,4,leaf);
-    else
-        path = "";
     free(tmpath);
-    return path;
+    size_t found = path.rfind("yoshimi");
+    if (found == string::npos)
+        return "";
+
+    size_t next = path.find('/', found);
+    if (next == string::npos)
+        return "";
+
+    return path.substr(0, next) + leaf;
 }
 
 
@@ -330,7 +435,7 @@ char *MiscFuncs::skipChars(char *buf)
     {
         ++ buf;
     }
-    if (buf[0] == 0x20)
+    if (buf[0] == 0x20) // now find the next word (if any)
         buf = skipSpace(buf);
     return buf;
 }
@@ -358,69 +463,89 @@ bool MiscFuncs::matchnMove(int num , char *&pnt, const char *word)
 
 
 /*
- * These two functions provide a transparent text messaging system.
+ * These functions provide a transparent text messaging system.
  * Calling functions only need to recognise integers and strings.
- *
- * Push extends the list if there are no empty slots. It will also
- * block while writing, but should be very quick.
  *
  * Pop is destructive. No two functions should ever have been given
  * the same 'live' ID, but if they do, the second one will get an
  * empty string.
  *
+ * Both calls will block, but should be very quick;
+ *
  * Normally a message will clear before the next one arrives so the
  * message numbers should remain very low even over multiple instances.
  */
-int MiscFuncs::miscMsgPush(string text)
+void MiscFuncs::miscMsgInit()
 {
-    mutex mtx;
-    int idx = 0;
-    list<string>::iterator it = miscList.begin();
+    for (int i = 0; i < 255; ++i)
+        miscList.push_back("");
+    // we use 255 to denote an invalid entry
+}
 
-    mtx.lock();
+int MiscFuncs::miscMsgPush(string _text)
+{
+    if (_text.empty())
+        return 255;
+    sem_wait(&miscmsglock);
+
+    string text = _text;
+    list<string>::iterator it = miscList.begin();
+    int idx = 0;
+
     while(it != miscList.end())
     {
         if ( *it == "")
         {
             *it = text;
-            mtx.unlock();
-            //cout << "Msg No. " << idx << endl;
-            return idx;
-        }
-        ++ it;
-        ++ idx;
-    }
-    if (miscList.size() >= 255)
-    {
-        mtx.unlock();
-        cout << "List too big :(" << endl;
-        return -1;
-    }
-
-    miscList.push_back(text);
-    mtx.unlock();
-    return idx;
-}
-
-
-string MiscFuncs::miscMsgPop(int pos)
-{
-    string text = "";
-    int idx = 0;
-    list<string>::iterator it = miscList.begin();
-
-    while(it != miscList.end())
-    {
-        if (idx == pos)
-        {
-            swap(text, *it);
+#ifdef REPORT_MISCMSG
+            cout << "Msg In " << int(idx) << " >" << text << "<" << endl;
+#endif
             break;
         }
         ++ it;
         ++ idx;
     }
+    if (it == miscList.end())
+    {
+        cerr << "miscMsg list full :(" << endl;
+        idx = -1;
+    }
 
-    return text;
+    int result = idx; // in case of a new entry before return
+    sem_post(&miscmsglock);
+    return result;
+}
+
+
+string MiscFuncs::miscMsgPop(int _pos)
+{
+    if (_pos >= 255)
+        return "";
+    sem_wait(&miscmsglock);
+
+    int pos = _pos;
+    list<string>::iterator it = miscList.begin();
+    int idx = 0;
+
+    while(it != miscList.end())
+    {
+        if (idx == pos)
+        {
+#ifdef REPORT_MISCMSG
+            cout << "Msg Out " << int(idx) << " >" << *it << "<" << endl;
+#endif
+            break;
+        }
+        ++ it;
+        ++ idx;
+    }
+    string result = "";
+    if (idx == pos)
+    {
+        swap (result, *it); // in case of a new entry before return
+    }
+    sem_post(&miscmsglock);
+    return result;
 }
 
 

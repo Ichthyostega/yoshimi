@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2014-2015, Will Godfrey & others
+    Copyright 2014-2017, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -20,7 +20,9 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is derivative of ZynAddSubFX original code, last modified January 2015
+    This file is derivative of ZynAddSubFX original code.
+
+    Modified September 2017
 */
 
 #ifndef CONFIG_H
@@ -34,12 +36,10 @@
 using namespace std;
 
 #include "MusicIO/MusicClient.h"
-#include "Misc/HistoryListItem.h"
 #include "Misc/MiscFuncs.h"
 #include "FL/Fl.H"
 
 class XMLwrapper;
-class BodyDisposal;
 
 class SynthEngine;
 
@@ -54,17 +54,18 @@ class Config : public MiscFuncs
 #endif
         void Announce(void);
         void Usage(void);
-        void Log(string msg, char tostderr = 0); // 1 = cli only ored 2 = hideable
+        void Log(const string &msg, char tostderr = 0); // 1 = cli only ored 2 = hideable
+	void LogError(const string &msg);
         void flushLog(void);
 
         void clearPresetsDirlist(void);
 
         string testCCvalue(int cc);
         string masterCCtest(int cc);
-        void saveConfig(void);
+        bool saveConfig(void);
         bool loadConfig(void);
-        void saveState() { saveSessionData(StateFile); }
-        void saveState(const string statefile)  { saveSessionData(statefile); }
+        //bool saveState() { return saveSessionData(StateFile); }
+        bool saveState(const string statefile)  { return saveSessionData(statefile); }
         bool loadState(const string statefile)
             { return restoreSessionData(statefile, false); }
         bool stateRestore(void)
@@ -83,7 +84,9 @@ class Config : public MiscFuncs
 
         bool isRuntimeSetupCompleted() {return bRuntimeSetupCompleted;}
 
+        string        userHome;
         string        ConfigDir;
+        string        defaultStateName;
         string        ConfigFile;
         string        paramsLoad;
         string        instrumentLoad;
@@ -93,6 +96,9 @@ class Config : public MiscFuncs
         string        StateFile;
         bool          restoreJackSession;
         string        jackSessionFile;
+        int           lastXMLmajor;
+        int           lastXMLminor;
+        bool          oldConfig;
 
         static unsigned int  Samplerate;
         static unsigned int  Buffersize;
@@ -103,7 +109,7 @@ class Config : public MiscFuncs
         static bool          showCLI;
 
         bool          runSynth;
-
+        bool          finishedCLI;
         int           VirKeybLayout;
 
         audio_drivers audioEngine;
@@ -124,13 +130,16 @@ class Config : public MiscFuncs
         bool          loadDefaultState;
         int           Interpolation;
         string        presetsDirlist[MAX_PRESETS];
+        list<string>  lastfileseen;
         int           checksynthengines;
         int           xmlType;
+        unsigned char instrumentFormat;
         int           EnableProgChange;
         bool          toConsole;
         bool          hideErrors;
         bool          showTimes;
         bool          logXMLheaders;
+        bool          xmlmax;
         bool          configChanged;
         int           rtprio;
         int           tempRoot;
@@ -139,11 +148,18 @@ class Config : public MiscFuncs
         int           midi_bank_C;
         int           midi_upper_voice_C;
         int           enable_part_on_voice_load;
+        bool          enable_NRPN;
         bool          ignoreResetCCs;
         bool          monitorCCin;
+        bool          showLearnedCC;
         int           single_row_panel;
         int           NumAvailableParts;
         int           currentPart;
+        int           noteOnSent; // note test
+        int           noteOnSeen;
+        int           noteOffSent;
+        int           noteOffSeen;
+        unsigned int  VUcount;
         unsigned char channelSwitchType;
         unsigned char channelSwitchCC;
         unsigned char channelSwitchValue;
@@ -153,26 +169,38 @@ class Config : public MiscFuncs
         unsigned char dataH;
         bool          nrpnActive;
 
-        struct IOdata{
-            unsigned char vectorXaxis[NUM_MIDI_CHANNELS];
-            unsigned char vectorYaxis[NUM_MIDI_CHANNELS];
-            unsigned char vectorXfeatures[NUM_MIDI_CHANNELS];
-            unsigned char vectorYfeatures[NUM_MIDI_CHANNELS];
-            unsigned char vectorXcc2[NUM_MIDI_CHANNELS];
-            unsigned char vectorYcc2[NUM_MIDI_CHANNELS];
-            unsigned char vectorXcc4[NUM_MIDI_CHANNELS];
-            unsigned char vectorYcc4[NUM_MIDI_CHANNELS];
-            unsigned char vectorXcc8[NUM_MIDI_CHANNELS];
-            unsigned char vectorYcc8[NUM_MIDI_CHANNELS];
+        struct{
+            unsigned char Xaxis[NUM_MIDI_CHANNELS];
+            unsigned char Yaxis[NUM_MIDI_CHANNELS];
+            unsigned char Xfeatures[NUM_MIDI_CHANNELS];
+            unsigned char Yfeatures[NUM_MIDI_CHANNELS];
+            unsigned char Xcc2[NUM_MIDI_CHANNELS];
+            unsigned char Ycc2[NUM_MIDI_CHANNELS];
+            unsigned char Xcc4[NUM_MIDI_CHANNELS];
+            unsigned char Ycc4[NUM_MIDI_CHANNELS];
+            unsigned char Xcc8[NUM_MIDI_CHANNELS];
+            unsigned char Ycc8[NUM_MIDI_CHANNELS];
+            string Name[NUM_MIDI_CHANNELS];
             int Part;
             int Controller;
-            bool vectorEnabled[NUM_MIDI_CHANNELS];
-        };
-
-        IOdata nrpndata;
+            bool Enabled[NUM_MIDI_CHANNELS];
+        }vectordata;
 
         list<string> LogList;
-        BodyDisposal *deadObjects;
+
+        /*
+         * These replace local memory allocations that
+         * were being made every time an add or sub note
+         * was processed. Now global so treat with care!
+         */
+        float *genTmp1;
+        float *genTmp2;
+        float *genTmp3;
+        float *genTmp4;
+
+        // as above but for part and sys effect
+        float *genMixl;
+        float *genMixr;
 
     private:
         void loadCmdArgs(int argc, char **argv);
@@ -180,7 +208,7 @@ class Config : public MiscFuncs
         bool extractBaseParameters(XMLwrapper *xml);
         bool extractConfigData(XMLwrapper *xml);
         void addConfigXML(XMLwrapper *xml);
-        void saveSessionData(string savefile);
+        bool saveSessionData(string savefile);
         bool restoreSessionData(string sessionfile, bool startup);
         int SSEcapability(void);
         void AntiDenormals(bool set_daz_ftz);
@@ -218,11 +246,6 @@ public:
         UpdatePaths,
         UpdatePanel,
         UpdatePart,
-        UpdatePanelItem,
-        UpdatePartProgram,
-        UpdateEffects,
-        UpdateBankRootDirs,
-        RescanForBanks,
         RefreshCurBank,
         GuiAlert,
         RegisterAudioPort,

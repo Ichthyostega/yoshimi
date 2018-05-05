@@ -4,6 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
+    Copyright 2017-2018 Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -19,7 +20,8 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is derivative of ZynAddSubFX original code, modified April 2011
+    This file is derivative of ZynAddSubFX original code.
+    Modified February 2018
 */
 
 #include <iostream>
@@ -31,9 +33,6 @@ using namespace std;
 
 #include "Params/ADnoteParameters.h"
 
-/*int ADnoteParameters::ADnote_unison_sizes[] = {
-    1, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 0
-};*/
 int ADnoteParameters::ADnote_unison_sizes[] =
 {2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50, 0};
 
@@ -50,7 +49,7 @@ ADnoteParameters::ADnoteParameters(FFTwrapper *fft_, SynthEngine *_synth) :
     GlobalPar.AmpEnvelope->ADSRinit_dB(0, 40, 127, 25);
     GlobalPar.AmpLfo = new LFOParams(80, 0, 64, 0, 0, 0, 0, 1, synth);
 
-    GlobalPar.GlobalFilter = new FilterParams(2, 94, 40, synth);
+    GlobalPar.GlobalFilter = new FilterParams(2, 94, 40, 0, synth);
     GlobalPar.FilterEnvelope = new EnvelopeParams(0, 1, synth);
     GlobalPar.FilterEnvelope->ADSRinit_filter(64, 40, 64, 70, 60, 64);
     GlobalPar.FilterLfo = new LFOParams(80, 0, 64, 0, 0, 0, 0, 2, synth);
@@ -189,7 +188,7 @@ void ADnoteParameters::enableVoice(int nvoice)
     VoicePar[nvoice].FreqEnvelope->ASRinit(30, 40, 64, 60);
     VoicePar[nvoice].FreqLfo = new LFOParams(50, 40, 0, 0, 0, 0, 0, 0, synth);
 
-    VoicePar[nvoice].VoiceFilter = new FilterParams(2, 50, 60, synth);
+    VoicePar[nvoice].VoiceFilter = new FilterParams(2, 50, 60, 0, synth);
     VoicePar[nvoice].FilterEnvelope = new EnvelopeParams(0, 0, synth);
     VoicePar[nvoice].FilterEnvelope->ADSRinit_filter(90, 70, 40, 70, 10, 40);
     VoicePar[nvoice].FilterLfo = new LFOParams(50, 20, 64, 0, 0, 0, 0, 2, synth);
@@ -807,5 +806,365 @@ void ADnoteParameters::getfromXMLsection(XMLwrapper *xml, int n)
             xml->exitbranch();
         }
         xml->exitbranch();
+    }
+}
+
+
+float ADnoteParameters::getLimits(CommandBlock *getData)
+{
+    float value = getData->data.value;
+    int request = int(getData->data.type & 3);
+
+    int control = getData->data.control;
+    int engine = getData->data.engine;
+
+    // defaults
+    int type = 0;
+    int min = 0;
+    float def = 0;
+    int max = 127;
+
+    if (engine < 0x80)
+    {
+        switch (control)
+        {
+            case 0:
+                type |= 0x40;
+                def = 90;
+                break;
+
+            case 1:
+                type |= 0x40;
+                def = 64;
+                break;
+
+            case 2:
+                type |= 0x40;
+                def = 64;
+                break;
+
+            case 8:
+                type |= 0x40;
+                def = 1;
+                max = 1;
+                break;
+
+            case 32:
+                type |= 0x40;
+                min = -8192;
+                max = 8191;
+                break;
+
+            case 35:
+                type |= 0x40;
+                min = -8;
+                max = 7;
+                break;
+
+            case 36:
+                max = 3;
+                break;
+
+            case 37:
+                min = -64;
+                max = 63;
+                break;
+
+            case 39:
+                type |= 0x40;
+                def = 64;
+                break;
+
+            case 112:
+                type |= 0x40;
+                def = 1;
+                max = 1;
+                break;
+
+            case 113:
+                max = 1;
+                break;
+
+            case 120:
+                def = FADEIN_ADJUSTMENT_SCALE;
+
+            case 121: // just ensures it doesn't get caught by default
+                break;
+
+            case 122:
+                def = 60;
+                break;
+
+            case 123:
+                def = 64;
+                break;
+
+            case 124:
+                def = 72;
+                break;
+
+            default:
+                type |= 4; // error
+                break;
+        }
+        getData->data.type = type;
+        if (type & 4)
+            return 1;
+
+        switch (request)
+        {
+            case 0:
+                if(value < min)
+                    value = min;
+                else if(value > max)
+                    value = max;
+            break;
+            case 1:
+                value = min;
+                break;
+            case 2:
+                value = max;
+                break;
+            case 3:
+                value = def;
+                break;
+        }
+        return value;
+    }
+
+    switch (control)
+    {
+        case 0:
+            type |= 0x40;
+            def = 100;
+            break;
+
+        case 1:
+            type |= 0x40;
+            def = 127;
+            break;
+
+        case 2:
+            type |= 0x40;
+            def = 64;
+            break;
+
+        case 4:
+            max = 1;
+            break;
+
+        case 8:
+        case 9:
+        case 88:
+            type |= 0x40;
+            max = 1;
+            break;
+
+        case 16:
+            type |= 0x40;
+            max = 5;
+            break;
+
+        case 17:
+            min = -1;
+            def = -1;
+            max = 6;
+            break;
+
+        case 32:
+        case 96:
+            type |= 0x40;
+            min = -8192;
+            max = 8191;
+            break;
+
+        case 33:
+            type |= 0x40;
+            break;
+
+        case 34:
+        case 98:
+            max = 1;
+            break;
+
+        case 35:
+        case 99:
+            type |= 0x40;
+            min = -8;
+            max = 7;
+            break;
+
+        case 36:
+        case 100:
+            max = 4;
+            break;
+
+        case 37:
+        case 101:
+            min = -64;
+            max = 63;
+            break;
+
+        case 38:
+            type |= 0x40;
+            def = 88;
+            break;
+
+        case 39:
+            type |= 0x40;
+            def = 64;
+            break;
+
+        case 40:
+        case 41:
+        case 104:
+            type |= 0x40;
+            max = 1;
+            break;
+
+        case 48:
+            type |= 0x40;
+            def = 60;
+            break;
+
+        case 49:
+            type |= 0x40;
+            def = 127;
+            break;
+
+        case 50:
+            type |= 0x40;
+            def = 64;
+            break;
+
+        case 51:
+            type |= 0x40;
+            def = 64;
+            break;
+
+        case 52:
+            type |= 0x40;
+            def = 64;
+            break;
+
+        case 53:
+            min = 2;
+            def = 2;
+            max = 50;
+            break;
+
+        case 54:
+            max = 5;
+            break;
+
+        case 56:
+            max = 1;
+            break;
+
+        case 64:
+            max = 1;
+            break;
+
+        case 68:
+        case 72:
+        case 73:
+            type |= 0x40;
+            max = 1;
+            break;
+
+        case 80:
+            type |= 0x40;
+            def = 90;
+            break;
+
+        case 81:
+            type |= 0x40;
+            def = 64;
+            break;
+
+        case 82:
+        case 112:
+        case 136:
+            type |= 0x40;
+            min = -64;
+            max = 63;
+            break;
+
+        case 113:
+            min = -1;
+            def = -1;
+            max = 6;
+            break;
+
+        case 128:
+            type |= 0x40;
+            break;
+
+        case 129:
+            type |= 0x40;
+            if (engine == 0x80)
+                def = 1;
+            max = 1;
+            break;
+
+        case 130:
+            def = 1;
+            max = 1;
+            break;
+
+        case 137:
+            min = -1;
+            def = -1;
+            max = 6;
+            break;
+
+        case 138:
+            max = 2;
+            break;
+
+        default:
+            type |= 4; // error
+            break;
+    }
+    getData->data.type = type;
+    if (type & 4)
+        return 1;
+
+    switch (request)
+    {
+        case 0:
+            if(value < min)
+                value = min;
+            else if(value > max)
+                value = max;
+        break;
+        case 1:
+            value = min;
+            break;
+        case 2:
+            value = max;
+            break;
+        case 3:
+            value = def;
+            break;
+    }
+    return value;
+}
+
+void ADnoteParameters::postrender(void)
+{
+    // loop over our gathered dirty flags and unset them for the next period
+      GlobalPar.AmpLfo->updated
+    = GlobalPar.FilterLfo->updated
+    = GlobalPar.FreqLfo->updated
+    = false;
+    for (int i = 0; i < NUM_VOICES; ++i)
+    {
+        if (VoicePar[i].Enabled)
+              VoicePar[i].AmpLfo->updated
+            = VoicePar[i].FilterLfo->updated
+            = VoicePar[i].FreqLfo->updated
+            = false;
+
     }
 }

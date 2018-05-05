@@ -2,6 +2,7 @@
     main.cpp
 
     Copyright 2009-2011, Alan Calvert
+    Copyright 2014-2017, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -15,20 +16,29 @@
 
     You should have received a copy of the GNU General Public License
     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
+
+    Modified December 2017
 */
 
+// approx timeout in seconds.
+#define SPLASH_TIME 3
+
+#include <sys/mman.h>
 #include <iostream>
 #include <stdio.h>
 #include <sys/types.h>
 #include <termios.h>
+#include <time.h>
+
 
 using namespace std;
 
 #include "Misc/Config.h"
+#include "Misc/Splash.h"
 #include "Misc/SynthEngine.h"
 #include "MusicIO/MusicClient.h"
 #include "MasterUI.h"
-#include "Synth/BodyDisposal.h"
+#include "UI/MiscGui.h"
 #include <map>
 #include <list>
 #include <pthread.h>
@@ -38,15 +48,11 @@ using namespace std;
 
 #include <FL/Fl.H>
 #include <FL/Fl_Window.H>
-#include <FL/Fl_Shared_Image.H>
 #include <FL/Fl_PNG_Image.H>
-#include "yoshimi-logo.h"
 
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <Interface/CmdInterface.h>
-
-//extern void cmdIfaceCommandLoop();
 
 CmdInterface commandInt;
 
@@ -61,7 +67,8 @@ static int globalArgc = 0;
 static char **globalArgv = NULL;
 bool bShowGui = true;
 bool bShowCmdLine = true;
-
+bool splashSet = true;
+time_t old_father_time, here_and_now;
 
 //Andrew Deryabin: signal handling moved to main from Config Runtime
 //It's only suitable for single instance app support
@@ -88,11 +95,6 @@ void yoshimiSigHandler(int sig)
     }
 }
 
-void splashTimeout(void *splashWin)
-{
-    (static_cast<Fl_Window *>(splashWin))->hide();
-}
-
 static void *mainGuiThread(void *arg)
 {
     Fl::lock();
@@ -100,68 +102,35 @@ static void *mainGuiThread(void *arg)
     sem_post((sem_t *)arg);
 
     map<SynthEngine *, MusicClient *>::iterator it;
-    fl_register_images();
-#if (FL_MAJOR_VERSION == 1 && FL_MINOR_VERSION < 3)
-    char *fname = tmpnam(NULL);
-    if (fname)
-    {
-        FILE *f = fopen(fname, "wb");
-        if (f)
-        {
-            fwrite(yoshimi_logo_png, sizeof(yoshimi_logo_png), 1, f);
-            fclose(f);
-        }
-    }
-    Fl_PNG_Image pix(fname);
-    if (fname)
-    unlink(fname);
-#else
-    Fl_PNG_Image pix("yoshimi_logo_png", yoshimi_logo_png, sizeof(yoshimi_logo_png));
-#endif
 
-    const int splashWidth = 411;
-    const int splashHeight = 311;
-    const int textHeight = 20;
-    const int textBorder = 15;
+    const int textHeight = 15;
+    const int textY = 10;
+    const unsigned char lred = 0xd7;
+    const unsigned char lgreen = 0xf7;
+    const unsigned char lblue = 0xff;
 
+    Fl_PNG_Image pix("splash_screen_png", splashPngData, splashPngLength);
     Fl_Window winSplash(splashWidth, splashHeight, "yoshimi splash screen");
     Fl_Box box(0, 0, splashWidth,splashHeight);
-    //Fl_Pixmap pix(yoshimi_logo);
-
     box.image(pix);
-    Fl_Box boxLb(textBorder, splashHeight - textHeight * 2, splashWidth - textBorder * 2, textHeight);
+    string startup = YOSHIMI_VERSION;
+    startup = "V " + startup;
+    Fl_Box boxLb(0, splashHeight - textY - textHeight, splashWidth, textHeight, startup.c_str());
     boxLb.box(FL_NO_BOX);
     boxLb.align(FL_ALIGN_CENTER);
     boxLb.labelsize(textHeight);
     boxLb.labeltype(FL_NORMAL_LABEL);
-    boxLb.labelfont(FL_HELVETICA | FL_ITALIC);
-    string startup = YOSHIMI_VERSION;
-    startup = "Yoshimi " + startup + " is starting";
-    boxLb.label(startup.c_str());
-
-    winSplash.set_modal();
-    winSplash.clear_border();
+    boxLb.labelcolor(fl_rgb_color(lred, lgreen, lblue));
+    boxLb.labelfont(FL_HELVETICA | FL_BOLD);
     winSplash.border(false);
-
-    if (bShowGui && firstRuntime->showSplash)
+    if (splashSet && bShowGui && firstRuntime->showSplash)
     {
         winSplash.position((Fl::w() - winSplash.w()) / 2, (Fl::h() - winSplash.h()) / 2);
-        winSplash.show();
-        Fl::add_timeout(2, splashTimeout, &winSplash);
     }
-
+    else
+        splashSet = false;
     do
     {
-        if (bShowGui)
-        {
-            Fl::wait(0.033333);
-            while (!splashMessages.empty())
-            {
-                boxLb.copy_label(splashMessages.front().c_str());
-                splashMessages.pop_front();
-            }
-        }
-        else
             usleep(33333);
     }
     while (firstSynth == NULL); // just wait
@@ -179,7 +148,6 @@ static void *mainGuiThread(void *arg)
         {
             SynthEngine *_synth = it->first;
             MusicClient *_client = it->second;
-            _synth->getRuntime().deadObjects->disposeBodies();
             if (!_synth->getRuntime().runSynth && _synth->getUniqueId() > 0)
             {
                 if (_synth->getRuntime().configChanged)
@@ -187,8 +155,7 @@ static void *mainGuiThread(void *arg)
                     size_t tmpRoot = _synth->ReadBankRoot();
                     size_t tmpBank = _synth->ReadBank();
                     _synth->getRuntime().loadConfig(); // restore old settings
-                    _synth->SetBankRoot(tmpRoot);
-                    _synth->SetBank(tmpBank); // but keep current root and bank
+                    _synth->RootBank(tmpRoot, tmpBank); // but keep current root and bank
                 }
                 _synth->getRuntime().saveConfig();
                 int tmpID =  _synth->getUniqueId();
@@ -201,7 +168,6 @@ static void *mainGuiThread(void *arg)
                 if (_synth)
                 {
                     _synth->saveBanks(tmpID);
-                    _synth->getRuntime().deadObjects->disposeBodies();
                     _synth->getRuntime().flushLog();
                     delete _synth;
                 }
@@ -216,8 +182,7 @@ static void *mainGuiThread(void *arg)
                 {
                     MasterUI *guiMaster = _synth->getGuiMaster(false);
                     if (guiMaster)
-                    {
-                        guiMaster->Log(_synth->getRuntime().LogList.front());
+                    { guiMaster->Log(_synth->getRuntime().LogList.front());
                         _synth->getRuntime().LogList.pop_front();
                     }
                 }
@@ -227,24 +192,30 @@ static void *mainGuiThread(void *arg)
         // where all the action is ...
         if (bShowGui)
         {
-            Fl::wait(0.033333);
-            while (!splashMessages.empty())
+            if (splashSet)
             {
-                boxLb.copy_label(splashMessages.front().c_str());
-                splashMessages.pop_front();
+                winSplash.show();
+                usleep(1000);
+                if(time(&here_and_now) < 0) // no time?
+                    here_and_now = old_father_time + SPLASH_TIME;
+                if ((here_and_now - old_father_time) >= SPLASH_TIME)
+                {
+                    splashSet = false;
+                    winSplash.hide();
+                }
             }
+            Fl::wait(0.033333);
             GuiThreadMsg::processGuiMessages();
         }
         else
             usleep(33333);
     }
-    if (firstSynth->getRuntime().configChanged)
+    if (firstSynth->getRuntime().configChanged && (bShowGui | bShowCmdLine)) // don't want this if no cli or gui
     {
         size_t tmpRoot = firstSynth->ReadBankRoot();
         size_t tmpBank = firstSynth->ReadBank();
         firstSynth->getRuntime().loadConfig(); // restore old settings
-        firstSynth->SetBankRoot(tmpRoot);
-        firstSynth->SetBank(tmpBank); // but keep current root and bank
+        firstSynth->RootBank(tmpRoot, tmpBank); // but keep current root and bank
     }
     firstSynth->getRuntime().saveConfig();
     firstSynth->saveHistory();
@@ -270,15 +241,6 @@ bool mainCreateNewInstance(unsigned int forceId)
         synth->getRuntime().Log("Failed to instantiate MusicClient");
         goto bail_out;
     }
-
-
-    /* this is done in newMusicClient() now! ^^^^^
-    if (!(musicClient->Open()))
-    {
-        synth->getRuntime().Log("Failed to open MusicClient");
-        goto bail_out;
-    }
-    */
 
     if (!synth->Init(musicClient->getSamplerate(), musicClient->getBuffersize()))
     {
@@ -319,10 +281,8 @@ bool mainCreateNewInstance(unsigned int forceId)
     //register jack ports for enabled parts
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
     {
-        if(synth->part [npart]->Penabled)
-        {
+        if (synth->partonoffRead(npart))
             mainRegisterAudioPort(synth, npart);
-        }
     }
     return true;
 
@@ -343,7 +303,7 @@ bail_out:
     return false;
 }
 
-void *commandThread(void *arg)
+void *commandThread(void *arg = NULL) // silence warning
 {
     commandInt.cmdIfaceCommandLoop();
     return 0;
@@ -351,6 +311,8 @@ void *commandThread(void *arg)
 
 int main(int argc, char *argv[])
 {
+    time(&old_father_time);
+    here_and_now = old_father_time;
     struct termios  oldTerm;
     tcgetattr(0, &oldTerm);
 
@@ -374,14 +336,12 @@ int main(int argc, char *argv[])
     firstSynth = it->first;
     bShowGui = firstRuntime->showGui;
     bShowCmdLine = firstRuntime->showCLI;
-    if (!(bShowGui | bShowCmdLine))
-    {
-        cout << "Can't disable both gui and command line!\nSet for command line.\n";
-        firstRuntime->showCLI = true;
-        bShowCmdLine = true;
-        firstRuntime->configChanged = true;
-    }
 
+    if (firstRuntime->oldConfig)
+    {
+
+        cout << "\nExisting config older than " << MIN_CONFIG_MAJOR << "." << MIN_CONFIG_MINOR << "\nCheck settings, save and restart.\n"<< endl;
+    }
     if(sem_init(&semGui, 0, 0) == 0)
     {
         if (pthread_attr_init(&attr) == 0)
@@ -419,8 +379,6 @@ int main(int argc, char *argv[])
     firstSynth->installBanks(0);
     GuiThreadMsg::sendMessage(firstSynth, GuiThreadMsg::RefreshCurBank, 1);
 
-    //splashMessages.push_back("Startup complete!");
-
     //create command line processing thread
     pthread_t cmdThr;
     if(bShowCmdLine)
@@ -445,8 +403,6 @@ int main(int argc, char *argv[])
     bExitSuccess = true;
 
 bail_out:
-    if (bShowGui && !bExitSuccess) // this could be done better!
-        sleep(2);
     for (it = synthInstances.begin(); it != synthInstances.end(); ++it)
     {
         SynthEngine *_synth = it->first;
@@ -465,13 +421,13 @@ bail_out:
 
         if (_synth)
         {
-            _synth->getRuntime().deadObjects->disposeBodies();
             _synth->getRuntime().flushLog();
             delete _synth;
         }
     }
     if(bShowCmdLine)
         tcsetattr(0, TCSANOW, &oldTerm);
+    munlockall(); // just to be sure
     if (bExitSuccess)
         exit(EXIT_SUCCESS);
     else

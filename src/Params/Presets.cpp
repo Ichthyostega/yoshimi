@@ -4,6 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
+    Copyright 2017 Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -19,7 +20,8 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is derivative of ZynAddSubFX original code, modified January 2011
+    This file is derivative of ZynAddSubFX original code.
+    Modified September 2017
 */
 #include <cstring>
 
@@ -41,7 +43,7 @@ void Presets::setpresettype(const char *type_)
 void Presets::copy(const char *name)
 {
     XMLwrapper *xml = new XMLwrapper(synth);
-
+    bool oldMinimal = xml->minimal;
     // used only for the clipboard
     if (name == NULL)
         xml->minimal = false;
@@ -70,6 +72,7 @@ void Presets::copy(const char *name)
 
     delete(xml);
     nelement = -1;
+    xml->minimal = oldMinimal;
 }
 
 
@@ -114,6 +117,7 @@ void Presets::paste(int npreset)
         nelement = -1;
         return;
     }
+    synth->Mute();
     if (nelement == -1)
     {
         defaults();
@@ -122,6 +126,7 @@ void Presets::paste(int npreset)
         defaults(nelement);
         getfromXMLsection(xml, nelement);
     }
+    synth->Unmute();
     xml->exitbranch();
 
     delete(xml);

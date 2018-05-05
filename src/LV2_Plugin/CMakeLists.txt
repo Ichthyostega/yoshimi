@@ -36,13 +36,16 @@ file (GLOB yoshimi_effects_files
     ../Effects/Phaser.h  ../Effects/Reverb.h  ../Effects/EQ.h
     ../Effects/Distorsion.h  ../Effects/DynamicFilter.h)
 file (GLOB yoshimi_misc_files
-    ../Misc/Config.cpp ../Misc/Config.h ../ConfBuild.cpp
+    ../Misc/Config.cpp ../Misc/Config.h ../ConfBuild.h
     ../Misc/SynthEngine.cpp  ../Misc/Bank.cpp  ../Misc/Microtonal.cpp
     ../Misc/Part.cpp  ../Misc/XMLwrapper.cpp  ../Misc/MiscFuncs.cpp ../Misc/WavFile.cpp
     ../Misc/SynthEngine.h  ../Misc/Bank.h  ../Misc/Microtonal.h
     ../Misc/Part.h  ../Misc/XMLwrapper.h  ../Misc/MiscFuncs.h ../Misc/WavFile.h)
 file (GLOB yoshimi_interface_files
-    ../Interface/InterChange.cpp ../Interface/InterChange.h ../UI/MiscGui.cpp ../UI/MiscGui.h)
+    ../Interface/MidiDecode.cpp ../Interface/MidiDecode.h
+    ../Interface/InterChange.cpp ../Interface/InterChange.h
+    ../Interface/MidiLearn.cpp ../Interface/MidiLearn.h
+    ../UI/MiscGui.cpp ../UI/MiscGui.h)
 file (GLOB yoshimi_params_files
     ../Params/ADnoteParameters.cpp  ../Params/EnvelopeParams.cpp
     ../Params/FilterParams.cpp  ../Params/LFOParams.cpp
@@ -55,7 +58,6 @@ file (GLOB yoshimi_params_files
 file (GLOB yoshimi_synth_files
     ../Synth/ADnote.cpp  ../Synth/Envelope.cpp  ../Synth/LFO.cpp  ../Synth/OscilGen.cpp
     ../Synth/SUBnote.cpp  ../Synth/Resonance.cpp  ../Synth/PADnote.cpp
-    ../Synth/BodyDisposal.cpp
     ../Synth/ADnote.h  ../Synth/Envelope.h  ../Synth/LFO.h  ../Synth/OscilGen.h
     ../Synth/SUBnote.h  ../Synth/Resonance.h  ../Synth/PADnote.h
     ../Synth/BodyDisposal.h)
@@ -67,14 +69,14 @@ file (GLOB yoshimi_plugin_ttl
     yoshimi.ttl)
 
 set (FltkUI_names
-    "WidgetPDialUI"  "PresetsUI"  "EnvelopeUI"
+    "PresetsUI"  "EnvelopeUI"
     "LFOUI"  "FilterUI"  "VirKeyboardUI"
     "ConfigUI"  "SUBnoteUI"  "ResonanceUI"
     "OscilGenUI"  "ADnoteUI"  "PADnoteUI"
     "EffUI"  "BankUI"  "PartUI"
     "MicrotonalUI"  "MasterUI" "MasterMiscUI"
     "ParametersUI" "ConsoleUI" "VectorUI"
-    "WidgetMWSliderUI"
+    "MidiLearnUI"
 )
 
 # workaround fltk_wrap_ui breakage
@@ -93,6 +95,12 @@ foreach(basename ${FltkUI_names})
     set (FltkUI_headers ${FltkUI_headers} "${headerfile}")
 endforeach(basename ${FltkUI_names})
 
+set (FltkUI_sources
+    ${FltkUI_sources}
+    ../UI/DynamicTooltip.cpp
+    ../UI/WidgetPDial.cpp
+    ../UI/WidgetMWSlider.cpp
+)
 
 add_definitions (-DYOSHIMI_LV2_PLUGIN=1)
 
@@ -132,7 +140,7 @@ target_link_libraries(yoshimi_lv2
                       ${LIBCAIRO_LIBRARIES}
                       ${JACK_LIBRARIES}
                       z
-                      dl
+                      ${LIBDL_LINUX_LIBS}
 )
 
 add_dependencies(yoshimi_lv2 yoshimi_lv2_ttl)

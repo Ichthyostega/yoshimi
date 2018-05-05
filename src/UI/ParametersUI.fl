@@ -1,14 +1,14 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0303 
-header_name {.h} 
+version 1.0304
+header_name {.h}
 code_name {.cc}
 comment {Copyright 2011, Alan Calvert
-Copyright 2014 - 2016, Will Godfrey
+Copyright 2014 - 2018, Will Godfrey
 
 This file is part of yoshimi, which is free software: you can
 redistribute it and/or modify it under the terms of the GNU General
 Public License as published by the Free Software Foundation, either
-version 3 of the License, or (at your option) any later version.
+version 2 of the License, or (at your option) any later version.
 
 yoshimi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,24 +18,24 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 
-Modified September 2014
+Modified March 2018
 } {in_source in_header
-} 
+}
 
 decl {\#include <set>} {public local
-} 
+}
 
 decl {using namespace std;} {public local
-} 
+}
 
 decl {\#include "Misc/Config.h"} {private global
-} 
+}
 
 decl {\#include "MasterUI.h"} {private global
-} 
+}
 
 decl {\#include "Misc/SynthEngine.h"} {public global
-} 
+}
 
 class ParametersUI {selected
 } {
@@ -47,39 +47,36 @@ class ParametersUI {selected
     } {
       Fl_Browser BrowseRecent {
         callback {//
-    if (o->value() > 0)
-    {
+        if (o->value() == 0)
+            return;
+        CloseRecent->hide();
+        Loading->show();
         vector<string> listType = *synth->getHistory(H_type);
-        string fle;
-        switch (Fl::event_button())
+        string fle = listType.at(o->value()-1);
+        switch(H_type)
         {
-            case FL_LEFT_MOUSE:
-            {
-                CloseRecent->hide();
-                fle = listType.at(listType.size() - o->value());
-                switch(H_type)
-                {
-                    case 3:
-                        synth->getGuiMaster()->do_load_scale(fle);
-                        break;
-                    case 5:
-                    	synth->getGuiMaster()->vectorui->loadVector(fle);
-                        break;
-                    case 4:
-                        synth->addHistory(fle, 4);
-                    case 2:
-                    default:
-                        synth->getGuiMaster()->do_load_master(false, fle.c_str());
-                        break;
-                }
-                CloseRecent->show();
-                Recent->hide();
+            case 1:
+            	synth->getGuiMaster()->do_load_instrument(fle);
+            	break;
+            case 3:
+                synth->getGuiMaster()->do_load_scale(fle);
                 break;
-            }
-            default:
+            case 6:
+                synth->getGuiMaster()->midilearnui->loadMidi(fle);
+                break;
+            case 5:
+                synth->getGuiMaster()->vectorui->loadVector(fle);
+                break;
+            case 4:
+                synth->getGuiMaster()->setState(fle);
+                CloseRecent->hide();
+                Loading->show();
+                break;
+            case 2:
+                synth->getGuiMaster()->do_load_master(fle.c_str());
                 break;
         }
-    }}
+        Recent->hide();}
         xywh {0 0 250 157} type Select color 55 labeltype NO_LABEL labelfont 13 labelsize 12 align 0 textsize 12
         code0 {const int colwidths[] = { 150, 330, 0 };
           o->column_widths(colwidths);
@@ -97,8 +94,9 @@ class ParametersUI {selected
     }
   }
   Function {ParametersUI(SynthEngine *_synth)} {} {
-    code {synth = _synth;
-make_window();} {}
+    code {//
+    synth = _synth;
+    make_window();} {}
   }
   Function {Show(int _type)} {} {
     code {//
@@ -110,8 +108,14 @@ make_window();} {}
 
     switch (H_type)
     {
+        case 1:
+            Recent->label("Recent Instruments");
+            break;
         case 3:
             Recent->label("Recent Scales");
+            break;
+        case 6:
+            Recent->label("Recent MIDI Learn Lists");
             break;
         case 5:
             Recent->label("Recent Vectors");
@@ -133,9 +137,9 @@ make_window();} {}
     unsigned int offset = 0;
     if (listType.size() > MAX_HISTORY)
         offset = listType.size() -MAX_HISTORY;
-    for (vector<string>::reverse_iterator itr = listType.rbegin(); itr != listType.rend() - offset; ++itr)
+    for (vector<string>::iterator it = listType.begin(); it != listType.end() - offset; ++it)
     {
-        name = *itr;
+        name = *it;
         name_start = name.rfind("/");
         name_end = name.rfind(".");
         name = name.substr(name_start + 1, name_end - name_start - 1);
@@ -143,16 +147,20 @@ make_window();} {}
     }
 
     BrowseRecent->set_changed();
-    Recent->show();} {}
+    Recent->show();
+    Loading->hide();
+    CloseRecent->show();} {}
   }
   Function {Hide()} {} {
-    code {Recent->hide();} {}
+    code {//
+    Recent->hide();} {}
   }
   Function {~ParametersUI()} {} {
-    code {Recent->hide();} {}
+    code {//
+    Recent->hide();} {}
   }
   decl {SynthEngine *synth;} {private local
   }
   decl {int H_type;} {private local
   }
-} 
+}

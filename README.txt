@@ -1,89 +1,54 @@
-V 1.4.1
-Lyrebird
+V 1.5.7 - Nighingale
 
-First of all, we have a new quick guide that's in Yoshimi's 'doc' directory. It's just something to help new users get started.
+This release is mainly focussed on usability improvements.
 
-We've always logged warnings if it wasn't possible to run either audio or MIDI, but now we also give a GUI alert.
-
-From this version onward it is possible to autoload a default state on startup, so you see Yoshimi already configured exactly as you like, with patches loaded and part destinations set.
-
-To make it easier to position patch changes in a running MIDI file, there is a new option to report the time these take to load.
-
-Vector control settings are now stored in patch set and state files.
-
-We implemented a simpler way to perform channel switching so the 'current' MIDI instrument can seem to be changed instantly, retaining the note tails of the previous one.
+For example, the Master Reset can now clear MIDI-learn lists. All you have to do is hold down the Ctrl key when clicking the button. Usually you don't want to, but it's there for the times you do.
 
 
-V 1.4.0
-Diamond Dove
-
-About 18 months ago vector control became a 'thing' for Yoshimi and later, was first demonstrated to a handful of people at LAC 2015. At that time it was only accessible via NRPNs. Then about 6 months ago it became available to command line users as well, and 3 months ago vector saving and loading became possible.
-
-Now however, there is a shiny new window so the poor disadvantaged pointer-pushers can also have full control. This is currently reached via the 'Yoshimi' tab, but we may move it to its own button. Also, saving and loading vectors is now preserved in the recent histories file so you can quickly restore these - the same as you can for saved patch sets, scales and states.
-
-Vector entry via NRPNs and the CLI have also been upgraded slightly, so they will now automatically set the right number of parts available, and enable the required ones with the correct incoming channel number.
+There are rare occasions when a very large PadSynth patch can take as much as 15 seconds to initialise. If you try to do anything on that part that can affect PadSynth (during that time) the result can be fatal. Well not any more, as now you'll get a warning message:
+"Part {n} busy."
 
 
-A new concept is shortform NRPNs. This is where instead of the NRPN setting up for data entry of values, the NRPN is of itself the entire command. With a suitable sequencer like Rosegarden, you start with a two byte value, then only need to enter single byte CCs to change the setting.
-See doc/Shortform_NRPN.txt
+In the bank selection window there are two new buttons 'Import' and 'Export'. These allow you to transfer complete banks in and out in a controlled manner.
 
-This came about through discussion after my demo of channel switching on MiniLAC2016. The idea was liked, but having to mess about with multiple NRPNs and their data settings was a fiddle.
+There are a lot of these out in the wild, and the 'Import' process lets you copy them in to specific slots in particular roots. It only copies in what Yoshimi recognises, but informs you if there are any unrecognised ones. There is sometimes really odd junk that has crept into 'wild' banks. Also, Yoshimi will never overwrite any of your precious installed banks or mess with their IDs.
 
-
-Some other usability enhancements:
-
-Some people don't like our splash window - Boo!
-You can now disable it in settings {mutter}{mutter}
-
-Many people didn't realise there were two types of resonance interpolation, determined by whether you click the left or right mouse button. This has now been split into two with better tooltips.
-
-Jack audio autoconnect is now configurable in the GUI and stored so you don't have to set it with a startup argument.
-
-In MIDI settings you can now tell Yoshimi to ignore the 'reset all controllers' message - various bits of hardware and software can send these at the most inappropriate times.
-
-A right click on a button for a child window now closes the parent and a right click on that child's close button re-opens the parent. Use this a few times and you'll wonder how you managed without. Actually, this has been possible for a long time with Root/Bank/Instrument windows :)
-
-A right click on the track of any slider, or on any rotary knob will return it to its home position.
-
-There has been some shuffling in the GUI to make the different windows more consistent and easier to recognise. This has also enabled us to increase the size of the smallest control knobs. Most sliders are now indented - it makes them more obvious.
-
-Scroll wheel behaviour on both knobs and sliders has also been adjusted to be more consistent. By itself movement is pretty fast, but hold down the ctrl key, and you'll get very fine resolution.
-
-Other matters:
-
-Yoshimi now has a build number, and this appears in the startup log. That's probably only of interest to those building the master, or for reporting bugs - whatever they are :P
-
-Actually, there are the usual bugfixes (ancient and modern) and we've also made a small improvement in the way we handle an all-jack environment.
-
-The compatibility work we did for V1.3.8 ensured the all-important instrument files were correct, but we didn't have time to implement all of the controls. These are now in place.
-
-Currently there is quite a lot of preparatory work under way but its not ready for prime time. It's still really proof of concept.
+Similarly when you want to pass one of your own banks to friends, with 'Export' it is easy to identify the bank you want to copy out, and Yoshimi will not overwrite any external directories.
 
 
-V1.3.9
+Following on from this, many people don't fill in the Author and Copyright fields of their own instrument patches, making it hard to acknowledge them.  This is now partly automated in the hope that it may encourage people to do so.
 
-Our new code name: Skylark
+You can set up this default by going to the 'Instrument Edit' window and filling the field in just once, then while holding down the Ctrl key, click on the 'Default' button. From then on, just a click on this will fill the field with this text.
 
-A major part of our work on this release is attempting to future-proof our code. Many distros are moving to GCC version 6, and code that built quite happily with older compilers is now rejected by the much more critical requirements.
 
-While doing this, the very extensive testing also shook out some more obscure bugs which have of course been squashed.
+Going further into instruments, we now have a few useful key shortcuts.
 
-However, amongst other improvements, we've split out roots and banks from the main config file and also created a new histories file. The separation means that the different functions can be implemented, saved and loaded, at the most appropriate time. These files have yoshimi as the doctype as they are in no way relevant to ZynAddSubFX.
+If you hold down 'K', and click on the 'Edit' button in the main window, it will directly open the kit editor window for the current part. Similarly holding down 'E' and clicking will give you the part's effects window.
 
-The 'banks' file is saved every time roots, banks or instruments are changed, and again on a normal exit to catch current root and bank (which don't otherwise trigger a save).
+Most voice patches only use the first Add, Sub and Pad engines and there are similar shorcuts for these using 'A', 'S' & 'P' and clciking on the 'Edit' button. If you use the left mouse button it will only open the associated window if that engine is enabled, otherwise it will open the usual Part Edit window. Using the Right button will enable the engine then open its window.
 
-The 'history' file is only saved on exit.
+For the QWERTY keyboarders 'D' can be used instead of 'P', putting these in a neat row :)
 
-The 'config' file is only saved when you specifically call for it to be saved.
 
-As well as recent Patch Sets, we now record recent Scales and recent States. Scales in particular had been requested by one of our users who composes with very different scale settings.
+Now we take a dive into the feared AddSynth Voice window!
 
-In the CLI prompt, when effects are being managed, the preset number is also shown at the prompt so you'll typically see something like:
+The first thing you notice is these are tabbed, so you can quickly jump between the voices. An extra detail is that non-active voices have their numbers in light grey text, while the active (or the current selected) ones have clearly visible black text.
 
-yoshimi part 2 FX 1 Rever-7 >
+This is all fully in sync with the Kit Edit window.
 
-Yoshim is now verified as being able to use 192000 Hz sample rate in both ALSA and Jack - if you have a suitable soundcard!
 
-There have been a few minor GUI corrections and additions to the doc folder.
+We've changed some ambiguous wording in the Voice window too. The 'Change' buttons are now 'Waveform' ones. Also the highly confusing 'Ext' or 'Internal' entries are better worded - it was quite common for people to ask how they got the 'Ext' ones and where they came from.
 
-Many non-fatal system error messages can now be surpressed. this is particularly relevant for CLI use. This will be extended over time.
+For the voice itself, the selector is now named 'Oscillator' and the text is 'Internal' or 'Voice {n}'
+
+At the top of the Modulator section, you have 'Oscillator Source' and this time it will be 'Local' or 'Voice {n}'.
+
+The lower selector is titled 'Local Oscillator' and the text will be 'Internal' or 'Mod. {n}'.
+
+An extra detail is that these entries are greyed out for voice 1, as you can only select the internal oscillator or one from a lower numbered voice.
+
+
+Returning to effects, there is now interpolation in place for the controls, which makes these crackle-free and far more useful with MIDI-learn - Remember, you can have up to 200 learned lines.
+
+
+Finally, there are the usual code improvements and bug fixes.

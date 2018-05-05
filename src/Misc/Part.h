@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011 Alan Calvert
-    Copyright 2014, Will Godfrey
+    Copyright 2014-2018, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -20,7 +20,9 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is derivative of original ZynAddSubFX code, modified July 2014
+    This file is derivative of original ZynAddSubFX code.
+
+    Modified February 2018
 */
 
 #ifndef PART_H
@@ -57,12 +59,12 @@ class Part : private MiscFuncs, SynthHelper
         inline float pannedVolLeft(void) { return volume * pangainL; }
         inline float pannedVolRight(void) { return volume * pangainR; }
         void defaults(void);
+        void setNoteMap(int keyshift);
         void defaultsinstrument(void);
-        void applyparameters(void);
         void cleanup(void);
 
         // Midi commands implemented
-        void NoteOn(int note, int velocity, int masterkeyshift);
+        void NoteOn(int note, int velocity, bool renote = false);
         void NoteOff(int note);
         void AllNotesOff(void) { killallnotes = true; }; // panic, prepare all notes to be turned off
         void SetController(unsigned int type, int par);
@@ -70,12 +72,13 @@ class Part : private MiscFuncs, SynthHelper
         void RelaseAllKeys(void);
         void ComputePartSmps(void);
 
-        bool saveXML(string filename); // true for load ok, otherwise false
+        bool saveXML(string filename, bool yoshiFormat); // result true for load ok, otherwise false
         int loadXMLinstrument(string filename);
-        void add2XML(XMLwrapper *xml);
+        void add2XML(XMLwrapper *xml, bool subset = false);
         void add2XMLinstrument(XMLwrapper *xml);
         void getfromXML(XMLwrapper *xml);
         void getfromXMLinstrument(XMLwrapper *xml);
+        float getLimits(CommandBlock *getData);
 
         Controller *ctl;
 
@@ -99,28 +102,35 @@ class Part : private MiscFuncs, SynthHelper
         void setkeylimit(unsigned char Pkeylimit_);
         void setkititemstatus(int kititem, int Penabled_);
         void setVolume(float value);
+        void checkVolume(float step);
         void setDestination(int value);
+        void checkPanning(float step);
 
         SynthEngine *getSynthEngine() {return synth;}
 
-        unsigned char Penabled;
-        unsigned char Pvolume;
+        bool PyoshiType;
+        int PmapOffset;
+        float PnoteMap[256];
+        float         Pvolume;
+        float         TransVolume;
+        float         Ppanning;
+        float         TransPanning;
+        unsigned char legatoFading;
+        char Penabled; // this *must* be signed
         unsigned char Pminkey;
         unsigned char Pmaxkey;
         unsigned char Pkeyshift;
         unsigned char Prcvchn;
-        char          Ppanning;
         unsigned char Pvelsns;     // velocity sensing (amplitude velocity scale)
         unsigned char Pveloffs;    // velocity offset
-        unsigned char Pnoteon;     // if the part receives NoteOn messages
         unsigned char Pkitmode;    // if the kitmode is enabled
+        bool          Pkitfade;    // enables cross fading
         unsigned char Pdrummode;   // if all keys are mapped and the system is 12tET (used for drums)
-
-        unsigned char Ppolymode;   // Part mode - 0 = monophonic , 1 = polyphonic
-        unsigned char Plegatomode; // 0 = normal, 1 = legato
+        unsigned char Pkeymode;    // 0 = poly, 1 = mono, > 1 = legato;
         unsigned char Pkeylimit;   // how many keys can play simultaneously,
                                    // time 0 = off, the older will be released
         float         Pfrand;      // Part random frequency content
+        unsigned char PbreathControl;
         int           Paudiodest;  // jack output routing
         string        Pname;
         struct {
@@ -142,20 +152,17 @@ class Part : private MiscFuncs, SynthHelper
         EffectMgr *partefx[NUM_PART_EFX];      // insertion part effects - part of the instrument
 
         float volume;      // applied by MasterAudio
-        float oldvolumel;
-        float oldvolumer;
-        float randompan;
+        float pangainL;
+        float pangainR;
         int lastnote;
+        bool busy;
 
 
     private:
         void KillNotePos(int pos);
         void RelaseNotePos(int pos);
         void MonoMemRenote(void); // MonoMem stuff.
-        void setPan(char panning);
-        void Mute(void) { __sync_or_and_fetch(&partMuted, 0xFF); }
-        void Unmute(void) { __sync_and_and_fetch(&partMuted, 0); }
-        bool isMuted(void) { return (__sync_add_and_fetch(&partMuted, 0) != 0); }
+        void setPan(float value);
 
         Microtonal *microtonal;
         FFTwrapper *fft;
@@ -179,8 +186,6 @@ class Part : private MiscFuncs, SynthHelper
         int lastposb;             // ^^
         bool lastlegatomodevalid; // previous legatomodevalid.
 
-        float pangainL;
-        float pangainR;
         float *tmpoutl;
         float *tmpoutr;
         float oldfreq; // for portamento
@@ -191,10 +196,9 @@ class Part : private MiscFuncs, SynthHelper
         list<unsigned char> monomemnotes; // held notes.
         struct {
             unsigned char velocity;
-            int mkeyshift; // Not sure if masterkeyshift should be remembered.
         } monomem[256];    // 256 is to cover all possible note values. monomem[]
                            // is used in conjunction with the list to store the
-                           // velocity and masterkeyshift values of a given note
+                           // velocity value of a given note
                            // (the list only store note values). For example.
                            // 'monomem[note].velocity' would be the velocity
                            // value of the note 'note'.

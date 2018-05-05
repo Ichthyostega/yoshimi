@@ -1,3 +1,2074 @@
+yoshimi 1.5.7
+
+2018-3021 Will
+* Final Updates.
+* Manual import and update.
+* Doc updates.
+* Set release version as 1.5.7
+
+2018-3-19 Will
+* Corrected dates again :(
+* Improved Add, Sub, Pad click response when not enabled.
+* Changed 'Mod. Oscilator' to 'Local Oscillator'.
+* Updated docs.
+
+2018-3-18 Will
+* Improved scales error checking.
+* Improved instrument renaming.
+* Set version as 1.5.7 rc5
+
+2018-3-17 Will
+* Improved detection of user guide.
+* Code cleanups - Compiler warning suppression.
+* New 1.5.7 features list added to doc.
+* Remaining warnings suppressed.
+
+2018-3-16 Will
+* Implemented Tabbed AddSynth Voices.
+* Changed layout as workround for bottom edge bug.
+  Needs sorting for contol knobs anywhere :(
+* Set version as 1.5.7 rc4
+
+2018-3-12 Will
+* Bugfix: Ext voice and modulators editing wrong.
+  GUI still not completely correct - never was!
+* Set version as 1.5.7 rc3
+
+2018-3-11 Will
+* Fixed regression. AddVoice modulator not changing.
+* Clarified GUI voice and modulator selection.
+* Set version as 1.5.7 rc2
+* Bugfix: Sometimes setting the wrong XML doctype.
+* Added Voice/Modulator info to docs
+
+2018-3-10 Will
+* Reverted incorrect change to DynamicTooltip.cpp
+* Renamed overloaded show( to dynshow(
+* Completely revised copyFile( function.
+* All part areas now show kit status, number and names.
+* Set version as 1.5.7 rc1
+
+2018-3-9 Will
+* Refined Window title names.
+* GUI correct when MIDI volume and expression disabled.
+* Vector UI tracks changed number of available parts.
+
+2018-3-8 Will
+* BugFix: Vector control not working.
+  Off by one error :(
+* Improved Vector GUI behaviour.
+* BugFix: Config GUI was getting out of date.
+  New switches and controls not updated with state.
+
+2018-3-4 Will.
+* CLI direct access can now read VU levels.
+
+2018-3-3 Will
+* Quieted some unused code till it's developed.
+* Small improvements to Add and Pad GUIs.
+
+2018-3-2 Will
+* Small change to shortcuts.
+* Added entry point for dynamic subnote harmonic change.
+  No idea how to actually change it though :(
+
+2018-2-28 Will
+* Implemented defaults for part author and copyright.
+  Normal left button loads, Ctrl + left button saves.
+* Implmented shortcuts for add, sub, pad editors.
+  Left key - only if enabled.
+  Right key - enables and opens.
+  Individual voices not done yet.
+* Implmented shortcuts for part kit and effects.
+
+2018-2-26 Will
+* Added missing attributions to previous commit :(
+* Optimised part compute.
+  Removed unnecessary memory clearing and made per-part
+  temporary allocations general ones.
+* Minor code cleanups.
+
+2018-2-25 Will + Kristian
+* Merged in effects interpolations from Kristian.
+* Changed instrument name font to Helvetica (not bold).
+
+2018-2-23 Will
+* Reverted LV2 buffer size change pending investigation.
+  was commit: cf7c6e746239e90069a599a966aecbd5ba4f9f6e
+* Distortion and Alienwah limits now track preset number.
+* Remaining effects limits now track preset number.
+
+2018-2-21 Will
+* Implemented note on/off test routines.
+
+2018-2-18 Will
+* BugFix: Dynfilter presets not updating GUI :(
+* Small adjustment to 'Modular Sines'.
+* Further refinements to Dynfilter limits.
+* Changed all occurrences of p_buffer to sent_buffer.
+  More descriptive and easier to follow in the code.
+
+2018-2-16 Will
+* Added 'Modular Sines' to Companion bank.
+* Further adjustments to EQ effect controls.
+
+2018-2-15 Will
+* Minor tweaks to banks.
+
+2018-2-13 Will
+* BugFix: EQ GUI frequency wrongly zeroed.
+* Phaser and EQ effect limits done.
+* Some effect limits cleanups.
+  (more work needed on CLI access)
+
+2018-2-12 Will
+* Alienwah and Dynfilter effect limits done.
+  (not filter insert for dynfilter)
+* BugFix: Phaser d/y wrongly reducing default insert level.
+
+2018-2-11 Will
+* Improved bank import error reporting.
+* Implemented bank export.
+* Chorus and Distortion effect limits done.
+
+2018-2-8 Will
+* Started major upgrade to effects limits.
+  Reverb completed others begun.
+* Code cleanups surrounding effects limits.
+* Echo completed.
+* BugFix: Segfault on creating new bank (empty string).
+* Some small GUI improvements.
+
+2018-2-7 Will
+* Some small improvements to 'reads'.
+* Corrected wrong dates in Changelog!
+  The dangers of copy-paste :(
+
+2018-2-4 Will
+* Merged in new limits code.
+* Considerable updates to dev_notes.
+* BugFix: Importing keymap not updating GUI.
+* Further refinements to data read function.
+* Small improvements to master reset behavour.
+* More doc updates.
+
+2018-2-3 Will
+[LIMITS] First refactoring of this.
+         Quite a few ommisions.
+         Seems to be correct for MIDI-learn
+         but may still be some errors.
+[LIMITS] Made some corrections and optimisations.
+[LIMITS] Last? optimisations.
+
+2018-2-1 Will
+* PadSynth 'busy' also reported to the GUI.
+* Removed redundant 'apply' code from Part.
+* Doc updates.
+
+2018-1-31 Will
+* Applied extra safety features when changing PadSynth.
+  Attempting to read or write to it at this time gives:
+  "Part [n] busy"
+
+2018-1-30 Will
+* Master Reset and Stop! now clear the VU meters.
+* MIDI buffer full reports to selected destination.
+* Some doc updates.
+
+2018-1-29 Will
+* BugFix: Part effects not MIDI-learned correctly :(
+  This is a quick 'n dirty fix. The whole of the
+  limits structure needs refactoring!
+
+2018-1-28 Will
+* Made VU still read if very slow part load blocks.
+  Need to improve this :(
+
+2018-1-27 Will
+* Rationalised PadSynth calls.
+
+2018-1-26 Will
+* Removed no longer needed VU ring buffer.
+* GUI VU meter display now fully detached :)
+* Updated docs.
+
+2018-1-25 Will
+* Corrected VU meter update for multi-instance.
+* Enabled reading from CLI (direct).
+* Detached update system from GUI.
+
+2018-1-24 Will
+* Improved VU behaviour - better attack/decay.
+  Adjustments no longer made in GUI and will be
+  easier to be made available to the CLI.
+
+2018-1-23 Will
+* Removed incorrect reference to MIDI event 0xff.
+* Padsynth apply no longer uses flags.
+* Part clear no longer uses flags.
+* Code tidyups.
+
+2018-1-21 Will
+* BugFix: CLI abort if query on top list.
+* Refinements to thread safe async read.
+* Part reads in CLI no longer change GUI part.
+* Further refinements to thread safe async read.
+
+2018-1-20 Will
+* Minor bank optimisations.
+* Started new thread safe async read.
+
+2018-1-19 Will
+* Cosmetic changes to panel window.
+  Improves clarity and consistency.
+
+2018-1-17 Will
+* Added range checks on kits, engines and voices.
+* Started work on change current root/bank.
+
+2018-1-13 Will
+* Rationalised use of file extensions.
+  Especially in Banks.cpp
+* Minor doc updates.
+
+2018-1-7 Will
+* Removed redundant direct setting GUI LFO frequency.
+
+2018-1-4 Will
+* Corrected message for unknown MIDI event.
+  Also now as hex and obeys 'Log incomming events'
+
+2017-12-31 Will
+* Removed some redundant threadmessage code.
+* Listed proposed new root & bank commands.
+* Last 2017 bugfix! MIDI-learn block didn't :(
+
+2017-12-30 Will
+* Moved all key shifts out of RBP thread.
+* Moved master fine detune out of RBP thread.
+* Removed (now redundant) RBP thread.
+* Updated docs.
+
+2017-12-29 Will
+* Revised old config warning.
+  Now centred on master window an only
+  recognises config files.
+* Moved other use of message window to master ui.
+* BugFix: MIDI-learn init was killing message window.
+
+2017-12-28 Will
+* Reinstated safe version of localpath().
+* Applied PATH_MAX patch from debian maintainer.
+
+2017-12-27 Will
+* Refactored bank removal code.
+* Improved bank import reporting.
+* Updated docs.
+* Master reset can now clear MIDI-learn.
+* Moved panic stop out of RBP thread.
+  This will eventually be cleared completely.
+
+2017-12-26 Will
+* Removed dependency on PATH_MAX
+* Removed inclusion of local path in banks/presets.
+* Removed redundant localPath function from MiscFuncs.
+* Improved response time finding/displaying manual.
+* Completed CLI bank import.
+* Moved build number to ConfBuild.h
+* Corrected and added instructions to INSTALL.
+* More doc updates - I was bored!
+
+2017-12-21 Will
+* Implemented import of complete banks.
+* Updated docs.
+* BugFix: duplicate entry test in wrong place :(
+  Wiping out paired .xiz and .xiy in exiting banks.
+* More doc updates.
+
+2017-12-16 Will
+* Included current manual.
+* Yoshimi now looks for specific manual version.
+* Set release version 1.5.6
+
+2017-12-15 Will
+* Tidied up microtonal reporting.
+* Improved MIDI part/channel decoding.
+* Implemented breath control enable switch.
+* Set version as 1.5.6 rc1.
+
+2017-12-14 Will
+* Merged in BSD bugfixes from Tobias
+* Changed source location of user manual.
+  Separate lines in CMake no longer needed.
+* MIDI-learn now has a threshold setting for switches.
+* BugFix: More missing GUI messages found :(
+* BugFix: CLI not updating scale name or description.
+
+2017-12-13 Will
+* BugFix: argp return still wrong for HURD :(
+  Tried casting the return int to error_t instead.
+* Applied better resolution of splash timeout.
+* Bugfix: Importing scales was not updating GUI.
+
+2017-12-12 Will
+* Bugfix: argp return type was error_t should be int
+* Bugfix: Missing #include <cmath> in WaveShapeSamples.h
+* Bugfix: Missing #include <stdlib.h> in CmakeLists.txt
+* Possible resolution of splash screen problem.
+
+2017-12-11 Will
+* Set max MIDI-learn lines to 200.
+* Included current Advanced User Guide.
+* Added wildcard for .xiy and .xiz files in FLTK.
+* Updated docs.
+* Set release version 1.5.5
+
+2017-12-10 Will
+* Bugfix: Some loads and saves were leaking MiscMsg.
+* Banks Instrument ops now recognise new format.
+  Tested for load, save, delete, swap, rename.
+* Set version as 1.5.5 rc7.
+
+2017-12-9 Will
+* Further refinement to legato fade.
+* Improved splash screen behaviour.
+* Revised bank slot saving.
+  Still some details to correct :(
+* Enabled CLI direct access bank slot saving.
+* Set version as 1.5.5 rc6.
+
+2017-12-8 Will
+* Resolved anomalies with new instrument type.
+  GUI name colour reverts to black when cleared.
+  GUI name colour updated on saves as well as loads.
+  Bank structure identifies .xiy if either/both there.
+  Bank entry instrument colours update.
+  Loading instruments always looks for .xiy first.
+* Set version as 1.5.5 rc5.
+
+2017-12-7 Will
+* Made GUI Settings windows consistent.
+* .xiy doctype changed to Yoshimi.
+* GUI now shows .xiy parts with mid-blue text.
+* Set version as 1.5.5 rc4.
+
+2017-12-6 Will
+* Implemented extended (.xiy) Instrument saves.
+* Set version as 1.5.5 rc3.
+
+2017-12-5 Will
+* Reverted change in Cmake linker for tests.
+  This may affect BSD so this availability will not
+  be mentioned in notes for next release.
+* Set version as 1.5.5 rc2.
+
+2017-12-4 Will
+* Bugfix: CLI program change not updating GUI.
+
+2017-12-3 Will
+* Set version as 1.5.5 rc1.
+
+2017-12-2 Will
+* Improved legato fade behaviour.
+* BugFix: History not removing files when list full.
+
+2017-11-30 Will
+* BugFix: long standing silent legato note :)
+  This is an interim solution needs improving.
+* Further improvments to legato mode.
+  Another old bug found (not fixed yet) :(
+* Bugfix: Drum mode not clearing legato.
+
+2017-11-29 Will
+* BugFix: Channel switch not loading correctly.
+* Added specific older X86 CMake build options.
+
+2017-11-28 Will
+* GUI legato mode turns red if drum mode.
+* Master reset reloads the saved default state
+  if it exists and is set in config.
+
+2017-11-26 will
+* Refined legato/keymode code.
+* Part code cleanups.
+* Minor optimisation for mono/legato renote.
+* Removed redundant code from part NoteOn
+  and VirKeyboardUI.
+
+2017-11-25 Will
+* Improved protection for channel switch.
+* Implimented CC 68 - Legato pedal.
+* BugFix: CC 68 brace in wrong place :(
+
+2017-11-24 Will
+* Channel switcher was activated by Ardour!
+  Temporary fix in place.
+
+2017-11-23 Will
+* Improved internal message system.
+  Now possible to send plain non-blocking
+  messages, such as warnings, to CLI & GUI.
+* Updated docs.
+* Fixed regression. Mixer not updating :(
+
+2017-11-22 Will
+* Further refinements to history lists.
+  Instruments now included.
+* CLI instrument load can use '@' history.
+
+2017-11-20 Will
+* Improved GUI & CLI instrument saving.
+* Updated docs.
+* BugFix: Failed right click on bank window.
+
+2017-11-20 Will
+* Small improvement to history lists.
+  Ready to include instruments.
+
+2017-11-19 Will
+* Simplified history lists.
+  Last used is now always top of its list.
+* All main file loads/saves offer last used.
+
+2017-11-18 Will
+* Note on/off swap now in MusicIO.
+* Resolved channel switch Gui issues.
+* Consolidated SetSystemValues as NRPN only.
+  Still not completely thread safe.
+* Updated docs.
+* More refinements to CLI.
+* Tidied up some MIDI-learn messages.
+
+2017-11-17 Will
+* Added error reports to several I/O ring buffers.
+* Revised channel switcher.
+  Still some GUI anomalies to sort out :(
+
+2017-11-16 Will
+* BugFix: New Vectors weren't being saved.
+
+2017-11-15 Will
+* Finalised jack part destination changes.
+  Vector control now sets these correctly!
+
+2017-11-14 Will
+* Refactored indirectTransfers.
+  Was 'transfertext' but used for much else.
+* Improved jack part destination changes.
+
+2017-11-13 Will
+* NRPN direct part control now threadsafe.
+  Only NRPN system values to do :)
+
+2017-11-12 Will
+* Corrected Vector GUI anomalies.
+* Improved CLI part channel change.
+* Started work on NRPN direct part access.
+
+2017-11-11 Will
+* BugFix: GUI Insert effects failed to update.
+* NRPN effect changes now threadsafe.
+  Some GUI anomalies to sort out.
+* Code cleanups.
+* Rationalised system value ranges.
+* Updated docs.
+
+2017-11-10 Will
+* Code cleanups around incomming MIDI.
+
+2017-11-9 Will
+* GUI copy/paste now threadsafe
+  but needs much improvement.
+* Removed sse from 'BASIC' compiler build options.
+* In SynthEngine the build defaults to NOLOCK.
+  This means *all* mutex locks are disabled.
+
+2017-11-8-Will
+* CLI effects code cleanups.
+
+2017-11-7 Will
+* All remaining CLI writes thread safe :)
+  but some effect controls don't update GUI
+  and code tidying needed.
+* Doc updates.
+
+2017-11-6 Will
+* Vector GUI writes now thread safe :)
+
+2017-11-5 Will
+* Significant re-factor of vector control.
+  Stable, but some details to be improved.
+* Further refinements to vector control,
+  and improved error handling.
+* BugFix: MIDI zero velocity not sent to noteoff :(
+* Running vectors now correctly update GUI.
+
+2017-11-4 Will
+* Vector CLI controls fully thread-safe.
+  Some GUI and MIDI ones to complete.
+* Corrected JACK / ALSA GUI selections.
+
+2017-11-3 Will
+* Restored MIDI volume GUI action.
+* Some more Vector controls now thread safe.
+
+2017-11-2 Will
+* Major split up of midi controls from audio thread.
+* Unification of CC from any source.
+* More on unified root/bank/program.
+
+2017-10-31 Will
+* Further inprovments to unified root/bank/program.
+* Added 'Root_Bank_Program.txt' to dev_notes.
+* Corrected anomally with GUI bank list entries.
+
+2017-10-30 Will
+* MIDI controllers done for CLI  direct access
+  but disabled until rest of system done.
+
+2017-10-29 Will
+* Unified root/bank/program change complete
+  for CLI direct access.
+
+2017-10-28 Will
+* MIDI note on/off routing much simplified.
+* Further work splitting up MIDI routing.
+  NRPNs partially separated out
+* NRPNs can now be completely ignored.
+
+2017-10-26 Will
+* Corrected GUI panel anomally when changing parts.
+* Started implimenting unified root/bank/program change.
+* Applied mutex lock corrections suggested by 'blubee'.
+* Corrected implied cast in jackengine.
+
+2017-10-24 Will
+* Revised parameters for direct midi controls.
+* Virtual keyboard now uses these, so threadsafe.
+* Updated control numbers.
+
+2017-10-23 Will
+* GUI improvements to mixer panel.
+* Direct access to NoteOn, NoteOff, SetController.
+* Updated dev_notes/Yoshimi Control Numbers.ods
+
+2017-10-22 Will
+* Improved GUI behaviour on part changes.
+* More doc updates.
+
+2017-10-21 Will
+* Minor adjustments to musl patch from newbluemoon.
+* Further code cleanups.
+* Doc updates.
+
+2017-10-20 Will
+* Doc updates.
+* Added missing limits.h include to MiscFuncs.
+
+2017-10-16 Will
+* Finalised and cleaned up bugfix code.
+* Rationalised GUI updates (only one Fl::check() call).
+* set as V 1.5.4.1 release.
+
+2017-10-14 Will
+* Bugfix: Main part controls were responding to all
+  remote input channels but upper panel rows weren't.
+* set as V 1.5.4.1 rc2
+
+2017-10-13 Will
+* BugFix: Instrument loading now synchronised.
+* CLI enable/disable now updates panel.
+* set as V 1.5.4.1 rc1
+
+2017-9-27 Will
+* Merged in noboost branch. So no dependency on boost.
+  Resolves a long standing very rare segfault.
+* A few more tidy ups.
+* Included "Yoshimi Advanced User Manual" as a PDF.
+  Can be launched from the 'Yoshimi' dropdown menu.
+* Set Version 1.5.4 release.
+
+2017-9-24 Will
+* Removed orphaned and disabled code.
+* Unified coding style
+* set as V 1.5.4 rc1
+
+2017-9-23 Will
+* Improved part change display behaviour.
+* CLI part enable state can now be read as well.
+* Changing part enable state updates all of part
+  section in main window.
+
+2017-9-22 Will
+* Updated cmake policies.
+
+2017-9-21 Will
+* BugFix: MusicIO was passing LV2 MIDI to ring buffer.
+* Improved example build instructions.
+
+2017-9-19 Will
+* Further CLI conversions and code cleanups.
+
+2017-9-17 Will
+* Mute now uses the same structure as partonoff.
+  Only a few mutex locks left!
+* Paste no longer locks, but audio loop lock needed.
+
+2017-9-16 Will
+* Removed redundant mutex from OscilGenUI.
+* Added check for old config file.
+* Improved Bank/Instrument window stacking.
+
+2017-9-14 Will
+* Reinstated and improved ALSA MIDI ring buffer.
+* Started converting Vectors.
+
+2017-9-13 Will
+* BugFix: reset not clearing master bandwidth.
+* Master bandwidth added to MIDI controls.
+* Master bandwidth now MIDI-learnable.
+* Docs updated.
+* Corrected MIDI controls tooltips.
+
+2017-9-11 Will
+* Improved AddSynth Voice controls code.
+* Corrected 'minus' tooltip.
+
+2017-9-10 Will
+* Envelopes converted.
+
+2017-9-9 Will
+* Corrected NRPN wrong displayed values.
+  Actual values were quite correct.
+* Replaced splash screen png with svg version.
+* Finally got envelope graphs under control.
+  Tidying up and full conversion tomorrow :)
+
+2017-9-8 Will
+* Most of envelopes transferred.
+  Only graph points to do.
+* Improved add/delete point controls.
+* Updated docs.
+
+2017-9-7 Will
+* Completed filter transfer.
+* Improved formant tooltips.
+
+2017-9-5 Will
+* Corrected last three dates here :(
+* Created noboost branch.
+[noboost] reverted note-offs to delete.
+[noboost] removed all references to boost.
+
+2017-9-4 Will
+* Effects transferred to lock free.
+  Noticed long-standing anomally with some dynfilter
+  control only working on release.
+* Filters mostly transferred to lock free.
+  Some formant controls not done yet.
+
+2017-9-1 Will
+* BugFix: Oscillator phase was screwed up :(
+* Removed redundant code from PadSynth UI.
+* Preparing Filters for conversion.
+
+2017-8-31 will
+* Cleaned up Sys/Ins controls.
+* Added cleanup when Ins destination set to 'off'.
+* Yet more doc updates :P
+
+2017-8-30 Will
+* BugFix: Disabling a part was resetting all controllers.
+* Doc updates.
+* Sys/Ins effect controls now transferred to lock free.
+  But could be improved.
+
+2017-8-29 Will
+* All rotary controllers now MIDI learnable.
+
+2017-8-28 Will
+* CLI can now save PadSynth sample sets.
+* Failure to save PadSynth sample sets now reported.
+* Updated docs.
+* Removed reundant code.
+* Removed unnecessary mutex lock in Pad apply.
+* Fixed regression 'apply' in GUI oscillator.
+* Oscillator converted to lock-free (phew!)
+  Alse corrected ancient anomally where base
+  function wasn't changed with 'Use as base".
+
+2017-8-26 Will
+* Adjusted logging on memory error merge from Iurie.
+
+2017-8-25 Will
+* Removed duplicated effects command from GUI.
+* PadSynth conversion completed.
+* Fixed regression - AddVoice bend adjust not working.
+
+2017-8-24 Will
+* Corrected GUI value for CLI resonance centre freq.
+* Resonance converted to lock-free.
+* Preparing PadSynth for conversion.
+
+2017-8-22 Will
+* More speeling chucks :(
+
+2017-8-21 Will
+* Final clean-up.
+* Final doc updates.
+* Set Version 1.5.3 release.
+
+2017-8-20 Will.
+* Improved state saving extension checks.
+  This whole area needs looking at.
+* Set Version 1.5.3 rc4
+
+2017-8-19 Will.
+* Further minor updates to CLI - mostly messages.
+* Set Version 1.5.3 rc3
+
+2017-8-17
+* Minor correction to CLI vector level.
+* CLI now updates most of envelope graph.
+  freemode still to do.
+* Revised CLI MIDI learn for own context level.
+* GUI test reports are now specific to button 2 & 3.
+* Set Version 1.5.3 rc2.
+* Further small updates to CLI.
+
+2017-8-17 Jesper
+* Don't crash when autoconnect "fails" due to preexisting connections.
+
+2017-8-16 Will.
+* Doc updates.
+* Set Version 1.5.3 rc1.
+
+2017-8-15 Will.
+* Updated appdata and moved to metainfo.
+* Other doc updates.
+
+2017-8-13 Will + Rob
+* GUI DynFilter updates and learns correctly.
+* Learn bug sorted properly!
+* Code cleanups.
+* Doc updates.
+
+2017-8-12 Will
+* Added shortform NRPN to shutdown Yoshimi.
+  CC 99 & 98 both set to 68 (0x44).
+* BugFix: CTRL pressed *after* any mouse click learned.
+* Doc updates.
+
+2017-8-11 Will
+* Implimented CLI naming of vectors.
+* Corrected some CLI help entries.
+
+2017-8-10 Will
+* Further improvements to command test list values.
+  Hex and Dec shown, and in columns again.
+* Expanded CLI DynFilter control to include sys/ins
+  but not currently active.
+
+2017-8-9 Will
+* Most of DynFilter updates on CLI direct access call.
+  Just the filter window itself to do. Difficult :(
+* Command test list values now hex and just 2 lines.
+
+2017-8-7 Will
+* Part effects now display on CLI direct access call.
+
+2017-8-5 Will
+* Master reset no longer needs threadmessage function.
+* Further cleanups and doc corrections.
+* Started revising sys/ins effects & replacing callbacks.
+  This will help make CLI and GUI consistent.
+
+2017-8-4 Will
+* Properly integrated all patchset saves.
+* Improved patchset load operations & messaging.
+* BugFix: segfault if CLI load with garbage filename.
+* Fixed regression. LV2 not loading patch sets.
+  These are now properly contained, but I forgot to
+  update (LV2 only) putalldata :(
+* Patched in Jesper's improved Console scroll behavoir.
+  New entries now at bottom and always visible unless
+  scroll bars moved.
+
+2017-8-3 Will
+* BugFix: Insertion effects were always on.
+* Minor date corrections etc.
+* Removed redundant internal part mute.
+  Never activated and partonoff more sophisticated.
+* A few more cleanups.
+
+2017-8-2 Will
+* Small add/sub memory allocation optimisation.
+
+2017-8-1 Will
+* Removed mutex locks from patchset save.
+  No longer needed, so patch sets and states
+  now save silently.
+* Fixed regression. Vectors update 'recent' again.
+* Added 'Microtonal Ratio Scale' to examples.
+
+2017-7-31 Will
+* Improved config save operations & messaging.
+* Minor doc corrections & speeling chocks :)
+
+2017-7-30 Will
+* Corrected minor XML LV2 anomaly.
+* Optimised 'returnsDirect' access.
+* Loading scales from GUI now updates it!
+* Added microtonal demos to 'Examples'.
+* Console window now monospaced font.
+* Scales can now be loaded from histories.
+* Doc updates.
+* Improved scales load & save operations & messaging.
+* Further restructuring of Vectors.
+
+2017-7-29 Will
+* Improved vector saving management.
+* Reset & state load now update Vector name :p
+
+2017-7-28 Will
+* Refactored vector data structure.
+* It hasn't been purely nrpn based for a long time!
+* Further vector refactoring for overall consistency.
+* Updated docs.
+* Bugfix: Missing 'break' stopped patchset loads :(
+* Vector name now editable and saved internally.
+
+2017-7-27 Will
+* Improved state save error reporting for GUI & CLI.
+* Tidied master GUI code.
+* Bugfix: Reports button not correctly responding.
+* doc updates.
+* Improved vector loading management.
+* Started making vector name editable.
+
+2017-7-26 Wiil
+* Resolved Vector display issues.
+* More refinements to Vector controls.
+* Improved messaging with state loads.
+* Fixed non-fatal XML warning messages.
+
+2017-7-25 Jesper
+* Bugfix: Fixed segfault from edge cases when float->int
+  conversion was very close to zero in formant filter
+  transition calculations.
+* New formant filter editing tools - visual parameter
+  manipulation on the frequency graph, primarily
+  mouse-driven.
+* New tooltips for the formant filter control knobs and
+  amended related tooltips in filter envelopes/LFO's
+  to show the differences between formant filters and
+  the other types.
+
+2017-7-24 Will
+* Started refining loads and saves (state first).
+
+2017-7-22 Will
+* Minor optimisations and clarifications.
+* Updated man page.
+
+2017-7-21 Will
+* Removed some redundant code.
+* State load is now 'silent'.
+* Implemented lock-free state load & save.
+* Fixed potential memory leak in session save.
+* Doc updates - of course :)
+
+2017-7-20 Will
+* Improved CLI handling of delays from slow actions.
+  Has a switch that only releases when action completes.
+* More doc updates and corrections.
+
+2017-7-19 Will
+* transfertext() now checks GUI exists before sending.
+
+2017-7-18 Will
+* Bugfix: Bank dropdown list was showing wrong entry
+  on bank root change but actual contents correct.
+
+2017-7-16 Will
+* Refinements to CLI.
+* Direct access to loading and saving scales done.
+  More enhancements planned.
+* Updated docs.
+
+2017-7-15 Will
+* Completed conversion of CLI config controls.
+* Reorganised CLI code.
+* Config GUI also converted.
+* Reformatted config GUI code.
+  It was getting very untidy :(
+
+2017-7-14 Will
+* Created new 'config' CLI submenu.
+* Converted some 'normal' CLI config controls.
+
+2017-7-13 Will
+* All Config limits defined.
+* Updated docs.
+
+2017-7-12 Will
+* Values can now be corrected for range by the CLI.
+* Controls can be set to defaults by the CLI.
+* CLI can now test and report 'occupied' CC ranges.
+* doc updates.
+
+2017-7-4 Will
+* Resolved GUI to CLI miscMsg problem. Back on course :)
+  Was due to CLI reporting blocking some 'Resolves' that
+  use miscMsg to return text messages.
+* Adjusted saved keymap to retain compatibility.
+  Internally now starts from zero.
+
+2017-7-3 Will
+* Temporarily disabled Jack/Alsa GUI to CLI IDs.
+  Cause of strange MiscMsg behaviour :(
+
+2017-7-2 Will
+* Config conversion almost done.
+  Still some non-fatal anomalies to clear up.
+* Updated docs.
+
+2017-7-1 Will
+* Config switches converted.
+* Config jack & alsa converted.
+  Discovered odd behaviour from the GUI with miscMsg.
+  Not a disaster but needs to be sorted.
+
+2017-6-29 Will
+* Bugfix: CLI history was not being updated.
+* Removed empty virtual keyboard menu choice.
+* Started conversion of config for direct access.
+
+2017-6-27 Will
+* Fixed regression GUI can load full scales again.
+* Simplifed GUI scale loading code.
+
+2017-6-25 Will
+* Transferred scales to new controls.
+* Scale name now the leafname for .scl loads.
+* Changed scale 'Comment' to 'Description'.
+  matches Scala format better.
+* Doc updates.
+* Further code refinements.
+* Added new scales info in the doc directory.
+
+2017-6-24 Will
+* More revisions of CLI help lists.
+* Implemented all CLI microtonal functions.
+* Updated docs.
+
+2017-6-23 Will
+* Added delay to CLI return so most ops complete first.
+* Small improvement to Crossfade smoothness.
+* Removed redundant & commented out code in PartUI.fl.
+* Improved range checks in Part.cpp.
+  Also removed redundant kit range checks.
+* Fixed key range regression caused by last commit :(
+
+2017-6-22 Will
+* Fixed regression kitmode effect select works again.
+  Also improved numbering.
+
+2017-6-21 Will
+* Revised CLI help menu for greater clarity.
+* Implemented CLI list tuning and keymap.
+
+2017-6-19 Will
+* CLI can now write or load tunings and keymaps.
+
+2017-6-18 Will
+* Tuning error reporting completed.
+* Keymap error reporting completed.
+* Updated docs.
+* Scales code cleanups and optimisations.
+
+2017-6-16 Will
+* Added loopback for low priority functions into 'returns'.
+* Direct access writing now possible for all scale data.
+* Improved scales error reporting.
+  More to do.
+* Updated docs.
+
+2017-6-12 Will
+* Further refinements to scales accuracy
+  (no longer needing doubles)
+* Full XML float compatibility with ZynAddSubFX.
+
+2017-6-11 Will
+* Improved scales compatibility with old files/ versions.
+
+2017-6-9 Will
+* BugFix: miscMsgPop wasn't checking index range.
+* Loading patch sets always zeros 'Solo' channel number.
+
+2017-6-8 Will
+* BugFix Loading scales wasn't updating name/comment.
+* Direct access - more scales controls available.
+* Direct access scale loading in place.
+
+2017-6-7 Will
+* Scales no longer suffer from cumulative errors :)
+* Removed some (now unnecessary) mutex locks.
+* Direct access tunings and keymaps now CSV,
+  and reformatted to standard scales.
+
+2017-6-5 Will
+* Improved accuracy of scale number<=>text conversions.
+* Added "Musical Scale.odf" to 'doc'.
+
+2017-6-4 Will
+* Tunings and Keyboard map implemented.
+* Most Scales controls now available to direct access.
+* Added new Scales.txt doc to 'dev_notes'
+* Updated Yoshimi Control Numbers.ods file.
+
+2017-6-3 Will
+* Made Invert center key status clearer.
+* Identified more scales controls ready for direct access.
+* More doc updates.
+
+2017-6-1 Will
+* More part map optimisations.
+* Part maps now double buffered.
+
+2017-5-31 Will
+* Reorganised part map setting to remove multiple calls.
+* BugFix: Reverse scale centre was being set as type bool.
+* BugFix: Scale ratio values were limited to 127.
+
+2017-5-30 Will
+* Improved error traps and reporting.
+* Set default full XML saving to 'off'.
+  Done for previous consistency.
+
+2017-5-28 Will
+* Revised Scales GUI layout.
+* Added sane limits to key maps.
+* Discovered XML saving anomaly so created new Config switch.
+  Forces *all* data to be saved when set.
+* dev_notes updates.
+
+2017-5-26 Will
+* Started implementation of CLI scales access.
+* BugFix: neither .scl or .kbm were checked for no file :(
+
+2017-5-24 Will
+* BugFix: LV2 state restore was not setting partmaps.
+* Yoshi can now work with both CLI and GUI disabled.
+* Doc updates.
+
+2017-5-12 Will
+* Merged in Robs SubSynth Overtones/Legato fix.
+* Finalised all code and docs for release.
+* Set version 1.5.2
+
+2017-5-11 Will
+* Reset all controllers now clears the portamento switch.
+* Added SubnoteUI correction from Rob.
+* Minor change to saved Midi-learned files.
+  Supresses artificial top bit when saving, making file more
+  understandable, but loading restores it for learn comparisons.
+* More AddSynth Voice & SubSyth switches learnable.
+* Updated docs.
+
+2017-5-9 Will
+* BugFix: Modulator amplitude envelope wasn't enabling.
+
+2017-5-8 Will
+* Made Add Voice & Sub filter enables learnable.
+  Now labelled as 'On'.
+* Removed unnecessary Gui checks from Add & Sub.
+
+2017-5-7 Will
+* Improved Midi-learn loading behaviour.
+* Gui Updates no longer called from synth.
+* Midi-learnable switches now have colour IDs.
+* Set master as 1.5.2 rc2
+* Updated docs.
+
+2017-5-5 Will
+* More 'switches' Midi-learnable:
+  AddVoice enable and modulator selection.
+  All engine stereo and octave.
+* Set master as 1.5.2 rc1
+* Updated docs
+
+2017-5-4 Will
+* Small alteration to Andrew's State Changed patch.
+  This catches controls that still write direct.
+
+2017-5-2 Will
+* Fixed Gui anomally when loading states with Midi-learn.
+  The way we fetch Gui updates needs improving greatly.
+  Currently we use the VU timer and call across from synth.
+* LV2 state now includes Midi-learn data.
+
+2017-5-1 Will
+* State load now correctly updates main window title.
+* More float -> int range adustments
+  especially Midi-learn limits and conversions.
+
+2017-4-30 Will
+* Improved float -> int conversions.
+* BugFix: some of the new controls had the wrong limits.
+
+2017-4-29 Will
+* Corrected some Gui engine enable/colour anomalies.
+  Needs more work to rationalise duplications.
+* Enabled engine switches for Midi-learn.
+* Enabled some controllers for Midi_learn.
+  pan width
+  bandwidth depth
+  pitchwheel range
+  portamento time
+  portamento time stretch
+  portamento threshold
+  proportional rate
+  proportional depth
+* Updated limits
+* Small adjustment to controllers window.
+
+2017-4-28 Will
+* Fixed dynamic tooltip margins at 3 for all FLTK 1.3.x.
+  May reinstate the margin setting at a later date.
+* Small change to crossfade example.
+
+2017-4-23 Will
+* Reverted Midi-learn Gui change again
+  It was just moving the problem to any window that was open :(
+
+2017-4-22 Will
+* If State file has Midi-learn data it closes the window.
+  This evades the issue rather than solving it :(
+  However no other load source shows the problem.
+
+2017-4-21 Will
+* Reverted Midi-learn Gui change - caused other problems.
+
+2017-4-20 Will
+* Improved handling of Vectors in state load
+* Loading large Midi-learn lists was overloading Gui
+  so reduced Gui update rate.
+* Misc image updates.
+
+2017-4-18 Will
+* Corrected AddSynth sound/noise display.
+* Included AddSynthVoiceList in new controls method.
+* Midi-learn data added to saved state file.
+
+2017-4-17 Will
+* Implemented Gui change can redraw *after* command set.
+* Transferred AddSynthVoice to new control method.
+* Updated docs.
+* Transferred SubSynth to new control method.
+* Fixed regression - scroll wheel had stopped responding.
+* More doc updates.
+
+2017-4-16 Will
+* Part 'kit' is no longer ORed with 32 for some controls
+  instead 'insert' is set to 32 for these.
+* Added more error checks and warnings.
+* Updated docs.
+* Increased max buffersize to 4096 frames.
+* Fixed regression - Cli had lost part effect control :(
+
+2017-4-15 Will
+* Implemented Gui access to 7 bit NRPNs.
+* Revised Midi-learn window.
+* Corrected some Cli numbering.
+
+2017-4-14 Will
+* Revised Gui new instance selection.
+  Only 1 menu entry needed now.
+* Revised Midi-learn min/max - now percentages.
+  Resolution is now 0.5% :)
+
+2017-4-13 Will
+* Revised Cli access to Midi-learn.
+* Implemented 7bit NRPNs (not Gui changeable).
+* Updated docs.
+* Bugfix: Loading Midi-learn files was setting learn mode.
+* Bugfix: CLI error when changing Midi-learned channels.
+
+2017-4-9 Will
+* Bugfix: Wrong size buffer used for jack audio
+  causing overwrites if internal < nframes.
+* Set version 1.5.1.1
+
+2017-3-30 Will
+* Finalised all code and docs for release.
+* Set version 1.5.1
+
+2017-3-29 Will
+* Edited ccmake option names for more logical sequence.
+* Created INSTALL_CUSTOM info file.
+* Removed unused, and commented-out code.
+  No fuctional changes.
+
+2017-3-26 Will
+* Corrected anomaly with some float to bool conversions.
+  Changed varable in 'interchange' to make this clearer.
+* Activated Midi-learn for portamento enable & rate.
+* Set master as 1.5.1 rc5
+
+2017-3-22 Will
+* Doc updates and moves ready for release.
+* Added two new instruments to Will_Godfrey_Companion
+* New splash image included in Utils.
+* Merged in jack latency fixes from Rob.
+* Re-instated '03' Neon ccmake option.
+* Doc updates - again!
+* Set master as 1.5.1 rc4
+* It's ohh three not zero three !!!
+  Now done right.
+
+2017-3-22 Jesper
+* Master window: Added subclassed Fl_Menu_Bar which only draws the bottom border.
+  Now it is not necessary to use negative coordinates to hide the edges.
+* VUMeter no longer swallows all shortcut/keyboard events.
+* Added missing hotkeys/mnemonics and fixed conflicting ones.
+
+2017-3-21 Will
+* Added correction for startup part connection status from Rob.
+* Set master as 1.5.1 rc3
+* Readjusted main menubar.
+* Removed '03' from Neon ccmake options.
+
+2017-3-21 Jesper
+* SubSynth ui: persistent margins for the harm. sliders + non-clipped labels
+  Adjusted some misaligned/off-center widgets and added forceH tooltip
+
+2017-3-20 Will
+* Bugfix: setExtension got one case wrong.
+* Bugfix: State load wasn't setting partmaps.
+* Small adjstment to Insertion Effects tab.
+* Set master as 1.5.1 rc2
+
+2017-3-20 Jesper
+* Reverted min/max button style and relative positions
+* Reverted mistakes: wrong tab selected, perceptual spinner size
+  and moved button grid one pixel down to huge effect.
+
+2017-3-19 Jesper
+* Bugfix: stored window positions were read with wrong buffer size
+* Visual: menu bar positioned left of window + overlap by frame beneath
+* Even alignment and distribution of widgets in MasterUI & PartUI
+  Exact centering required resizing effects windows by 1 pixel
+* Tooltip fixes in MasterUI and PartUI
+  one inconsistent description and some inconsistent capitalisation.
+* Renamed m-R-M to Set-R-Set and placed the buttons next to their spinners
+
+2017-3-19 Will
+* Bugfix: Rotary controls were making pairs of calls.
+* Installed new splash screen and updated notices.
+* Set master as 1.5.1 rc1
+
+2017-3-18 Will
+* BugFix: Direct access Eq.T. dial deactivated in error.
+* Implemented forgotten direct access subsynth bend and offset.
+* Updated docs.
+
+2017-3-17 Jesper
+* AddSynth gui - sync voice list when changing detune type
+* AddSynth section labels now consistent with the other synths.
+* Minor graphical corrections - overlapping margins etc.
+* Bugfix: Sliders behaved incorrectly when min>max
+  specifically when using control-mousewheel to change value
+
+2017-3-17 Will
+* Part naming now goes through ring buffers.
+* BugFix: Recent state loading failed
+  due to missing lines in ParametersUI.fl
+* Small adjustments to messageing.
+* State reload now clears all parts before loading new ones.
+
+2017-3-16 Will
+* Bugfix: part volume was not being activated on load
+  but only if the saved value was 95! There was a similar
+  less important issue with panning.
+* Small optimisation in Gui freemode enable switch.
+
+2017-3-15 Will
+* Added correction from Jesper to tooltips code.
+* Direct access now enables envelope freemode in Gui
+  but still doesn't do redraws.
+
+2017-3-14 Will
+* Updated auto window position control.
+* Removed some auto window opens due to conflicts.
+
+2017-3-13 Will
+* Enabled Gui updates for dynfilter controls 7,8,9.
+* Doc updates.
+
+2017-3-12 Will.
+* Updated /dev_notes/Effect_Inserts.txt
+* Removed boost dependency based on ideas from Rob.
+* Made EQ reporting more human-readable :)
+* Corrected EQ band selector reporting/adjustment.
+  It's not a parameter.
+* Reverted boost change pending further investigation.
+
+2017-3-12 Jesper
+* Bugfix: Segfault from tooltip text handling in slider
+  when creating new instances of yoshimi.
+* Bugfix: All dials on the EQ effects can now be midi-learned.
+
+2017-3-12 Will
+* Added more reliable way of detecting Midi-learn NRPNs.
+* Bugfix: Splash was ignoring switch settings :(
+
+2017-3-11 Will
+* Splash timeout is longer and doesn't block user.
+* Fixed regression - exit was always claiming config changed.
+* Fixed regression - wrong font sizes in 'settings'.
+* BugFiX: Cli wasn't seeing value for freemode X offset.
+* Bugfix: Midi-learn led didn't work if channel set to all.
+* Version colour in Splash window now defined as RGB.
+
+2017-3-10 Will
+* Monitoring incoming CCs switch now saved in config.
+* Implimented 'Open learned editor window' switch.
+  Also saved in config.
+
+2017-3-9 Will
+* Improvements to Cli part limits.
+* Successful Midi-learn now opens editing window.
+* PadSynth limits done.
+* Reduced internal multiplier for all limits.
+  Just one went over short int size :(
+* Small optimisation in Controllers limits.
+* Updated docs.
+
+2017-3-6 Will
+* Cli limits now report the full name as well as the values.
+* Bugfix: Cli Add/Sub text not identifying bend & offset.
+* AddSynth limits done.
+* Doc additions and corrections.
+* SubSynth limits done.
+* Corrected wrong AddSynth coarse detune type.
+* Added 'solo' to limits.
+* Optimised limits code in SynthEngine.
+
+2017-3-5 Will
+* Controller & Midi control limits done.
+* Complete limit definitions for main & part include type.
+  i.e. integer/float & whether midi learnable.
+* Doc updates.
+* Bugfix: missed a couple of 'break' statements in a switch.
+* Added a special case for enable default on part 1.
+
+2017-3-4 Will
+* Merged in Jesper's latest tooltip improvements.
+* Voice list panning now syncs random LED in main window.
+* Updated direct access doc.
+* Corrected last few dates in this file :(
+
+2017-3-3 Will
+* Changed confusing naming referring to voice list vibratto.
+  Also improved comment.
+* Improved float/int and float/bool casts in interchange.
+* Gui Addsynth base parameters now go through ring buffers.
+* Reinstated Addsynth base random pan button behaviour.
+* Reinstated random pan button behaviour to all others.
+
+2017-3-2 Will
+* Main part limits done (not controllers)
+* Master limits done.
+* Bugfix: Gui changing available parts requered two clicks.
+* Fixed new regression. Cli was never just reading values.
+* Gui LFOs now go entirely through ring buffers.
+
+2017-3-1 Will
+* Started identifying default and limit values for part.
+  Cli direct access uses "lim" instead of value and type.
+* Small adjustment to part label display.
+
+2017-2-26 Will
+* Fixed instrument background colours.
+
+2017-2-24 Will
+* Added ARM options to CMakeLists.txt
+* Restored commented out AdNote cubic interpolation
+  for future examination (currently would segfault).
+* Updated copyright notices and dates in various files.
+
+2017-2-23 Will
+*Merged in Rob's live LFO controls.
+
+2017-2-21 Will
+* Merged  in Jesper's latest tooltip additions.
+* Minor change to freemode Envelope text to remove overlaps.
+
+2017-2-20 Will
+* Remaining Cli inputs converted.
+  I hope!
+
+2017-2-19 Will
+* Bugfix: Midi-learn wasn't reloading the correct ranges.
+* Found more Cli numbers to adjust :(
+* Started changing Cli *input* numbers to match Gui ones.
+* Got as far as 'commandPart'.
+
+2017-2-18 Will
+* Vectors now soft-load :)
+
+2017-2-17 Will
+* Cli effect presets now numbered from 1.
+* Improved Cli listing of effects/presets.
+* Bugfix: Solo wasn't seeing 'Loop' when reloading.
+* Bugfix: Mute not cleared if patchset load failed.
+* Cli can load patchsets and vectors from list numbers.
+* Cli loading vectors updates the Gui.
+
+2017-2-16 Will
+* Improved readline behavour.
+  Still needs more work - sometimes multiple prompt lines!
+* Converted reported Cli numbers to match Gui ones.
+  May have missed some :(
+  Entries still zero based.
+
+2017-2-13 Will
+* Spash screen onptimisations.
+* Small Fadeout improvement.
+* Doc updates.
+
+2017-2-12 Will
+* Separated out temporary Gui Write -> Read per section.
+  This enables us to do conversions section by section.
+* Improved Cli messaging.
+* Re-implemented silent panic stop.
+* Re-implimented soft master reset. Hopefully all OK now.
+
+2017-2-11 Will
+* Reverted unsafe changes from build 952.
+* Small optimisation in main audio loop partonoff read.
+* A few Gui tidy-ups.
+* Mixer as well as main window now show current patchset.
+* Cautious 2nd attempt at just soft patchset change.
+
+2017-2-9 Will
+* Global and part keyshifts now go through ringbuffer.
+* Code tidy-ups and improved comments.
+* Bugfix: Part kitlist wasn't deactivated on start.
+* All sources now use ringbuffer to load patchsets.
+* Bugfix: Segfault if reset from CLI while GUI running.
+
+2017-2-8 Will
+* Commented out redundant code from LV2.
+* Added mlock to all ring buffers.
+* Ensured all locked pages unlocked on exit.
+
+2017-2-7 Will
+* First trial of async MIDI buffer.
+* Changed miscMsg from mutext to semaphore.
+* Bugfix: miscMsg buffer not being cleared.
+  Only when no GUI. That was supposed to get them!
+* Bugfix: Return messages killed for CLI when disabled
+  for Gui.
+
+2017-2-4 Will
+* Changed interpolation for part volume and pan
+  so no more zipper noise.
+* Removed unused and commented out code.
+* Corrected code copyright and 'Modified' dates.
+* Bugfix: FLTK choice windows gave "yes" on Escape.
+* Bugfix: Regression when loading vectors from CLI
+  would crash if no channel given :(
+* Bugfix: GUI not updated on loading vector file.
+
+2017-2-3 Will
+* Applied AddSynth Voice tooltip patch from Rob.
+* Main volume now interpolated. No zipper noise :)
+
+2017-2-2 Will
+* Midi learn files now include the text of the
+  command name for each line.
+* Removed remaining forced 'part enable' except in part.
+* Improved and extended partonoff options.
+* 'Set part to default' now uses new method.
+  Direct CLI access and the GUI now do this silently.
+* Updated docs.
+
+2017-2-1 Will
+* Corrected NRPN warning message.
+  nHigh had always been reported wrongly :(
+* Corrected GUI activity light error.
+* Midi-learn can now operate in place for LV2.
+* Updated docs.
+
+2017-1-31 Will
+* Small clean-up in GUI panel controls.
+* Removed unnecessary callback in GUI part kitlist.
+* Midi-learn NRPN's done, but some non-harmful GUI
+  activty light errors.
+
+2017 - 1 30 Will
+* Initial prep for midi-learn NRPNs :)
+
+2017-1-29 Will
+* Bugfix: Some limits wrongly set for midi-learn.
+          Revised defaults settings.
+* Bugfix: More wrong limits :(
+
+2017-1-28 Will
+* Merged in Jesper's edit button in AddSynth voice list.
+* Adjusted positions/sizes to match general style.
+* Made other style adjustments to AddSynth GUI.
+* Set right click closures in bank GUI - long overdue.
+* Changed highly confusing code window names in bank GUI
+  so they match up with everything else!
+  bank -> instrument
+  root -> bank
+  path -> root
+
+2017-1-27 Will
+* Transferred most CLI main and part level controls to
+  new method and added in 'solo' and 'detune'.
+* Changed resolve thread's timer to 60uS.
+* Corrected GUI max parts display anomaly.
+* Added missing 'c8' in GUI voice list :(
+
+2017-1-26 Will
+* Modified splash screen creation utility and files and
+  made them formally available in a new 'Util' directory.
+* Another attempt at error checks for attempt to access
+  kit when not in kit mode. Think it's right now :)
+* Commented out some redundant code.
+
+2017-1-23 Will
+* Channel switcher/Solo now ignores zero in loop mode.
+  It responds to an on/off pedal press but not release.
+* Added instrument "Smooth Organ" to "Companion" set.
+* Added error checks for attempt to access kit when not
+  in kit mode.
+* Reverted new error check - it was wrong :(
+
+2017-1-20 Will
+* master: pulled in corrections and upgrades from
+  (no longer) brokenReset :)
+* Corrected dates in this file!
+
+2017-1-20 Will
+* brokenReset: CLI stop and reset now use direct access.
+* Improved CLIresolvethread flag system.
+* All master resets now handled via CLIresolvethread.
+* Set up proper Init function for InterChange.cpp
+  Threads could fail to start if poor general init.
+
+2017-1-19 Will
+* brokenReset: removed 'UpdateConfig' from 'resetAll'
+  This seems to conflict with 'UpdateMaster'.
+* Clearing config tab 4 now integrated into
+  'update_master_ui' at GUI level.
+
+2017-1-18 Will
+* Temporarily made key pressure do channel pressure.
+* Made minor improvement to pitch wheel handling.
+* Transferred master GUI controls to new method.
+* Improved direct CLI to GUI Pad params apply.
+* If audio thread muted incoming Midi now ignored.
+
+2017-1-15 Will
+* Updated app-data file.
+* Added French translation to yoshimi.desktop.in
+  from Olivier.
+* More general doc updates/corrections.
+
+2017-1-14 Will
+* Corrected Midi noteon velocity zero action and made
+  noteoff command more obvous!
+* Implemented Midi controlled system reset.
+* CC 1/11/71/74 now update Midi controls window.
+
+2017-1-13 Will
+* First experiment unifying alsa/jack/lv2 Midi input.
+
+2017-1-12 Will
+* Improved reliability of window positioning.
+* Midi learn window now remembered.
+* Midi learn messages now placed by relative control.
+* AddSynth voice and voice list now fully in sync :)
+
+2017-1-11 Will
+* Improved GUI part label and colours sync.
+
+2017-1-10 Will
+* Improved GUI part/mixer synchronisation.
+* Added error check for out of range part numbers.
+* Updated docs.
+
+2017-1-8 Will
+* Transferred main GUI part controls to new method.
+* Enabled GUI control of Modulation, Expression etc.
+* Updated 'Controllers' tooltip.
+
+2017-1-7 Will
+* Bugfix: CLI direct access not setting audio destination.
+* Bugfix: Mixer GUI returning wrong part numbers if > 16.
+* Bugfix: Mixer GUI volume & pan controls not responding
+  to CLI when displaying different parts to main control.
+
+2017-1-5 Will
+* Removed redundant startup messages from splash screen.
+* Exposed the following to Midi learn and direct access.
+  Modulation
+  Expression
+  Filter Q
+  Filter cutoff
+* Created new GUI window for these.
+* Updated docs.
+
+2017-1-4 Will
+* Bank tag (.bankdir) now aways contains the Yoshimi
+  version number from when the most recent instrument
+  was saved to it, or when the bank was created.
+
+2017-1-3 Will
+* Added part number to invalid kititem  warning.
+* Midi now recognises channel aftertouch.
+* Prep for NRPN Midi learn.
+* LFO titles no longer overlap C/P.
+
+2017-1-2 Will
+* Enabled MIDI learning of pitchwheel.
+  Comes in as CC 640 but seen as 128.
+* Optimised Midi learn editing to reduce line moves.
+
+2016-12-30 Will
+* Improved layout of Filters GUI insert.
+
+2016-12-27 Will
+* doc updates and corrections.
+* set version to 1.5.0 M - no code changes.
+
+yoshimi 1.5.0
+
+2016-12-17 Will
+* Added warning for undefined kits in Midi learn.
+* Finalised all code and docs for release.
+* Set version 1.5.0
+
+2016-12-16 Will
+* Changed Midi learn spinboxes to number entries.
+* Adjusted Midi learn window dimensions.
+* Corrected tooltips, spellings and acromyms.
+* Set version to 1.5.0 rc5
+
+2016-12-15 Will
+* Changed virtual keyboard key map labels and tooltips.
+* More doc updates.
+* Set version to 1.5.0 rc4
+
+2016-12-13 Will
+* Midi learn can now be cancelled.
+* Set Yoshimi (instance) in midi-learn message windows.
+* Corrected tooltip for oscillator harmonic randomness.
+* More doc updates.
+* Set version to 1.5.0 rc3
+
+2016-12-12 Jörn
+* More tooltips updates.
+  Distortion
+  Phaser
+  Chorus
+  Reverb
+  Echo
+  System sends
+* Set version to 1.5.0 rc2
+
+2016-12-12 Will
+* Doc updates.
+
+2016-12-11 Will
+* Implemented message window for midi learning.
+* Corrected GUI access to midi-learn general opps.
+* Set version to 1.5.0 rc1
+
+2016-12-10 Will
+* Bugfix: CLI was trapping the wrong midi-learn control.
+* CLI now change midi-learn mute, limit, block switches.
+* Added load/save messages to midi-learn.
+
+2016-12-9 Will
+* Bugfix: CLI load midi-learn from list had missing return.
+* Implemented CLI midi-learn line & list removal.
+* CLI can now list individual midi learn lines in detail.
+* Sent midi-learn general ops through ring buffer.
+* CLI can now change midi-learn CC, chan, min, max.
+
+2016-12-8 Will
+* Implemented 'activity' LED for midi-learn.
+* CLI history lists now numbered.
+* Implemented CLI midi-learn load & save.
+* Updated docs.
+
+2016-12-7 Will
+* Added new file to dev_notes: System_Values.txt
+* Added list file leafname to midi-learn window title.
+* Updated docs.
+
+2016-12-6 Will
+* Started implementing CLI access to midi-learn.
+  Also replaced 'changeLine(' with 'generalOpps(' as it
+  is more appropriate now.
+
+2016-12-5 Will
+* Small optimsation in crossfade.
+* Tidied up code in Interchange and MIdilearn.
+* All sliders/knobs mid-learnable except 'Controllers'.
+
+2016-12-5 Jörn
+* More tooltips updates.
+
+2016-12-5 Will
+* Bugfix: midi-learn scroll bar wasn't working.
+* Most sliders/rotary controls now available to midi-learn.
+
+2016-12-4 Will
+* Implemented full midi-learn save, load/recent.
+* Set windows of vectors and midi-learn to Yoshimi defaults.
+* Simplified history type selection in parameters window.
+* Bugfix: segfault clicking empty parameters window :(
+* Updated docs.
+
+2016-12-3 Patch from : Alexander
+* Bugfix: state load wasn't setting keyshifts.
+
+2016-12-2 Will
+* Started defining a standardised limits routine.
+  This will return min, max, default for any control.
+* Bugfix: LV2 was trapping unknown CCs instead of allowing
+  them to be passed on to midi-learn!
+* More work on limits.
+
+2016-12-2 Merge from : Jörn
+* Extensive tooltip upgrade dynamically giving real values.
+* Some code style consistency adjustments.
+
+2016-11-30 Will
+* First draft of midi-learn saving.
+* Bugfix: Had to remove fltk midi-learn warning.
+  It goes into a loop on spinboxes :(
+* midi-learn load and save both working with default name
+  "testmidi" in /home/{user}.
+
+2016-11-29 Will
+* Corrected anomaly when changing midi-learn channel numbers.
+* Changed 'doublefreqtrack' to 'freqtrackoffset'.
+
+2016-11-28 Merge from : Jörn
+* Added button to filter tracking, offsetting range for 0 200%.
+
+2016-11-27 Will
+* midi-learn menu changed to buttons.
+* midi-learn clear all implemented.
+* Running learned controls can now go 'in_place' for LV2.
+
+2016-11-26 Will
+* Small midi-learn / Interchange optimisations.
+* Direct access global fine detune now goes through ring buffer
+  to stop Xruns - particularly with midi-learn.
+* Enabled midi-learn of part effect sends.
+* BugFix: reinstated direct control of effects.
+  GUI not updated :(
+* Enabled midi-learn of effects.
+* Effects GUI now updated for all except some dynfilter knobs.
+
+2016-11-25 Will
+* Implemented the 'delete' function in midi-learn.
+* More doc updates!
+
+2016-11-24 Will
+* Enabled all midi-learn editors except CC and channel.
+* All midi-learn editors now working :)
+* Bugfix: Odd control combinations segfaulted - cured.
+* Bugfix: Curing old bug in direct access that segaulted on
+  invalid kit access stopped all access to kits. Now done.
+* Doc updates.
+
+2016-11-23 Will
+* Adding new learned lines now fully updates to the Gui.
+* Removed test button.
+* Number of lines temporarily limited to 128.
+
+2016-11-22 Will
+* Enabled midi-learn from CLI direct access.
+* Normal CLI can also list current learned lines.
+* Implemented (forgotten) AddSynth direct -> gui envelopes
+  but still not freemode.
+* Updated docs.
+
+2016-11-21 Will
+* Partially set up routing for midi learn messages.
+* BugFix: Wrong ID for kits allowed part messages to drop
+  through causing a segfault.
+* Some optimisations in Interchange.cpp
+* Filters and envelopes can now be midi-learned but envelopes
+  don't update the GUI.
+
+2016-11-20 Will
+* Midi learn window now accessible but non-functional.
+* Midi learn Gui now has some internal test structure.
+* Updated docs.
+* Resolved issue with learned controls not all updating :)
+
+2016-11-19 Will
+* Made a few corrections and extensions to midi learn.
+* Started documenting this.
+* Bugfix: reverted change that had killed midi learn :(
+* More midi learn refinements.
+  Tested limits & status (but no interface yet).
+* Created potential GUI based on part kits.
+
+2016-11-18 Will
+* Started midi learn. Basic entries in place - not active.
+  LV2 behaviour not tested yet.
+* Bugfix: Vector window wasn't updated on part change.
+* Many controls now midi learnable - can't be deleted.
+
+2016-11-16 Will
+* Added 'CoolSound' demo vector definition file to examples.
+* Small change to ID GUI controls as MIDI-learnable.
+* Updated docs.
+
+2016-11-13
+* Direct -> gui filter done (not dynfilter).
+* Direct -> gui envelope basics done (not freemode).
+* Updated and corrected docs.
+
+2016-11-12 Will
+* Bugfix: direct filter gain was changed by wrong control.
+* Started direct -> gui filter control.
+* Updated docs.
+
+2016-11-11 Will
+* Finalised CMake ncurses correction from Giovanni.
+* Add more explanatory detail to earliar changes made to
+  Bank/Program change in MusicIO.cpp
+* Re-instated 'in place' for jack freewheeling. Wasn't in use
+  when program load issue arose :(
+* Small optimisation to drum mode note base frequency.
+
+2016-11-7 Will
+* Improved crossfade dynamics.
+* More docs.
+* Added 'CrossFade.xiz' instrument to 'examples' files.
+  Included 'CrossFade.txt' description.
+* Added compiler switch for Note-On time reporting.
+  Needs 'Log Load times' checked in settings.
+
+2016-11-6 Will
+* Enhanced part onoff control for internal routines.
+    0 = off
+    1 = on
+    2 = inhibit and store last
+    3 = restore last
+* Direct -> gui LFOs done.
+
+2016-11-5 Will
+* Direct -> gui part kits done.
+* Direct -> gui part system sends done.
+* Direct -> gui resonance graph done.
+* Corrected errors in docs.
+
+2016-11-4 Will
+* Direct -> gui oscllator done.
+* Bugfixes: some oscillator direct access errors :(
+* Updated docs.
+* Direct -> gui resonance mostly done (not points).
+* Minor direct access optimisations.
+
+2016-11-1 Will
+* Cmake fix: nucurses now compulsory, but ncursesw optional.
+
+2016-10-30 Will
+* Implemented kit item crossfades (in pairs).
+* A couple of small bugfixes on the new crossfade.
+* Docs updated.
+
+2016-10-29 Will
+* Microtonal GUI now only needs 'Apply' button on text fields.
+* Setting an invalid root now leaves root and bank unchanged.
+* First time bank root IDs now start at 5 spaced 5 apart.
+* Added '*' to current root/bank in CLI lists.
+
+2016-10-28 Will
+* Separated key shift from main tuning.
+* Oops - got that wrong :(
+* Microtonal optimisation using a key map table - better!
+
+2016-10-27 Will
+* Direct access Bugfixes:
+  Oscillator waveshape parameter read returned wrong result.
+  Addsynth voice would crash if addsynth GUI not seen.
+  Subsynth hamonics GUI slider move reversed.
+* Revised GUI data sending to allow reads as well as writes.
+
+2016-10-26 Will
+* Started separating out CLI replies from main direct entries.
+* Completed separation up to voice level.
+* All done!
+
+2016-10-24 Will
+* Implemented mising direct modulator 440Hz switch.
+* Completed direct -> gui addsynthvoice.
+* Updated docs.
+
+2016-10-23 Will
+* Bugfix: direct -> gui 440Hz wasn't correct for sub/pad.
+* direct -> gui addsynthvoice done apart from modulators.
+
+2016-10-22 Will
+* Added Loop mode to Solo feature.
+* direct -> gui padsynth completed.
+* Updated docs.
+
+2016-10-21 Will
+* direct -> gui part kit mode & drum mode done.
+* direct -> gui addsynth main completed.
+* direct -> gui subsynth completed.
+* Updated docs.
+
+2016-10-16 Will
+* Completed direct gui system/insert effects.
+* More done on direct gui part.
+* Gui tooltip correction.
+
+2016-10-15 Will
+* Changed GUI channel switcher name to 'Solo'.
+* Corrected GUI anomalies with channel switcher.
+* New Solo.txt in doc.
+
+2016-10-14 Will
+* Moved vectors entry to its own button.
+* Rearanged icons.
+* Added channel switcher to 'Patch Sets' files.
+* Moved Channel switcher GUI control from config to Mixer Panel.
+* Added channel switcher controls to direct access.
+* Updated docs.
+
+2016-10-13 Will
+* Direct gui part base controls mostly done.
+* Doc updates.
+
+2016-10-12 Will
+* Completed direct gui main controls.
+* Starting to populate direct gui part level controls.
+* Updated docs.
+* Direct gui Add, Sub, Pad vol/vsense/pan controls done.
+
+2016-10-11 Will
+* Proved direct gui updates correct for main & part controls :)
+
+2016-10-10 Will
+* Ringbuffer size corrections.
+* Docs punctuation corrections.
+* Started to implement direct access -> gui updates.
+
+2016-10-9 Will
+* Gave direct access CLI & GUI independent 'from' ring buffers.
+* Improved direct access data transfers.
+* Small correction to Vector GUI.
+* Improved simple message system.
+
+2016-10-8 Will
+* Direct vector access almost complete.
+* Updated docs.
+
+
+2016-10-7 Will
+* Small corrections to GUI.
+* More work on direct Vector access.
+* Updated docs.
+
+2016-10-4 Will
+* Started implementing direct access to Vectors.
+
+2016-9-28 Will
+* Added more info to /dev_notes and /doc.
+* Added three new instruments to "Companion"
+* No code changes.
+
+2016-9-26 Will
+* Bugfix: AddSynth Mod Amp Env enable now works.
+* Applied Jespers batch to make scripts bash/dash compatible.
+* Corrected and updated docs.
+
+2016-9-25 Will
+* Temporarily reverted actual splash screen to original.
+
+2016-9-24 Will
+* Merged splash updates from Jesper.
+
+2016-9-23 Will
+* Removed duplicate enable Freq Filter command.
+* Bugfix: All AddSynth osc commands were going to the modulator.
+* Upgraded and tested build instructions.
+* Updated docs.
+
+2016-9-22 Will
+* Bugfix: direct access SubSynth Freq Env En was quite wrong :(
+* Updated docs.
+
+2016-9-21 Will
+* Implemented direct access for AddSynth (not fully tested).
+* Setting direct access type bit 0 now only echos byte stream.
+* Updated docs.
+
+2016-9-19 Will
+* TEMPORARY fix: pad apply parameters wasn't working headless.
+  Should probably use a list, not single integer.
+
+2016-9-18 Will
+* Implemented Oscillator direct access.
+* Updated and corrected docs.
+* Small correction to Resonance.
+* Minor code optimisations.
+
+2016-9-17 Will
+* CLI now strips trailing spaces.
+* Implemented PadSynth direct access base controls.
+* Updated docs.
+* Implemented Resonance direct access.
+
+2016-9-15 Will
+* Bugfix: direct access wasn't updating SubSynth overtones.
+* Replaced HTML version of control numbers with text version.
+* Bugfix: GUI wasn't sending kit number on envelope freemode.
+* Optimised some direct access code.
+
+2016-9-11 Will
+* Further updates to docs
+* New HTML copy of "Yoshimi Control Numbers".
+* No code changes.
+
+2016-9-10 Will
+* Completed direct access envelope free mode. Oh what fun :(
+  Switching from fixed to free and back still to be finalised.
+* Revised docs.
+
+2016-9-9 Will
+* Revised direct access, now needs 8 unsigned chars.
+* Implemented envelope direct controls (not free mode yet).
+* Updated docs.
+* Implemented LFO direct controls.
+* Direct access now recognises floating point 'value'.
+* Updated docs.
+
+2016-9-8 Will
+* Applied spelling patch from Jaromír Mikeš
+* Added warning to dev_notes/Direct_Access.txt
+* Now identifies SubSynth bandwidth envelope.
+
+2016-9-5 Will
+* Setup for next master version.
+
 yoshimi 1.4.1
 
 2016-9-5 Will

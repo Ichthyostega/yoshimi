@@ -2,7 +2,7 @@
 #   CMakeLists.txt
 #
 #   Copyright 2009-2011, Alan Calvert
-#   Copyright 2014-2016, Will Godfrey, and others
+#   Copyright 2014-2018, Will Godfrey & others
 #
 #   This file is part of yoshimi, which is free software: you can
 #   redistribute it and/or modify it under the terms of the GNU General
@@ -17,22 +17,28 @@
 #   You should have received a copy of the GNU General Public License
 #   along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 
+# Modifed March 2018
+
 project (Yoshimi)
-cmake_minimum_required (VERSION 2.6)
-cmake_policy (VERSION 2.6)
-cmake_policy (SET CMP0004 OLD)
+cmake_minimum_required (VERSION 3.0)
+cmake_policy (VERSION 3.0)
+cmake_policy (SET CMP0004 NEW)
 if (POLICY CMP0046)
-    cmake_policy (SET CMP0046 OLD)
+    cmake_policy (SET CMP0046 NEW)
 endif (POLICY CMP0046)
 set (CMAKE_CXX_STANDARD 11) # we seem to need both for
 add_definitions(-std=gnu++11) # various versions of cmake
 
+# vvv
 #add_definitions(-Wall)
 #add_definitions(-Werror=format-security)
+#add_definitions(-Wpedantic)
+#add_definitions(-Wextra)
+# ^^^ comment these out on release pushes
 
-# ^^^ comment these two out on release pushes ^^^
-
-set (YOSHIMI_VERSION "1.4.1")
+set (YOSHIMI_VERSION "1.5.7")
+add_definitions (-DMIN_CONFIG_MAJOR=1)
+add_definitions (-DMIN_CONFIG_MINOR=5)
 
 file (WRITE version.txt "${YOSHIMI_VERSION}")
 
@@ -68,33 +74,51 @@ else (HasJackSession)
     set (JackSessionSupport OFF)
 endif (HasJackSession)
 
-#set (DefaultAudio jack CACHE STRING "Default audio driver - alsa or jack")
-#set (DefaultMidi jack CACHE STRING "Default midi driver - alsa or jack")
+option (BuildFor0ld_X86 "Build for legacy x86 system" OFF)
 
 option (BuildForAMD_X86_64 "Build for AMD x86_64 system" OFF)
 option (BuildForCore2_X86_64 "Build for Intel Core2 x86_64 system" OFF)
+option (BuildForNEON "Build for ARM Cortex A9 system" OFF)
+option (BuildForThisCPU "Build for presently running system" OFF)
 option (BuildForDebug "Include gdb debugging support" OFF)
 
-option (EnableGuiReports "Enable GUI control reports" OFF)
-
 #option to build lv2 plugin
-option (BuildLV2Plugin "Build yoshimi lv2 plugin interface" ON)
+option (LV2Plugin "Build yoshimi lv2 plugin interface" ON)
 
-set (FifoDirectory /dev/shm CACHE STRING "Directory for fifos")
+# developer info
+option (ShowGuiReports "Enable GUI control reports" OFF)
+option (ShowNoteOnTimes "Report Note-On Times" OFF)
+option (ReportNotes "Report Notes On/Off" OFF)
 
-set (BuildOptions_x86_64AMD
-    "-O3 -march=athlon64 -m64 -Wall -ffast-math -fno-finite-math-only -fomit-frame-pointer"
+
+set (BuildOptions_X86
+    "-O3 -msse -msse2 -mfpmath=sse -ffast-math -fomit-frame-pointer"
+    CACHE STRING "basic X86 complier options"
+)
+
+set (BuildOptions_X86_64AMD
+    "-O3 -march=athlon64 -m64 -Wall -msse -msse2 -mfpmath=sse -ffast-math -fno-finite-math-only -fomit-frame-pointer"
   CACHE STRING "X86_64 compiler options"
 )
 
 set (BuildOptions_X86_64Core2
-    "-O3 -march=core2 -m64 -Wall -ffast-math -fno-finite-math-only -fomit-frame-pointer"
+    "-O3 -march=core2 -m64 -Wall -msse -msse2 -mfpmath=sse -ffast-math -fno-finite-math-only -fomit-frame-pointer"
   CACHE STRING "X86_64 compiler options"
 )
 
+set (BuildOptions_NEON
+"-O3 -march=armv7-a -mfloat-abi=hard -mfpu=neon -mcpu=cortex-a9 -mtune=cortex-a9 -pipe -mvectorize-with-neon-quad -funsafe-loop-optimizations"
+  CACHE STRING "Cortex_a9 compiler options"
+)
+
+set (BuildOptionsThisCPU
+    "-O3 -march=native -Wall -msse -msse2 -mfpmath=sse -ffast-math -fno-finite-math-only -fomit-frame-pointer"
+  CACHE STRING "Current CPU compiler options"
+)
+
 set (BuildOptionsBasic
-    "-O3 -msse -msse2 -mfpmath=sse -ffast-math -fomit-frame-pointer"
-    CACHE STRING "basic X86 complier options"
+    "-O3 -ffast-math -fomit-frame-pointer"
+    CACHE STRING "basic compilier options"
 )
 
 set (BuildOptionsDebug
@@ -107,10 +131,46 @@ else (PKG_CONFIG_FOUND)
     message(FATAL_ERROR "pkg-config required but not found")
 endif (PKG_CONFIG_FOUND)
 
+include (CheckFunctionExists)
+# musl systems don’t have random_r() and also need argp-standalone
+check_function_exists(random_r randomR)
+
+if (randomR)
+    add_definitions(-DHAVE_RANDOM_R)
+endif(randomR)
+
+check_function_exists(exp10f EXP10F)
+
+if(EXP10F)
+    add_definitions(-DHAVE_EXP10F)
+endif(EXP10F)
+
+check_c_source_compiles (
+    "#include <argp.h>
+    #include <stdlib.h>
+     int main () {
+         int argc=1;
+         char *argv[]={\"test\"};
+         argp_parse(0,argc,argv,0,0,0);
+         return 0;
+     }" LIBC_HAS_ARGP
+)
+
+if (NOT LIBC_HAS_ARGP)
+    message(STATUS "libc does not have argp")
+    find_library (ARGP_LIB argp REQUIRED)
+    if (ARGP_LIB)
+        message(STATUS "Found libargp")
+    else(ARGP_LIB)
+        message(FATAL_ERROR "libargp required but not found")
+    endif(ARGP_LIB)
+endif(NOT LIBC_HAS_ARGP)
+
 # libz
 set (CMAKE_REQUIRED_LIBRARIES z)
 check_c_source_compiles (
     "#include <zlib.h>
+     #include <stdlib.h>
      int main(int argc, char **argv) {
          gzFile zzz  = gzopen(\"/dev/null\", \"rb\");
          if (NULL != zzz)
@@ -142,12 +202,18 @@ else (MXML_FOUND)
 endif (MXML_FOUND)
 
 # Alsa
-pkg_check_modules (ALSA REQUIRED alsa>=1.0.17)
-if (ALSA_FOUND)
-    message(STATUS "Found Alsa ${ALSA_VERSION}")
-else (ALSA_FOUND)
-    message(FATAL_ERROR "Alsa >=1.0.17 required but not found")
-endif (ALSA_FOUND)
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+    pkg_check_modules (ALSA REQUIRED alsa>=1.0.17)
+    if (ALSA_FOUND)
+	message(STATUS "Found Alsa ${ALSA_VERSION}")
+    else (ALSA_FOUND)
+	message(FATAL_ERROR "Alsa >=1.0.17 required but not found")
+    endif (ALSA_FOUND)
+    add_definitions(-DHAVE_ALSA)
+    FIND_LIBRARY(LIBDL_LINUX NAMES dl)
+else()
+
+endif()
 
 # Jack
 pkg_check_modules (JACK REQUIRED jack>=0.115.6)
@@ -156,14 +222,6 @@ if (JACK_FOUND)
 else (JACK_FOUND)
     message(FATAL_ERROR "Jack >=0.115.6 required but not found")
 endif (JACK_FOUND)
-
-# Boost
-find_package (Boost)
-if (Boost_FOUND)
-    message(STATUS "Found boost headers version " ${Boost_VERSION})
-else (Boost_FOUND)
-    message (FATAL_ERROR "boost headers required, but not found")
-endif (Boost_FOUND)
 
 # fontconfig
 pkg_check_modules (FONTCONFIG REQUIRED fontconfig>=0.22)
@@ -196,18 +254,14 @@ mark_as_advanced (FLTK_FLUID_EXECUTABLE)
 mark_as_advanced (FLTK_MATH_LIBRARY)
 
 
-# libncurses
-pkg_check_modules (LIBNCURSES ncurses)
-if (LIBNCURSES_FOUND)
-    message (STATUS "Found libncurses ${LIBNCURSES_VERSION}")
-else ()
-    pkg_check_modules (LIBNCURSES REQUIRED ncursesw)
-    if (LIBNCURSES_FOUND)
-        message (STATUS "Found libncursesw ${LIBNCURSES_VERSION}")
-    else()
-        message (FATAL_ERROR "libncurses required but not found")
-    endif ()
-endif ()
+# libncurses / libcursesw
+set(CURSES_NEED_NCURSES TRUE)
+find_package (Curses REQUIRED)
+if (CURSES_FOUND)
+    message(STATUS "Found libncurses or libncursesw")
+else (CURSES_FOUND)
+    message(FATAL_ERROR "libncurses or libncursesw required but not found")
+endif (CURSES_FOUND)
 
 find_path(Readline_ROOT_DIR
     NAMES include/readline/readline.h
@@ -223,16 +277,15 @@ find_library(Readline_LIBRARY
     HINTS ${Readline_ROOT_DIR}/lib
 )
 
-find_package(PkgConfig REQUIRED)
-pkg_search_module(NCURSES REQUIRED ncurses)
-if(Readline_INCLUDE_DIR AND Readline_LIBRARY AND Ncurses_LIBRARY)
+#find_package(PkgConfig REQUIRED)
+if(Readline_INCLUDE_DIR AND Readline_LIBRARY AND CURSES_LIBRARY)
   set(READLINE_FOUND TRUE)
-else(Readline_INCLUDE_DIR AND Readline_LIBRARY AND Ncurses_LIBRARY)
+else(Readline_INCLUDE_DIR AND Readline_LIBRARY AND CURSES_LIBRARY)
   FIND_LIBRARY(Readline_LIBRARY NAMES readline)
   include(FindPackageHandleStandardArgs)
   FIND_PACKAGE_HANDLE_STANDARD_ARGS(Readline DEFAULT_MSG Readline_INCLUDE_DIR Readline_LIBRARY )
   MARK_AS_ADVANCED(Readline_INCLUDE_DIR Readline_LIBRARY)
-endif(Readline_INCLUDE_DIR AND Readline_LIBRARY AND Ncurses_LIBRARY)
+endif(Readline_INCLUDE_DIR AND Readline_LIBRARY AND CURSES_LIBRARY)
 
 mark_as_advanced(
     Readline_ROOT_DIR
@@ -250,19 +303,30 @@ set (YOSHI_INCLUDES ${FLTK_INCLUDE_DIR})
 
 if (BuildForDebug)
     set (CMAKE_BUILD_TYPE "Debug")
-    set (CMAKE_CXX_FLAGS_DEBUG ${BuildOptionsDebug})
     message (STATUS "Building for ${CMAKE_BUILD_TYPE}, flags: ${CMAKE_CXX_FLAGS_DEBUG}")
 else (BuildForDebug)
     set (CMAKE_BUILD_TYPE "Release")
-    if (BuildForAMD_X86_64)
-        set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptions_x86_64AMD})
-    else (BuildForAMD_X86_64)
-        if (BuildForCore2_X86_64)
-            set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptions_X86_64Core2})
-        else (BuildForCore2_X86_64)
-            set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptionsBasic})
-        endif (BuildForCore2_X86_64)
-    endif (BuildForAMD_X86_64)
+    if (BuildFor0ld_X86)
+        set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptions_X86})
+    else (BuildFor0ld_X86)
+        if (BuildForAMD_X86_64)
+            set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptions_X86_64AMD})
+        else (BuildForAMD_X86_64)
+            if (BuildForCore2_X86_64)
+                set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptions_X86_64Core2})
+            else (BuildForCore2_X86_64)
+                if (BuildForNEON)
+                    set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptions_NEON})
+                else (BuildForNEON)
+                    if (BuildForThisCPU)
+                        set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptionsThisCPU})
+                    else (BuildForThisCPU)
+                        set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptionsBasic})
+                    endif (BuildForThisCPU)
+                endif (BuildForNEON)
+            endif (BuildForCore2_X86_64)
+        endif (BuildForAMD_X86_64)
+    endif (BuildFor0ld_X86)
     message (STATUS "Building for ${CMAKE_BUILD_TYPE}, flags: ${CMAKE_CXX_FLAGS_RELEASE}")
 endif (BuildForDebug)
 
@@ -284,13 +348,15 @@ set (Effects_sources
 )
 
 set (Misc_sources
-    Misc/ConfBuild.cpp  Misc/Config.cpp  Misc/SynthEngine.cpp  Misc/Bank.cpp
+    Misc/Config.cpp  Misc/SynthEngine.cpp  Misc/Bank.cpp  Misc/Splash.cpp
     Misc/Microtonal.cpp   Misc/Part.cpp  Misc/XMLwrapper.cpp  Misc/MiscFuncs.cpp   Misc/WavFile.cpp
 )
 
 set (Interface_Sources
     Interface/CmdInterface.cpp
     Interface/InterChange.cpp
+    Interface/MidiLearn.cpp
+    Interface/MidiDecode.cpp
     UI/MiscGui.cpp
 )
 
@@ -304,7 +370,6 @@ set (Params_sources
 set (Synth_sources
     Synth/ADnote.cpp  Synth/Envelope.cpp  Synth/LFO.cpp  Synth/OscilGen.cpp
     Synth/SUBnote.cpp  Synth/Resonance.cpp  Synth/PADnote.cpp
-    Synth/BodyDisposal.cpp
 )
 
 set (MusicIO_sources
@@ -313,14 +378,14 @@ set (MusicIO_sources
 )
 
 set (FltkUI_names
-    "WidgetPDialUI"  "PresetsUI"  "EnvelopeUI"
-    "LFOUI"  "FilterUI"  "VirKeyboardUI"
-    "ConfigUI"  "SUBnoteUI"  "ResonanceUI"
-    "OscilGenUI"  "ADnoteUI"  "PADnoteUI"
-    "EffUI"  "BankUI"  "PartUI"
-    "MicrotonalUI"  "MasterUI" "MasterMiscUI"
+    "PresetsUI" "EnvelopeUI"
+    "LFOUI" "FilterUI" "VirKeyboardUI"
+    "ConfigUI" "SUBnoteUI" "ResonanceUI"
+    "OscilGenUI" "ADnoteUI" "PADnoteUI"
+    "EffUI" "BankUI" "PartUI"
+    "MicrotonalUI" "MasterUI" "MasterMiscUI"
     "ParametersUI" "ConsoleUI" "VectorUI"
-    "WidgetMWSliderUI"
+    "MidiLearnUI"
 )
 
 # workaround fltk_wrap_ui breakage
@@ -339,6 +404,13 @@ foreach(basename ${FltkUI_names})
     set (FltkUI_headers ${FltkUI_headers} "${headerfile}")
 endforeach(basename ${FltkUI_names})
 
+set (FltkUI_sources
+    ${FltkUI_sources}
+    UI/DynamicTooltip.cpp
+    UI/WidgetPDial.cpp
+    UI/WidgetMWSlider.cpp
+)
+
 add_definitions (
     -D'YOSHIMI_VERSION="${YOSHIMI_VERSION}"'
     -D'BASE_INSTALL_DIR="${CMAKE_INSTALL_PREFIX}"'
@@ -347,6 +419,8 @@ add_definitions (
     -DYOSHI_FIFO_DIR="${FifoDirectory}"
 )
 
+# many of these are here for convenience and consistency
+# changing them is likely to have unpredicable consequences
 add_definitions (-DYOSHIMI="yoshimi")
 add_definitions (-DCOMMAND_SIZE=80)
 add_definitions (-DMAX_HISTORY=25)
@@ -361,8 +435,10 @@ add_definitions (-DADD_COLOUR=0xdfafbf00)
 add_definitions (-DBASE_COLOUR=0xbfbfbf00)
 add_definitions (-DSUB_COLOUR=0xafcfdf00)
 add_definitions (-DPAD_COLOUR=0xcfdfaf00)
+add_definitions (-DYOSHI_COLOUR=0x0000e100)
 add_definitions (-DNUM_MIDI_PARTS=64)
 add_definitions (-DNUM_MIDI_CHANNELS=16)
+add_definitions (-DMIDI_LEARN_BLOCK=200)
 add_definitions (-DMAX_ENVELOPE_POINTS=40)
 add_definitions (-DMIN_ENVELOPE_DB=-60)
 add_definitions (-DMAX_RESONANCE_POINTS=256)
@@ -384,6 +460,7 @@ add_definitions (-DXML_CONFIG=6)
 add_definitions (-DXML_BANK=7)
 add_definitions (-DXML_HISTORY=8)
 add_definitions (-DXML_VECTOR=9)
+add_definitions (-DXML_MIDILEARN=10)
 
 # these were previously (pointlessly) user configurable
 add_definitions (-DNUM_VOICES=8)
@@ -394,7 +471,7 @@ add_definitions (-DNUM_PART_EFX=3)
 add_definitions (-DNUM_KIT_ITEMS=16)
 add_definitions (-DVELOCITY_MAX_SCALE=8.0f)
 add_definitions (-DFADEIN_ADJUSTMENT_SCALE=20)
-add_definitions (-DMAX_EQ_BANDS=8) # MAX_EQ_BANDS must be less than 20")
+add_definitions (-DMAX_EQ_BANDS=8) # MAX_EQ_BANDS must be less than 20
 add_definitions (-DMAX_FILTER_STAGES=5)
 add_definitions (-DFF_MAX_VOWELS=6)
 add_definitions (-DFF_MAX_FORMANTS=12)
@@ -402,28 +479,21 @@ add_definitions (-DFF_MAX_SEQUENCE=8)
 add_definitions (-DMAX_PHASER_STAGES=12)
 add_definitions (-DMAX_ALIENWAH_DELAY=100)
 
-if (EnableGuiReports)
+if (ShowGuiReports)
     add_definitions (-DENABLE_REPORTS)
-endif (EnableGuiReports)
-#if (${DefaultAudio} STREQUAL "jack")
-#    message(STATUS "Default audio driver is Jack")
-    add_definitions(-DDEFAULT_AUDIO=jack_audio)
-#elseif (${DefaultAudio} STREQUAL "alsa")
-#    message(STATUS "Default audio driver is Alsa")
-#    add_definitions(-DDEFAULT_AUDIO=alsa_audio)
-#else (${DefaultAudio} STREQUAL "alsa")
-#    message(FATAL_ERROR "Invalid DefaultAudio selection: " ${DefaultAudio})
-#endif (${DefaultAudio} STREQUAL "jack")
+endif (ShowGuiReports)
 
-#if (${DefaultMidi} STREQUAL "jack")
-#    message(STATUS "Default midi driver is Jack")
-    add_definitions(-DDEFAULT_MIDI=jack_midi)
-#elseif (${DefaultMidi} STREQUAL "alsa")
-#    message(STATUS "Default midi driver is Alsa")
-#    add_definitions(-DDEFAULT_MIDI=alsa_midi)
-#else (${DefaultMidi} STREQUAL "alsa")
-#    message(FATAL_ERROR "Invalid DefaultMidi selection: " ${DefaultMidi})
-#endif (${DefaultMidi} STREQUAL "jack")
+if (ShowNoteOnTimes)
+    add_definitions (-DREPORT_NOTEON)
+endif (ShowNoteOnTimes)
+
+if (ReportNotes)
+    add_definitions (-DREPORT_NOTES_ON_OFF)
+endif (ReportNotes)
+
+add_definitions(-DDEFAULT_AUDIO=jack_audio)
+
+add_definitions(-DDEFAULT_MIDI=jack_midi)
 
 if (JackSessionSupport)
     message(STATUS "With jack session support")
@@ -479,15 +549,26 @@ set(ExternLibraries
     ${LIBSNDFILE_LIBRARIES}
     ${FFTW3F_LIBRARIES}
     ${LIBCAIRO_LIBRARIES}
-    ${NCURSES_LIBRARIES}
+    ${CURSES_LIBRARIES}
     ${Readline_LIBRARY}
     z
-    dl
+    #dl
+    ${LIBDL_LINUX}
 )
+
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "FreeBSD")
+    link_directories(/usr/local/lib)
+endif()
 
 add_executable (yoshimi ${ProgSources} main.cpp)
 
 target_link_libraries (yoshimi ${ExternLibraries})
+
+
+
+if (ARGP_LIB)
+    target_link_libraries (yoshimi ${ARGP_LIB})
+endif(ARGP_LIB)
 
 install (TARGETS yoshimi RUNTIME DESTINATION bin)
 
@@ -534,7 +615,6 @@ install (DIRECTORY ../doc/ DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/doc/yoshimi
         GROUP_READ GROUP_WRITE GROUP_EXECUTE
         WORLD_READ WORLD_EXECUTE
 )
-
 install (FILES ${CMAKE_CURRENT_BINARY_DIR}/yoshimi.desktop
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications)
 install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/yoshimi.png
@@ -543,10 +623,10 @@ install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/yoshimi.svg
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps)
 install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/yoshimi_alt.svg
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps)
-install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/yoshimi.appdata.xml
-    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/appdata)
+install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/metainfo/yoshimi.appdata.xml
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/metainfo)
 install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/yoshimi.1
-    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/man/man1)
+    DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 
 set_directory_properties (PROPERTIES
     ADDITIONAL_MAKE_CLEAN_FILES "${FltkUI_headers}"
@@ -574,7 +654,7 @@ add_custom_target (distclean
 )
 
 
-if (BuildLV2Plugin)
+if (LV2Plugin)
     if (EXISTS $ENV{LV2_PATH})
         set(LV2_INSTALL_DIR $ENV{LV2_PATH} CACHE PATH
         "Specifies where the LV2 libraries should be installed")
@@ -590,4 +670,4 @@ if (BuildLV2Plugin)
         message (FATAL_ERROR "lv2 package required but not found (version 1.0.0 needed)")
     endif (LV2_FOUND)
     add_subdirectory(LV2_Plugin)
-endif (BuildLV2Plugin)
+endif (LV2Plugin)
