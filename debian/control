@@ -1,16 +1,16 @@
 Source: yoshimi
 Section: sound
 Priority: optional
-Maintainer: Debian Multimedia Maintainers <pkg-multimedia-maintainers@lists.alioth.debian.org>
+Maintainer: Debian Multimedia Maintainers <debian-multimedia@lists.debian.org>
 Uploaders:
  Jaromír Mikeš <mira.mikes@seznam.cz>
 Changed-By: Hermann Vosseler <deb@ichthyostega.de>
 Build-Depends:
  cmake,
- debhelper (>= 9),
+ debhelper (>= 10~),
  fluid,
  libasound2-dev,
- libboost-dev | libboost1.55-dev,
+ libboost-dev,
  libcairo2-dev,
  libfftw3-dev,
  libfltk1.3-dev,
@@ -21,17 +21,15 @@ Build-Depends:
  libmxml-dev,
  libncurses5-dev,
  libreadline-dev,
- libxft-dev,
- libxinerama-dev,
  libx11-dev,
  libxext-dev,
  lv2-dev,
  sharutils,
  zlib1g-dev
-Standards-Version: 3.9.8
-Vcs-Git: https://anonscm.debian.org/git/pkg-multimedia/yoshimi.git
-Vcs-Browser: https://anonscm.debian.org/cgit/pkg-multimedia/yoshimi.git
-Homepage: http://yoshimi.sourceforge.net
+Standards-Version: 4.1.2
+Vcs-Git: https://salsa.debian.org/multimedia-team/yoshimi.git
+Vcs-Browser: https://salsa.debian.org/multimedia-team/yoshimi
+Homepage: https://yoshimi.sourceforge.io
 
 Package: yoshimi
 Architecture: any
@@ -40,7 +38,8 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends}
 Recommends:
- jackd
+ jackd,
+ yoshimi-doc,
 Description: software synthesizer originally based on ZynAddSubFX2
  Yoshimi is a software synthesizer for GNU/Linux, based on
  ZynAddSubFX 2.4.0.
@@ -50,6 +49,7 @@ Description: software synthesizer originally based on ZynAddSubFX2
 
 Package: yoshimi-data
 Architecture: all
+Multi-Arch: foreign
 Depends:
  ${misc:Depends}
 Recommends:
@@ -61,3 +61,18 @@ Description: Presets for Yoshimi
  but now has extended features and accessibility.
  .
  This package provides banks and presets for Yoshimi.
+
+Package: yoshimi-doc
+Section: doc
+Architecture: all
+Depends:
+ ${misc:Depends}
+Recommends:
+ yoshimi
+Description: Documentation for Yoshimi
+ Yoshimi is a software synthesizer originally based on ZynAddSubFX2
+ .
+ Yoshimi maintains sound and instrument compatibility
+ but now has extended features and accessibility.
+ .
+ This package provides documentation for Yoshimi.

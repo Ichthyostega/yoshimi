@@ -4,9 +4,7 @@ export DEB_LDFLAGS_MAINT_APPEND=-Wl,--as-needed
 
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
-ifneq (,$(findstring :$(DEB_HOST_ARCH_CPU):,:amd64:))
-CXXFLAGS+=-msse -msse2 -mfpmath=sse
-endif
+export LV2_PATH = /usr/lib/lv2
 
 %:
-	dh $@ --parallel --sourcedirectory=src
+	dh $@ --sourcedirectory=src

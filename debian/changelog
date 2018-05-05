@@ -1,3 +1,116 @@
+yoshimi (1.5.6-3) unstable; urgency=medium
+
+  * Add patch to fix FTBFS on hurd-i386. (Closes: #885249)
+  * Set dh/compat 11.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Thu, 28 Dec 2017 19:29:49 +0100
+
+yoshimi (1.5.6-2) unstable; urgency=medium
+
+  [ Mattia Rizzolo ]
+  * d/control: mark yoshimi-data as Multi-Arch:foreign.
+
+  [ Jaromír Mikeš ]
+  * Update copyright file.
+  * Deal with white spaces in file names - copyright file.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Fri, 22 Dec 2017 01:54:44 +0100
+
+yoshimi (1.5.6-1) unstable; urgency=medium
+
+  * New upstream version 1.5.6
+  * Patches refreshed/removed.
+  * Bump Standards.
+  * Introduce doc package.
+  * Update overrides file.
+  * Add doc-base file.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Sun, 17 Dec 2017 14:49:27 +0100
+
+yoshimi (1.5.5-2) unstable; urgency=medium
+
+  * Add patch to fix build on non-linux systems.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Wed, 13 Dec 2017 01:06:45 +0100
+
+yoshimi (1.5.5-1) unstable; urgency=medium
+
+  * New upstream version 1.5.5
+  * Use secure uri where possible.
+  * Patch refreshed.
+  * Add more entries to override file.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Mon, 11 Dec 2017 22:29:45 +0100
+
+yoshimi (1.5.4.1-1) unstable; urgency=medium
+
+  * Update watch file to track github repo.
+  * New upstream version 1.5.4.1
+  * Remove compression bz2 from gbp.conf.
+  * Bump Standards.
+  * Install manual.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Tue, 17 Oct 2017 02:24:51 +0200
+
+yoshimi (1.5.4-1) unstable; urgency=medium
+
+  * New upstream version 1.5.4
+  * Bump Standards.
+  * Patches refreshed/deleted.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Mon, 02 Oct 2017 11:47:41 +0200
+
+yoshimi (1.5.3-1) unstable; urgency=medium
+
+  * New upstream version 1.5.3
+  * Bump Standards.
+  * Update Vcs - use git instead of cgit.
+  * Introduce postclone.sh script to ignore .pc/ dir.
+  * Update install file.
+  * Update override file.
+  * Add spelling patch.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Tue, 22 Aug 2017 12:21:46 +0200
+
+yoshimi (1.5.2.1-1) unstable; urgency=medium
+
+  * New upstream version 1.5.2.1
+  * Patches deleted/refreshed.
+  * Bump Standards.
+  * Update override file.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Sun, 25 Jun 2017 19:50:31 +0200
+
+yoshimi (1.5.0-3) unstable; urgency=medium
+
+  * Update copyright file.
+  * Add patch to update appdata file.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Mon, 16 Jan 2017 10:06:53 +0100
+
+yoshimi (1.5.0-2) unstable; urgency=medium
+
+  * Install LV2 plugins. (Closes: 849166)
+    Thanks to Takeshi Soejima <sohet@mbox.kyoto-inet.or.jp>
+  * Add lintian-overrides file.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Fri, 23 Dec 2016 10:20:53 +0100
+
+yoshimi (1.5.0-1) unstable; urgency=medium
+
+  * New upstream version 1.5.0
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Sun, 18 Dec 2016 00:27:35 +0100
+
+yoshimi (1.4.1-2) unstable; urgency=medium
+
+  * Fix patch description.
+  * Set dh/compat 10.
+  * Remove redundant amd64 flags.
+  * Sign tags.
+
+ -- Jaromír Mikeš <mira.mikes@seznam.cz>  Tue, 13 Dec 2016 17:23:46 +0100
+
 yoshimi (1.4.1-1~stretch) Lumiera-stretch-tools; urgency=low
 
   * Rebuild for private use on Debian-stable(Stretch)
@@ -164,7 +277,7 @@ yoshimi (1.2.2-1) unstable; urgency=low
 
 yoshimi (1.2.1-1) unstable; urgency=low
 
-  * Imported Upstream version 1.2.1
+  * Imported Upstream version 1.2.1endif (BuildForAMD_X86_64)
   * Removed/Refreshed patches - applied upstream.
 
  -- Jaromír Mikeš <mira.mikes@seznam.cz>  Tue, 10 Jun 2014 01:16:11 +0200
@@ -330,6 +443,6 @@ yoshimi (0.056-2) unstable; urgency=low
 
 yoshimi (0.056-1) unstable; urgency=low
 
-  * Initial release (Closes: #581155). 
+  * Initial release (Closes: #581155).
 
  -- Jaromír Mikeš <mira.mikes@seznam.cz>  Sat, 01 May 2010 16:18:45 +0200
