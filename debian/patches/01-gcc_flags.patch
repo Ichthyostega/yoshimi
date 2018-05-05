@@ -1,17 +1,20 @@
+From: Alessio Treglia <alessio@debian.org>
+Date: Fri, 4 Jun 2010 03:12:00 +0200
+Subject: Drop GCC options which are not supported on all architectures.
+
 Author: Alessio Treglia <alessio@debian.org>
 Origin: Debian
-Description: Drop GCC options which are not supported on all architectures.
 Bug: http://bugs.debian.org/584492
 Forwarded: yes
 ---
- src/CMakeLists.txt |    4 ++++
+ src/CMakeLists.txt | 4 ++++
  1 file changed, 4 insertions(+)
 
-Index: yoshimi/src/CMakeLists.txt
-===================================================================
---- yoshimi.orig/src/CMakeLists.txt
-+++ yoshimi/src/CMakeLists.txt
-@@ -119,6 +119,9 @@ set (BuildOptionsBasic
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 1687492..a510364 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -124,6 +124,9 @@ set (BuildOptionsBasic
  set (BuildOptionsDebug
      "-O0 -g3 -ggdb -Wall -Wpointer-arith" CACHE STRING "Debug build flags")
  
@@ -21,7 +24,7 @@ Index: yoshimi/src/CMakeLists.txt
  find_package (PkgConfig REQUIRED)
  if (PKG_CONFIG_FOUND)
      message(STATUS "Found pkg-config ${PKG_CONFIG_EXECUTABLE}")
-@@ -322,6 +325,7 @@ else (BuildForDebug)
+@@ -327,6 +330,7 @@ else (BuildForDebug)
              endif (BuildForCore2_X86_64)
          endif (BuildForAMD_X86_64)
      endif (BuildFor0ld_X86)
