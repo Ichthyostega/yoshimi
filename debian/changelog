@@ -1,3 +1,11 @@
+yoshimi (1.5.7-1~stretch) Lumiera-stretch-tools; urgency=low
+
+  * New upstream version 1.5.7
+  * Rebuild/Backport for Debian/Stretch.
+  * build against jackd2
+
+ -- Hermann Vosseler <deb@ichthyostega.de>  Sat, 05 May 2018 02:45:20 +0200
+
 yoshimi (1.5.6-3) unstable; urgency=medium
 
   * Add patch to fix FTBFS on hurd-i386. (Closes: #885249)

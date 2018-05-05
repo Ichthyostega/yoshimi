@@ -17,7 +17,7 @@ Build-Depends:
  libfontconfig1-dev,
  libgl1-mesa-dev | libgl-dev,
  libglu1-mesa-dev | libglu-dev,
- libjack-dev,
+ libjack-jackd2-dev | libjack-dev,
  libmxml-dev,
  libncurses5-dev,
  libreadline-dev,
