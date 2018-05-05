@@ -2,7 +2,7 @@
 #   CMakeLists.txt
 #
 #   Copyright 2009-2011, Alan Calvert
-#   Copyright 2014-2017, Will Godfrey & others
+#   Copyright 2014-2018, Will Godfrey & others
 #
 #   This file is part of yoshimi, which is free software: you can
 #   redistribute it and/or modify it under the terms of the GNU General
@@ -17,7 +17,7 @@
 #   You should have received a copy of the GNU General Public License
 #   along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 
-# Modifed December 2017
+# Modifed March 2018
 
 project (Yoshimi)
 cmake_minimum_required (VERSION 3.0)
@@ -30,11 +30,15 @@ set (CMAKE_CXX_STANDARD 11) # we seem to need both for
 add_definitions(-std=gnu++11) # various versions of cmake
 
 # vvv
-add_definitions(-Wall)
-add_definitions(-Werror=format-security)
+#add_definitions(-Wall)
+#add_definitions(-Werror=format-security)
+#add_definitions(-Wpedantic)
+#add_definitions(-Wextra)
 # ^^^ comment these out on release pushes
 
-set (YOSHIMI_VERSION "1.5.6")
+set (YOSHIMI_VERSION "1.5.7")
+add_definitions (-DMIN_CONFIG_MAJOR=1)
+add_definitions (-DMIN_CONFIG_MINOR=5)
 
 file (WRITE version.txt "${YOSHIMI_VERSION}")
 
@@ -84,6 +88,7 @@ option (LV2Plugin "Build yoshimi lv2 plugin interface" ON)
 # developer info
 option (ShowGuiReports "Enable GUI control reports" OFF)
 option (ShowNoteOnTimes "Report Note-On Times" OFF)
+option (ReportNotes "Report Notes On/Off" OFF)
 
 
 set (BuildOptions_X86
@@ -343,7 +348,7 @@ set (Effects_sources
 )
 
 set (Misc_sources
-    Misc/ConfBuild.cpp  Misc/Config.cpp  Misc/SynthEngine.cpp  Misc/Bank.cpp  Misc/Splash.cpp
+    Misc/Config.cpp  Misc/SynthEngine.cpp  Misc/Bank.cpp  Misc/Splash.cpp
     Misc/Microtonal.cpp   Misc/Part.cpp  Misc/XMLwrapper.cpp  Misc/MiscFuncs.cpp   Misc/WavFile.cpp
 )
 
@@ -481,6 +486,10 @@ endif (ShowGuiReports)
 if (ShowNoteOnTimes)
     add_definitions (-DREPORT_NOTEON)
 endif (ShowNoteOnTimes)
+
+if (ReportNotes)
+    add_definitions (-DREPORT_NOTES_ON_OFF)
+endif (ReportNotes)
 
 add_definitions(-DDEFAULT_AUDIO=jack_audio)
 

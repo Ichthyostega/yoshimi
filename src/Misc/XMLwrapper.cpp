@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2014-2017, Will Godfrey
+    Copyright 2014-2018, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -22,7 +22,7 @@
 
     This file is derivative of original ZynAddSubFX code.
 
-    Modified December 2017
+    Modified March 2018
 */
 
 #include <zlib.h>
@@ -63,11 +63,17 @@ XMLwrapper::XMLwrapper(SynthEngine *_synth, bool _isYoshi) :
     memset(&parentstack, 0, sizeof(parentstack));
     tree = mxmlNewElement(MXML_NO_PARENT, "?xml version=\"1.0\" encoding=\"UTF-8\"?");
     mxml_node_t *doctype = mxmlNewElement(tree, "!DOCTYPE");
-    bool yoshiType = (synth->getRuntime().xmlType <= XML_PRESETS);
-    // cout << "yoshiType  " << yoshiType << "   isYoshi " << isYoshi << endl;
 
-    if (!yoshiType || !isYoshi)
+    if (isYoshi)
     {
+        //cout << "Our doctype" << endl;
+        mxmlElementSetAttr(doctype, "Yoshimi-data", NULL);
+        root = mxmlNewElement(tree, "Yoshimi-data");
+        information.yoshiType = 1;
+    }
+    else
+    {
+        //cout << "Zyn doctype" << endl;
         mxmlElementSetAttr(doctype, "ZynAddSubFX-data", NULL);
         root = mxmlNewElement(tree, "ZynAddSubFX-data");
         mxmlElementSetAttr(root, "version-major", "3");
@@ -75,12 +81,7 @@ XMLwrapper::XMLwrapper(SynthEngine *_synth, bool _isYoshi) :
         mxmlElementSetAttr(root, "ZynAddSubFX-author", "Nasca Octavian Paul");
         information.yoshiType = 0;
     }
-    else
-    {
-        mxmlElementSetAttr(doctype, "Yoshimi-data", NULL);
-        root = mxmlNewElement(tree, "Yoshimi-data");
-        information.yoshiType = 1;
-    }
+
     node = root;
     mxmlElementSetAttr(root, "Yoshimi-author", "Alan Ernest Calvert");
     string tmp = YOSHIMI_VERSION;
@@ -127,7 +128,7 @@ XMLwrapper::~XMLwrapper()
 }
 
 
-bool XMLwrapper::checkfileinformation(const string& filename)
+void XMLwrapper::checkfileinformation(const string& filename)
 {
     stackpos = 0;
     memset(&parentstack, 0, sizeof(parentstack));
@@ -137,24 +138,22 @@ bool XMLwrapper::checkfileinformation(const string& filename)
     tree = NULL;
     char *xmldata = doloadfile(filename);
     if (!xmldata)
-        return -1;
+        return;
 
     char *first = strstr(xmldata, "<!DOCTYPE Yoshimi-data>");
     information.yoshiType = (first!= NULL);
-    bool bRet = false; // we're not actually using this!
     char *start = strstr(xmldata, "<INFORMATION>");
     char *end = strstr(xmldata, "</INFORMATION>");
     if (!start || !end || start >= end)
     {
-        bRet = slowinfosearch(xmldata);
+        slowinfosearch(xmldata);
         delete [] xmldata;
-        return bRet;
+        return;
     }
 
     // Andrew: just make it simple
     // Will: but not too simple :)
     char *idx = start;
-    *end = 0; // fiddle to limit search - I can't find a better way :(
     unsigned short names = 0;
 
     /* the following could be in any order. We are checking for
@@ -184,31 +183,22 @@ bool XMLwrapper::checkfileinformation(const string& filename)
             information.PADsynth_used = 1;
     }
 
-    if (names == 7)
-    {
-        bRet = true;
-    }
-    else
-    {
-//        if (strstr(idx, "<INSTRUMENT_KIT>"))
-//            synth->getRuntime().Log("Oops! Shouldn't find it.");
-        *end = 0x3c; // restore full length
-        bRet = slowinfosearch(xmldata);
-    }
+    if (names != 7)
+        slowinfosearch(xmldata);
+
     delete [] xmldata;
-    return bRet;
+    return;
 }
 
 
-bool XMLwrapper::slowinfosearch(char *idx)
+void XMLwrapper::slowinfosearch(char *idx)
 {
     idx = strstr(idx, "<INSTRUMENT_KIT>");
     if (idx == NULL)
-        return false;
+        return;
 
     string mark;
     int max = NUM_KIT_ITEMS;
-
     /*
      * The following *must* exist, otherwise the file is corrupted.
      * They will always be in this order, which means we only need
@@ -218,7 +208,7 @@ bool XMLwrapper::slowinfosearch(char *idx)
      */
     idx = strstr(idx, "name=\"kit_mode\"");
     if (idx == NULL)
-        return false;
+        return;
     if (strncmp(idx + 16 , "value=\"0\"", 9) == 0)
         max = 1;
 
@@ -227,11 +217,11 @@ bool XMLwrapper::slowinfosearch(char *idx)
         mark = "<INSTRUMENT_KIT_ITEM id=\"" + asString(kitnum) + "\">";
         idx = strstr(idx, mark.c_str());
         if (idx == NULL)
-            return false;
+            return;
 
         idx = strstr(idx, "name=\"enabled\"");
         if (idx == NULL)
-            return false;
+            return;
         if (!strstr(idx, "name=\"enabled\" value=\"yes\""))
             continue;
 
@@ -239,7 +229,7 @@ bool XMLwrapper::slowinfosearch(char *idx)
         {
             idx = strstr(idx, "name=\"add_enabled\"");
             if (idx == NULL)
-                return false;
+                return;
             if (strncmp(idx + 26 , "yes", 3) == 0)
                 information.ADDsynth_used = 1;
         }
@@ -247,7 +237,7 @@ bool XMLwrapper::slowinfosearch(char *idx)
         {
             idx = strstr(idx, "name=\"sub_enabled\"");
             if (idx == NULL)
-                return false;
+                return;
             if (strncmp(idx + 26 , "yes", 3) == 0)
                 information.SUBsynth_used = 1;
         }
@@ -255,7 +245,7 @@ bool XMLwrapper::slowinfosearch(char *idx)
         {
             idx = strstr(idx, "name=\"pad_enabled\"");
             if (idx == NULL)
-                return false;
+                return;
             if (strncmp(idx + 26 , "yes", 3) == 0)
                 information.PADsynth_used = 1;
         }
@@ -263,11 +253,10 @@ bool XMLwrapper::slowinfosearch(char *idx)
           & information.SUBsynth_used
           & information.PADsynth_used)
         {
-//            synth->getRuntime().Log("Kit count " + asString(kitnum));
             break;
         }
     }
-  return true;
+  return;
 }
 
 

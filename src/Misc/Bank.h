@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2010, Alan Calvert
-    Copyright 2014-2015 Will Godfrey & others
+    Copyright 2014-2018 Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -21,7 +21,7 @@
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
     This file is a derivative of a ZynAddSubFX original.
-    Modified December 2017
+    Modified February 2018
 */
 
 #ifndef BANK_H
@@ -120,14 +120,17 @@ class Bank : private MiscFuncs
         bool savetoslot(size_t rootID, size_t bankID, int ninstrument, int npart);
         bool swapslot(unsigned int n1, unsigned int n2);
         void swapbanks(unsigned int firstID, unsigned int secondID);
-        string getBankName(int bankID);
+        string getBankName(int bankID, size_t rootID = 0xff);
         string getBankIDname(int bankID);
         int getBankSize(int bankID);
         bool setbankname(unsigned int BankID, string newname);
         bool loadbank(size_t rootID, size_t banknum);
-        bool newIDbank(string newbankdir, unsigned int bankID);
-        bool newbankfile(string newbankdir);
-        bool removebank(unsigned int bankID);
+        unsigned int exportBank(string exportdir, size_t rootID, unsigned int bankID);
+        unsigned int importBank(string importdir, size_t rootID, unsigned int bankID);
+        bool isDuplicate(size_t rootID, size_t bankID, int pos, const string filename);
+        bool newIDbank(string newbankdir, unsigned int bankID, size_t rootID = 0xff);
+        bool newbankfile(string newbankdir, size_t rootID);
+        unsigned int removebank(unsigned int bankID, size_t rootID = 255);
         void rescanforbanks(void);
         void clearBankrootDirlist(void);
         void removeRoot(size_t rootID);
@@ -165,6 +168,7 @@ class Bank : private MiscFuncs
         //string dirname;
         const string defaultinsname;
         const string xizext;
+        const string xiyext;
         const string force_bank_dir_file;
         SynthEngine *synth;
 

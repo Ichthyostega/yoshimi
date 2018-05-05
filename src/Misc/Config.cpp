@@ -5,7 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
     Copyright 2013, Nikita Zlobin
-    Copyright 2014-2017, Will Godfrey & others
+    Copyright 2014-2018, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -23,7 +23,7 @@
 
     This file is derivative of ZynAddSubFX original code.
 
-    Modified September 2017
+    Modified March 2018
 */
 
 #include <iostream>
@@ -49,7 +49,7 @@ using namespace std;
 #include "Misc/SynthEngine.h"
 #include "Misc/Config.h"
 #include "MasterUI.h"
-#include "ConfBuild.cpp"
+#include "ConfBuild.h"
 
 static char prog_doc[] =
     "Yoshimi " YOSHIMI_VERSION ", a derivative of ZynAddSubFX - "
@@ -61,29 +61,29 @@ string argline = "Yoshimi " + (string) YOSHIMI_VERSION + "\nBuild Number " + to_
 const char* argp_program_version = argline.c_str();
 
 static struct argp_option cmd_options[] = {
-    {"alsa-audio",        'A',  "<device>",   1,  "use alsa audio output" },
-    {"alsa-midi",         'a',  "<device>",   1,  "use alsa midi input" },
-    {"define-root",       'D',  "<path>",     0,  "define path to new bank root"},
-    {"buffersize",        'b',  "<size>",     0,  "set internal buffer size" },
-    {"no-gui",            'i',  NULL,         0,  "disable gui"},
-    {"gui",               'I',  NULL,         0,  "enable gui"},
-    {"no-cmdline",        'c',  NULL,         0,  "disable command line interface"},
-    {"cmdline",           'C',  NULL,         0,  "enable command line interface"},
-    {"jack-audio",        'J',  "<server>",   1,  "use jack audio output" },
-    {"jack-midi",         'j',  "<device>",   1,  "use jack midi input" },
-    {"autostart-jack",    'k',  NULL,         0,  "auto start jack server" },
-    {"auto-connect",      'K',  NULL,         0,  "auto connect jack audio" },
-    {"load",              'l',  "<file>",     0,  "load .xmz file" },
-    {"load-instrument",   'L',  "<file>",     0,  "load .xiz file" },
-    {"name-tag",          'N',  "<tag>",      0,  "add tag to clientname" },
-    {"samplerate",        'R',  "<rate>",     0,  "set alsa audio sample rate" },
-    {"oscilsize",         'o',  "<size>",     0,  "set AddSynth oscilator size" },
-    {"state",             'S',  "<file>",     1,  "load saved state, defaults to '$HOME/.config/yoshimi/yoshimi.state'" },
+    {"alsa-audio",        'A',  "<device>",   1,  "use alsa audio output", 0},
+    {"alsa-midi",         'a',  "<device>",   1,  "use alsa midi input", 0},
+    {"define-root",       'D',  "<path>",     0,  "define path to new bank root" , 0},
+    {"buffersize",        'b',  "<size>",     0,  "set internal buffer size", 0 },
+    {"no-gui",            'i',  NULL,         0,  "disable gui", 0},
+    {"gui",               'I',  NULL,         0,  "enable gui", 0},
+    {"no-cmdline",        'c',  NULL,         0,  "disable command line interface", 0},
+    {"cmdline",           'C',  NULL,         0,  "enable command line interface", 0},
+    {"jack-audio",        'J',  "<server>",   1,  "use jack audio output", 0},
+    {"jack-midi",         'j',  "<device>",   1,  "use jack midi input", 0},
+    {"autostart-jack",    'k',  NULL,         0,  "auto start jack server", 0},
+    {"auto-connect",      'K',  NULL,         0,  "auto connect jack audio", 0},
+    {"load",              'l',  "<file>",     0,  "load .xmz file", 0},
+    {"load-instrument",   'L',  "<file>",     0,  "load .xiz file", 0},
+    {"name-tag",          'N',  "<tag>",      0,  "add tag to clientname", 0},
+    {"samplerate",        'R',  "<rate>",     0,  "set alsa audio sample rate", 0},
+    {"oscilsize",         'o',  "<size>",     0,  "set AddSynth oscilator size", 0},
+    {"state",             'S',  "<file>",     1,  "load saved state, defaults to '$HOME/.config/yoshimi/yoshimi.state'", 0},
     #if defined(JACK_SESSION)
-        {"jack-session-uuid", 'U',  "<uuid>",     0,  "jack session uuid" },
-        {"jack-session-file", 'u',  "<file>",     0,  "load named jack session file" },
+        {"jack-session-uuid", 'U',  "<uuid>",     0,  "jack session uuid", 0},
+        {"jack-session-file", 'u',  "<file>",     0,  "load named jack session file", 0},
     #endif
-    { 0, }
+    { 0, 0, 0, 0, 0, 0}
 };
 
 unsigned int Config::Samplerate = 48000;
@@ -98,6 +98,7 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
     restoreState(false),
     stateChanged(false),
     restoreJackSession(false),
+    oldConfig(false),
     runSynth(true),
     finishedCLI(true),
     VirKeybLayout(0),
@@ -135,6 +136,7 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
     single_row_panel(1),
     NumAvailableParts(NUM_MIDI_CHANNELS),
     currentPart(0),
+    VUcount(0),
     channelSwitchType(0),
     channelSwitchCC(128),
     channelSwitchValue(0),
@@ -231,21 +233,22 @@ bool Config::Setup(int argc, char **argv)
     }
     if (restoreState)
     {
-        char * fp;
-        if (! StateFile.size()) goto no_state0;
-        else fp = new char [PATH_MAX];
+        char *fp = NULL;
+        if (!StateFile.size())
+            goto no_state;
 
-        if (! realpath (StateFile.c_str(), fp)) goto no_state1;
+        fp = realpath (StateFile.c_str(), NULL);
+        if (fp == NULL)
+            goto no_state;
+
         StateFile = fp;
-        delete (fp);
-
-        if (! isRegFile(StateFile))
+        free (fp);
+        if (!isRegFile(StateFile))
         {
-            no_state1: delete (fp);
-            no_state0: Log("Invalid state file specified for restore " + StateFile, 2);
+            no_state: Log("Invalid state file specified for restore " + StateFile, 2);
             return true;
         }
-        Log(StateFile);
+        Log("Using " + StateFile);
         restoreSessionData(StateFile, true);
         /* There is a single state file that contains both startup config
          * data that must be set early, and runtime data that must be set
@@ -457,7 +460,7 @@ bool Config::loadConfig(void)
     }
     else
     {
-        XMLwrapper *xml = new XMLwrapper(synth);
+        XMLwrapper *xml = new XMLwrapper(synth, true);
         if (!xml)
             Log("loadConfig failed XMLwrapper allocation");
         else
@@ -476,6 +479,13 @@ bool Config::loadConfig(void)
             if (isok)
                 Oscilsize = (int)truncf(powf(2.0f, ceil(log (Oscilsize - 1.0f) / logf(2.0))));
             delete xml;
+            if (synth->getUniqueId() == 0)
+            {
+                if (lastXMLmajor < MIN_CONFIG_MAJOR || lastXMLminor < MIN_CONFIG_MINOR)
+                    oldConfig = true;
+                else
+                    oldConfig = false;
+            }
         }
     }
     return isok;
@@ -617,7 +627,7 @@ bool Config::saveConfig(void)
 {
     bool result = false;
     xmlType = XML_CONFIG;
-    XMLwrapper *xmltree = new XMLwrapper(synth);
+    XMLwrapper *xmltree = new XMLwrapper(synth, true);
     if (!xmltree)
     {
         Log("saveConfig failed xmltree allocation", 2);
@@ -693,7 +703,7 @@ bool Config::saveSessionData(string savefile)
 {
     savefile = setExtension(savefile, "state");
     synth->getRuntime().xmlType = XML_STATE;
-    XMLwrapper *xmltree = new XMLwrapper(synth);
+    XMLwrapper *xmltree = new XMLwrapper(synth, true);
     if (!xmltree)
     {
         Log("saveSessionData failed xmltree allocation", 3);
@@ -728,7 +738,7 @@ bool Config::restoreSessionData(string sessionfile, bool startup)
         Log("Session file " + sessionfile + " not available", 2);
         goto end_game;
     }
-    if (!(xml = new XMLwrapper(synth)))
+    if (!(xml = new XMLwrapper(synth, true)))
     {
         Log("Failed to init xmltree for restoreState", 3);
         goto end_game;
@@ -1211,12 +1221,11 @@ static error_t parse_cmds (int key, char *arg, struct argp_state *state)
         default:
             return error_t(ARGP_ERR_UNKNOWN);
     }
-
     return error_t(0);
 }
 
 
-static struct argp cmd_argp = { cmd_options, parse_cmds, prog_doc };
+static struct argp cmd_argp = { cmd_options, parse_cmds, prog_doc, 0, 0, 0, 0};
 
 
 void Config::loadCmdArgs(int argc, char **argv)
@@ -1260,49 +1269,9 @@ void GuiThreadMsg::processGuiMessages()
                     guiMaster->updatepaths(msg->index);
                     break;
 
-                case GuiThreadMsg::UpdatePanel:
-                    guiMaster->updatepanel();
-                    break;
-
                 case GuiThreadMsg::UpdatePart:
                     guiMaster->updatepart();
                     guiMaster->updatepanel();
-                    break;
-
-                case GuiThreadMsg::UpdatePanelItem:
-                    if ( msg->data && msg->index < NUM_MIDI_PARTS)
-                    {
-                        guiMaster->updatelistitem(msg->index);
-                        guiMaster->updatepart();
-                    }
-                    break;
-
-                case GuiThreadMsg::UpdatePartProgram:
-                    if (msg->data && msg->index < NUM_MIDI_PARTS)
-                    {
-                        guiMaster->updatelistitem(msg->index);
-                        guiMaster->updatepartprogram(msg->index);
-                    }
-                    break;
-
-                case GuiThreadMsg::UpdateEffects:
-                    if (msg->data)
-                        guiMaster->updateeffects(msg->index);
-                    break;
-
-                case GuiThreadMsg::UpdateControllers:
-                    if (msg->data)
-                        guiMaster->updatecontrollers(msg->index);
-                    break;
-
-                case GuiThreadMsg::UpdateBankRootDirs:
-                    if (msg->data)
-                        guiMaster->updateBankRootDirs();
-                    break;
-
-                case GuiThreadMsg::RescanForBanks:
-                    if (msg->data && guiMaster->bankui)
-                        guiMaster->bankui->rescan_for_banks(false);
                     break;
 
                 case GuiThreadMsg::RefreshCurBank:

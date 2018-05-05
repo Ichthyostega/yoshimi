@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2010, Alan Calvert
-    Copyright 2014-2015, Will Godfrey & others
+    Copyright 2014-2018, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -22,7 +22,7 @@
 
     This file is a derivative of a ZynAddSubFX original.
 
-    Modified December 2017
+    Modified March 2018
 */
 
 #include <set>
@@ -51,6 +51,7 @@ using namespace std;
 Bank::Bank(SynthEngine *_synth) :
     defaultinsname(string(" ")),
     xizext(".xiz"),
+    xiyext(".xiy"),
     force_bank_dir_file(".bankdir"), // if this file exists in a directory, the
                                     // directory is considered a bank, even if
                                     // it doesn't contain an instrument file
@@ -129,7 +130,7 @@ bool Bank::setname(unsigned int ninstrument, string newname, int newslot)
     int chk = -1;
     int chk2 = -1;
     newfilepath += filename;
-    string oldfilepath = setExtension(getFullPath(currentRootID, currentBankID, ninstrument), "xiz");
+    string oldfilepath = setExtension(getFullPath(currentRootID, currentBankID, ninstrument), xizext);
     chk = rename(oldfilepath.c_str(), newfilepath.c_str());
     if (chk < 0)
     {
@@ -138,8 +139,8 @@ bool Bank::setname(unsigned int ninstrument, string newname, int newslot)
                 + newfilepath + ": " + string(strerror(errno)));
     }
 
-    newfilepath = setExtension(newfilepath, "xiy");
-    oldfilepath = setExtension(oldfilepath, "xiy");
+    newfilepath = setExtension(newfilepath, xiyext);
+    oldfilepath = setExtension(oldfilepath, xiyext);
     chk2 = rename(oldfilepath.c_str(), newfilepath.c_str());
     if (chk2 < 0)
     {
@@ -178,7 +179,7 @@ bool Bank::clearslot(unsigned int ninstrument)
     int chk2 = 0; // to stop complaints
     if (emptyslot(ninstrument))
         return true;
-    string tmpfile = setExtension(getFullPath(currentRootID, currentBankID, ninstrument), "xiy");
+    string tmpfile = setExtension(getFullPath(currentRootID, currentBankID, ninstrument), xiyext);
 
     if (isRegFile(tmpfile))
     {
@@ -186,7 +187,7 @@ bool Bank::clearslot(unsigned int ninstrument)
         if (chk < 0)
             synth->getRuntime().Log(asString(ninstrument) + " Failed to remove " + tmpfile);
     }
-    tmpfile = setExtension(tmpfile, "xiz");
+    tmpfile = setExtension(tmpfile, xizext);
     if (isRegFile(tmpfile))
     {
         chk2 = remove(tmpfile.c_str());
@@ -230,7 +231,7 @@ bool Bank::savetoslot(size_t rootID, size_t bankID, int ninstrument, int npart)
     if (saveType & 1) // legacy
         ok2 = synth->part[npart]->saveXML(fullpath, false);
 
-    fullpath = setExtension(fullpath, "xiy");
+    fullpath = setExtension(fullpath, xiyext);
     if (isRegFile(fullpath))
     {
         int chk = remove(fullpath.c_str());
@@ -257,11 +258,13 @@ bool Bank::savetoslot(size_t rootID, size_t bankID, int ninstrument, int npart)
 
 
 //Gets a bank name
-string Bank::getBankName(int bankID)
+string Bank::getBankName(int bankID, size_t rootID)
 {
-    if (roots [currentRootID].banks.count(bankID) == 0)
+    if (rootID > 0x7f)
+        rootID = currentRootID;
+    if (roots [rootID].banks.count(bankID) == 0)
         return "";
-    return string(roots [currentRootID].banks [bankID].dirname);
+    return string(roots [rootID].banks [bankID].dirname);
 }
 
 
@@ -345,7 +348,7 @@ bool Bank::loadbank(size_t rootID, size_t banknum)
         chkpath += candidate;
         if (isRegFile(chkpath))
         {
-            if (chkpath.rfind(".xiz") != string::npos && isRegFile(setExtension(chkpath, "xiy")))
+            if (chkpath.rfind(".xiz") != string::npos && isRegFile(setExtension(chkpath, xiyext)))
                 continue; // don't want .xiz if there is .xiy
 
             xizpos = candidate.rfind(".xiy");
@@ -383,10 +386,195 @@ bool Bank::loadbank(size_t rootID, size_t banknum)
 }
 
 
-// Makes a new bank with known ID. Does *not* make it current
-bool Bank::newIDbank(string newbankdir, unsigned int bankID)
+// Creates an external bank and copies in the contents of the IDd one
+unsigned int Bank::exportBank(string exportdir, size_t rootID, unsigned int bankID)
 {
-    if (!newbankfile(newbankdir))
+    if (rootID > 0x7f)
+        rootID = currentRootID;
+    string name = "";
+    string sourcedir = "";
+    bool ok = true;
+    if (roots.count(rootID) == 0)
+    {
+        name = "Root ID " + to_string(int(rootID)) + " doesn't exist";
+        ok = false;
+    }
+    if (ok && roots [rootID].banks.count(bankID) == 0)
+    {
+        name = "Bank " + to_string(bankID) + " is empty";
+        ok = false;
+    }
+    else
+        sourcedir = getRootPath(rootID) + "/" + getBankName(bankID, rootID);
+
+    if (ok && isDirectory(exportdir))
+    {
+        ok = false;
+        name = "Can't overwrite existing directory";
+    }
+    if (ok)
+    {
+        int result = mkdir(exportdir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        if (result < 0)
+        {
+            name = "Can't create external bank " + findleafname(exportdir);
+            ok = false;
+        }
+        else
+        {
+            DIR *dir = opendir(sourcedir.c_str());
+            struct dirent *fn;
+            int count = 0;
+            int missing = 0;
+            while ((fn = readdir(dir)))
+            {
+                string nextfile = string(fn->d_name);
+                if (copyFile(sourcedir + "/" + nextfile, exportdir + "/" + nextfile))
+                    ++missing;
+                else
+                    ++count;
+            }
+            if (count > 0)
+            {
+                name = "Copied out " + to_string(count) + " files to " + exportdir + " ";
+                if (missing > 2) // seem to get 2 phantoms :(
+                    name +=( "but failed to transfer" + to_string(missing));
+            }
+            else
+            {
+                name = "to transfer to " + exportdir; // failed
+                ok = false;
+            }
+        }
+    }
+
+    unsigned int msgID = miscMsgPush(name);
+    if (!ok)
+        msgID |= 0x1000;
+    return msgID;
+}
+
+
+// Creates a new bank and copies in the contents of the external one
+unsigned int Bank::importBank(string importdir, size_t rootID, unsigned int bankID)
+{
+    if (rootID > 0x7f)
+        rootID = currentRootID;
+    string name = "";
+    bool ok = true;
+    if (roots.count(rootID) == 0)
+    {
+        name = "Root ID " + to_string(int(rootID)) + " doesn't exist";
+        ok = false;
+    }
+
+    if (ok && roots [rootID].banks.count(bankID) != 0)
+    {
+        name = "Bank " + to_string(bankID) + " already contains " + getBankName(bankID, rootID);
+        ok = false;
+    }
+
+    if (ok)
+    {
+        DIR *dir = opendir(importdir.c_str());
+        if (dir == NULL)
+        {
+            name = "Can't find " + importdir;
+            ok = false;
+        }
+        else
+        {
+            string bankname = findleafname(importdir);
+            int repeats = 0;
+            string suffix = "";
+            while (isDirectory(getRootPath(rootID) + "/" + bankname + suffix))
+            {
+                ++repeats;
+                suffix = "~" + to_string(repeats);
+                //cout << ">" << suffix << endl;
+            }
+            bankname += suffix;
+            //cout << bankname << endl;
+            if (!newIDbank(bankname, bankID, rootID))
+            {
+                name = "Can't create bank " + bankname;
+                ok = false;
+            }
+            else
+            {
+                int count = 0;
+                int total = -2; // seem to get 2 phantoms :(
+                bool missing = false;
+                struct dirent *fn;
+                string exportfile = getRootPath(rootID) + "/" + getBankName(bankID, rootID);
+                while ((fn = readdir(dir)))
+                {
+                    string nextfile = string(fn->d_name);                    if (nextfile.rfind(".bankdir") != string::npos)
+                        continue; // new version will be generated
+                    ++total;
+                    if (nextfile.rfind(".xiy") != string::npos || nextfile.rfind(".xiz") != string::npos)
+                    {
+                        ++count;
+                        int pos = -1; // default for un-numbered
+                        int slash = nextfile.rfind("/") + 1;
+                        int hyphen = nextfile.rfind("-");
+                        if (hyphen > slash && (hyphen - slash) <= 4)
+                            pos = stoi(nextfile.substr(slash, hyphen)) - 1;
+
+                        if (copyFile(importdir + "/" + nextfile, exportfile + "/" + nextfile))
+                            missing = true;
+                        string stub;
+                        if (pos >= -1)
+                            stub = findleafname(nextfile).substr(hyphen + 1);
+                        else
+                            stub = findleafname(nextfile);
+                        if (!isDuplicate(rootID, bankID, pos, nextfile))
+                        {
+                            if (addtobank(rootID, bankID, pos, nextfile, stub))
+                                missing = true;
+                        }
+                    }
+                }
+                name = importdir;
+                if (count == 0)
+                    name += " : No valid instruments found";
+                else if (missing)
+                    name += " : Failed to copy some instruments";
+                else if (count < total)
+                    name = name + " : Ignored " + to_string(total - count)  + " unrecognised items";
+            }
+        }
+    }
+    unsigned int msgID = miscMsgPush(name);
+    if (!ok)
+        msgID |= 0x1000;
+    return msgID;
+}
+
+
+bool Bank::isDuplicate(size_t rootID, size_t bankID, int pos, const string filename)
+{
+    //cout << filename << " count " << roots [rootID].banks.count(bankID) << endl;
+    string path = getRootPath(rootID) + "/" + getBankName(bankID, rootID) + "/" + filename;
+    if (isRegFile(setExtension(path, xiyext)) && filename.rfind(xizext) < string::npos)
+        return 1;
+    if (isRegFile(setExtension(path, xizext)) && filename.rfind(xiyext) < string::npos)
+    {
+        InstrumentEntry &Ref = getInstrumentReference(rootID, bankID, pos);
+        Ref.yoshiType = true;
+        return 1;
+    }
+    return 0;
+}
+
+
+// Makes a new bank with known ID. Does *not* make it current
+bool Bank::newIDbank(string newbankdir, unsigned int bankID, size_t rootID)
+{
+    if (rootID > 0x7f)
+        rootID = currentRootID; // should be needed!
+
+    if (!newbankfile(newbankdir, rootID))
         return false;
     roots [currentRootID].banks [bankID].dirname = newbankdir;
     hints [currentRootID] [newbankdir] = bankID; // why do we need this?
@@ -395,14 +583,14 @@ bool Bank::newIDbank(string newbankdir, unsigned int bankID)
 
 
 // Performs the actual file operation for new banks
-bool Bank::newbankfile(string newbankdir)
+bool Bank::newbankfile(string newbankdir, size_t rootID)
 {
      if (getRootPath(currentRootID).empty())
     {
         synth->getRuntime().Log("Current bank root directory not set");
         return false;
     }
-    string newbankpath = getRootPath(currentRootID);
+    string newbankpath = getRootPath(rootID);
     if (newbankpath.at(newbankpath.size() - 1) != '/')
         newbankpath += "/";
     newbankpath += newbankdir;
@@ -426,46 +614,72 @@ bool Bank::newbankfile(string newbankdir)
 
 
 // Removes a bank and all its contents
-bool Bank::removebank(unsigned int bankID)
+unsigned int Bank::removebank(unsigned int bankID, size_t rootID)
 {
-    int chk;
+    int chk = 0;
+    if (rootID == 255)
+        rootID = currentRootID;
+    if (roots.count(rootID) == 0)
+    {
+        chk = 0x1000 | miscMsgPush("Root " + to_string(int(rootID)) + " is empty!");
+        return chk;
+    }
+    string bankName = getBankPath(rootID, bankID);
+    string IDfile = bankName + "/.bankdir";
+    FILE *tmpfile = fopen(IDfile.c_str(), "w+");
+    if (!tmpfile)
+        chk = 0x1000 | miscMsgPush("Can't delete from this location.");
+    else
+        fclose(tmpfile);
 
+    int ck1 = 0;
+    int ck2 = 0;
+    string name;
     for (int inst = 0; inst < BANK_SIZE; ++ inst)
     {
-        if (!roots [currentRootID].banks [bankID].instruments [inst].name.empty())
+        if (!roots [rootID].banks [bankID].instruments [inst].name.empty())
         {
-            chk = remove(getFullPath(currentRootID, bankID, inst).c_str());
-            if (chk < 0)
-            {
-                synth->getRuntime().Log(asString(inst) + " Failed to remove "
-                                        + getFullPath(currentRootID, bankID, inst) + " "
-                                        + string(strerror(errno)), 2);
-                return false;
-            }
-            deletefrombank(currentRootID, bankID, inst);
+            name = setExtension(getFullPath(currentRootID, bankID, inst), xiyext);
+            if (isRegFile(name))
+                ck1 = remove(name.c_str());
+            else
+                ck1 = 0;
+
+            name = setExtension(name, xizext);
+            if (isRegFile(name))
+                ck2 = remove(name.c_str());
+            else
+                ck2 = 0;
+
+            if (ck1 == 0 && ck2 == 0)
+                deletefrombank(rootID, bankID, inst);
+            else if (chk == 0) // only want to name one entry
+                    chk = 0x1000 | miscMsgPush(findleafname(name) + ". Others may also still exist.");
         }
     }
-    string tmp = getBankPath(currentRootID, bankID)+"/.bankdir";
-    if (!access(tmp.c_str(), W_OK))
-    {
-        chk = remove(tmp.c_str());
-        if (chk < 0)
+    if (chk > 0)
+        return chk;
+
+    if (isRegFile(IDfile))
+    { // only removed when bank cleared
+        if (remove(IDfile.c_str()) != 0)
         {
-            synth->getRuntime().Log("Failed to remove bank ID file "
-                                    + string(strerror(errno)), 2);
-            return false;
+            chk = 0x1000 | miscMsgPush(findleafname(name));
+            return chk;
         }
     }
-    chk = remove(getBankPath(currentRootID, bankID).c_str());
-    if (chk < 0)
+
+    if (remove(bankName.c_str()) != 0)
     {
-        synth->getRuntime().Log("Failed to remove bank"
-                                + asString(bankID) + ": "
-                                + string(strerror(errno)), 2);
-        return false;
+        chk = 0x1000 | miscMsgPush(bankName + ". Unrecognised contents still exist.");
+        return chk;
     }
-    roots [currentRootID].banks.erase(bankID);
-    return true;
+
+    roots [rootID].banks.erase(bankID);
+    if (rootID == currentRootID && bankID == currentBankID)
+        setCurrentBankID(0);
+    chk = miscMsgPush(bankName);
+    return chk;
 }
 
 
@@ -717,10 +931,10 @@ bool Bank::addtobank(size_t rootID, size_t bankID, int pos, const string filenam
     // see which engines are used
     if (synth->getRuntime().checksynthengines)
     {
-        string checkfile = setExtension(getFullPath(rootID, bankID, pos), "xiy");
+        string checkfile = setExtension(getFullPath(rootID, bankID, pos), xiyext);
         if (!isRegFile(checkfile))
-            checkfile = setExtension(getFullPath(rootID, bankID, pos), "xiz");
-        XMLwrapper *xml = new XMLwrapper(synth);
+            checkfile = setExtension(getFullPath(rootID, bankID, pos), xizext);
+        XMLwrapper *xml = new XMLwrapper(synth, true);
         xml->checkfileinformation(checkfile);
         instrRef.PADsynth_used = xml->information.PADsynth_used;
         instrRef.ADDsynth_used = xml->information.ADDsynth_used;
@@ -788,6 +1002,7 @@ void Bank::addDefaultRootDirs()
         "/usr/share/zynaddsubfx/banks",
         "/usr/local/share/zynaddsubfx/banks",
         string(getenv("HOME")) + "/banks",
+        localPath("/banks"),
         "end"
     };
     int i = 0;
@@ -797,7 +1012,6 @@ void Bank::addDefaultRootDirs()
         addRootDir(bankdirs [i]);
         ++ i;
     }
-    addRootDir(localPath("/banks"));
 
     while ( i >= 0)
     {
