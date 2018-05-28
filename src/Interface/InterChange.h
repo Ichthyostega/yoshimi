@@ -17,7 +17,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    Modified February 2018
+    Modified May 2018
 */
 
 #ifndef INTERCH_H
@@ -68,6 +68,7 @@ class InterChange : private MiscFuncs
         float returnLimits(CommandBlock *getData);
         unsigned char blockRead;
         void flagsWrite(unsigned int val){__sync_and_and_fetch(&flagsValue, val);}
+        unsigned int tick; // needs to be read by synth
 
     private:
         unsigned int flagsValue;
@@ -82,6 +83,7 @@ class InterChange : private MiscFuncs
         string resolveVector(CommandBlock *getData);
         string resolveMicrotonal(CommandBlock *getData);
         string resolveConfig(CommandBlock *getData);
+        string resolveBank(CommandBlock *getData);
         string resolveMain(CommandBlock *getData);
         string resolvePart(CommandBlock *getData);
         string resolveAdd(CommandBlock *getData);
@@ -95,8 +97,11 @@ class InterChange : private MiscFuncs
         string resolveEnvelope(CommandBlock *getData);
         string resolveEffects(CommandBlock *getData);
         bool showValue;
-        unsigned int tick;
         unsigned int lockTime;
+
+        unsigned int swapRoot1;
+        unsigned int swapBank1;
+        unsigned int swapInstrument1;
 
         void commandMidi(CommandBlock *getData);
         void vectorClear(int Nvector);

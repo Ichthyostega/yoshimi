@@ -22,7 +22,7 @@
 
     This file is derivative of original ZynAddSubFX code.
 
-    Modified March 2018
+    Modified April 2018
 */
 
 #include <zlib.h>
@@ -115,6 +115,8 @@ XMLwrapper::XMLwrapper(SynthEngine *_synth, bool _isYoshi) :
                 addparbool("enable_gui", synth->getRuntime().showGui);
                 addparbool("enable_splash", synth->getRuntime().showSplash);
                 addparbool("enable_CLI", synth->getRuntime().showCLI);
+                addparbool("enable_auto_instance", synth->getRuntime().autoInstance);
+                addparU("active_instances", synth->getRuntime().activeInstance);
             endbranch();
         }
     }
@@ -370,6 +372,12 @@ char *XMLwrapper::getXMLdata()
 }
 
 
+void XMLwrapper::addparU(const string& name, unsigned int val)
+{
+    addparams2("parU", "name", name.c_str(), "value", asString(val));
+}
+
+
 void XMLwrapper::addpar(const string& name, int val)
 {
     addparams2("par", "name", name.c_str(), "value", asString(val));
@@ -613,6 +621,23 @@ int XMLwrapper::getbranchid(int min, int max)
 }
 
 
+unsigned int XMLwrapper::getparU(const string& name, unsigned int defaultpar, unsigned int min, unsigned int max)
+{
+    node = mxmlFindElement(peek(), peek(), "parU", "name", name.c_str(), MXML_DESCEND_FIRST);
+    if (!node)
+        return defaultpar;
+    const char *strval = mxmlElementGetAttr(node, "value");
+    if (!strval)
+        return defaultpar;
+    unsigned int val = string2int(strval);
+    if (val < min)
+        val = min;
+    else if (val > max)
+        val = max;
+    return val;
+}
+
+
 int XMLwrapper::getpar(const string& name, int defaultpar, int min, int max)
 {
     node = mxmlFindElement(peek(), peek(), "par", "name", name.c_str(), MXML_DESCEND_FIRST);
@@ -653,6 +678,7 @@ int XMLwrapper::getparbool(const string& name, int defaultpar)
     char tmp = strval[0] | 0x20;
     return (tmp != '0' && tmp != 'n' && tmp != 'f') ? 1 : 0;
 }
+// case insensitive, anything other than '0', 'no', 'false' is treated as 'true'
 
 
 string XMLwrapper::getparstr(const string& name)

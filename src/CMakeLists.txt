@@ -17,7 +17,7 @@
 #   You should have received a copy of the GNU General Public License
 #   along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 
-# Modifed March 2018
+# Modifed May 2018
 
 project (Yoshimi)
 cmake_minimum_required (VERSION 3.0)
@@ -36,7 +36,7 @@ add_definitions(-std=gnu++11) # various versions of cmake
 #add_definitions(-Wextra)
 # ^^^ comment these out on release pushes
 
-set (YOSHIMI_VERSION "1.5.7")
+set (YOSHIMI_VERSION "1.5.8")
 add_definitions (-DMIN_CONFIG_MAJOR=1)
 add_definitions (-DMIN_CONFIG_MINOR=5)
 
@@ -461,6 +461,8 @@ add_definitions (-DXML_BANK=7)
 add_definitions (-DXML_HISTORY=8)
 add_definitions (-DXML_VECTOR=9)
 add_definitions (-DXML_MIDILEARN=10)
+
+add_definitions (-DNO_MSG=255)
 
 # these were previously (pointlessly) user configurable
 add_definitions (-DNUM_VOICES=8)

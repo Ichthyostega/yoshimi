@@ -23,7 +23,7 @@
 
     This file is derivative of original ZynAddSubFX code.
 
-    Modified March 2018
+    Modified May 2018
 */
 
 #define NOLOCKS
@@ -46,6 +46,8 @@ using namespace std;
 #include <unistd.h>
 
 extern void mainRegisterAudioPort(SynthEngine *s, int portnum);
+map<SynthEngine *, MusicClient *> synthInstances;
+SynthEngine *firstSynth = NULL;
 
 static unsigned int getRemoveSynthId(bool remove = false, unsigned int idx = 0)
 {
@@ -81,7 +83,6 @@ static vector<string> ScaleHistory;
 static vector<string> StateHistory;
 static vector<string> VectorHistory;
 static vector<string> MidiLearnHistory;
-
 
 SynthEngine::SynthEngine(int argc, char **argv, bool _isLV2Plugin, unsigned int forceId) :
     uniqueId(getRemoveSynthId(false, forceId)),
@@ -520,60 +521,78 @@ void SynthEngine::NoteOff(unsigned char chan, unsigned char note)
 
 int SynthEngine::RunChannelSwitch(int value)
 {
-    int unknown = 0;
-    if (Runtime.channelSwitchType == 1 || Runtime.channelSwitchType == 3) // single row / loop
+    static unsigned int timer = 0;
+    if ((interchange.tick - timer) > 511) // approx 60mS
+        timer = interchange.tick;
+    else if (Runtime.channelSwitchType > 2)
+        return 0; // de-bounced
+
+    switch (Runtime.channelSwitchType)
     {
-        if (Runtime.channelSwitchType == 1)
-        {
+        case 1: // single row
             if (value >= NUM_MIDI_CHANNELS)
                 return 1; // out of range
-        }
-        else if (value > 0)
-            value = (Runtime.channelSwitchValue + 1) % NUM_MIDI_CHANNELS; // loop
-        else
-            return 0; // do nothing if it's a switch off
-        Runtime.channelSwitchValue = value;
-        for (int ch = 0; ch < NUM_MIDI_CHANNELS; ++ch)
+            break;
+        case 2: // columns
         {
-            bool isVector = Runtime.vectordata.Enabled[ch];
-            if (ch != value)
+            if (value >= NUM_MIDI_PARTS)
+                return 1; // out of range
+            int chan = value & 0xf;
+            for (int i = chan; i < NUM_MIDI_PARTS; i += NUM_MIDI_CHANNELS)
             {
-                part[ch]->Prcvchn = NUM_MIDI_CHANNELS;
-                if (isVector)
-                {
-                    part[ch + NUM_MIDI_CHANNELS]->Prcvchn = NUM_MIDI_CHANNELS;
-                    part[ch + NUM_MIDI_CHANNELS * 2]->Prcvchn = NUM_MIDI_CHANNELS;
-                    part[ch + NUM_MIDI_CHANNELS * 3]->Prcvchn = NUM_MIDI_CHANNELS;
-                }
+                if (i != value)
+                    part[i]->Prcvchn = chan | NUM_MIDI_CHANNELS;
+                else
+                    part[i]->Prcvchn = chan;
             }
-            else
-            {
-                part[ch]->Prcvchn = 0;
-                if (isVector)
-                {
-                    part[ch + NUM_MIDI_CHANNELS]->Prcvchn = 0;
-                    part[ch + NUM_MIDI_CHANNELS * 2]->Prcvchn = 0;
-                    part[ch + NUM_MIDI_CHANNELS * 3]->Prcvchn = 0;
-                }
-            }
+            Runtime.channelSwitchValue = value;
+            return 0; // all OK
+            break;
         }
+        case 3: // loop
+            if (value == 0)
+                return 0; // do nothing - it's a switch off
+            value = (Runtime.channelSwitchValue + 1) % NUM_MIDI_CHANNELS;
+            break;
+        case 4: // twoway
+            if (value == 0)
+                return 0; // do nothing - it's a switch off
+            if (value >= 64)
+                value = (Runtime.channelSwitchValue + 1) % NUM_MIDI_CHANNELS;
+            else
+                value = (Runtime.channelSwitchValue + NUM_MIDI_CHANNELS - 1) % NUM_MIDI_CHANNELS;
+            // add in NUM_MIDI_CHANNELS so always positive
+            break;
+        default:
+            return 2; // unknown
     }
-    else if (Runtime.channelSwitchType == 2) // columns
+    // vvv column mode never gets here vvv
+    Runtime.channelSwitchValue = value;
+    for (int ch = 0; ch < NUM_MIDI_CHANNELS; ++ch)
     {
-        if (value >= NUM_MIDI_PARTS)
-            return 1; // out of range
-        int chan = value & 0xf;
-        for (int i = chan; i < NUM_MIDI_PARTS; i += NUM_MIDI_CHANNELS)
+        bool isVector = Runtime.vectordata.Enabled[ch];
+        if (ch != value)
         {
-            if (i != value)
-                part[i]->Prcvchn = chan | NUM_MIDI_CHANNELS;
-            else
-                part[i]->Prcvchn = chan;
+            part[ch]->Prcvchn = NUM_MIDI_CHANNELS;
+            if (isVector)
+            {
+                part[ch + NUM_MIDI_CHANNELS]->Prcvchn = NUM_MIDI_CHANNELS;
+                part[ch + NUM_MIDI_CHANNELS * 2]->Prcvchn = NUM_MIDI_CHANNELS;
+                part[ch + NUM_MIDI_CHANNELS * 3]->Prcvchn = NUM_MIDI_CHANNELS;
+            }
+        }
+        else
+        {
+            part[ch]->Prcvchn = 0;
+            if (isVector)
+            {
+                part[ch + NUM_MIDI_CHANNELS]->Prcvchn = 0;
+                part[ch + NUM_MIDI_CHANNELS * 2]->Prcvchn = 0;
+                part[ch + NUM_MIDI_CHANNELS * 3]->Prcvchn = 0;
+            }
         }
     }
-    else
-        unknown = 2; // unrecognised
-    return unknown;
+    return 0; // all OK
 }
 
 
@@ -708,24 +727,6 @@ void SynthEngine::SetZynControls(bool in_place)
 }
 
 
-unsigned int SynthEngine::exportBank(string exportfile, size_t rootID, unsigned int bankID)
-{
-    return bank.exportBank(exportfile, rootID, bankID);
-}
-
-
-unsigned int SynthEngine::importBank(string inportfile, size_t rootID, unsigned int bankID)
-{
-    return bank.importBank(inportfile, rootID, bankID);
-}
-
-
-unsigned int SynthEngine::removeBank(unsigned int bankID, size_t rootID)
-{
-    return bank.removebank(bankID, rootID);
-}
-
-
 int  SynthEngine::RootBank(int rootnum, int banknum)
 {
     CommandBlock getData;
@@ -750,7 +751,7 @@ int SynthEngine::SetRBP(CommandBlock *getData, bool notinplace)
     int originalRoot = bank.getCurrentRootID();
     int originalBank = bank.getCurrentBankID();
     bool ok = true;
-    bool hasProgChange = (program < 0xff || par2 < 0xff);
+    bool hasProgChange = (program < 0xff || par2 != NO_MSG);
 
     struct timeval tv1, tv2;
     if (notinplace && Runtime.showTimes && hasProgChange)
@@ -904,7 +905,7 @@ int SynthEngine::SetRBP(CommandBlock *getData, bool notinplace)
         msgID = miscMsgPush(name);
     }
     if (!ok)
-        msgID |= 0x1000;
+        msgID |= 0xFF0000;
     return msgID;
 }
 
@@ -3174,6 +3175,19 @@ float SynthHelper::getDetune(unsigned char type, unsigned short int coarsedetune
     return det;
 }
 
+SynthEngine *SynthEngine::getSynthFromId(unsigned int uniqueId)
+{
+    map<SynthEngine *, MusicClient *>::iterator itSynth;
+    SynthEngine *synth;
+    for (itSynth = synthInstances.begin(); itSynth != synthInstances.end(); ++ itSynth)
+    {
+        synth = itSynth->first;
+        if (synth->getUniqueId() == uniqueId)
+            return synth;
+    }
+    synth = synthInstances.begin()->first;
+    return synth;
+}
 
 MasterUI *SynthEngine::getGuiMaster(bool createGui)
 {
