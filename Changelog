@@ -1,4 +1,12 @@
-yoshimi 1.5.8
+yoshimi 1.5.8 M
+2018-6-1 Will
+* Set as bugfix release.
+* Set manual detection to ignore bugfix numbers.
+
+2018-5-31 Will
+* Corrected GUI handling of part saves.
+  Also improved label colour handling.
+* Corrected Envelope freemode delete point.
 
 2018-5-28 Will
 * Changed lstat to stat in MiscFuncs.cpp
@@ -2923,6 +2931,9 @@ yoshimi 1.3.9
 - Minor reorganisations.
 - Only relevant XML files now carry base parameters.
 - CLI no longer sets configChanged when altering the new banks file.
+
+2016-1-22 Will
+- Set bugfix version 1.3.8.2
 
 2016-1-22 Rob
 - Workaround to avoid cmake 3.4.1 bug by using our own routine to
