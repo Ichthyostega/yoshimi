@@ -11,10 +11,10 @@ Forwarded: yes
  1 file changed, 4 insertions(+)
 
 diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
-index 5e503ae..c7f8d19 100644
+index e84b40d..f2d4646 100644
 --- a/src/CMakeLists.txt
 +++ b/src/CMakeLists.txt
-@@ -124,6 +124,9 @@ set (BuildOptionsBasic
+@@ -127,6 +127,9 @@ set (BuildOptionsBasic
  set (BuildOptionsDebug
      "-O0 -g3 -ggdb -Wall -Wpointer-arith" CACHE STRING "Debug build flags")
  
@@ -24,7 +24,7 @@ index 5e503ae..c7f8d19 100644
  find_package (PkgConfig REQUIRED)
  if (PKG_CONFIG_FOUND)
      message(STATUS "Found pkg-config ${PKG_CONFIG_EXECUTABLE}")
-@@ -327,6 +330,7 @@ else (BuildForDebug)
+@@ -330,6 +333,7 @@ else (BuildForDebug)
              endif (BuildForCore2_X86_64)
          endif (BuildForAMD_X86_64)
      endif (BuildFor0ld_X86)

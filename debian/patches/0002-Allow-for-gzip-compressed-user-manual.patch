@@ -10,8 +10,7 @@ Since xdg-open is able to display a gzip compressed PDF, all we need to do
 is also to search for *.pdf.gz in the installed directories.
 ---
  src/Misc/MiscFuncs.cpp | 6 +++++-
- src/UI/MasterUI.fl     | 2 ++
- 2 files changed, 7 insertions(+), 1 deletion(-)
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
 diff --git a/src/Misc/MiscFuncs.cpp b/src/Misc/MiscFuncs.cpp
 index e84c6d1..171cc22 100644
@@ -30,16 +29,3 @@ index e84c6d1..171cc22 100644
          return line;
      return "";
  }
-diff --git a/src/UI/MasterUI.fl b/src/UI/MasterUI.fl
-index 08ad33e..a067876 100644
---- a/src/UI/MasterUI.fl
-+++ b/src/UI/MasterUI.fl
-@@ -338,6 +338,8 @@ class MasterUI {: {private GuiUpdates}
-                 --count;
-                 path = findfile("/usr/", (manfile + to_string(count)).c_str(), "pdf");
-                 if (path == "")
-+                   path = findfile("/usr/", (manfile + to_string(count)).c_str(), "pdf.gz");
-+                if (path == "")
-                    path = findfile("/home/", (manfile + to_string(count)).c_str(), "pdf");
-             }
- 
