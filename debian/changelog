@@ -1,9 +1,9 @@
-yoshimi (1.5.8.1-1ppa1~bionic1) bionic; urgency=low
+yoshimi (1.5.8.2-1~stretch) Lumiera-stretch-tools; urgency=medium
 
-  * Rebuild for Ubuntu/Bionic (18.04 LTS)
-  * hopefully last bugfixes for LAC.18 :-)
+  * New upstream bugfix release 1.5.8.2
+  * Rebuild/Backport for Debian/Stretch.
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Sun, 03 Jun 2018 17:32:15 +0200
+ -- Hermann Vosseler <deb@ichthyostega.de>  Wed, 06 Jun 2018 00:59:17 +0200
 
 yoshimi (1.5.8.1-1~stretch) Lumiera-stretch-tools; urgency=medium
 
