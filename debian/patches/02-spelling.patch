@@ -259,17 +259,6 @@
  void SUBnote::relasekey(void)
  {
      AmpEnvelope->relasekey();
---- yoshimi.orig/src/UI/LFOUI.fl
-+++ yoshimi/src/UI/LFOUI.fl
-@@ -167,7 +167,7 @@
-             xywh {70 70 100 20} labelfont 1 labelsize 10
-           }
-         }
--        Fl_Check_Button continous {
-+        Fl_Check_Button continuous {
-           label {C.}
-           callback {//
-           send_data(group, 6, o->value(), 0xc0);}
 --- yoshimi.orig/src/UI/MiscGui.cpp
 +++ yoshimi/src/UI/MiscGui.cpp
 @@ -150,7 +150,7 @@
