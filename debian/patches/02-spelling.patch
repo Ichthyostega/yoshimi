@@ -1,3 +1,9 @@
+Description: fixed spelling errors
+Author: IOhannes m zmölnig
+Forwarded: no
+Last-Update: 2018-06-26
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 --- yoshimi.orig/src/CMakeLists.txt
 +++ yoshimi/src/CMakeLists.txt
 @@ -17,7 +17,7 @@
