@@ -64,6 +64,7 @@ Description: Presets for Yoshimi
 Package: yoshimi-doc
 Section: doc
 Architecture: all
+Multi-Arch: foreign
 Depends:
  ${misc:Depends}
 Recommends:
