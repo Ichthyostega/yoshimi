@@ -1,3 +1,28 @@
+yoshimi (1.5.8.2-1) unstable; urgency=medium
+
+  * Team upload.
+  * New upstream version 1.5.8.2
+
+  [ Ondřej Nový ]
+  * d/copyright: Use https protocol in Format field
+  * d/control: Set Vcs-* to salsa.debian.org
+
+  [ Felipe Sateler ]
+  * Change maintainer address to debian-multimedia@lists.debian.org
+
+  [ IOhannes m zmölnig (Debian/GNU) ]
+  * Updated d/patches/
+    * Refreshed patches
+    * Dropped those applied upstream
+    * Added patch to fix spelling errors
+  * Set yoshimi-doc to be multi-arch foreign
+  * Updated d/copyright
+    * Direct users to system-provided CC0
+    * Refreshed copyright dates
+  * Bumped standards version to 4.1.4
+
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Tue, 26 Jun 2018 23:02:55 +0200
+
 yoshimi (1.5.6-3) unstable; urgency=medium
 
   * Add patch to fix FTBFS on hurd-i386. (Closes: #885249)
