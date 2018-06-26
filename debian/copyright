@@ -426,9 +426,8 @@ License: CC-BY-3.0
 
 
 License: CC0
-Comment:
  On Debian systems, the complete text of the Creative Commons CC0 1.0 Universal
- license (CC0-1.0) can be found in `/usr/share/common-licenses/CC0-1.0'.
+ license (CC0-1.0) can be found in "/usr/share/common-licenses/CC0-1.0".
 
 License: GPL-2+
  This program is free software: you can redistribute it and/or modify
