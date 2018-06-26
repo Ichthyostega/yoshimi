@@ -1,0 +1,352 @@
+--- yoshimi.orig/src/CMakeLists.txt
++++ yoshimi/src/CMakeLists.txt
+@@ -17,7 +17,7 @@
+ #   You should have received a copy of the GNU General Public License
+ #   along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
+ 
+-# Modifed June 2018
++# Modified June 2018
+ 
+ project (Yoshimi)
+ cmake_minimum_required (VERSION 3.0)
+@@ -96,7 +96,7 @@
+ 
+ set (BuildOptions_X86
+     "-O3 -msse -msse2 -mfpmath=sse -ffast-math -fomit-frame-pointer"
+-    CACHE STRING "basic X86 complier options"
++    CACHE STRING "basic X86 compiler options"
+ )
+ 
+ set (BuildOptions_X86_64AMD
+--- yoshimi.orig/src/DSP/AnalogFilter.h
++++ yoshimi/src/DSP/AnalogFilter.h
+@@ -72,7 +72,7 @@
+ 
+         float c[3], d[3]; // coefficients
+ 
+-        float oldc[3], oldd[3]; // old coefficients(used only if some filter paremeters changes very fast, and it needs interpolation)
++        float oldc[3], oldd[3]; // old coefficients(used only if some filter parameters changes very fast, and it needs interpolation)
+ 
+         float xd[3], yd[3]; // used if the filter is applied more times
+         bool needsinterpolation, firsttime;
+--- yoshimi.orig/src/Effects/Chorus.h
++++ yoshimi/src/Effects/Chorus.h
+@@ -52,7 +52,7 @@
+         unsigned char Pdelay;      // the delay (ms)
+         unsigned char Pfb;         // feedback
+         unsigned char Pflangemode; // how the LFO is scaled, to result chorus or flange
+-        unsigned char Poutsub;     // if I wish to substract the output instead of the adding it
++        unsigned char Poutsub;     // if I wish to subtract the output instead of the adding it
+         EffectLFO lfo;             // lfo-ul chorus
+ 
+ 
+--- yoshimi.orig/src/Effects/EffectMgr.cpp
++++ yoshimi/src/Effects/EffectMgr.cpp
+@@ -1,5 +1,5 @@
+ /*
+-    EffectMgr.cpp - Effect manager, an interface betwen the program and effects
++    EffectMgr.cpp - Effect manager, an interface between the program and effects
+ 
+     Original ZynAddSubFX author Nasca Octavian Paul
+     Copyright (C) 2002-2009 Nasca Octavian Paul
+--- yoshimi.orig/src/Effects/EffectMgr.h
++++ yoshimi/src/Effects/EffectMgr.h
+@@ -1,5 +1,5 @@
+ /*
+-    EffectMgr.h - Effect manager, an interface betwen the program and effects
++    EffectMgr.h - Effect manager, an interface between the program and effects
+ 
+     Original ZynAddSubFX author Nasca Octavian Paul
+     Copyright (C) 2002-2005 Nasca Octavian Paul
+--- yoshimi.orig/src/Interface/InterChange.cpp
++++ yoshimi/src/Interface/InterChange.cpp
+@@ -1086,7 +1086,7 @@
+     if (npart == 0xe8 && (control <= 32 || control >= 49))
+         synth->setAllPartMaps();
+ 
+-    bool isCli = ((type & 0x30) == 0x10); // elminate Gui redraw
++    bool isCli = ((type & 0x30) == 0x10); // eliminate Gui redraw
+     bool isGui = type & 0x20;
+     char button = type & 3;
+     string isValue;
+--- yoshimi.orig/src/Interface/MidiDecode.cpp
++++ yoshimi/src/Interface/MidiDecode.cpp
+@@ -666,7 +666,7 @@
+      * but it is the simplest way to ensure partonoff doesn't
+      * get out of step.
+      *
+-     * Changes won't normally happen while MIDI is incomming
++     * Changes won't normally happen while MIDI is incoming
+      * on the same channel.
+      */
+     if (ch < NUM_MIDI_CHANNELS)
+--- yoshimi.orig/src/Misc/Config.cpp
++++ yoshimi/src/Misc/Config.cpp
+@@ -182,7 +182,7 @@
+         /*
+          * These are needed here now, as for stand-alone they have
+          * been moved to main to give the users the impression of
+-         * a faster startup, and reduce the likelyhood of thinking
++         * a faster startup, and reduce the likelihood of thinking
+          * they failed and trying to start again.
+          */
+         synth->installBanks(synth->getUniqueId());
+--- yoshimi.orig/src/Misc/Config.h
++++ yoshimi/src/Misc/Config.h
+@@ -256,7 +256,7 @@
+     };
+     void *data; //custom data, must be static or handled by called, does nod freed by receiver
+     unsigned long length; //length of data member (determined by type member, can be set to 0, if data is known struct/class)
+-    unsigned int index; // if there is integer data, it can be passed through index (to remove aditional receiver logic)
++    unsigned int index; // if there is integer data, it can be passed through index (to remove additional receiver logic)
+     unsigned int type; // type of gui message (see enum above)
+     static void sendMessage(void *_data, unsigned int _type, unsigned int _index)
+     {
+--- yoshimi.orig/src/Misc/Microtonal.h
++++ yoshimi/src/Misc/Microtonal.h
+@@ -95,7 +95,7 @@
+         bool validline(const char *line);
+         int linetotunings(unsigned int nline, const char *line);
+         int loadline(FILE *file, char *line); // loads a line from the text file,
+-                                              // ignoring the lines beggining with "!"
++                                              // ignoring the lines beginning with "!"
+         int octavesize;
+ 
+         struct {
+--- yoshimi.orig/src/Misc/MiscFuncs.cpp
++++ yoshimi/src/Misc/MiscFuncs.cpp
+@@ -17,7 +17,7 @@
+     You should have received a copy of the GNU General Public License
+     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>
+ 
+-    Modifed May 2018
++    Modified May 2018
+ */
+ 
+ //#define REPORT_MISCMSG
+--- yoshimi.orig/src/Misc/MiscFuncs.h
++++ yoshimi/src/Misc/MiscFuncs.h
+@@ -17,7 +17,7 @@
+     You should have received a copy of the GNU General Public License
+     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
+ 
+-    Modifed March 2018
++    Modified March 2018
+ */
+ 
+ #ifndef MISCFUNCS_H
+--- yoshimi.orig/src/Misc/Part.cpp
++++ yoshimi/src/Misc/Part.cpp
+@@ -813,7 +813,7 @@
+ }
+ 
+ 
+-// Relase the sustained keys
++// Release the sustained keys
+ void Part::RelaseSustainedKeys(void)
+ {
+     // Let's call MonoMemRenote() on some conditions:
+@@ -829,7 +829,7 @@
+ }
+ 
+ 
+-// Relase all keys
++// Release all keys
+ void Part::RelaseAllKeys(void)
+ {
+     for (int i = 0; i < POLIPHONY; ++i)
+--- yoshimi.orig/src/Misc/XMLwrapper.h
++++ yoshimi/src/Misc/XMLwrapper.h
+@@ -94,7 +94,7 @@
+         // get the the branch_id and limits it between the min and max
+         // if min==max==0, it will not limit it
+         // if there isn't any id, will return min
+-        // this must be called only imediately after enterbranch()
++        // this must be called only immediately after enterbranch()
+         int getbranchid(int min, int max);
+ 
+         // it returns the parameter and limits it between min and max
+--- yoshimi.orig/src/Params/EnvelopeParams.cpp
++++ yoshimi/src/Params/EnvelopeParams.cpp
+@@ -61,7 +61,7 @@
+ 
+ float EnvelopeParams::getdt(char i)
+ {
+-    float result = (powf(2.0f, Penvdt[(int)i] / 127.0f * 12.0f) - 1.0f) * 10.0f; // miliseconds
++    float result = (powf(2.0f, Penvdt[(int)i] / 127.0f * 12.0f) - 1.0f) * 10.0f; // milliseconds
+     return result;
+ }
+ 
+--- yoshimi.orig/src/Params/PADnoteParameters.h
++++ yoshimi/src/Params/PADnoteParameters.h
+@@ -88,7 +88,7 @@
+                 unsigned char par2;
+             } amp;
+             bool autoscale;        //  if the scale of the harmonic profile is
+-                                   // computed automaticaly
++                                   // computed automatically
+             unsigned char onehalf; // what part of the base function is used to
+                                    // make the distribution
+         } Php;
+--- yoshimi.orig/src/Synth/ADnote.cpp
++++ yoshimi/src/Synth/ADnote.cpp
+@@ -351,7 +351,7 @@
+                                                getVoiceBaseFreq(nvoice),
+                                                adpars->VoicePar[nvoice].Presonance);
+ 
+-        // I store the first elments to the last position for speedups
++        // I store the first elements to the last position for speedups
+         for (int i = 0; i < OSCIL_SMP_EXTRA_SAMPLES; ++i)
+             NoteVoicePar[nvoice].OscilSmp[synth->oscilsize + i] = NoteVoicePar[nvoice].OscilSmp[i];
+ 
+@@ -583,7 +583,7 @@
+                                            getVoiceBaseFreq(nvoice),
+                                            adpars->VoicePar[nvoice].Presonance);                                                       //(gf)Modif of the above line.
+ 
+-        // I store the first elments to the last position for speedups
++        // I store the first elements to the last position for speedups
+         for (int i = 0; i < OSCIL_SMP_EXTRA_SAMPLES; ++i)
+             NoteVoicePar[nvoice].OscilSmp[synth->oscilsize + i] =
+                 NoteVoicePar[nvoice].OscilSmp[i];
+@@ -1904,7 +1904,7 @@
+                 for (i = 0; i < synth->sent_buffersize; ++i)
+                     bypassl[i] += tmpwavel[i] * NoteVoicePar[nvoice].Volume; // mono
+         }
+-        // check if there is necesary to proces the voice longer
++        // check if there is necessary to process the voice longer
+         // (if the Amplitude envelope isn't finished)
+         if (NoteVoicePar[nvoice].AmpEnvelope != NULL)
+             if (NoteVoicePar[nvoice].AmpEnvelope->finished())
+@@ -2077,7 +2077,7 @@
+ }
+ 
+ 
+-// Relase the key (NoteOff)
++// Release the key (NoteOff)
+ void ADnote::relasekey(void)
+ {
+     int nvoice;
+--- yoshimi.orig/src/Synth/Envelope.cpp
++++ yoshimi/src/Synth/Envelope.cpp
+@@ -95,7 +95,7 @@
+ }
+ 
+ 
+-// Relase the key (note envelope)
++// Release the key (note envelope)
+ void Envelope::relasekey(void)
+ {
+     if (keyreleased == 1)
+--- yoshimi.orig/src/Synth/OscilGen.cpp
++++ yoshimi/src/Synth/OscilGen.cpp
+@@ -99,7 +99,7 @@
+     Phmag[0] = 127;
+     Phmagtype = 0;
+     if (ADvsPAD)
+-        Prand = 127; // max phase randomness (usefull if the oscil will be
++        Prand = 127; // max phase randomness (useful if the oscil will be
+                      // imported to a ADsynth from a PADsynth
+     else
+         Prand = 64; // no randomness
+--- yoshimi.orig/src/Synth/SUBnote.cpp
++++ yoshimi/src/Synth/SUBnote.cpp
+@@ -797,7 +797,7 @@
+ }
+ 
+ 
+-// Relase Key (Note Off)
++// Release Key (Note Off)
+ void SUBnote::relasekey(void)
+ {
+     AmpEnvelope->relasekey();
+--- yoshimi.orig/src/UI/LFOUI.fl
++++ yoshimi/src/UI/LFOUI.fl
+@@ -167,7 +167,7 @@
+             xywh {70 70 100 20} labelfont 1 labelsize 10
+           }
+         }
+-        Fl_Check_Button continous {
++        Fl_Check_Button continuous {
+           label {C.}
+           callback {//
+           send_data(group, 6, o->value(), 0xc0);}
+--- yoshimi.orig/src/UI/MiscGui.cpp
++++ yoshimi/src/UI/MiscGui.cpp
+@@ -150,7 +150,7 @@
+ 
+ //        cout << "Con " << int(control) << "  Kit " << int(kititem) << "  Eng " << int(engine) << "  Ins " << int(insert) << endl;
+ 
+-    if (control == 0xfe && insert != 9) // just show a messge
++    if (control == 0xfe && insert != 9) // just show a message
+     {
+         synth->getGuiMaster()->words->copy_label(miscMsgPop(insertPar2).c_str());
+         synth->getGuiMaster()->cancel->hide();
+@@ -244,7 +244,7 @@
+     }
+ 
+     if (kititem != 0xff && kititem != 0 && engine != 0xff && control != 8 && part->kit[kititem].Penabled == false)
+-        return; // attempt to access non existant kititem
++        return; // attempt to access non existent kititem
+ 
+     if (insert < 0xff || (control != 8 && control != 222))
+     {
+--- yoshimi.orig/src/UI/PartUI.fl
++++ yoshimi/src/UI/PartUI.fl
+@@ -1586,7 +1586,7 @@
+             case FL_FOCUS:
+             case FL_UNFOCUS:
+                 ret = 1;                break;
+-            case FL_SHORTCUT:           // incase widget that isn't ours has focus
++            case FL_SHORTCUT:           // in case widget that isn't ours has focus
+             case FL_KEYDOWN:            // keyboard key pushed
+             //case FL_KEYUP:              // keyboard key released
+             {
+@@ -1894,7 +1894,7 @@
+             partkititem[kititem]->mutedcheck->value(valBool);
+             break;
+         case 16:
+-        case 18: // this will have been modifed for last key press
++        case 18: // this will have been modified for last key press
+             if (kitType)
+                partkititem[kititem]->minkcounter->value(valInt);
+             else
+@@ -1902,7 +1902,7 @@
+             break;
+ 
+         case 17:
+-        case 19: // this will have been modifed for last key press
++        case 19: // this will have been modified for last key press
+             if (kitType)
+                 partkititem[kititem]->maxkcounter->value(valInt);
+             else
+--- yoshimi.orig/src/UI/VirKeyboardUI.fl
++++ yoshimi/src/UI/VirKeyboardUI.fl
+@@ -28,7 +28,7 @@
+ yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
+ Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ 
+-This file is a derivative of origional ZynAddSubFX code
++This file is a derivative of original ZynAddSubFX code
+ 
+ Modified March 2018
+ } {in_source in_header
+--- yoshimi.orig/src/UI/WidgetPDial.cpp
++++ yoshimi/src/UI/WidgetPDial.cpp
+@@ -101,7 +101,7 @@
+     case FL_DRAG: // done this way to suppress warnings
+         if(event == FL_PUSH)
+         {
+-            Fl::belowmouse(this); /* Ensures other widgets receieve FL_RELEASE */
++            Fl::belowmouse(this); /* Ensures other widgets receive FL_RELEASE */
+             if (home > -0.5f && Fl::event_button() == 3)
+             {
+                 value(home);
+@@ -195,7 +195,7 @@
+          Fl_Window::current()->h());
+     cr = cairo_create (Xsurface);
+     cairo_translate(cr,cx+dh,cy+dh);
+-    //relative lenghts of the various parts:
++    //relative lengths of the various parts:
+     double rCint = 10.5/35;
+     double rCout = 13.0/35;
+     double rHand = 8.0/35;
