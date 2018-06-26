@@ -7,11 +7,9 @@ Forwarded: yes
  src/CMakeLists.txt |    4 ++++
  1 file changed, 4 insertions(+)
 
-Index: yoshimi/src/CMakeLists.txt
-===================================================================
 --- yoshimi.orig/src/CMakeLists.txt
 +++ yoshimi/src/CMakeLists.txt
-@@ -119,6 +119,9 @@ set (BuildOptionsBasic
+@@ -127,6 +127,9 @@
  set (BuildOptionsDebug
      "-O0 -g3 -ggdb -Wall -Wpointer-arith" CACHE STRING "Debug build flags")
  
@@ -21,7 +19,7 @@ Index: yoshimi/src/CMakeLists.txt
  find_package (PkgConfig REQUIRED)
  if (PKG_CONFIG_FOUND)
      message(STATUS "Found pkg-config ${PKG_CONFIG_EXECUTABLE}")
-@@ -322,6 +325,7 @@ else (BuildForDebug)
+@@ -330,6 +333,7 @@
              endif (BuildForCore2_X86_64)
          endif (BuildForAMD_X86_64)
      endif (BuildFor0ld_X86)
