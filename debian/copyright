@@ -24,7 +24,6 @@ Files: src/DSP/*
        src/Interface/MidiLearn.h
        src/Misc/Bank.cpp
        src/Misc/Bank.h
-       src/Misc/ConfBuild.cpp
        src/Misc/Config.h
        src/Misc/Microtonal.cpp
        src/Misc/Microtonal.h
