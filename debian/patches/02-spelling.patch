@@ -1,6 +1,6 @@
 Description: fixed spelling errors
 Author: IOhannes m zmölnig
-Forwarded: no
+Forwarded: yes https://github.com/Yoshimi/yoshimi/pull/43
 Last-Update: 2018-06-26
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
