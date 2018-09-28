@@ -16,7 +16,7 @@
     You should have received a copy of the GNU General Public License
     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 
-    Modified May 2018
+    Modified August 2018
 */
 
 #ifndef CMDINTERFACE_H
@@ -30,10 +30,40 @@ using namespace std;
 #include "Interface/InterChange.h"
 #include "Effects/EffectMgr.h"
 
-// all_fx and ins_fx MUST be the first two
-typedef enum { all_fx = 0, ins_fx, conf_lev, vect_lev, scale_lev, learn_lev, part_lev, } level_bits;
+/*
+ * These are all handled bit-wise so that you can set several
+ * at the same time. e.g. part, addSynth, resonance.
+ * There is a function that will clear just the highest bit that
+ * is set so you can then step back up the level tree.
+ * It is also possible to zero it so that you immediately go to
+ * the top level. Therefore, the sequence is important.
+ * 16 bits are currently defined out of a possible 32.
+ *
+ * AllFX, InsFX and Part MUST be the first three
+ */
+namespace LEVEL{
+    enum {
+        Top = 0, // set directly as an interger to clear down
+        AllFX = 0, // bits from here on
+        InsFX,
+        Part,
+        Config,
+        Vector,
+        Scale,
+        Learn,
+        AddSynth,
+        SubSynth,
+        PadSynth,
+        AddVoice,
+        Oscillator,
+        Resonance,
+        LFO, // amp/freq/filt
+        Filter, // params only (slightly confused with env)
+        Envelope, // amp/freq/filt/ Sub only band
+    };
+}
 
-typedef enum { todo_msg = 0, done_msg, value_msg, name_msg, opp_msg, what_msg, range_msg, low_msg, high_msg, unrecognised_msg, parameter_msg, level_msg, available_msg,} error_messages;
+typedef enum {exit_msg = -1, todo_msg = 0, done_msg, value_msg, name_msg, opp_msg, what_msg, range_msg, low_msg, high_msg, unrecognised_msg, parameter_msg, level_msg, available_msg, failed_msg,} error_messages;
 
 class CmdInterface : private MiscFuncs
 {
@@ -48,33 +78,53 @@ class CmdInterface : private MiscFuncs
         string historySelect(int listnum, int selection);
         void historyList(int listnum);
         int effectsList(bool presets = false);
-        int effects();
-        int volPanVel();
-        int keyShift(int part);
+        int effects(unsigned char controlType);
+        int partCommonControls(unsigned char controlType);
+        int LFOselect(unsigned char controlType);
+        int filterSelect(unsigned char controlType);
+        int envelopeSelect(unsigned char controlType);
         int commandList();
-        int commandMlearn();
-        int commandVector();
-        int commandConfig();
-        int commandScale();
-        int commandPart(bool justSet);
-        int commandReadnSet();
+        string findStatus(bool show);
+        int contextToEngines(void);
+        int toggle(void);
+        bool lineEnd(unsigned char controlType);
+        int commandMlearn(unsigned char controlType);
+        int commandVector(unsigned char controlType);
+        int commandConfig(unsigned char controlType);
+        int commandScale(unsigned char controlType);
+        int addSynth(unsigned char controlType);
+        int subSynth(unsigned char controlType);
+        int padSynth(unsigned char controlType);
+        int addVoice(unsigned char controlType);
+        int waveform(unsigned char controlType);
+        int commandPart(bool justSet, unsigned char controlType);
+        int commandReadnSet(unsigned char controlType);
+        float readControl(unsigned char control, unsigned char part, unsigned char kit = 0xff, unsigned char engine = 0xff, unsigned char insert = 0xff, unsigned char parameter = 0xff, unsigned char par2 = 0xff);
+        void readLimits(float value, unsigned char type, unsigned char control, unsigned char part, unsigned char kit, unsigned char engine, unsigned char insert, unsigned char parameter, unsigned char par2);
+        int sendNormal(float value, unsigned char type, unsigned char control, unsigned char part, unsigned char kit = 0xff, unsigned char engine = 0xff, unsigned char insert = 0xff, unsigned char parameter = 0xff, unsigned char par2 = 0xff);
         int sendDirect(float value, unsigned char type, unsigned char control, unsigned char part, unsigned char kit = 0xff, unsigned char engine = 0xff, unsigned char insert = 0xff, unsigned char parameter = 0xff, unsigned char par2 = 0xff, unsigned char request = 0xff);
-        bool cmdIfaceProcessCommand();
+        int cmdIfaceProcessCommand(char *cCmd);
         char *cCmd;
         char *point;
         SynthEngine *synth;
         char welcomeBuffer [128];
-
+        int reply;
+        string replyString;
+        int filterVowelNumber;
+        int filterFormantNumber;
+        int insertType;
+        int voiceNumber;
+        int kitMode;
+        int kitNumber;
         int npart;
+
         int nFX;
         int nFXtype;
         int nFXpreset;
         int chan;
         int axis;
         int mline;
-        unsigned int level;
-        string replyString;
-        bool isRead;
+        unsigned int context;
 };
 
 #endif
