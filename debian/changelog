@@ -1,3 +1,29 @@
+yoshimi (1.5.9-1~stretch) Lumiera-stretch-tools; urgency=medium
+
+  * New upstream version 1.5.8
+  * Rebuild/Backport for Debian/Stretch.
+  * unofficial DEB package by Ichthyostega
+
+  [ Ondřej Nový ]
+  * d/copyright: Use https protocol in Format field
+  * d/control: Set Vcs-* to salsa.debian.org
+
+  [ Felipe Sateler ]
+  * Change maintainer address to debian-multimedia@lists.debian.org
+
+  [ IOhannes m zmölnig (Debian/GNU) ]
+  * Updated d/patches/
+    * Refreshed patches
+    * Dropped those applied upstream
+    * Added patch to fix spelling errors
+  * Set yoshimi-doc to be multi-arch foreign
+  * Updated d/copyright
+    * Direct users to system-provided CC0
+    * Refreshed copyright dates
+  * Bumped standards version to 4.1.4
+
+ -- Hermann Vosseler <deb@ichthyostega.de>  Fri, 28 Sep 2018 04:23:55 +0200
+
 yoshimi (1.5.8.2-1ppa1~bionic1) bionic; urgency=low
 
   * Rebuild for Ubuntu/Bionic (18.04 LTS)
