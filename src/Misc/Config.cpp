@@ -23,7 +23,7 @@
 
     This file is derivative of ZynAddSubFX original code.
 
-    Modified May 2018
+    Modified September 2018
 */
 
 #include <iostream>
@@ -57,7 +57,7 @@ static char prog_doc[] =
     "Copyright 2009-2011 Alan Calvert, "
     "Copyright 20012-2013 Jeremy Jongepier and others, "
     "Copyright 20014-2017 Will Godfrey and others";
-string argline = "Yoshimi " + (string) YOSHIMI_VERSION + "\nBuild Number " + to_string(BUILD_NUMBER);
+string argline = "Yoshimi " + (string) YOSHIMI_VERSION;// + "\nBuild Number " + to_string(BUILD_NUMBER);
 const char* argp_program_version = argline.c_str();
 
 static struct argp_option cmd_options[] = {
@@ -95,6 +95,7 @@ bool         Config::showSplash = true;
 bool         Config::showCLI = true;
 bool         Config::autoInstance = false;
 unsigned int Config::activeInstance = 0;
+int          Config::showCLIcontext = 1;
 
 Config::Config(SynthEngine *_synth, int argc, char **argv) :
     restoreState(false),
@@ -138,6 +139,10 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
     single_row_panel(1),
     NumAvailableParts(NUM_MIDI_CHANNELS),
     currentPart(0),
+    currentBank(0),
+    currentRoot(0),
+    tempBank(0),
+    tempRoot(0),
     VUcount(0),
     channelSwitchType(0),
     channelSwitchCC(128),
@@ -185,7 +190,7 @@ bool Config::Setup(int argc, char **argv)
          * a faster startup, and reduce the likelyhood of thinking
          * they failed and trying to start again.
          */
-        synth->installBanks(synth->getUniqueId());
+        synth->installBanks();
         synth->loadHistory();
         return true;
     }
@@ -550,6 +555,7 @@ bool Config::extractBaseParameters(XMLwrapper *xml)
     showCLI = xml->getparbool("enable_CLI", showCLI);
     autoInstance = xml->getparbool("enable_auto_instance", autoInstance);
     activeInstance = xml->getparU("active_instances", 0);
+    showCLIcontext = xml->getpar("show_CLI_context", 1, 0, 2);
     xml->exitbranch(); // BaseParameters
     return true;
 }
@@ -627,9 +633,12 @@ bool Config::extractConfigData(XMLwrapper *xml)
 
     //misc
     checksynthengines = xml->getpar("check_pad_synth", checksynthengines, 0, 1);
-    tempRoot = xml->getpar("root_current_ID", 0, 0, 127);
+    if (tempRoot == 0)
+        tempRoot = xml->getpar("root_current_ID", 0, 0, 127);
+    //else
+        //cout << "root? " << xml->getpar("root_current_ID", 0, 0, 127) << endl;
+    if (tempBank == 0)
     tempBank = xml->getpar("bank_current_ID", 0, 0, 127);
-
     xml->exitbranch(); // CONFIGURATION
     return true;
 }
@@ -811,7 +820,12 @@ void Config::LogError(const string &msg)
 #ifndef YOSHIMI_LV2_PLUGIN
 void Config::StartupReport(MusicClient *musicClient)
 {
-    Log(string(argp_program_version));
+    bool fullInfo = (synth->getUniqueId() == 0);
+    if (fullInfo)
+    {
+        Log(argline);
+        Log("Build Number " + to_string(BUILD_NUMBER), 1);
+    }
     Log("Clientname: " + musicClient->midiClientName());
     string report = "Audio: ";
     switch (audioEngine)
@@ -847,9 +861,12 @@ void Config::StartupReport(MusicClient *musicClient)
         midiDevice = "default";
     report += (" -> '" + midiDevice + "'");
     Log(report, 2);
-    Log("Oscilsize: " + asString(synth->oscilsize), 2);
-    Log("Samplerate: " + asString(synth->samplerate), 2);
-    Log("Period size: " + asString(synth->buffersize), 2);
+    if (fullInfo)
+    {
+        Log("Oscilsize: " + asString(synth->oscilsize), 2);
+        Log("Samplerate: " + asString(synth->samplerate), 2);
+        Log("Period size: " + asString(synth->buffersize), 2);
+    }
 }
 #endif
 
@@ -901,7 +918,7 @@ bool Config::startThread(pthread_t *pth, void *(*thread_fn)(void*), void *arg,
                     int prio = rtprio - priodec;
                     if (prio < 1)
                         prio = 1;
-                    Log(name + " priority is " + to_string(prio), 2);
+                    Log(name + " priority is " + to_string(prio), 1);
                     prio_params.sched_priority = prio;
                     if ((chk = pthread_attr_setschedparam(&attr, &prio_params)))
                     {

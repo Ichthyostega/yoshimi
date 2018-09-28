@@ -17,7 +17,7 @@
     You should have received a copy of the GNU General Public License
     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 
-    Modified May 2018
+    Modified September 2018
 */
 
 #include "YoshimiLV2Plugin.h"
@@ -52,6 +52,7 @@
 #define YOSHIMI_LV2_STATE__StateChanged      "http://lv2plug.in/ns/ext/state#StateChanged"
 
 extern SynthEngine *firstSynth;
+extern int startInstance;
 
 typedef enum {
     LV2_OPTIONS_INSTANCE,
@@ -539,7 +540,7 @@ const LV2_Program_Descriptor *YoshimiLV2Plugin::getProgram(uint32_t index)
     if (flatbankprgs.empty())
     {
         Bank &bankObj = synth->getBankRef();
-        const BankEntryMap &banks = bankObj.getBanks(bankObj.getCurrentRootID());
+        const BankEntryMap &banks = bankObj.getBanks(synth->getRuntime().currentRoot);
         BankEntryMap::const_iterator itB;
         InstrumentEntryMap::const_iterator itI;
         for (itB = banks.begin(); itB != banks.end(); ++itB)

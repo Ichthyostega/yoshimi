@@ -22,7 +22,7 @@
 
     This file is derivative of ZynAddSubFX original code.
 
-    Modified April 2018
+    Modified September 2018
 */
 
 #ifndef CONFIG_H
@@ -109,6 +109,7 @@ class Config : public MiscFuncs
         static bool          showCLI;
         static bool          autoInstance;
         static unsigned int  activeInstance;
+        static int           showCLIcontext;
 
         bool          runSynth;
         bool          finishedCLI;
@@ -144,8 +145,6 @@ class Config : public MiscFuncs
         bool          xmlmax;
         bool          configChanged;
         int           rtprio;
-        int           tempRoot;
-        int           tempBank;
         int           midi_bank_root;
         int           midi_bank_C;
         int           midi_upper_voice_C;
@@ -157,6 +156,10 @@ class Config : public MiscFuncs
         int           single_row_panel;
         int           NumAvailableParts;
         int           currentPart;
+        unsigned int  currentBank;
+        unsigned int  currentRoot;
+        int           tempBank;
+        int           tempRoot;
         int           noteOnSent; // note test
         int           noteOnSeen;
         int           noteOffSent;
