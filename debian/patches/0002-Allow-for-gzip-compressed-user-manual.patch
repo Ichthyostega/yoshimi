@@ -13,7 +13,7 @@ is also to search for *.pdf.gz in the installed directories.
  1 file changed, 5 insertions(+), 1 deletion(-)
 
 diff --git a/src/Misc/MiscFuncs.cpp b/src/Misc/MiscFuncs.cpp
-index e84c6d1..171cc22 100644
+index 5fe9725..f23ca3c 100644
 --- a/src/Misc/MiscFuncs.cpp
 +++ b/src/Misc/MiscFuncs.cpp
 @@ -267,7 +267,11 @@ string MiscFuncs::findfile(string path, string filename, string extension)

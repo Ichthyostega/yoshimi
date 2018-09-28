@@ -11,7 +11,7 @@ Forwarded: yes
  1 file changed, 4 insertions(+)
 
 diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
-index e84b40d..f2d4646 100644
+index 10dffae..65b5c62 100644
 --- a/src/CMakeLists.txt
 +++ b/src/CMakeLists.txt
 @@ -127,6 +127,9 @@ set (BuildOptionsBasic
