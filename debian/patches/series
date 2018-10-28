@@ -1,3 +1,5 @@
 01-gcc_flags.patch
 0002-Allow-for-gzip-compressed-user-manual.patch
 0003-spelling.patch
+0004-Accumulated-development-from-1.5.9-release-to-28.10..patch
+0005-Accumulated-development-deletions.patch
