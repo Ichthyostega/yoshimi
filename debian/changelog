@@ -1,10 +1,11 @@
-yoshimi (1.5.9-1~stretch.hiv+1) UNRELEASED; urgency=medium
+yoshimi (1.5.9-1+preview1.5.10.RC1~stretch+1) Lumiera-stretch-tools; urgency=low
 
-  * INTERNAL incremental DEB package (development preview)
-  * includes ongoing development on master up to 28.10.2018 (b75e09)
+  * Rebuild for stretch-backports.
+  * INTERNAL incremental DEB package (release testing preview)
+  * includes ongoing development on master up to 9.12.2018 (1da6f1e)
   * Build for personal use on Debian/Stretch
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Mon, 29 Oct 2018 00:39:06 +0100
+ -- Hermann Vosseler <deb@ichthyostega.de>  Mon, 17 Dec 2018 03:51:34 +0100
 
 yoshimi (1.5.9-1ppa1~bionic1) bionic; urgency=low
 
