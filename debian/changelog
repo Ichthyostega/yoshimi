@@ -1,3 +1,10 @@
+yoshimi (1.5.9-1+preview1.5.10.RC1ppa1~bionic1) bionic; urgency=low
+
+  * Rebuild for Ubuntu/Bionic (18.04 LTS)
+  * NOTE: preview / test build only / to be superseded
+
+ -- Hermann Vosseler <deb@ichthyostega.de>  Mon, 17 Dec 2018 05:22:41 +0100
+
 yoshimi (1.5.9-1+preview1.5.10.RC1~stretch+1) Lumiera-stretch-tools; urgency=low
 
   * Rebuild for stretch-backports.
