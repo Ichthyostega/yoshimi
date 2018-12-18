@@ -1,7 +1,8 @@
-yoshimi (1.5.9-1+preview1.5.10.RC1~stretch+4) UNRELEASED; urgency=low
+yoshimi (1.5.9-1+preview1.5.10.RC1~stretch+5) UNRELEASED; urgency=low
 
   * Build experiments to narrow down sonic changes since last release
     * now completely reverted all PRNG changes
+    * the re-apply the initial change to the new PRNG
 
  -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 18 Dec 2018 02:26:32 +0100
 

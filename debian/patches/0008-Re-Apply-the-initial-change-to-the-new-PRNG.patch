@@ -1,0 +1,518 @@
+From: abrolag <willgodfrey@musically.me.uk>
+Date: Wed, 28 Nov 2018 23:04:21 +0000
+Subject: Re-Apply the initial change to the new PRNG
+
+git cherry-pick 5ff7a65f1
+
+Inplemented a new prng with no external libraries
+---
+ Changelog                |   5 +++
+ src/CMakeLists.txt       |   6 ---
+ src/Misc/MiscFuncs.h     |  28 +++++++++++++
+ src/Misc/Part.cpp        |   2 +
+ src/Misc/SynthEngine.cpp |  13 +-----
+ src/Misc/SynthEngine.h   |  41 +++---------------
+ src/Synth/ADnote.cpp     |  28 ++++---------
+ src/Synth/OscilGen.cpp   |  22 +++-------
+ src/Synth/OscilGen.h     | 106 ++++++++++++++---------------------------------
+ 9 files changed, 85 insertions(+), 166 deletions(-)
+
+diff --git a/Changelog b/Changelog
+index 14b94a6..7dd7cf1 100644
+--- a/Changelog
++++ b/Changelog
+@@ -28,6 +28,11 @@ yoshimi 1.5.10 rc1
+ * CLI List part gives detailed current status.
+   It gives further details if in part context.
+ 
++2018-11-28 Will
++* Inplemented a new prng with no external libraries
++  based on "A small noncryptographic PRNG"
++  by Bob Jenkins
++
+ 2018-11-27 Will
+ * Randomness can now be disabled for test purposes.
+   Enabe #define NORANDOM in globals.h
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index ecbf782..1b20bb5 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -137,12 +137,6 @@ else (PKG_CONFIG_FOUND)
+ endif (PKG_CONFIG_FOUND)
+ 
+ include (CheckFunctionExists)
+-# musl systems don’t have random_r() and also need argp-standalone
+-check_function_exists(random_r randomR)
+-
+-if (randomR)
+-    add_definitions(-DHAVE_RANDOM_R)
+-endif(randomR)
+ 
+ check_function_exists(exp10f EXP10F)
+ 
+diff --git a/src/Misc/MiscFuncs.h b/src/Misc/MiscFuncs.h
+index ae20a7c..7a9f903 100644
+--- a/src/Misc/MiscFuncs.h
++++ b/src/Misc/MiscFuncs.h
+@@ -95,6 +95,34 @@ class MiscFuncs
+         float dB2rap(float dB);
+         float rap2dB(float rap);
+         sem_t miscmsglock;
++
++        /*
++         * The following prng is based on
++         * "A small noncryptographic PRNG"
++         *              by
++         *          Bob Jenkins
++         */
++        unsigned int rnga;
++        unsigned int rngb;
++        unsigned int rngc;
++        unsigned int rngd;
++        inline unsigned int prngval()
++        {
++            unsigned int e = rnga - ((rngb << 27) | (rngb >> 5));
++            rnga = rngb ^ ((rngc << 17) | (rngc >> 15));
++            rngb = rngc + rngd;
++            rngc = rngd + e;
++            rngd = e + rnga;
++            return rngd;
++        }
++
++        void prnginit(unsigned seed)
++        {
++            rnga = 0xf1ea5eed, rngb = rngc = rngd = seed;
++            for (int i = 0; i < 20; ++i)
++            (   void)prngval();
++        }
++
+ };
+ 
+ void invSignal(float *sig, size_t len);
+diff --git a/src/Misc/Part.cpp b/src/Misc/Part.cpp
+index 3e2c5f4..259f63f 100644
+--- a/src/Misc/Part.cpp
++++ b/src/Misc/Part.cpp
+@@ -364,11 +364,13 @@ void Part::NoteOn(int note, int velocity, bool renote)
+ 
+         // Humanise
+         // cout << "\n" << notebasefreq << endl;
++#ifndef NORANDOM
+         if (!Pdrummode && Pfrand >= 1) // otherwise 'off'
+             // this is an approximation to keep the math simple and is
+             // about 1 cent out at 50 cents
+             notebasefreq *= (1.0f + ((synth->numRandom() - 0.5f) * Pfrand * 0.00115f));
+         // cout << notebasefreq << endl;
++#endif
+ 
+         // Portamento
+         if (oldfreq < 1.0f)
+diff --git a/src/Misc/SynthEngine.cpp b/src/Misc/SynthEngine.cpp
+index 487aebd..18cc38c 100644
+--- a/src/Misc/SynthEngine.cpp
++++ b/src/Misc/SynthEngine.cpp
+@@ -226,18 +226,6 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
+         goto bail_out;
+     }*/
+ 
+-    memset(random_state, 0, sizeof(random_state));
+-#if (HAVE_RANDOM_R)
+-    memset(&random_buf, 0, sizeof(random_buf));
+-
+-    if (initstate_r(samplerate + buffersize + oscilsize, random_state,
+-                    sizeof(random_state), &random_buf))
+-        Runtime.Log("SynthEngine Init failed on general randomness");
+-#else
+-    if (!initstate(samplerate + buffersize + oscilsize, random_state, sizeof(random_state)))
+-        Runtime.Log("SynthEngine Init failed on general randomness");
+-#endif
+-
+     if (oscilsize < (buffersize / 2))
+     {
+         Runtime.Log("Enforcing oscilsize to half buffersize, "
+@@ -439,6 +427,7 @@ void SynthEngine::defaults(void)
+     Runtime.lastfileseen.clear();
+     for (int i = 0; i < 7; ++i)
+         Runtime.lastfileseen.push_back(Runtime.userHome);
++    prnginit(time(NULL));
+ 
+ #ifdef REPORT_NOTES_ON_OFF
+     Runtime.noteOnSent = 0; // note test
+diff --git a/src/Misc/SynthEngine.h b/src/Misc/SynthEngine.h
+index 5513aa2..10606c2 100644
+--- a/src/Misc/SynthEngine.h
++++ b/src/Misc/SynthEngine.h
+@@ -259,14 +259,6 @@ class SynthEngine : private SynthHelper, MiscFuncs
+         pthread_mutex_t *processLock;
+ 
+         char random_state[256];
+-        float random_0_1;
+-
+-#if (HAVE_RANDOM_R)
+-        struct random_data random_buf;
+-        int32_t random_result;
+-#else
+-        long int random_result;
+-#endif
+ 
+     public:
+         MasterUI *guiMaster; // need to read this in InterChange::returns
+@@ -281,42 +273,19 @@ class SynthEngine : private SynthHelper, MiscFuncs
+ 
+ inline float SynthEngine::numRandom(void)
+ {
+-    int ret;
+-#if (HAVE_RANDOM_R)
+-    ret = random_r(&random_buf, &random_result);
+-#else
+-    random_result = random();
+-    ret = 0;
+-#endif
+-
+-    if (!ret)
+-    {
+-        random_0_1 = (float)random_result / (float)INT_MAX;
+-        random_0_1 = (random_0_1 > 1.0f) ? 1.0f : random_0_1;
+-        random_0_1 = (random_0_1 < 0.0f) ? 0.0f : random_0_1;
+ #ifndef NORANDOM
+-        return random_0_1;
+-#endif
+-    }
++    return prngval() * 2.328306435454494e-10;
++#else
+     return 0.5f;
++#endif
+ }
+ 
+ inline unsigned int SynthEngine::randomSE(void)
+ {
+-#if (HAVE_RANDOM_R)
+-    if (!random_r(&random_buf, &random_result))
+-#ifndef NORANDOM
+-        return random_result + INT_MAX / 2;
+-#endif
+-    return INT_MAX / 2;
+-#else
+-
+ #ifndef NORANDOM
+-    random_result = random();
++    return prngval() >> 1;
+ #else
+-    random_result = 0;
+-#endif
+-    return (unsigned int)random_result + INT_MAX / 2;
++    return INT_MAX / 2;
+ #endif
+ }
+ 
+diff --git a/src/Synth/ADnote.cpp b/src/Synth/ADnote.cpp
+index 5c3d53c..8862ac5 100644
+--- a/src/Synth/ADnote.cpp
++++ b/src/Synth/ADnote.cpp
+@@ -21,7 +21,7 @@
+     Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ 
+     This file is derivative of original ZynAddSubFX code.
+-    Modified October 2018
++    Modified November 2018
+ */
+ 
+ #include <cmath>
+@@ -107,12 +107,18 @@ ADnote::ADnote(ADnoteParameters *adpars_, Controller *ctl_, float freq_,
+     else
+         NoteGlobalPar.Punch.Enabled = 0;
+ 
++
+     for (int nvoice = 0; nvoice < NUM_VOICES; ++nvoice)
+     {
+         for (int i = 0; i < 14; i++)
+             pinking[nvoice][i] = 0.0;
+ 
+-        adpars->VoicePar[nvoice].OscilSmp->newrandseed(); // so it really will be random
++        adpars->VoicePar[nvoice].OscilSmp->prnginit(basefreq);
++        /*
++        * Rationale
++        * with the new prng we have 128 terabytes of calls before a repeat, so one
++        * re-seed per voice is more than enough!
++        */
+         NoteVoicePar[nvoice].OscilSmp = NULL;
+         NoteVoicePar[nvoice].FMSmp = NULL;
+         NoteVoicePar[nvoice].VoiceOut = NULL;
+@@ -347,8 +353,6 @@ ADnote::ADnote(ADnoteParameters *adpars_, Controller *ctl_, float freq_,
+         int vc = nvoice;
+         if (adpars->VoicePar[nvoice].Pextoscil != -1)
+             vc = adpars->VoicePar[nvoice].Pextoscil;
+-        if (!adpars->GlobalPar.Hrandgrouping)
+-            adpars->VoicePar[vc].OscilSmp->newrandseed();
+         int oscposhi_start =
+             adpars->VoicePar[vc].OscilSmp->get(NoteVoicePar[nvoice].OscilSmp,
+                                                getVoiceBaseFreq(nvoice),
+@@ -579,8 +583,6 @@ void ADnote::ADlegatonote(float freq_, float velocity_, int portamento_,
+         int vc = nvoice;
+         if (adpars->VoicePar[nvoice].Pextoscil != -1)
+             vc = adpars->VoicePar[nvoice].Pextoscil;
+-        if (!adpars->GlobalPar.Hrandgrouping)
+-            adpars->VoicePar[vc].OscilSmp->newrandseed();
+ 
+         adpars->VoicePar[vc].OscilSmp->get(NoteVoicePar[nvoice].OscilSmp,
+                                            getVoiceBaseFreq(nvoice),
+@@ -706,17 +708,7 @@ void ADnote::ADlegatonote(float freq_, float velocity_, int portamento_,
+         if (NoteVoicePar[nvoice].FMEnabled != NONE
+             && NoteVoicePar[nvoice].FMVoice < 0)
+         {
+-            adpars->VoicePar[nvoice].FMSmp->newrandseed();
+-
+             //Perform Anti-aliasing only on MORPH or RING MODULATION
+-
+-            int vc = nvoice;
+-            if (adpars->VoicePar[nvoice].PextFMoscil != -1)
+-                vc = adpars->VoicePar[nvoice].PextFMoscil;
+-
+-            if (!adpars->GlobalPar.Hrandgrouping)
+-                adpars->VoicePar[vc].FMSmp->newrandseed();
+-
+             for (int i = 0; i < OSCIL_SMP_EXTRA_SAMPLES; ++i)
+                 NoteVoicePar[nvoice].FMSmp[synth->oscilsize + i] =
+                     NoteVoicePar[nvoice].FMSmp[i];
+@@ -963,7 +955,6 @@ void ADnote::initParameters(void)
+         if (NoteVoicePar[nvoice].FMEnabled != NONE
+            && NoteVoicePar[nvoice].FMVoice < 0)
+         {
+-            adpars->VoicePar[nvoice].FMSmp->newrandseed();
+             NoteVoicePar[nvoice].FMSmp =
+                 (float*)fftwf_malloc((synth->oscilsize + OSCIL_SMP_EXTRA_SAMPLES) * sizeof(float));
+ 
+@@ -979,9 +970,6 @@ void ADnote::initParameters(void)
+                || (NoteVoicePar[nvoice].FMEnabled == RING_MOD))
+                freqtmp = getFMVoiceBaseFreq(nvoice);
+ 
+-            if (!adpars->GlobalPar.Hrandgrouping)
+-                adpars->VoicePar[vc].FMSmp->newrandseed();
+-
+             for (int k = 0; k < unison_size[nvoice]; ++k)
+                 oscposhiFM[nvoice][k] =
+                     (oscposhi[nvoice][k] + adpars->VoicePar[vc].FMSmp->
+diff --git a/src/Synth/OscilGen.cpp b/src/Synth/OscilGen.cpp
+index 1096553..c0f793f 100644
+--- a/src/Synth/OscilGen.cpp
++++ b/src/Synth/OscilGen.cpp
+@@ -46,8 +46,7 @@ OscilGen::OscilGen(FFTwrapper *fft_, Resonance *res_, SynthEngine *_synth) :
+     ADvsPAD(false),
+     tmpsmps((float*)fftwf_malloc(_synth->oscilsize * sizeof(float))),
+     fft(fft_),
+-    res(res_),
+-    randseed(1)
++    res(res_)
+ {
+     setpresettype("Poscilgen");
+     FFTwrapper::newFFTFREQS(&outoscilFFTfreqs, synth->halfoscilsize);
+@@ -965,7 +964,7 @@ void OscilGen::shiftharmonics(void)
+ void OscilGen::prepare(void)
+ {
+     float a, b, c, d, hmagnew;
+-    memset(random_state, 0, sizeof(random_state));
++/*    memset(random_state, 0, sizeof(random_state));
+ #if (HAVE_RANDOM_R)
+     memset(&random_buf, 0, sizeof(random_buf));
+     if (initstate_r(synth->randomSE(), random_state,
+@@ -974,7 +973,7 @@ void OscilGen::prepare(void)
+ #else
+     if (!initstate(synth->randomSE(), random_state, sizeof(random_state)))
+         synth->getRuntime().Log("OscilGen failed to init general randomness");
+-#endif
++#endif*/
+ 
+     if (oldbasepar != Pbasefuncpar
+         || oldbasefunc != Pcurrentbasefunc
+@@ -1313,17 +1312,6 @@ int OscilGen::get(float *smps, float freqHz, int resonance)
+     // Harmonic Amplitude Randomness
+     if (freqHz > 0.1 && !ADvsPAD)
+     {
+-        memset(harmonic_random_state, 0, sizeof(harmonic_random_state));
+-#if (HAVE_RANDOM_R)
+-        memset(&harmonic_random_buf, 0, sizeof(harmonic_random_buf));
+-        if (initstate_r(randseed, harmonic_random_state,
+-                    sizeof(harmonic_random_state), &harmonic_random_buf))
+-            synth->getRuntime().Log("OscilGen failed to init harmonic amplitude amplitude randomness");
+-#else
+-	if (!initstate(randseed, harmonic_random_state, sizeof(harmonic_random_state)))
+-            synth->getRuntime().Log("OscilGen failed to init harmonic amplitude amplitude randomness");
+-#endif
+-
+         float power = Pamprandpower / 127.0f;
+         float normalize = 1.0f / (1.2f - power);
+         switch (Pamprandtype)
+@@ -1333,7 +1321,7 @@ int OscilGen::get(float *smps, float freqHz, int resonance)
+                 power = powf(15.0f, power);
+                 for (int i = 1; i < nyquist - 1; ++i)
+                 {
+-                    float amp = powf(harmonicRandom(), power) * normalize;
++                    float amp = powf(numRandom(), power) * normalize;
+                     outoscilFFTfreqs.c[i] *= amp;
+                     outoscilFFTfreqs.s[i] *= amp;
+                 }
+@@ -1342,7 +1330,7 @@ int OscilGen::get(float *smps, float freqHz, int resonance)
+             case 2:
+                 power = power * 2.0f - 0.5f;
+                 power = powf(15.0f, power) * 2.0f;
+-                float rndfreq = TWOPI * harmonicRandom();
++                float rndfreq = TWOPI * numRandom();
+                 for (int i = 1 ; i < nyquist - 1; ++i)
+                 {
+                     float amp = powf(fabsf(sinf(i * rndfreq)), power) * normalize;
+diff --git a/src/Synth/OscilGen.h b/src/Synth/OscilGen.h
+index ef16562..c09c249 100644
+--- a/src/Synth/OscilGen.h
++++ b/src/Synth/OscilGen.h
+@@ -22,7 +22,7 @@
+ 
+     This file is derivative of original ZynAddSubFX code.
+ 
+-    Modified March 2018
++    Modified November 2018
+ */
+ 
+ #ifndef OSCIL_GEN_H
+@@ -65,10 +65,6 @@ class OscilGen : public Presets, private WaveShapeSamples
+         float getLimits(CommandBlock *getData);
+         void convert2sine();
+ 
+-        // Make a new random seed for Amplitude Randomness -
+-        //   should be called every noteon event
+-        inline void newrandseed(void) { randseed = (unsigned int)randomOG(); }
+-
+         // Parameters
+ 
+         /**
+@@ -171,8 +167,6 @@ class OscilGen : public Presets, private WaveShapeSamples
+         float basefunc_spike(float x, float a);
+         float basefunc_circle(float x, float a);
+ 
+-        float harmonicRandom(void);
+-
+         // Internal Data
+         unsigned char oldbasefunc,
+                       oldbasepar,
+@@ -204,92 +198,54 @@ class OscilGen : public Presets, private WaveShapeSamples
+ 
+         Resonance *res;
+ 
+-        unsigned int randseed;
+-
+-        float random_0_1;
+         char random_state[256];
+ 
+-#if (HAVE_RANDOM_R)
+-        int32_t random_result;
+-        struct random_data random_buf;
+-#else
+-        long int random_result;
+-#endif
++        /*
++         * The following prng is based on
++         * "A small noncryptographic PRNG"
++         *              by
++         *          Bob Jenkins
++         */
+ 
+-        float harmonic_random_0_1;
+-        char harmonic_random_state[256];
++        unsigned int rnga;
++        unsigned int rngb;
++        unsigned int rngc;
++        unsigned int rngd;
++        inline unsigned int prngval()
++        {
++            unsigned int e = rnga - ((rngb << 27) | (rngb >> 5));
++            rnga = rngb ^ ((rngc << 17) | (rngc >> 15));
++            rngb = rngc + rngd;
++            rngc = rngd + e;
++            rngd = e + rnga;
++            return rngd;
++        }
+ 
+-#if (HAVE_RANDOM_R)
+-        int32_t harmonic_random_result;
+-        struct random_data harmonic_random_buf;
+-#else
+-        long int harmonic_random_result;
+-#endif
++    public:
++        inline void prnginit(unsigned seed)
++        {
++            rnga = 0xf1ea5eed, rngb = rngc = rngd = seed;
++            for (int i = 0; i < 20; ++i)
++            (   void)prngval();
++        }
+ };
+ 
+ 
+ inline float OscilGen::numRandom(void)
+ {
+-    int ret;
+-#if (HAVE_RANDOM_R)
+-    ret = random_r(&random_buf, &random_result);
+-#else
+-    random_result = random();
+-    ret = 0;
+-#endif
+-
+-    if (!ret)
+-    {
+-        random_0_1 = (float)random_result / (float)INT_MAX;
+-        random_0_1 = (random_0_1 > 1.0f) ? 1.0f : random_0_1;
+-        random_0_1 = (random_0_1 < 0.0f) ? 0.0f : random_0_1;
+ #ifndef NORANDOM
+-        return random_0_1;
+-#endif
+-    }
+-    return 0.5f;
+-}
+-
+-
+-inline float OscilGen::harmonicRandom(void)
+-{
+-    int ret;
+-#if (HAVE_RANDOM_R)
+-    ret = random_r(&harmonic_random_buf, &harmonic_random_result);
++    return prngval() * 2.328306435454494e-10;
+ #else
+-    harmonic_random_result = random();
+-    ret = 0;
+-#endif
+-
+-    if (!ret)
+-    {
+-        harmonic_random_0_1 = (float)harmonic_random_result / (float)INT_MAX;
+-        harmonic_random_0_1 = (harmonic_random_0_1 > 1.0f) ? 1.0f : harmonic_random_0_1;
+-        harmonic_random_0_1 = (harmonic_random_0_1 < 0.0f) ? 0.0f : harmonic_random_0_1;
+-#ifndef NORANDOM
+-        return harmonic_random_0_1;
+-#endif
+-    }
+     return 0.5f;
++#endif
+ }
+ 
+-
+ inline unsigned int OscilGen::randomOG(void)
+ {
+-#if (HAVE_RANDOM_R)
+-    if (!random_r(&random_buf, &random_result))
+ #ifndef NORANDOM
+-        return random_result + INT_MAX / 2;
+-#endif
+-    return INT_MAX;
++    return prngval() >> 1;
+ #else
+-
+-#ifndef NORANDOM
+-    random_result = random();
+-#else
+-    random_result = 0;
+-#endif
+-    return (unsigned int)random_result + INT_MAX / 2;
++    return INT_MAX / 2;
+ #endif
+ }
+ 
