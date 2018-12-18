@@ -4,5 +4,4 @@
 0004-Accumulated-development-from-1.5.9-release-to-28.10..patch
 0005-Accumulated-development-deletions.patch
 0006-Accumulated-development-from-28.10.2018-to-1.5.10.RC1.patch
-0007-re-enable-reseed.patch
-0008-also-enable-debug-output-of-generated-random-numbers.patch
+0007-Revert-all-changes-to-the-random-number-generator.patch
