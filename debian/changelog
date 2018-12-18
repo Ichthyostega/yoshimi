@@ -1,3 +1,9 @@
+yoshimi (1.5.9-1+preview1.5.10.RC1~stretch+2) UNRELEASED; urgency=low
+
+  * Build experiments to narrow down sonic changes since last release
+
+ -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 18 Dec 2018 02:26:32 +0100
+
 yoshimi (1.5.9-1+preview1.5.10.RC1~stretch+1) Lumiera-stretch-tools; urgency=low
 
   * Rebuild for stretch-backports.

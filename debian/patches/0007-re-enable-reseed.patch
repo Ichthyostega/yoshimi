@@ -1,0 +1,24 @@
+From: Ichthyostega <prg@ichthyostega.de>
+Date: Tue, 18 Dec 2018 02:47:13 +0100
+Subject: re-enable reseed
+
+---
+ src/Synth/ADnote.cpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/Synth/ADnote.cpp b/src/Synth/ADnote.cpp
+index 7aa7282..a57522e 100644
+--- a/src/Synth/ADnote.cpp
++++ b/src/Synth/ADnote.cpp
+@@ -134,9 +134,9 @@ ADnote::ADnote(ADnoteParameters *adpars_, Controller *ctl_, float freq_,
+         * Adding the voice number in the seed ensures they're all different.
+         * Also moved here so only set by sounding voices!
+         *
+-        adpars->VoicePar[nvoice].OscilSmp->prngreseed(synth->interchange.tick);
+-        cout << "1st V" << nvoice << " call " << adpars->VoicePar[nvoice].OscilSmp->numRandom() << endl;
+         */
++        adpars->VoicePar[nvoice].OscilSmp->prngreseed(synth->interchange.tick);
++//      cout << "1st V" << nvoice << " call " << adpars->VoicePar[nvoice].OscilSmp->numRandom() << endl;
+ 
+         int BendAdj = adpars->VoicePar[nvoice].PBendAdjust - 64;
+         if (BendAdj % 24 == 0)
