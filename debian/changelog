@@ -1,4 +1,4 @@
-yoshimi (1.5.9-1+preview1.5.10.RC1~stretch+2) UNRELEASED; urgency=low
+yoshimi (1.5.9-1+preview1.5.10.RC1~stretch+3) UNRELEASED; urgency=low
 
   * Build experiments to narrow down sonic changes since last release
 

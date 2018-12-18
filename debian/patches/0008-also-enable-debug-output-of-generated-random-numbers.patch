@@ -1,0 +1,21 @@
+From: Ichthyostega <prg@ichthyostega.de>
+Date: Tue, 18 Dec 2018 04:07:44 +0100
+Subject: also enable debug output of generated random numbers
+
+---
+ src/Synth/ADnote.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/Synth/ADnote.cpp b/src/Synth/ADnote.cpp
+index a57522e..55d9381 100644
+--- a/src/Synth/ADnote.cpp
++++ b/src/Synth/ADnote.cpp
+@@ -136,7 +136,7 @@ ADnote::ADnote(ADnoteParameters *adpars_, Controller *ctl_, float freq_,
+         *
+         */
+         adpars->VoicePar[nvoice].OscilSmp->prngreseed(synth->interchange.tick);
+-//      cout << "1st V" << nvoice << " call " << adpars->VoicePar[nvoice].OscilSmp->numRandom() << endl;
++        cout << "1st V" << nvoice << " call " << adpars->VoicePar[nvoice].OscilSmp->numRandom() << endl;
+ 
+         int BendAdj = adpars->VoicePar[nvoice].PBendAdjust - 64;
+         if (BendAdj % 24 == 0)
