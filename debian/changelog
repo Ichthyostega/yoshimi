@@ -1,3 +1,19 @@
+yoshimi (1.5.9-1+preview1.5.10.RC2ppa1~bionic1) bionic; urgency=low
+
+  * Rebuild RC2 for Ubuntu/Bionic (18.04 LTS)
+  * NOTE: preview / test build only / to be superseded
+
+ -- Hermann Vosseler <deb@ichthyostega.de>  Wed, 19 Dec 2018 02:48:40 +0100
+
+yoshimi (1.5.9-1+preview1.5.10.RC2~stretch+1) Lumiera-stretch-tools; urgency=medium
+
+  * include last upstream changes for RC2
+  * INTERNAL incremental DEB package (release testing preview)
+  * includes ongoing development on master up to 18.12.2018 (9c44ec1)
+  * Build for personal use on Debian/Stretch
+
+ -- Hermann Vosseler <deb@ichthyostega.de>  Wed, 19 Dec 2018 02:40:12 +0100
+
 yoshimi (1.5.9-1+preview1.5.10.RC1ppa1~bionic1) bionic; urgency=low
 
   * Rebuild for Ubuntu/Bionic (18.04 LTS)
@@ -7,7 +23,6 @@ yoshimi (1.5.9-1+preview1.5.10.RC1ppa1~bionic1) bionic; urgency=low
 
 yoshimi (1.5.9-1+preview1.5.10.RC1~stretch+1) Lumiera-stretch-tools; urgency=low
 
-  * Rebuild for stretch-backports.
   * INTERNAL incremental DEB package (release testing preview)
   * includes ongoing development on master up to 9.12.2018 (1da6f1e)
   * Build for personal use on Debian/Stretch
