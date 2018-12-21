@@ -1,0 +1,22 @@
+From: Ichthyostega <prg@ichthyostega.de>
+Date: Mon, 24 Dec 2018 07:39:21 +0100
+Subject: mark as special test build
+
+helpful when running several build variants at the same time for investigation...
+---
+ src/CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 24643fe..3d0d7b7 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -40,7 +40,7 @@ add_definitions(-Werror=format-security)
+ add_definitions(-Wextra)
+ # ^^^ comment these out on release pushes
+ 
+-set (YOSHIMI_VERSION "1.5.10 rc2")
++set (YOSHIMI_VERSION "1.5.10 rc2+oldPRNG")
+ add_definitions (-DMIN_CONFIG_MAJOR=1)
+ add_definitions (-DMIN_CONFIG_MINOR=5)
+ 
