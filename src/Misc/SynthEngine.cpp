@@ -227,7 +227,7 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
     }*/
 
     memset(random_state, 0, sizeof(random_state));
-#if (HAVE_RANDOM_R)
+/*#if (HAVE_RANDOM_R)
     memset(&random_buf, 0, sizeof(random_buf));
 
     if (initstate_r(samplerate + buffersize + oscilsize, random_state,
@@ -236,7 +236,8 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
 #else
     if (!initstate(samplerate + buffersize + oscilsize, random_state, sizeof(random_state)))
         Runtime.Log("SynthEngine Init failed on general randomness");
-#endif
+#endif*/
+    prnginit(samplerate + buffersize + oscilsize);
 
     if (oscilsize < (buffersize / 2))
     {
@@ -3240,6 +3241,47 @@ string SynthEngine::makeUniqueName(string name)
         result += ("-" + asString(uniqueId));
     result += " : " + name;
     return result;
+}
+
+/*
+* The following prng is based on
+* "A small noncryptographic PRNG"
+*              by
+*          Bob Jenkins
+*/
+inline unsigned int SynthEngine::prngval()
+{
+    unsigned int e = rnga - ((rngb << 27) | (rngb >> 5));
+    rnga = rngb ^ ((rngc << 17) | (rngc >> 15));
+    rngb = rngc + rngd;
+    rngc = rngd + e;
+    rngd = e + rnga;
+    return rngd;
+}
+
+inline void SynthEngine::prnginit(unsigned seed)
+{
+    rnga = 0xf1ea5eed, rngb = rngc = rngd = seed;
+    for (int i = 0; i < 20; ++i)
+        (void)prngval();
+}
+
+float SynthEngine::numRandom(void)
+{
+#ifndef NORANDOM
+    return (prngval() >> 1) / (float)INT_MAX; //* 2.328306435454494e-10;
+#else
+    return 0.5f;
+#endif
+}
+
+int SynthEngine::randomSE(void)
+{
+#ifndef NORANDOM
+    return prngval() >> 1;
+#else
+    return 0x3fffffff;
+#endif
 }
 
 

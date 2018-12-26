@@ -136,8 +136,8 @@ class SynthEngine : private SynthHelper, MiscFuncs
         void vectorSet(int dHigh, unsigned char chan, int par);
         void ClearNRPNs(void);
         void resetAll(bool andML);
-        float numRandom(void);
-        unsigned int randomSE(void);
+        //float numRandom(void);
+        //unsigned int randomSE(void);
         void ShutUp(void);
         void allStop(unsigned int stopType);
         int MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_MIDI_PARTS + 1], int to_process = 0);
@@ -278,9 +278,18 @@ class SynthEngine : private SynthHelper, MiscFuncs
         int LFOtime; // used by Pcontinous
         string windowTitle;
         //MusicClient *musicClient;
+public:
+        uint32_t rnga;
+        uint32_t rngb;
+        uint32_t rngc;
+        uint32_t rngd;
+        uint32_t prngval();
+        void prnginit(uint32_t seed);
+        float numRandom(void);
+        int randomSE(void);
 };
 
-inline float SynthEngine::numRandom(void)
+/*inline float SynthEngine::numRandom(void)
 {
     int ret;
 #if (HAVE_RANDOM_R)
@@ -319,6 +328,6 @@ inline unsigned int SynthEngine::randomSE(void)
 #endif
     return (unsigned int)random_result + INT_MAX / 2;
 #endif
-}
+}*/
 
 #endif
