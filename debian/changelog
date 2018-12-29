@@ -1,4 +1,12 @@
-yoshimi (1.5.9-1+preview1.5.10.RC2~stretch+2) UNRELEASED; urgency=medium
+yoshimi (1.5.9-1+preview1.5.10.RC2~stretch+3) UNRELEASED; urgency=low
+
+  * Will: "minimum of change to get the new prng in place"
+  * INTERNAL test / analysis build for investigation
+  * Build for personal use on Debian/Stretch
+
+ -- Hermann Vosseler <deb@ichthyostega.de>  Sat, 29 Dec 2018 13:22:42 +0100
+
+yoshimi (1.5.9-1+preview1.5.10.RC2~stretch+2) UNRELEASED; urgency=low
 
   * Revert changes to the PRNG, back to using random_r()
   * INTERNAL test / analysis build for investigation
