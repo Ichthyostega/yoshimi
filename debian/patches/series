@@ -7,4 +7,4 @@
 0007-Upstream-Changes-for-RC2-18.12.18.patch
 0008-Revert-all-changes-to-the-random-number-generator.patch
 0009-mark-as-special-test-build.patch
-0010-minimum-of-change-to-get-the-new-prng-in-place.patch
+0010-Refactoring-extract-PRNG-as-nested-class.patch

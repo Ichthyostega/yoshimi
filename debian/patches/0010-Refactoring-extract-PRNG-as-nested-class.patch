@@ -1,0 +1,552 @@
+From: Ichthyostega <prg@ichthyostega.de>
+Date: Sat, 29 Dec 2018 05:42:17 +0100
+Subject: Refactoring: extract PRNG as nested class
+
+This changeset (hopefully) does not change any behaviour...
+(with the exception of a minor adjustment on randomING() in case of #define NORANDOM )
+
+However, hopefully it makes the code clearer by encapsulating the state.
+Moreover, this refactoring simplifies experiments with various PRNG algorithms
+
+Refactoring: simplify existing code
+
+In the standard case, this commit again again (hopefully) changes no functionality.
+The refactoring relies on knowledge about the implementation of random() and random_r()
+(Based on the source code of Glibc 2.24)
+
+ - we know that random_r(&random_buf, &random_result) can not fail (because the first arg is never NULL)
+ - we know that random() rsp. random_r() return values in the range 0...INT_MAX
+
+Simplifications
+ - get rid of unneded state in the RandomGen object
+ - introduce a new function prngval() for the actual random number generation
+ - clarify all integer types to be explicitly 32bit
+ - push out the offset on the seed values into the usage location
+   (thus randomINT() gets now a more sensible contract)
+
+*NOTE*: changed the behaviour of randomINT() #ifdef NORANDOM
+In this case we now return INT_MAX/2
+Basically this gives the behaviour of the former randomOG()
+
+This minor change might break any test code written against the old NORANDOM behaviour,
+but since the NORANDOM feature is new, I doubt there is any test code yet ;-)
+
+Refactoring: move all functions into the RandomGen class body
+
+trivial refactoring, preparation for the next step.
+(Note: functions defined in a class body are automatically inline in C++)
+
+Refactoring: disentangle the implementation
+
+Up to now, the implementation had various intermingled conditional compilation cases,
+which made reasoning about the implementation difficult.
+
+This commit changes no functionality, but reorganises the code into a dedicated
+implementation class for each of the possible PRNG implementations. The conditional
+compilation is now concentrated at a single location, where we define a type alias
+to the actual implementation to be used.
+
+- in this form, it is now simple to add further implementation algorithms
+- moreover, this could be the foundation to make this choice switchable from
+  the instrument definition, with zero overhead (using templates)
+---
+ src/CMakeLists.txt       |   2 +-
+ src/Misc/RandomGen.h     | 155 +++++++++++++++++++++++++++++++++++++++++++++++
+ src/Misc/SynthEngine.cpp |  13 +---
+ src/Misc/SynthEngine.h   |  59 ++----------------
+ src/Synth/OscilGen.cpp   |  29 +++------
+ src/Synth/OscilGen.h     |  92 ++--------------------------
+ 6 files changed, 175 insertions(+), 175 deletions(-)
+ create mode 100644 src/Misc/RandomGen.h
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 3d0d7b7..352dbb2 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -40,7 +40,7 @@ add_definitions(-Werror=format-security)
+ add_definitions(-Wextra)
+ # ^^^ comment these out on release pushes
+ 
+-set (YOSHIMI_VERSION "1.5.10 rc2+oldPRNG")
++set (YOSHIMI_VERSION "1.5.10 rc2+refactor")
+ add_definitions (-DMIN_CONFIG_MAJOR=1)
+ add_definitions (-DMIN_CONFIG_MINOR=5)
+ 
+diff --git a/src/Misc/RandomGen.h b/src/Misc/RandomGen.h
+new file mode 100644
+index 0000000..715db97
+--- /dev/null
++++ b/src/Misc/RandomGen.h
+@@ -0,0 +1,155 @@
++/*
++    RandomGen.h
++
++    Original ZynAddSubFX author Nasca Octavian Paul
++    Copyright (C) 2002-2005 Nasca Octavian Paul
++    Copyright 2009-2011, Alan Calvert
++    Copyright 2014-2018, Will Godfrey & others
++
++    This file is part of yoshimi, which is free software: you can redistribute
++    it and/or modify it under the terms of the GNU Library General Public
++    License as published by the Free Software Foundation; either version 2 of
++    the License, or (at your option) any later version.
++
++    yoshimi is distributed in the hope that it will be useful, but WITHOUT ANY
++    WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
++    FOR A PARTICULAR PURPOSE.   See the GNU General Public License (version 2 or
++    later) for more details.
++
++    You should have received a copy of the GNU General Public License along with
++    yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
++    Street, Fifth Floor, Boston, MA  02110-1301, USA.
++
++    Created by refactoring (from SynthEngine.h) December 2018
++*/
++
++#ifndef RANDOMGEN_H
++#define RANDOMGEN_H
++
++#include <cstdint>
++#include <cstdlib>
++#include <cstring>
++
++using std::int32_t;
++using std::uint32_t;
++using std::memset;
++
++
++// stub implementation for test code : always returns fixed values
++class NorandomPRNG
++{
++    public:
++        bool init(uint32_t) { return true; }
++        uint32_t prngval()  { return INT_MAX / 2; }
++        float numRandom()   { return 0.5f; }
++        uint32_t randomINT(){ return INT_MAX / 2; }  // 0 < randomINT() < INT_MAX
++};
++
++
++// Standard implementation for Yoshimi until 1.5.10
++// Relies on the random_r() family of functions from the C standard library, which generates 31 bit random numbers.
++// Using 256 bytes of random state, which (according to the formula given in the comment in random_r.c of Glibc)
++// gives a period length of at least deg*(2^deg - 1); with deg=63 this is > 5.8e20
++class StdlibPRNG
++{
++        char random_state[256];
++        struct random_data random_buf;
++
++    public:
++        StdlibPRNG()
++        {
++            memset(&random_state, 0, sizeof(random_state));
++        }
++
++        bool init(uint32_t seed)
++        {
++            memset(random_state, 0, sizeof(random_state));
++            memset(&random_buf, 0, sizeof(random_buf));
++            return 0 == initstate_r(seed, random_state, sizeof(random_state), &random_buf);
++        }
++
++        uint32_t prngval()
++        {
++            int32_t random_result;
++            random_r(&random_buf, &random_result);
++            // can not fail, since &random_buf can not be NULL
++            // random_result holds number 0...INT_MAX
++            return random_result;
++        }
++
++        float numRandom()
++        {
++            float random_0_1 = float(prngval()) / (float)INT_MAX;
++            random_0_1 = (random_0_1 > 1.0f) ? 1.0f : random_0_1;
++            random_0_1 = (random_0_1 < 0.0f) ? 0.0f : random_0_1;
++            return random_0_1;
++        }
++
++        // random number in the range 0...INT_MAX
++        uint32_t randomINT()
++        {
++            return prngval();
++        }
++};
++
++
++// Fallback implementation for systems without a random_r() implementation
++// uses the legacy random() / srandom() functions
++class LegacyPRNG
++{
++        char random_state[256];
++
++    public:
++        LegacyPRNG()
++        {
++            memset(&random_state, 0, sizeof(random_state));
++        }
++
++        bool init(uint32_t seed)
++        {
++            memset(random_state, 0, sizeof(random_state));
++            return NULL != initstate(seed, random_state, sizeof(random_state));
++        }
++
++        uint32_t prngval()
++        {
++            return uint32_t(random());
++        }
++
++        float numRandom()
++        {
++            float random_0_1 = float(prngval()) / (float)INT_MAX;
++            random_0_1 = (random_0_1 > 1.0f) ? 1.0f : random_0_1;
++            random_0_1 = (random_0_1 < 0.0f) ? 0.0f : random_0_1;
++            return random_0_1;
++        }
++
++        // random number in the range 0...INT_MAX
++        uint32_t randomINT()
++        {
++            return prngval();
++        }
++};
++
++
++
++
++
++/* ===== Configure the actual PRNG to use ===== */
++
++
++#ifdef NORANDOM
++    typedef NorandomPRNG  RandomGen;
++#else
++
++#if (HAVE_RANDOM_R)
++    typedef StdlibPRNG  RandomGen;
++#else
++    typedef LegacyPRNG  RandomGen;
++#endif /*HAVE_RANDOM_R*/
++
++#endif /*NORANDOM*/
++
++
++
++#endif /*RANDOMGEN_H*/
+diff --git a/src/Misc/SynthEngine.cpp b/src/Misc/SynthEngine.cpp
+index 487aebd..89710ce 100644
+--- a/src/Misc/SynthEngine.cpp
++++ b/src/Misc/SynthEngine.cpp
+@@ -123,7 +123,6 @@ SynthEngine::SynthEngine(int argc, char **argv, bool _isLV2Plugin, unsigned int
+ {
+     if (bank.roots.empty())
+         bank.addDefaultRootDirs();
+-    memset(&random_state, 0, sizeof(random_state));
+ 
+     ctl = new Controller(this);
+     for (int i = 0; i < NUM_MIDI_CHANNELS; ++ i)
+@@ -226,17 +225,7 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
+         goto bail_out;
+     }*/
+ 
+-    memset(random_state, 0, sizeof(random_state));
+-#if (HAVE_RANDOM_R)
+-    memset(&random_buf, 0, sizeof(random_buf));
+-
+-    if (initstate_r(samplerate + buffersize + oscilsize, random_state,
+-                    sizeof(random_state), &random_buf))
+-        Runtime.Log("SynthEngine Init failed on general randomness");
+-#else
+-    if (!initstate(samplerate + buffersize + oscilsize, random_state, sizeof(random_state)))
+-        Runtime.Log("SynthEngine Init failed on general randomness");
+-#endif
++    if (!prng.init(samplerate + buffersize + oscilsize))
+ 
+     if (oscilsize < (buffersize / 2))
+     {
+diff --git a/src/Misc/SynthEngine.h b/src/Misc/SynthEngine.h
+index 5513aa2..8287ad6 100644
+--- a/src/Misc/SynthEngine.h
++++ b/src/Misc/SynthEngine.h
+@@ -36,6 +36,7 @@
+ using namespace std;
+ 
+ #include "Misc/MiscFuncs.h"
++#include "Misc/RandomGen.h"
+ #include "Misc/SynthHelper.h"
+ #include "Misc/Microtonal.h"
+ #include "Misc/Bank.h"
+@@ -135,8 +136,6 @@ class SynthEngine : private SynthHelper, MiscFuncs
+         void vectorSet(int dHigh, unsigned char chan, int par);
+         void ClearNRPNs(void);
+         void resetAll(bool andML);
+-        float numRandom(void);
+-        unsigned int randomSE(void);
+         void ShutUp(void);
+         void allStop(unsigned int stopType);
+         int MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_MIDI_PARTS + 1], int to_process = 0);
+@@ -258,16 +257,6 @@ class SynthEngine : private SynthHelper, MiscFuncs
+         pthread_mutex_t  processMutex;
+         pthread_mutex_t *processLock;
+ 
+-        char random_state[256];
+-        float random_0_1;
+-
+-#if (HAVE_RANDOM_R)
+-        struct random_data random_buf;
+-        int32_t random_result;
+-#else
+-        long int random_result;
+-#endif
+-
+     public:
+         MasterUI *guiMaster; // need to read this in InterChange::returns
+     private:
+@@ -277,47 +266,11 @@ class SynthEngine : private SynthHelper, MiscFuncs
+         int LFOtime; // used by Pcontinous
+         string windowTitle;
+         //MusicClient *musicClient;
+-};
+-
+-inline float SynthEngine::numRandom(void)
+-{
+-    int ret;
+-#if (HAVE_RANDOM_R)
+-    ret = random_r(&random_buf, &random_result);
+-#else
+-    random_result = random();
+-    ret = 0;
+-#endif
+-
+-    if (!ret)
+-    {
+-        random_0_1 = (float)random_result / (float)INT_MAX;
+-        random_0_1 = (random_0_1 > 1.0f) ? 1.0f : random_0_1;
+-        random_0_1 = (random_0_1 < 0.0f) ? 0.0f : random_0_1;
+-#ifndef NORANDOM
+-        return random_0_1;
+-#endif
+-    }
+-    return 0.5f;
+-}
+-
+-inline unsigned int SynthEngine::randomSE(void)
+-{
+-#if (HAVE_RANDOM_R)
+-    if (!random_r(&random_buf, &random_result))
+-#ifndef NORANDOM
+-        return random_result + INT_MAX / 2;
+-#endif
+-    return INT_MAX / 2;
+-#else
+ 
+-#ifndef NORANDOM
+-    random_result = random();
+-#else
+-    random_result = 0;
+-#endif
+-    return (unsigned int)random_result + INT_MAX / 2;
+-#endif
+-}
++        RandomGen prng;
++    public:
++        float numRandom()   { return prng.numRandom(); }
++        uint32_t randomSE() { return prng.randomINT(); }   // random number in the range 0...INT_MAX
++};
+ 
+ #endif
+diff --git a/src/Synth/OscilGen.cpp b/src/Synth/OscilGen.cpp
+index 1096553..9d311d2 100644
+--- a/src/Synth/OscilGen.cpp
++++ b/src/Synth/OscilGen.cpp
+@@ -965,16 +965,8 @@ void OscilGen::shiftharmonics(void)
+ void OscilGen::prepare(void)
+ {
+     float a, b, c, d, hmagnew;
+-    memset(random_state, 0, sizeof(random_state));
+-#if (HAVE_RANDOM_R)
+-    memset(&random_buf, 0, sizeof(random_buf));
+-    if (initstate_r(synth->randomSE(), random_state,
+-                    sizeof(random_state), &random_buf))
++    if (!prng.init(synth->randomSE() + INT_MAX/2))
+         synth->getRuntime().Log("OscilGen failed to init general randomness");
+-#else
+-    if (!initstate(synth->randomSE(), random_state, sizeof(random_state)))
+-        synth->getRuntime().Log("OscilGen failed to init general randomness");
+-#endif
+ 
+     if (oldbasepar != Pbasefuncpar
+         || oldbasefunc != Pcurrentbasefunc
+@@ -1257,7 +1249,8 @@ int OscilGen::get(float *smps, float freqHz, int resonance)
+ 
+     if (oscilprepared != 1)
+         prepare();
+-      FR2Z2I((numRandom() * 2.0f - 1.0f) * synth->oscilsize_f * (Prand - 64.0f) / 64.0f, outpos);
++
++    FR2Z2I((prng.numRandom() * 2.0f - 1.0f) * synth->oscilsize_f * (Prand - 64.0f) / 64.0f, outpos);
+ //    outpos = (int)truncf((numRandom() * 2.0f - 1.0f) * synth->oscilsize_f * (Prand - 64.0f) / 64.0f);
+     outpos = (outpos + 2 * synth->oscilsize) % synth->oscilsize;
+ 
+@@ -1300,7 +1293,7 @@ int OscilGen::get(float *smps, float freqHz, int resonance)
+         rnd = PI * powf((Prand - 64.0f) / 64.0f, 2.0f);
+         for (int i = 1; i < nyquist - 1; ++i)
+         {   // to Nyquist only for AntiAliasing
+-            angle = rnd * i * numRandom();
++            angle = rnd * i * prng.numRandom();
+             a = outoscilFFTfreqs.c[i];
+             b = outoscilFFTfreqs.s[i];
+             c = cosf(angle);
+@@ -1313,16 +1306,8 @@ int OscilGen::get(float *smps, float freqHz, int resonance)
+     // Harmonic Amplitude Randomness
+     if (freqHz > 0.1 && !ADvsPAD)
+     {
+-        memset(harmonic_random_state, 0, sizeof(harmonic_random_state));
+-#if (HAVE_RANDOM_R)
+-        memset(&harmonic_random_buf, 0, sizeof(harmonic_random_buf));
+-        if (initstate_r(randseed, harmonic_random_state,
+-                    sizeof(harmonic_random_state), &harmonic_random_buf))
+-            synth->getRuntime().Log("OscilGen failed to init harmonic amplitude amplitude randomness");
+-#else
+-	if (!initstate(randseed, harmonic_random_state, sizeof(harmonic_random_state)))
++        if (!harmonicPrng.init(randseed))
+             synth->getRuntime().Log("OscilGen failed to init harmonic amplitude amplitude randomness");
+-#endif
+ 
+         float power = Pamprandpower / 127.0f;
+         float normalize = 1.0f / (1.2f - power);
+@@ -1333,7 +1318,7 @@ int OscilGen::get(float *smps, float freqHz, int resonance)
+                 power = powf(15.0f, power);
+                 for (int i = 1; i < nyquist - 1; ++i)
+                 {
+-                    float amp = powf(harmonicRandom(), power) * normalize;
++                    float amp = powf(harmonicPrng.numRandom(), power) * normalize;
+                     outoscilFFTfreqs.c[i] *= amp;
+                     outoscilFFTfreqs.s[i] *= amp;
+                 }
+@@ -1342,7 +1327,7 @@ int OscilGen::get(float *smps, float freqHz, int resonance)
+             case 2:
+                 power = power * 2.0f - 0.5f;
+                 power = powf(15.0f, power) * 2.0f;
+-                float rndfreq = TWOPI * harmonicRandom();
++                float rndfreq = TWOPI * harmonicPrng.numRandom();
+                 for (int i = 1 ; i < nyquist - 1; ++i)
+                 {
+                     float amp = powf(fabsf(sinf(i * rndfreq)), power) * normalize;
+diff --git a/src/Synth/OscilGen.h b/src/Synth/OscilGen.h
+index ef16562..2de5a51 100644
+--- a/src/Synth/OscilGen.h
++++ b/src/Synth/OscilGen.h
+@@ -30,6 +30,7 @@
+ 
+ #include <limits.h>
+ 
++#include "Misc/RandomGen.h"
+ #include "Misc/WaveShapeSamples.h"
+ #include "Misc/XMLwrapper.h"
+ #include "DSP/FFTwrapper.h"
+@@ -67,7 +68,7 @@ class OscilGen : public Presets, private WaveShapeSamples
+ 
+         // Make a new random seed for Amplitude Randomness -
+         //   should be called every noteon event
+-        inline void newrandseed(void) { randseed = (unsigned int)randomOG(); }
++        void newrandseed() { randseed = prng.randomINT() + INT_MAX/2; }
+ 
+         // Parameters
+ 
+@@ -204,93 +205,10 @@ class OscilGen : public Presets, private WaveShapeSamples
+ 
+         Resonance *res;
+ 
+-        unsigned int randseed;
++        uint32_t randseed;
+ 
+-        float random_0_1;
+-        char random_state[256];
+-
+-#if (HAVE_RANDOM_R)
+-        int32_t random_result;
+-        struct random_data random_buf;
+-#else
+-        long int random_result;
+-#endif
+-
+-        float harmonic_random_0_1;
+-        char harmonic_random_state[256];
+-
+-#if (HAVE_RANDOM_R)
+-        int32_t harmonic_random_result;
+-        struct random_data harmonic_random_buf;
+-#else
+-        long int harmonic_random_result;
+-#endif
++        RandomGen prng;
++        RandomGen harmonicPrng;
+ };
+ 
+-
+-inline float OscilGen::numRandom(void)
+-{
+-    int ret;
+-#if (HAVE_RANDOM_R)
+-    ret = random_r(&random_buf, &random_result);
+-#else
+-    random_result = random();
+-    ret = 0;
+-#endif
+-
+-    if (!ret)
+-    {
+-        random_0_1 = (float)random_result / (float)INT_MAX;
+-        random_0_1 = (random_0_1 > 1.0f) ? 1.0f : random_0_1;
+-        random_0_1 = (random_0_1 < 0.0f) ? 0.0f : random_0_1;
+-#ifndef NORANDOM
+-        return random_0_1;
+-#endif
+-    }
+-    return 0.5f;
+-}
+-
+-
+-inline float OscilGen::harmonicRandom(void)
+-{
+-    int ret;
+-#if (HAVE_RANDOM_R)
+-    ret = random_r(&harmonic_random_buf, &harmonic_random_result);
+-#else
+-    harmonic_random_result = random();
+-    ret = 0;
+-#endif
+-
+-    if (!ret)
+-    {
+-        harmonic_random_0_1 = (float)harmonic_random_result / (float)INT_MAX;
+-        harmonic_random_0_1 = (harmonic_random_0_1 > 1.0f) ? 1.0f : harmonic_random_0_1;
+-        harmonic_random_0_1 = (harmonic_random_0_1 < 0.0f) ? 0.0f : harmonic_random_0_1;
+-#ifndef NORANDOM
+-        return harmonic_random_0_1;
+-#endif
+-    }
+-    return 0.5f;
+-}
+-
+-
+-inline unsigned int OscilGen::randomOG(void)
+-{
+-#if (HAVE_RANDOM_R)
+-    if (!random_r(&random_buf, &random_result))
+-#ifndef NORANDOM
+-        return random_result + INT_MAX / 2;
+-#endif
+-    return INT_MAX;
+-#else
+-
+-#ifndef NORANDOM
+-    random_result = random();
+-#else
+-    random_result = 0;
+-#endif
+-    return (unsigned int)random_result + INT_MAX / 2;
+-#endif
+-}
+-
+ #endif

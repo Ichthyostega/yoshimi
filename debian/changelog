@@ -1,3 +1,11 @@
+yoshimi (1.5.9-1+preview1.5.10.RC2~stretch+4) UNRELEASED; urgency=low
+
+  * Code refactoring - old PRNG from Stdlib (as in 1.5.9)
+  * INTERNAL test / analysis build for investigation
+  * Build for personal use on Debian/Stretch
+
+ -- Hermann Vosseler <deb@ichthyostega.de>  Sat, 29 Dec 2018 13:42:03 +0100
+
 yoshimi (1.5.9-1+preview1.5.10.RC2~stretch+3) UNRELEASED; urgency=low
 
   * Will: "minimum of change to get the new prng in place"
