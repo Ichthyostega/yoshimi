@@ -1,0 +1,213 @@
+From: Ichthyostega <prg@ichthyostega.de>
+Date: Sat, 29 Dec 2018 08:28:04 +0100
+Subject: TrinomialPRNG - Integrate a simplified version of random_r() from
+ Glibc 2.28
+
+Start refactoring by integrating the Glibc random_r() / srandom_r() implementation
+
+This adds yet another PRNG implementation, which incorporates a literal copy
+from the Glibc 2.28 implementation, without any further simplifications.
+
+I use Glibc 2.28 here, since it adds a simplification/clarification for the
+rightshift to drop the least random bit; Since newer C++ standards require
+to use an arithmetic right shift on signed values, the internal variable val
+is now defined to be uint32_t, which also allows to omit the factor  & 0x7fffffff;
+used in previous versinos of the Glibc.
+
+TODO: This changeset includes a huge pile of constants and code
+which can be simplified, given that our state array is known to be inline and 256 bytes large
+
+simplify initstate_r
+
+Observation:
+ - we use 256 bytes of state and thus have TYPE_4
+ - we never use setstate_r()
+
+The library uses clever code to capture the current pointer positions of the old state,
+in order to be able to restore that state later. We do not need any of that code.
+In fact, we now don't use the random_state[0] anymore.
+
+further simplify initstate_r(), srandom_r() and random_r()
+
+Directly using the member fields of the enclosing TrinomialPRNG object greatly simplifies the code.
+Moreover, the constants for the random algorithm are now completely inlined and gone
+All error exits can be excluded now, and random_r() now returns its result directly.
+
+reduce state storage
+
+ - since we don't use the 1st storage slot in the state array
+   (because we never need to restore an externally saved state),
+   we can shift the whole array by one int32_t. And then we can
+   turn that from an char array into an int32_t array with 32 elements.
+
+ - then step by step unfold the struct random_data, until only the two
+   active pointers remain. These can be private members of our class
+
+completely inlined and simplified the random_r() / srandom_r() code
+
+Basically all this inlining and rewriting should be equivalent transformations.
+Hopefully I made no mistakes...
+
+To summarise the actual changes:
+
+ * the original code used the 1st slot in the state array to capture the pointer positions,
+   in order to be able to save/restore state to an external buffer. We do not need
+   this functionality. Thus I've shifted the whole state array by one, and adjusted
+   its size to 63 * 4bytes long  accordingly. This should have no effect on the algorithm.
+
+ * the original code used within srandom_r() the local variables long int lo, high.
+   I consider this dangerous, since long int is the same as int on i386 (a notorious pitfall).
+   Thus I change those variables to be explicitly 64bit.
+
+optimisation: unnecessary to zero-init the state array
+
+the init() function obviously overwrites systematically the whole content of the state array
+
+And, as far as I can see, our code always calls init() before generating random numbers.
+---
+ src/CMakeLists.txt   |   2 +-
+ src/Misc/RandomGen.h | 104 ++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 104 insertions(+), 2 deletions(-)
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 906e5aa..a7ac21f 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -40,7 +40,7 @@ add_definitions(-Werror=format-security)
+ add_definitions(-Wextra)
+ # ^^^ comment these out on release pushes
+ 
+-set (YOSHIMI_VERSION "1.5.10 rc2+jenkins")
++set (YOSHIMI_VERSION "1.5.10 rc2+trinomial")
+ add_definitions (-DMIN_CONFIG_MAJOR=1)
+ add_definitions (-DMIN_CONFIG_MINOR=5)
+ 
+diff --git a/src/Misc/RandomGen.h b/src/Misc/RandomGen.h
+index 6fb2d56..9908f89 100644
+--- a/src/Misc/RandomGen.h
++++ b/src/Misc/RandomGen.h
+@@ -31,6 +31,7 @@
+ #include <cstring>
+ 
+ using std::int32_t;
++using std::int64_t;
+ using std::uint32_t;
+ using std::memset;
+ 
+@@ -93,6 +94,105 @@ class StdlibPRNG
+ };
+ 
+ 
++// Inlined copy of the Glibc 2.28 implementation of random_r()
++// This code should be equivalent to prior Yoshimi versions linked against GNU Glibc.
++// Generates 31bit random numbers based on a linear feedback shift register approach, employing trinomials.
++// Using 256 bytes of random state, which (according to the formula given in the comment in random_r.c of Glibc)
++// gives a period length of at least deg*(2^deg - 1); with deg=63 this is > 5.8e20
++//
++// The following PRNG implementation is
++// Copyright (C) 1995-2018 Free Software Foundation, Inc.
++// It was released within GLibc under the LGPL 2.1 or any later version.
++// Based on code Copyright (C) 1983 Regents of the University of California.
++// This code was derived from the Berkeley source:
++// @(#)random.c    5.5 (Berkeley) 7/6/88
++// It was reworked for the GNU C Library by Roland McGrath.
++// Rewritten to be reentrant by Ulrich Drepper, 1995
++
++class TrinomialPRNG
++{
++        int32_t state[63];
++        int32_t *fptr;      /* Front pointer.  */
++        int32_t *rptr;      /* Rear pointer.  */
++
++    public:
++        TrinomialPRNG() : fptr(NULL), rptr(NULL) { }
++
++        bool init(uint32_t seed)
++        {
++            fptr = NULL;
++            rptr = NULL;
++
++            /* We must make sure the seed is not 0.  Take arbitrarily 1 in this case.  */
++            if (seed == 0)
++              seed = 1;
++            state[0] = seed;
++
++            int32_t *dst = state;
++            int32_t word = seed;
++            int kc = 63; /* random generation uses this trinomial: x**63 + x + 1.  */
++            for (int i = 1; i < kc; ++i)
++            {
++                /* This does:
++                   state[i] = (16807 * state[i - 1]) % 2147483647;
++                   but avoids overflowing 31 bits. */
++                int64_t hi = word / 127773;
++                int64_t lo = word % 127773;
++                word = 16807 * lo - 2836 * hi;
++                if (word < 0)
++                    word += 2147483647;
++                *++dst = word;
++            }
++
++            fptr = &state[1];
++            rptr = &state[0];
++            kc *= 10;
++            while (--kc >= 0)
++                prngval();
++            return true;
++        }
++
++
++        uint32_t prngval()
++        {
++            uint32_t val = *fptr += (uint32_t) *rptr;
++            int32_t result = val >> 1;  // Chucking least random bit.
++
++            int32_t *end = &state[62];
++            ++fptr;
++            if (fptr >= end)
++              {
++                fptr = state;
++                ++rptr;
++              }
++            else
++              {
++                ++rptr;
++                if (rptr >= end)
++                  rptr = state;
++              }
++            // random_result holds number 0...INT_MAX
++            return uint32_t(result);
++        }
++
++
++        float numRandom()
++        {
++            float random_0_1 = float(prngval()) / (float)INT_MAX;
++            random_0_1 = (random_0_1 > 1.0f) ? 1.0f : random_0_1;
++            random_0_1 = (random_0_1 < 0.0f) ? 0.0f : random_0_1;
++            return random_0_1;
++        }
++
++        // random number in the range 0...INT_MAX
++        uint32_t randomINT()
++        {
++            return prngval();
++        }
++};
++
++
++
+ // Fallback implementation for systems without a random_r() implementation
+ // uses the legacy random() / srandom() functions
+ class LegacyPRNG
+@@ -194,7 +294,9 @@ class JenkinsPRNG
+ //    typedef LegacyPRNG  RandomGen;
+ //#endif /*HAVE_RANDOM_R*/
+ 
+-      typedef JenkinsPRNG RandomGen;
++//    typedef JenkinsPRNG RandomGen;
++
++      typedef TrinomialPRNG RandomGen;
+ 
+ #endif /*NORANDOM*/
+ 

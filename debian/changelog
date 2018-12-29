@@ -1,3 +1,11 @@
+yoshimi (1.5.9-1+preview1.5.10.RC2~stretch+6) UNRELEASED; urgency=low
+
+  * TrinomialPRNG: use an inlined and simplified random_r()
+  * INTERNAL test / analysis build for investigation
+  * Build for personal use on Debian/Stretch
+
+ -- Hermann Vosseler <deb@ichthyostega.de>  Sat, 29 Dec 2018 13:59:20 +0100
+
 yoshimi (1.5.9-1+preview1.5.10.RC2~stretch+5) UNRELEASED; urgency=low
 
   * Add the Jenkins PRNG into the refactored structure

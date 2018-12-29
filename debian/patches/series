@@ -9,3 +9,4 @@
 0009-mark-as-special-test-build.patch
 0010-Refactoring-extract-PRNG-as-nested-class.patch
 0011-Add-the-Jenkins-32bit-PRNG-and-use-it-for-all-random.patch
+0012-TrinomialPRNG-Integrate-a-simplified-version-of-rand.patch
