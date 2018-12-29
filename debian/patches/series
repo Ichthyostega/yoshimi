@@ -8,3 +8,4 @@
 0008-Revert-all-changes-to-the-random-number-generator.patch
 0009-mark-as-special-test-build.patch
 0010-Refactoring-extract-PRNG-as-nested-class.patch
+0011-Add-the-Jenkins-32bit-PRNG-and-use-it-for-all-random.patch
