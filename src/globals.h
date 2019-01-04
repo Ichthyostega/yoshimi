@@ -23,72 +23,90 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
+/*
+ * For test purposes where you want guaranteed identical results, enable the
+ * #define below.
+ * Be aware this does strange things to both subSynth and padSynth as they
+ * require randomness to produce normal sounds.
+ */
+//#define NORANDOM ON
+
 // math
 #define PI 3.1415926536f
 #define TWOPI 6.28318530718f
 #define HALFPI 1.57079632679f
 #define LOG_2 0.693147181f
 
+// float round to zero to integer
+// the second version is faster but for positive values only
+// and not fully confirmed as correct
+
+#define FR2Z2I(f, i) (i) = ((f > 0) ? (int(trunc(f))) : (int(trunc(f - 1.0f))));
+//#define FR2Z2I(f, i) (i) = (int (f));
+
+
 // many of the following are for convenience and consistency
 // changing them is likely to have unpredicable consequences
 
 // sizes
-#define COMMAND_SIZE 80
-#define MAX_HISTORY 25
-#define MAX_PRESETS 1000
-#define MAX_PRESET_DIRS 128
-#define MAX_BANK_ROOT_DIRS 128
-#define MAX_BANKS_IN_ROOT 128
-#define MAX_AD_HARMONICS 128
-#define MAX_SUB_HARMONICS 64
-#define PAD_MAX_SAMPLES 96
-#define NUM_MIDI_PARTS 64
-#define NUM_MIDI_CHANNELS 16
-#define MIDI_LEARN_BLOCK 200
-#define MAX_ENVELOPE_POINTS 40
-#define MIN_ENVELOPE_DB -60
-#define MAX_RESONANCE_POINTS 256
-#define MAX_KEY_SHIFT 36
-#define MIN_KEY_SHIFT -36
-#define NO_MSG 255 // these three may become different
-#define UNUSED 255
-#define NO_ACTION 255
+const unsigned char COMMAND_SIZE = 80;
+const unsigned char MAX_HISTORY = 25;
+const int MAX_PRESETS = 1000;
+const unsigned char MAX_PRESET_DIRS = 128;
+const unsigned char MAX_BANK_ROOT_DIRS = 128;
+const unsigned char MAX_BANKS_IN_ROOT = 128;
+const unsigned char MAX_INSTRUMENTS_IN_BANK = 160;
+const unsigned char MAX_AD_HARMONICS = 128;
+const unsigned char MAX_SUB_HARMONICS = 64;
+const unsigned char PAD_MAX_SAMPLES = 96;
+const unsigned char NUM_MIDI_PARTS = 64;
+const unsigned char NUM_MIDI_CHANNELS = 16;
+const unsigned char MIDI_LEARN_BLOCK = 200;
+const int MAX_ENVELOPE_POINTS = 40;
+const int MIN_ENVELOPE_DB = -60;
+const int MAX_RESONANCE_POINTS = 256;
+const int MAX_KEY_SHIFT = 36;
+const int MIN_KEY_SHIFT = -36;
+
+const unsigned int MIN_OSCIL_SIZE = 256; // MAX_AD_HARMONICS * 2
+const unsigned int MAX_OSCIL_SIZE = 16384;
+const unsigned int MIN_BUFFER_SIZE = 16;
+const unsigned int MAX_BUFFER_SIZE = 8192;
+const unsigned char NO_MSG = 255; // these three may become different
+const unsigned char UNUSED = 255;
+const unsigned char NO_ACTION = 255;
 
 // GUI colours
-#define ADD_COLOUR 0xdfafbf00
-#define BASE_COLOUR 0xbfbfbf00
-#define SUB_COLOUR 0xafcfdf00
-#define PAD_COLOUR 0xcfdfaf00
-#define YOSHI_COLOUR 0x0000e100
+const unsigned int ADD_COLOUR = 0xdfafbf00;
+const unsigned int BASE_COLOUR = 0xbfbfbf00;
+const unsigned int SUB_COLOUR = 0xafcfdf00;
+const unsigned int PAD_COLOUR = 0xcfdfaf00;
+const unsigned int YOSHI_COLOUR = 0x0000e100;
 
-// XML types
-#define XML_INSTRUMENT 1
-#define XML_PARAMETERS 2
-#define XML_MICROTONAL 3
-#define XML_STATE 4
-#define XML_VECTOR 5
-#define XML_MIDILEARN 6
-#define XML_CONFIG 7
-#define XML_PRESETS 8
-#define XML_BANK 9
-#define XML_HISTORY 10
+enum {XML_INSTRUMENT = 1, XML_PARAMETERS, XML_MICROTONAL, XML_STATE, XML_VECTOR, XML_MIDILEARN, XML_CONFIG, XML_PRESETS, XML_BANK, XML_HISTORY};
 
 // these were previously (pointlessly) user configurable
-#define NUM_VOICES 8
-#define POLIPHONY 80
-#define NUM_SYS_EFX 4
-#define NUM_INS_EFX 8
-#define NUM_PART_EFX 3
-#define NUM_KIT_ITEMS 16
-#define VELOCITY_MAX_SCALE 8.0f
-#define FADEIN_ADJUSTMENT_SCALE 20
-#define MAX_EQ_BANDS 8  // MAX_EQ_BANDS must be less than 20
-#define MAX_FILTER_STAGES 5
-#define FF_MAX_VOWELS 6
-#define FF_MAX_FORMANTS 12
-#define FF_MAX_SEQUENCE 8
-#define MAX_PHASER_STAGES 12
-#define MAX_ALIENWAH_DELAY 100
+const unsigned char NUM_VOICES = 8;
+const unsigned char POLIPHONY = 80;
+const unsigned char NUM_SYS_EFX = 4;
+const unsigned char NUM_INS_EFX = 8;
+const unsigned char NUM_PART_EFX = 3;
+const unsigned char NUM_KIT_ITEMS = 16;
+const float VELOCITY_MAX_SCALE = 8.0f;
+const unsigned char FADEIN_ADJUSTMENT_SCALE = 20;
+const unsigned char MAX_EQ_BANDS = 8;  // MAX_EQ_BANDS must be less than 20
+const unsigned char MAX_FILTER_STAGES = 5;
+const unsigned char FF_MAX_VOWELS = 6;
+const unsigned char FF_MAX_FORMANTS = 12;
+const unsigned char FF_MAX_SEQUENCE = 8;
+const unsigned char MAX_PHASER_STAGES = 12;
+const unsigned char MAX_ALIENWAH_DELAY = 100;
+
+namespace YOSH
+{
+    // float to bool done this way to ensure consistency
+    inline bool F2B(float value) {return value > 0.5f;}
+}
 
 /*
  * for many of the following, where they are in groups the
@@ -101,6 +119,7 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
     enum section: unsigned char {
         part1 = 0,
         part64 = 63,
+        copyPaste = 72, // 48 (not yet!)
         vector = 192, // CO
         midiLearn = 216, // D8
         midiIn,
@@ -128,7 +147,7 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         Minimum,
         Maximum,
         Default,
-        LearnRequest = 3,
+        LearnRequest = 3, // shared value
         // remaining used bit-wise
         Error = 4, // also identifes static limits
         Limits = 4, // yes we can pair these - who knew?
@@ -141,8 +160,8 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         // all used bit-wise
         MIDI = 8,
         CLI = 16,
-        UpdateAfterSet = 16, // so gui can update
-        GUI = 32
+        GUI = 32,
+        UpdateAfterSet = 48 // so gui can update
     };
 
     enum control : unsigned char {
@@ -280,6 +299,16 @@ namespace VECTOR // usage VECTOR::control::name
     };
 }
 
+namespace COPYPASTE // usage COPYPASTE::control::toClipboard
+{
+    enum control : unsigned char {
+        toClipboard = 0,
+        toFile,
+        fromClipboard,
+        fromFile
+    };
+}
+
 namespace MIDILEARN // usage MIDILEARN::control::block
 {
     enum control : unsigned char {
@@ -316,15 +345,43 @@ namespace MIDI // usage MIDI::control::noteOn
         controller,
         programChange = 8// also bank and root - split?
     };
-    enum function : unsigned char {
-        modulation = 1,
-        volume = 7,
+    enum CC : unsigned short int {
+        bankSelectMSB = 0,
+        modulation,
+        breath,
+        dataMSB = 6,
+        volume,
         panning = 10,
-        expression = 11,
+        expression,
+        bankSelectLSB = 32,
+        dataLSB = 38,
+        sustain = 64,
+        portamento,
         legato = 68,
         filterQ = 71,
         filterCutoff = 74,
-        bandwidth
+        bandwidth,
+        fmamp,
+        resonanceCenter,
+        resonanceBandwidth,
+        dataINC = 96,
+        dataDEC,
+        nrpnLSB,
+        nrpnMSB,
+        allSoundOff = 120,
+        resetAllControllers,
+        allNotesOff = 123,
+
+        pitchWheelInner = 128,
+        channelPressureInner,
+        keyPressureInner,
+
+        pitchWheel = 640,
+        channelPressure,
+        keyPressure,
+
+        programchange = 999,
+        null
     };
 }
 
@@ -551,13 +608,13 @@ namespace ADDVOICE // usage ADDVOICE::control::volume
         enableAmplitudeLFO,
 
         modulatorType = 16, // Off, Morph, Ring, PM, FM, PWM
-        externalModulator,
+        externalModulator, // -1 local,  'n' voice
 
         detuneFrequency = 32,
         equalTemperVariation,
         baseFrequencyAs440Hz,
         octave,
-        detuneType, // L35 cents, L10 cents, E100 cents, E1200 cents
+        detuneType, // Default, L35 cents, L10 cents, E100 cents, E1200 cents
         coarseDetune,
         pitchBendAdjustment,
         pitchBendOffset,
@@ -586,16 +643,16 @@ namespace ADDVOICE // usage ADDVOICE::control::volume
         modulatorDetuneFrequency = 96,
         modulatorFrequencyAs440Hz = 98,
         modulatorOctave,
-        modulatorDetuneType, // L35 cents, L10 cents, E100 cents, E1200 cents
+        modulatorDetuneType, // Default, L35 cents, L10 cents, E100 cents, E1200 cents
         modulatorCoarseDetune,
         enableModulatorFrequencyEnvelope = 104,
         modulatorOscillatorPhase = 112,
-        modulatorOscillatorSource, // -1 local, 'n' external
+        modulatorOscillatorSource, // -1 internal, 'n' external modulator
 
         delay = 128,
         enableResonance = 130, // for this voice
         voiceOscillatorPhase = 136,
-        voiceOscillatorSource, // - 1 local, 'n' external
+        voiceOscillatorSource, // - 1 internal, 'n' external voice
         soundType // Oscillator, White noise, Pink noise
     };
 }
@@ -712,11 +769,11 @@ namespace OSCILLATOR // usage OSCILLATOR::control::phaseRandomness
         autoClear = 32, // not used
         useAsBaseFunction, // if 'value' is 1 assume autoclear set
         waveshapeParameter,
-        waveshapeType, //  None, Atan, Asym1, Pow, Sine Qnts, Zigzag, Lmt, LmtU, LmtL, Ilmt
+        waveshapeType, //  None, Atan, Asym1, Pow, Sine Qnts, Zigzag, Lmt, LmtU, LmtL, Ilmt, Clip, Asym2, Pow2, Sgm
         filterParameter1,
         filterParameter2,
         filterBeforeWaveshape,
-        filterType, // None, LP, HP1a, HP1b, BP1, BS1, LP2, HP2, BP2, BS2, Cos, Sin, Lsh, S
+        filterType, // None, LP, HP1a, HP1b, BP1, BS1, LP2, HP2, BP2, BS2, Cos, Sin, Lsh, Sgm
         modulationParameter1,
         modulationParameter2,
         modulationParameter3,
@@ -796,7 +853,6 @@ namespace FILTERINSERT // usage FILTERINSERT::control::centerFrequency
         sequencePosition, // local to GUI
         vowelPositionInSequence,
         negateInput, // bypass LFOs, envelopes etc.
-        dynFilter = 136 // this actually uses the kititem byte
     };
 }
 

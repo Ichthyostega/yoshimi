@@ -3,10 +3,12 @@ Yoshimi very heavily uses switch statements, some of which are truly massive. Th
 
 The development has been very much an incremental process, initially with numerical entries and large gaps to create grouping, allow for changes, and give a clearer idea of the various structures.
 
+The intention was then to collapse all the gaps to give more efficient switch statements. However in the intervening time several CLI users have been using the direct access method to reach controls that were not yet available formally. Although this is now done, the actual values are being left as they are until (at least) the next release.
 
-Modern compilers are very smart when they see these large switches. The traditonal impression is they perform a lot of if-then tests but this is only true of small case groups, after that they make lookup tables which are considerably faster.
 
-But that isn't the end of it. If the structure is big enough and dense enough the compiler will instead fill the spaces with NOPs and turn the whole thing into a jump table. This is magic, because the code for any case can then be reached in exactly three machine instructions (two in the case of an ARM processor)
+The traditonal impression of these switches is that they perform a lot of if-then tests, but with modern compilers this is only true of small case groups, after that they make lookup tables which are considerably faster.
+
+If the structure is big enough and dense enough the compiler will instead fill the spaces with NOPs and turn the whole thing into a jump table. This is means the code for any case can then be reached in exactly three machine instructions (two in the case of an ARM processor)
 
 A left shift to turn incoming switch values into pointer sized steps.
 
@@ -16,7 +18,7 @@ A branch to the required code.
 
 ARM processors combine the first two into a single instruction.
 
-"Util/switch_time.cpp" is a copy of the source file for a program originally used to test the above hypothesis. The timing as slightly longer than it should be because various minimal calulations had to be put in to prevent the compiler optimising everything out in the 'packed' function :)
+"Util/switch_time.cpp" is a copy of the source file for a program originally used to test the above hypothesis. The timing is slightly longer than it should be because various minimal calulations had to be put in to prevent the compiler optimising everything out in the 'packed' function :)
 
 
 Currently most of Yoshimi's data elements can be read in less than 20nS on a processor running at 3.1G - and many of the switches aren't dense enough for conversion to jump tables.
@@ -41,10 +43,12 @@ switch (control)
 ...
 ...
 
- The gaps are in the process of being removed. This will ensure that all switches become jump tables, and selection of any entry will take exactly the same (very short) time. Under these circumstances, the more cases you can pack into a single switch, the more efficient the entire process gets.
+Once we can remove the gaps all switches will become jump tables, and selection of any entry will take exactly the same (very short) time. Under these circumstances, the more cases you can pack into a single switch, the more efficient the entire process gets.
+
+The use of namespaces combined with typed enumerators not only gives clear compartmentalised  identifiers, but also gives isolation between sections, protecting against name clashes. It is also still compatible with integers and unsigned chars without needing typecasting. This is important, as all these are passed through ring buffers using the central CommandBlock structure - which is now also defined here.
 
 
-Another point worth mentioniong is that Yoshimi has different priorities for access to the structure based on the following reasoning:
+Another point worth mentioning is that Yoshimi has different priorities for access to the structure based on the following reasoning:
 
 1/
 Don't handle data that's not actually wanted.
@@ -60,5 +64,5 @@ Writes are the only thing that can make dynamic reads wait. This ensures these r
 
 Writes are also much more complicated. In the first place, we have made them all serial and synchronous with the audio thread (if they were not already) so how do you realistically time something going through a ring buffer, interleaved with other 'somethings'?
 
-The final wrinkle with writes is that they don't always do what they seem to. Loading an instrument patch for example, just sets a flag to mute the part, then passes the data to a low priority thread. This can take its time updating (as nothing can now read it) and when complete, clear the flag again.
+The final wrinkle with writes is that they don't always do what they seem to. Loading an instrument patch for example, just sets a flag to mute the part, then passes the data to a low priority thread. This can take its time updating the part (as nothing can now read it) and when complete, clear the flag again.
 

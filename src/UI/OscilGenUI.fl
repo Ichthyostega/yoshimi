@@ -29,7 +29,7 @@ Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 This file is a derivative of the ZynAddSubFX original.
 
-Modified August 2018
+Modified December 2018
 } {selected in_source in_header
 }
 
@@ -466,7 +466,7 @@ class OscilEditor {: {public PresetsUI_}
   Function {make_window()} {} {
     Fl_Window osceditUI {
       label {ADsynth Oscillator Editor}
-      xywh {15 221 735 595} type Double hide
+      xywh {4 48 735 595} type Double hide
       code0 {string tname;}
       code1 {setWindowTitle();}
     } {
@@ -490,12 +490,12 @@ class OscilEditor {: {public PresetsUI_}
           xywh {120 10 110 20} box FLAT_BOX labelfont 1 labelsize 12
         }
         Fl_Value_Slider rndslider {
-          label rnd
+          label {Phase Randomness}
           callback {//
           if (Fl::event_button() == 3)
               o->value(0);
 
-          send_data(OSCILLATOR::control::phaseRandomness, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
+          send_data(OSCILLATOR::control::phaseRandomness, o->value(), TOPLEVEL::type::Integer);}
           tooltip {Oscilator Phase Randomness: smaller than 0 is "group", larger than 0 is for each harmonic} xywh {140 285 100 15} type {Horz Knob} box THIN_DOWN_BOX labelsize 10 align 1 minimum -64 maximum 63 step 1
           code0 {if (oscil->ADvsPAD) o->hide();}
           class mwheel_val_slider_rev
@@ -512,7 +512,7 @@ class OscilEditor {: {public PresetsUI_}
           Fl_Choice hrndtype {
             label {H.rnd}
             callback {//
-            send_data(OSCILLATOR::control::harmonicRandomnessType, o->value(), TOPLEVEL::type::Integer);}
+            send_data(OSCILLATOR::control::harmonicRandomnessType, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
             tooltip {Harmonic Amplitude Randomness} xywh {281 282 50 15} down_box BORDER_BOX labelsize 10 textsize 10
           } {
             MenuItem {} {
@@ -555,10 +555,10 @@ class OscilEditor {: {public PresetsUI_}
           class WidgetPDial
         }
         Fl_Choice bftype {
-          label {Base.F..}
+          label {Base Function}
           callback {//
           send_data(OSCILLATOR::control::baseFunctionType, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
-          xywh {370 285 90 15} down_box BORDER_BOX labelsize 10 align 5 textsize 11
+          xywh {370 285 90 15} down_box BORDER_BOX labelsize 10 align 1 textsize 11
         } {
           MenuItem {} {
             label Sine
@@ -649,6 +649,28 @@ class OscilEditor {: {public PresetsUI_}
           xywh {550 276 169 25} box ENGRAVED_BOX
           code0 {if ((oscil->Pcurrentbasefunc==0)||(oscil->Pcurrentbasefunc==127)) basefuncmodulation->deactivate();}
         } {
+          Fl_Group baseFuncPars {
+            xywh {652 278 66 21}
+          } {
+            Fl_Dial bfmodpar1 {
+              callback {//
+            send_data(OSCILLATOR::control::baseModulationParameter1, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
+              tooltip {Oscillator's modulation parameter 1} xywh {654 280 17 17} maximum 127 step 1
+              class WidgetPDial
+            }
+            Fl_Dial bfmodpar2 {
+              callback {//
+            send_data(OSCILLATOR::control::baseModulationParameter2, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
+              tooltip {Oscillator's modulation parameter 2} xywh {676 280 17 17} maximum 127 step 1
+              class WidgetPDial
+            }
+            Fl_Dial bfmodpar3 {
+              callback {//
+            send_data(OSCILLATOR::control::baseModulationParameter3, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
+              tooltip {Oscillator's modulation parameter 3} xywh {698 280 17 17} maximum 127 step 1
+              class WidgetPDial
+            }
+          }
           Fl_Choice bfmodtype {
             label {B.F.Mod.}
             callback {//
@@ -671,24 +693,6 @@ class OscilEditor {: {public PresetsUI_}
               label Pow
               xywh {80 80 100 20} labelfont 1 labelsize 10
             }
-          }
-          Fl_Dial bfmodpar1 {
-            callback {//
-            send_data(OSCILLATOR::control::baseModulationParameter1, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
-            tooltip {Oscillator's modulation parameter 1} xywh {654 280 17 17} maximum 127 step 1
-            class WidgetPDial
-          }
-          Fl_Dial bfmodpar2 {
-            callback {//
-            send_data(OSCILLATOR::control::baseModulationParameter2, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
-            tooltip {Oscillator's modulation parameter 2} xywh {676 280 17 17} maximum 127 step 1
-            class WidgetPDial
-          }
-          Fl_Dial bfmodpar3 {
-            callback {//
-            send_data(OSCILLATOR::control::baseModulationParameter3, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
-            tooltip {Oscillator's modulation parameter 3} xywh {698 280 17 17} maximum 127 step 1
-            class WidgetPDial
           }
         }
       }
@@ -833,72 +837,9 @@ class OscilEditor {: {public PresetsUI_}
         //send_data(OSCILLATOR::control::autoClear, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
         tooltip {Auto clear when using the oscillator as base function} xywh {95 313 35 20} box THIN_UP_BOX value 1 labelfont 1 labelsize 10
       }
-      Fl_Group {} {
+      Fl_Group filterGroup {
         xywh {285 308 155 30} box ENGRAVED_BOX
       } {
-        Fl_Choice fltbutton {
-          label Filter
-          callback {//
-          send_data(OSCILLATOR::control::filterType, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
-          tooltip {Oscillator's filter type} xywh {315 313 50 20} down_box BORDER_BOX labelsize 10 textsize 10
-        } {
-          MenuItem {} {
-            label None
-            xywh {35 35 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label LP1
-            xywh {45 45 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label HP1a
-            xywh {55 55 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label HP1b
-            xywh {65 65 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label BP1
-            xywh {75 75 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label BS1
-            xywh {85 85 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label LP2
-            xywh {55 55 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label HP2
-            xywh {65 65 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label BP2
-            xywh {65 65 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label BS2
-            xywh {75 75 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label Cos
-            xywh {75 75 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label Sin
-            xywh {85 85 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label LSh
-            xywh {95 95 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label S
-            xywh {105 105 100 20} labelfont 1 labelsize 10
-          }
-        }
         Fl_Dial filtervalue1 {
           callback {//
           send_data(OSCILLATOR::control::filterParameter1, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
@@ -906,7 +847,7 @@ class OscilEditor {: {public PresetsUI_}
           class WidgetPDial
         }
         Fl_Check_Button filterpref {
-          label p
+          label F
           callback {//
           send_data(OSCILLATOR::control::filterBeforeWaveshape, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
           tooltip {Apply the filter before the waveshaping} xywh {415 313 20 20} down_box DOWN_BOX labelsize 10 align 24
@@ -916,6 +857,69 @@ class OscilEditor {: {public PresetsUI_}
           send_data(OSCILLATOR::control::filterParameter2, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
           tooltip {Oscillator's filter parameter2} xywh {392 313 20 20} maximum 127 step 1
           class WidgetPDial
+        }
+      }
+      Fl_Choice fltbutton {
+        label Filter
+        callback {//
+          send_data(OSCILLATOR::control::filterType, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
+        tooltip {Oscillator's filter type} xywh {315 313 50 20} down_box BORDER_BOX labelsize 10 textsize 10
+      } {
+        MenuItem {} {
+          label None
+          xywh {45 45 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label LP1
+          xywh {55 55 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label HP1a
+          xywh {65 65 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label HP1b
+          xywh {75 75 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label BP1
+          xywh {85 85 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label BS1
+          xywh {95 95 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label LP2
+          xywh {65 65 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label HP2
+          xywh {75 75 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label BP2
+          xywh {75 75 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label BS2
+          xywh {85 85 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label Cos
+          xywh {85 85 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label Sin
+          xywh {95 95 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label LSh
+          xywh {105 105 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label S
+          xywh {115 115 100 20} labelfont 1 labelsize 10
         }
       }
       Fl_Group {} {
@@ -961,64 +965,15 @@ class OscilEditor {: {public PresetsUI_}
           xywh {670 365 55 15} type Simple labelsize 10 align 129 minimum -64 maximum 64 step 1 textfont 1 textsize 10
         }
         Fl_Check_Button harmonicshiftpre {
-          label preH
+          label {Shift 1st}
           callback {//
           send_data(OSCILLATOR::control::shiftBeforeWaveshapeAndFilter, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
-          tooltip {Apply the harmonic shift before the waveshaping and filtering} xywh {690 383 37 20} down_box DOWN_BOX labelsize 10 align 24
-        }
-        Fl_Button {} {
-          label R
-          callback {//
-          send_data(OSCILLATOR::control::clearHarmonicShift, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
-          tooltip {Reset harmonic shift} xywh {679 389 9 9} box PLASTIC_ROUND_UP_BOX color 1 selection_color 1 labelsize 10 align 4
+          tooltip {Apply the harmonic shift before the waveshaping and filtering} xywh {668 383 56 20} down_box DOWN_BOX labelsize 10 align 24
         }
       }
-      Fl_Group {} {
+      Fl_Group adaptiveGroup {
         xywh {665 410 65 90} box ENGRAVED_FRAME
       } {
-        Fl_Choice adhrtype {
-          label {Adpt.Harm.}
-          callback {//
-          send_data(OSCILLATOR::control::adaptiveHarmonicsType, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
-          tooltip {The type of the addaptive harmonics} xywh {670 425 55 15} down_box BORDER_BOX labelsize 10 align 129 when 6 textsize 10
-        } {
-          MenuItem {} {
-            label OFF
-            xywh {80 80 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label ON
-            xywh {90 90 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label Square
-            xywh {100 100 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label 2xSub
-            xywh {110 110 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label 2xAdd
-            xywh {120 120 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label 3xSub
-            xywh {120 120 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label 3xAdd
-            xywh {130 130 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label 4xSub
-            xywh {130 130 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label 4xAdd
-            xywh {140 140 100 20} labelfont 1 labelsize 10
-          }
-        }
         Fl_Dial adhrpow {
           label pow
           callback {//
@@ -1043,32 +998,52 @@ class OscilEditor {: {public PresetsUI_}
           class mwheel_slider_rev
         }
       }
-      Fl_Group {} {
+      Fl_Choice adhrtype {
+        label {Adpt.Harm.}
+        callback {//
+          send_data(OSCILLATOR::control::adaptiveHarmonicsType, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
+        tooltip {The type of the addaptive harmonics} xywh {670 425 55 15} down_box BORDER_BOX labelsize 10 align 129 when 6 textsize 10
+      } {
+        MenuItem {} {
+          label OFF
+          xywh {90 90 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label ON
+          xywh {100 100 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label Square
+          xywh {110 110 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label 2xSub
+          xywh {120 120 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label 2xAdd
+          xywh {130 130 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label 3xSub
+          xywh {130 130 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label 3xAdd
+          xywh {140 140 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label 4xSub
+          xywh {140 140 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label 4xAdd
+          xywh {150 150 100 20} labelfont 1 labelsize 10
+        }
+      }
+      Fl_Group modulationGroup {
         xywh {440 308 154 30} box ENGRAVED_BOX
       } {
-        Fl_Choice modtype {
-          label {Mod.}
-          callback {//
-          send_data(OSCILLATOR::control::modulationType, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
-          tooltip modulation xywh {470 315 50 15} down_box BORDER_BOX labelsize 10 textsize 10
-        } {
-          MenuItem {} {
-            label None
-            xywh {60 60 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label Rev
-            xywh {70 70 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label Sine
-            xywh {80 80 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label Pow
-            xywh {90 90 100 20} labelfont 1 labelsize 10
-          }
-        }
         Fl_Dial modpar1 {
           callback {//
           send_data(OSCILLATOR::control::modulationParameter1, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
@@ -1086,6 +1061,29 @@ class OscilEditor {: {public PresetsUI_}
           send_data(OSCILLATOR::control::modulationParameter3, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
           tooltip {Oscillator's modulation parameter 3} xywh {569 314 18 18} maximum 127 step 1
           class WidgetPDial
+        }
+      }
+      Fl_Choice modtype {
+        label {Mod.}
+        callback {//
+          send_data(OSCILLATOR::control::modulationType, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
+        tooltip modulation xywh {470 315 50 15} down_box BORDER_BOX labelsize 10 textsize 10
+      } {
+        MenuItem {} {
+          label None
+          xywh {70 70 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label Rev
+          xywh {80 80 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label Sine
+          xywh {90 90 100 20} labelfont 1 labelsize 10
+        }
+        MenuItem {} {
+          label Pow
+          xywh {100 100 100 20} labelfont 1 labelsize 10
         }
       }
       Fl_Button {} {
@@ -1164,7 +1162,7 @@ class OscilEditor {: {public PresetsUI_}
                 break;
 
             case OSCILLATOR::control::magType:
-                magtype->value(value);;
+                magtype->value(value);
                 break;
 
             case OSCILLATOR::control::harmonicAmplitudeRandomness:
@@ -1173,6 +1171,10 @@ class OscilEditor {: {public PresetsUI_}
 
             case OSCILLATOR::control::harmonicRandomnessType:
                 hrndtype->value(value);
+                if (value < 0.5f)
+                    hrnddial->deactivate();
+                else
+                    hrnddial->activate();
                 break;
 
             case OSCILLATOR::control::baseFunctionParameter:
@@ -1183,6 +1185,10 @@ class OscilEditor {: {public PresetsUI_}
 
             case OSCILLATOR::control::baseFunctionType:
                 bftype->value(value);
+                if (value < 0.5f)
+                    bfslider->deactivate();
+                else
+                    bfslider->activate();
                 if ((oscil->Pcurrentbasefunc==0)||(oscil->Pcurrentbasefunc==127))
                     basefuncmodulation->deactivate();
                 else
@@ -1210,6 +1216,10 @@ class OscilEditor {: {public PresetsUI_}
 
             case OSCILLATOR::control::baseModulationType:
                 bfmodtype->value(value);
+                if (value< 0.5f)
+                    baseFuncPars->deactivate();
+                else
+                    baseFuncPars->activate();
                 basefuncdisplaygroup->redraw();
                 redrawoscil();
                 break;
@@ -1254,6 +1264,10 @@ class OscilEditor {: {public PresetsUI_}
 
             case OSCILLATOR::control::waveshapeType:
                 wshbutton->value(value);
+                if (value < 0.5f)
+                    wshpar->deactivate();
+                else
+                    wshpar->activate();
                 break;
 
             case OSCILLATOR::control::filterParameter1:
@@ -1270,6 +1284,10 @@ class OscilEditor {: {public PresetsUI_}
 
             case OSCILLATOR::control::filterType:
                 fltbutton->value((int)value);
+                if (value < 0.5f)
+                    filterGroup->deactivate();
+                else
+                    filterGroup->activate();
                 break;
 
             case OSCILLATOR::control::modulationParameter1:
@@ -1286,6 +1304,10 @@ class OscilEditor {: {public PresetsUI_}
 
             case OSCILLATOR::control::modulationType:
                 modtype->value((int)value);
+                if (value < 0.5f)
+                    modulationGroup->deactivate();
+                else
+                    modulationGroup->activate();
                 break;
 
             case OSCILLATOR::control::spectrumAdjustParameter:
@@ -1294,6 +1316,10 @@ class OscilEditor {: {public PresetsUI_}
 
             case OSCILLATOR::control::spectrumAdjustType:
                 sabutton->value((int)value);
+                if (value < 0.5f)
+                    sadjpar->deactivate();
+                else
+                    sadjpar->activate();
                 break;
 
             case OSCILLATOR::control::harmonicShift:
@@ -1322,6 +1348,10 @@ class OscilEditor {: {public PresetsUI_}
 
             case OSCILLATOR::control::adaptiveHarmonicsType:
                 adhrtype->value((int)value);
+                if (value < 0.5f)
+                    adaptiveGroup->deactivate();
+                else
+                    adaptiveGroup->activate();
                 break;
 
             case OSCILLATOR::control::clearHarmonics:
@@ -1379,45 +1409,78 @@ class OscilEditor {: {public PresetsUI_}
     delete (osceditUI);} {}
   }
   Function {refresh()} {} {
-    code {magtype->value(oscil->Phmagtype);
+    code {//
+    magtype->value(oscil->Phmagtype);
     rndslider->value(oscil->Prand-64);
 
     hrndtype->value(oscil->Pamprandtype);
+    if (hrndtype->value() == 0)
+        hrnddial->deactivate();
+    else
+        hrnddial->activate();
     hrnddial->value(oscil->Pamprandpower);
 
     if (oscil->Pcurrentbasefunc == 127)
         bftype->value(16);
     else
         bftype->value(oscil->Pcurrentbasefunc);
+    if (bftype->value() == 0)
+        bfslider->deactivate();
+    else
+        bfslider->activate();
     bfparval->value(oscil->Pbasefuncpar-64);
     bfslider->value(oscil->Pbasefuncpar-64);
 
     bfmodtype->value(oscil->Pbasefuncmodulation);
+    if (bfmodtype->value() == 0)
+        baseFuncPars->deactivate();
+    else
+        baseFuncPars->activate();
     bfmodpar1->value(oscil->Pbasefuncmodulationpar1);
     bfmodpar2->value(oscil->Pbasefuncmodulationpar2);
     bfmodpar3->value(oscil->Pbasefuncmodulationpar3);
 
     wshbutton->value(oscil->Pwaveshapingfunction);
+    if (wshbutton->value() == 0)
+        wshpar->deactivate();
+    else
+        wshpar->activate();
     wsparval->value(oscil->Pwaveshaping-64);
     wshpar->value(oscil->Pwaveshaping-64);
 
     fltbutton->value(oscil->Pfiltertype);
+    if (fltbutton->value() == 0)
+        filterGroup->deactivate();
+    else
+        filterGroup->activate();
     filtervalue1->value(oscil->Pfilterpar1);
     filtervalue2->value(oscil->Pfilterpar2);
     filterpref->value(oscil->Pfilterbeforews);
 
     modtype->value(oscil->Pmodulation);
+    if (modtype->value() == 0)
+        modulationGroup->deactivate();
+    else
+        modulationGroup->activate();
     modpar1->value(oscil->Pmodulationpar1);
     modpar2->value(oscil->Pmodulationpar2);
     modpar3->value(oscil->Pmodulationpar3);
 
     sabutton->value(oscil->Psatype);
+    if (sabutton->value() == 0)
+        sadjpar->deactivate();
+    else
+        sadjpar->activate();
     sadjpar->value(oscil->Psapar);
 
     harmonicshiftcounter->value(oscil->Pharmonicshift);
     harmonicshiftpre->value(oscil->Pharmonicshiftfirst);
 
     adhrtype->value(oscil->Padaptiveharmonics);
+    if (adhrtype->value() == 0)
+        adaptiveGroup->deactivate();
+    else
+        adaptiveGroup->activate();
     adhrbf->value(oscil->Padaptiveharmonicsbasefreq);
     adhrpow->value(oscil->Padaptiveharmonicspower);
     adhrtype->value(oscil->Padaptiveharmonicspar);
@@ -1425,9 +1488,9 @@ class OscilEditor {: {public PresetsUI_}
     for (int i=0;i<MAX_AD_HARMONICS;i++)
         h[i]->refresh();
 
-    synth->actionLock(lockType);
+    //synth->actionLock(lockType);
     oscil->prepare();
-    synth->actionLock(unlockType);
+    //synth->actionLock(unlockType);
 
     basefuncdisplaygroup->redraw();
     redrawoscil();} {}

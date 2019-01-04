@@ -23,7 +23,7 @@
 
     This file is derivative of ZynAddSubFX original code.
 
-    Modified September 2018
+    Modified November 2018
 */
 
 #include <iostream>
@@ -169,6 +169,12 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
     //as all calls to lrintf() are replaced with (int)truncf()
     //which befaves exactly the same when flag FE_TOWARDZERO is set
 
+    /*
+     * The above is now all completely redundant as we use
+     * in-line either fast assembly (where available) or the
+     * original Zyn float - int conversion rounding to zero
+     */
+
     cerr.precision(4);
     bRuntimeSetupCompleted = Setup(argc, argv);
 }
@@ -187,7 +193,7 @@ bool Config::Setup(int argc, char **argv)
         /*
          * These are needed here now, as for stand-alone they have
          * been moved to main to give the users the impression of
-         * a faster startup, and reduce the likelyhood of thinking
+         * a faster startup, and reduce the likelihood of thinking
          * they failed and trying to start again.
          */
         synth->installBanks();
@@ -229,8 +235,8 @@ bool Config::Setup(int argc, char **argv)
     if (!midiDevice.size())
         midiDevice = "";
     loadCmdArgs(argc, argv);
-    Oscilsize = nearestPowerOf2(Oscilsize, MAX_AD_HARMONICS * 2, 16384);
-    Buffersize = nearestPowerOf2(Buffersize, 16, 4096);
+    Oscilsize = nearestPowerOf2(Oscilsize, MIN_OSCIL_SIZE, MAX_OSCIL_SIZE);
+    Buffersize = nearestPowerOf2(Buffersize, MIN_BUFFER_SIZE, MAX_BUFFER_SIZE);
     //Log(asString(Oscilsize));
     //Log(asString(Buffersize));
 
@@ -547,8 +553,8 @@ bool Config::extractBaseParameters(XMLwrapper *xml)
         return false;
     }
     Samplerate = xml->getpar("sample_rate", Samplerate, 44100, 192000);
-    Buffersize = xml->getpar("sound_buffer_size", Buffersize, 16, 4096);
-    Oscilsize = xml->getpar("oscil_size", Oscilsize, MAX_AD_HARMONICS * 2, 16384);
+    Buffersize = xml->getpar("sound_buffer_size", Buffersize, MIN_BUFFER_SIZE, MAX_BUFFER_SIZE);
+    Oscilsize = xml->getpar("oscil_size", Oscilsize, MIN_OSCIL_SIZE, MAX_OSCIL_SIZE);
     GzipCompression = xml->getpar("gzip_compression", GzipCompression, 0, 9);
     showGui = xml->getparbool("enable_gui", showGui);
     showSplash = xml->getparbool("enable_splash", showSplash);
@@ -1317,9 +1323,8 @@ void GuiThreadMsg::processGuiMessages()
                     }
                     break;
 
-                case GuiThreadMsg::GuiAlert:
-                    if (msg->data)
-                        guiMaster->ShowAlert(msg->index);
+                case GuiThreadMsg::GuiCheck:
+                    guiMaster->checkBuffer();
                     break;
 
                 default:

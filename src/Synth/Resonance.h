@@ -4,6 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2010, Alan Calvert
+    Copyright 2018 Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -19,7 +20,9 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of a ZynAddSubFX original, modified October 2010
+    This file is a derivative of a ZynAddSubFX original
+
+    Modified October 2018
 */
 
 #ifndef RESONANCE_H
@@ -28,7 +31,6 @@
 #include "DSP/FFTwrapper.h"
 #include "Misc/XMLwrapper.h"
 #include "Params/Presets.h"
-#include "MusicIO/MidiControl.h"
 
 class SynthEngine;
 
@@ -52,7 +54,7 @@ class Resonance : public Presets
         float getfreqresponse(float freq);
         float getcenterfreq(void);
         float getoctavesfreq(void);
-        void sendcontroller(MidiControllers ctl, float par);
+        void sendcontroller(unsigned short int ctl, float par);
 
         // parameters
         unsigned char Penabled;                 //if the ressonance is enabled
@@ -64,6 +66,12 @@ class Resonance : public Presets
         // controllers
         float ctlcenter; // center frequency(relative)
         float ctlbw;     // bandwidth(relative)
+};
+
+class ResonanceLimits
+{
+    public:
+        float getLimits(CommandBlock *getData);
 };
 
 #endif

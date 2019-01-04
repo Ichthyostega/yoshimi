@@ -1,5 +1,5 @@
 /*
-    EffectMgr.cpp - Effect manager, an interface betwen the program and effects
+    EffectMgr.cpp - Effect manager, an interface between the program and effects
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2009 Nasca Octavian Paul
@@ -162,9 +162,9 @@ void EffectMgr::changepreset_nolock(unsigned char npreset)
 // Change the preset of the current effect(with thread locking)
 void EffectMgr::changepreset(unsigned char npreset)
 {
-    synth->actionLock(lockType);
+    //synth->actionLock(lockType);
     changepreset_nolock(npreset);
-    synth->actionLock(unlockType);
+    //synth->actionLock(unlockType);
 }
 
 
@@ -180,9 +180,9 @@ void EffectMgr::seteffectpar_nolock(int npar, unsigned char value)
 // Change a parameter of the current effect (with thread locking)
 void EffectMgr::seteffectpar(int npar, unsigned char value)
 {
-    synth->actionLock(lockType);
+    //synth->actionLock(lockType);
     seteffectpar_nolock(npar, value);
-    synth->actionLock(unlockType);
+    //synth->actionLock(unlockType);
 }
 
 

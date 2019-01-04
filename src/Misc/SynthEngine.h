@@ -22,7 +22,7 @@
 
     This file is derivative of ZynAddSubFX original code.
 
-    Modified August 2018
+    Modified November 2018
 */
 
 #ifndef SYNTHENGINE_H
@@ -36,6 +36,7 @@
 using namespace std;
 
 #include "Misc/MiscFuncs.h"
+#include "Misc/RandomGen.h"
 #include "Misc/SynthHelper.h"
 #include "Misc/Microtonal.h"
 #include "Misc/Bank.h"
@@ -45,6 +46,7 @@ using namespace std;
 #include "Interface/MidiDecode.h"
 #include "Misc/Config.h"
 #include "Params/PresetsStore.h"
+#include "Params/UnifiedPresets.h"
 
 typedef enum { init, lockType, unlockType, destroy } lockset;
 
@@ -66,6 +68,7 @@ class SynthEngine : private SynthHelper, MiscFuncs
         InterChange interchange;
         MidiLearn midilearn;
         MidiDecode mididecode;
+        UnifiedPresets unifiedpresets;
     private:
         Config Runtime;
         PresetsStore presetsstore;
@@ -73,7 +76,7 @@ class SynthEngine : private SynthHelper, MiscFuncs
         SynthEngine(int argc, char **argv, bool _isLV2Plugin = false, unsigned int forceId = 0);
         ~SynthEngine();
         bool Init(unsigned int audiosrate, int audiobufsize);
-        bool actionLock(lockset request);
+        //bool actionLock(lockset request);
 
         bool savePatchesXML(string filename);
         void add2XML(XMLwrapper *xml);
@@ -125,7 +128,6 @@ class SynthEngine : private SynthHelper, MiscFuncs
         void ListPaths(list<string>& msg_buf);
         void ListBanks(int rootNum, list<string>& msg_buf);
         void ListInstruments(int bankNum, list<string>& msg_buf);
-        void ListCurrentParts(list<string>& msg_buf);
         void ListVectors(list<string>& msg_buf);
         bool SingleVector(list<string>& msg_buf, int chan);
         void ListSettings(list<string>& msg_buf);
@@ -134,8 +136,6 @@ class SynthEngine : private SynthHelper, MiscFuncs
         void vectorSet(int dHigh, unsigned char chan, int par);
         void ClearNRPNs(void);
         void resetAll(bool andML);
-        float numRandom(void);
-        unsigned int randomSE(void);
         void ShutUp(void);
         void allStop(unsigned int stopType);
         int MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_MIDI_PARTS + 1], int to_process = 0);
@@ -257,16 +257,6 @@ class SynthEngine : private SynthHelper, MiscFuncs
         pthread_mutex_t  processMutex;
         pthread_mutex_t *processLock;
 
-        char random_state[256];
-        float random_0_1;
-
-#if (HAVE_RANDOM_R)
-        struct random_data random_buf;
-        int32_t random_result;
-#else
-        long int random_result;
-#endif
-
     public:
         MasterUI *guiMaster; // need to read this in InterChange::returns
     private:
@@ -276,38 +266,11 @@ class SynthEngine : private SynthHelper, MiscFuncs
         int LFOtime; // used by Pcontinous
         string windowTitle;
         //MusicClient *musicClient;
+
+        RandomGen prng;
+    public:
+        float numRandom()   { return prng.numRandom(); }
+        uint32_t randomINT(){ return prng.randomINT(); }   // random number in the range 0...INT_MAX
 };
-
-inline float SynthEngine::numRandom(void)
-{
-    int ret;
-#if (HAVE_RANDOM_R)
-    ret = random_r(&random_buf, &random_result);
-#else
-    random_result = random();
-    ret = 0;
-#endif
-
-    if (!ret)
-    {
-        random_0_1 = (float)random_result / (float)INT_MAX;
-        random_0_1 = (random_0_1 > 1.0f) ? 1.0f : random_0_1;
-        random_0_1 = (random_0_1 < 0.0f) ? 0.0f : random_0_1;
-        return random_0_1;
-    }
-    return 0.05f;
-}
-
-inline unsigned int SynthEngine::randomSE(void)
-{
-#if (HAVE_RANDOM_R)
-    if (!random_r(&random_buf, &random_result))
-        return random_result + INT_MAX / 2;
-    return INT_MAX / 2;
-#else
-    random_result = random();
-    return (unsigned int)random_result + INT_MAX / 2;
-#endif
-}
 
 #endif

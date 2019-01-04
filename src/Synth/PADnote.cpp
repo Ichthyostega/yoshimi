@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011 Alan Calvert
-    Copyright 2017 Will Godfrey & others
+    Copyright 2017-2018 Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -21,7 +21,7 @@
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
     This file is derivative of ZynAddSubFX original code
-    Modified March 2017
+    Modified October 2018
 */
 #include <cmath>
 
@@ -52,7 +52,8 @@ PADnote::PADnote(PADnoteParameters *parameters, Controller *ctl_, float freq,
 {
     // Initialise some legato-specific vars
     Legato.msg = LM_Norm;
-    Legato.fade.length = (int)truncf(synth->samplerate_f * 0.005f); // 0.005 seems ok.
+    FR2Z2I(synth->samplerate_f * 0.005f, Legato.fade.length); // 0.005 seems ok.
+    //Legato.fade.length = (int)truncf(synth->samplerate_f * 0.005f); // 0.005 seems ok.
     if (Legato.fade.length < 1)
         Legato.fade.length = 1; // (if something's fishy)
     Legato.fade.step = (1.0 / Legato.fade.length);
@@ -114,7 +115,8 @@ PADnote::PADnote(PADnoteParameters *parameters, Controller *ctl_, float freq,
     if (size == 0)
         size = 1;
 
-    poshi_l = (int)truncf(synth->numRandom() * (size - 1));
+    FR2Z2I(synth->numRandom() * (size - 1), poshi_l);
+    //poshi_l = (int)truncf(synth->numRandom() * (size - 1));
     if (pars->PStereo != 0)
         poshi_r = (poshi_l + size / 2) % size;
     else
@@ -325,15 +327,15 @@ inline void PADnote::fadein(float *smps)
     int zerocrossings = 0;
     for (int i = 1; i < synth->sent_buffersize; ++i)
         if (smps[i - 1] < 0.0 && smps[i] > 0.0)
-            zerocrossings++; // this is only the possitive crossings
+            zerocrossings++; // this is only the positive crossings
 
     float tmp = (synth->sent_buffersize_f - 1.0) / (zerocrossings + 1) / 3.0;
     if (tmp < 8.0)
         tmp = 8.0;
     tmp *= NoteGlobalPar.Fadein_adjustment;
 
-    // F2I(tmp, n); // how many samples is the fade-in
-    int n = (tmp > 0.0f) ? (int)truncf(tmp) : (int)truncf(tmp - 1.0f);
+    int n; // how many samples is the fade-in
+    FR2Z2I(tmp, n);
     if (n > synth->sent_buffersize)
         n = synth->sent_buffersize;
     for (int i = 0; i < n; ++i)
