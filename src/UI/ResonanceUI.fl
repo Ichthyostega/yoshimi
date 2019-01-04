@@ -11,7 +11,7 @@ comment {ResonanceUI.cc} {in_source not_in_header
 comment {Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009-2010, Alan Calvert
-Copyright 2015-2018, Will Godfrey
+Copyright 2015-2019, Will Godfrey
 
 This file is part of yoshimi, which is free software: you can redistribute
 it and/or modify it under the terms of the GNU Library General Public
@@ -29,8 +29,8 @@ Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 This file is a derivative of the ZynAddSubFX original
 
-Modified September 2018
-} {in_source in_header
+Modified January 2019
+} {selected in_source in_header
 }
 
 decl {\#include <FL/Fl_Box.H>} {public local
@@ -216,7 +216,7 @@ class ResonanceGraph {: {public Fl_Box}
         {
             int sn = (int)(x_ * 1.0 / w() * MAX_RESONANCE_POINTS);
             int sp=127 - (int)(y_ * 1.0 / h() * 127);
-            if (leftbutton != 0)
+            if (YOSH::F2B(leftbutton))
             {
                 send_data(sn, sp, typeSent);
             }
@@ -301,55 +301,150 @@ class ResonanceGraph {: {public Fl_Box}
   }
 }
 
-class ResonanceUI {selected : PresetsUI_
+class ResonanceUI {: PresetsUI_
 } {
   Function {make_window()} {} {
     Fl_Window resonancewindow {
       label Resonance
       xywh {393 72 780 305} type Double hide
     } {
-      Fl_Value_Output khzvalue {
-        label kHz
-        xywh {435 264 40 18} labelsize 12 align 8 minimum 0.001 maximum 48 textfont 1 textsize 12
-        code0 {o->step(0.01, 1);}
-        code1 {//this widget must be before the calling widgets}
-      }
-      Fl_Value_Output dbvalue {
-        label dB
-        xywh {435 282 40 18} labelsize 12 align 8 minimum -150 maximum 150 textfont 1 textsize 12
-        code0 {o->step(0.1, 1);}
-        code1 {//this widget must be before the calling widgets}
-      }
-      Fl_Group {} {
-        xywh {6 5 768 256} box BORDER_BOX
-        code0 {rg=new ResonanceGraph(o->x(),o->y(),o->w(),o->h(),"");}
-        code1 {rg->init(respar, khzvalue, dbvalue, npart, kititem, engine);}
-        code2 {rg->show();}
-      } {}
-      Fl_Button {} {
-        label Close
-        callback {//
-        resonancewindow->hide();
-        if ((Fl::event_button() == 3))
-        {
-            if (ADvsPAD)
-                synth->getGuiMaster()->partui->adnoteui->ADnoteGlobalParameters->show();
-            else
-                synth->getGuiMaster()->partui->padnoteui->padnotewindow->show();
-        }}
-        xywh {700 285 74 16} box THIN_UP_BOX
-      }
-      Fl_Button {} {
-        label Clear
-        callback {//
-        send_data(RESONANCE::control::clearGraph, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
-        tooltip {Clear the resonance function} xywh {507 264 66 15} box THIN_UP_BOX labelfont 1 labelsize 12
-      }
-      Fl_Button {} {
-        label Smooth
-        callback {//
-        send_data(RESONANCE::control::smoothGraph, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
-        tooltip {Smooth the resonance function} xywh {507 282 66 18} box THIN_UP_BOX labelfont 1 labelsize 12
+      Fl_Group editor {
+        xywh {0 0 777 305}
+      } {
+        Fl_Value_Output khzvalue {
+          label kHz
+          xywh {435 264 40 18} labelsize 12 align 8 minimum 0.001 maximum 48 textfont 1 textsize 12
+          code0 {o->step(0.01, 1);}
+          code1 {//this widget must be before the calling widgets}
+        }
+        Fl_Value_Output dbvalue {
+          label dB
+          xywh {435 282 40 18} labelsize 12 align 8 minimum -150 maximum 150 textfont 1 textsize 12
+          code0 {o->step(0.1, 1);}
+          code1 {//this widget must be before the calling widgets}
+        }
+        Fl_Group {} {
+          xywh {6 5 768 256} box BORDER_BOX
+          code0 {rg=new ResonanceGraph(o->x(),o->y(),o->w(),o->h(),"");}
+          code1 {rg->init(respar, khzvalue, dbvalue, npart, kititem, engine);}
+          code2 {rg->show();}
+        } {}
+        Fl_Button {} {
+          label Clear
+          callback {//
+          send_data(RESONANCE::control::clearGraph, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
+          tooltip {Clear the resonance function} xywh {507 264 66 15} box THIN_UP_BOX labelfont 1 labelsize 12
+        }
+        Fl_Button {} {
+          label Smooth
+          callback {//
+          send_data(RESONANCE::control::smoothGraph, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
+          tooltip {Smooth the resonance function} xywh {507 282 66 18} box THIN_UP_BOX labelfont 1 labelsize 12
+        }
+        Fl_Value_Output maxdbvo {
+          label {Max dB}
+          callback {//
+          o->value(respar->PmaxdB);}
+          tooltip {The Maximum amplitude (dB)} xywh {55 282 22 18} box THIN_DOWN_BOX labelsize 12 minimum 1 maximum 127 step 1 value 30 textfont 1 textsize 12
+          code0 {o->value(respar->PmaxdB);}
+        }
+        Fl_Slider maxdb {
+          callback {//
+          if (Fl::event_button() == 3)
+              o->value(20);
+
+          send_data(RESONANCE::control::maxDb, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
+          xywh {77 282 98 18} type {Horz Knob} box THIN_DOWN_BOX labelsize 11 align 8 minimum 1 maximum 90 step 1 value 30
+          code0 {o->value(respar->PmaxdB);}
+          class mwheel_slider_rev
+        }
+        Fl_Value_Output centerfreqvo {
+          label {C.f.}
+          callback {o->value(respar->getcenterfreq()/1000.0);}
+          tooltip {Center Frequency (kHz)} xywh {210 264 33 18} labelsize 12 when 3 minimum 1 maximum 10 value 1 textfont 1 textsize 12
+          code0 {o->step(0.01, 1);}
+          code1 {o->value(respar->getcenterfreq()/1000.0);}
+        }
+        Fl_Slider centerfreq {
+          callback {//
+          if (Fl::event_button() == 3)
+              o->value(64);
+
+          send_data(RESONANCE::control::centerFrequency, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
+          xywh {243 264 110 18} type {Horz Knob} box THIN_DOWN_BOX labelsize 11 align 8 maximum 127 step 1
+          code0 {o->value(respar->Pcenterfreq);}
+          class mwheel_slider_rev
+        }
+        Fl_Value_Output octavesfreqvo {
+          label {Oct.}
+          callback {o->value(respar->getoctavesfreq());}
+          tooltip {No. of octaves} xywh {210 282 33 18} labelsize 12 when 3 minimum 1 maximum 127 step 1 value 5 textfont 1 textsize 12
+          code0 {o->value(respar->getoctavesfreq());}
+        }
+        Fl_Slider octavesfreq {
+          callback {//
+          if (Fl::event_button() == 3)
+              o->value(64);
+
+          send_data(RESONANCE::control::octaves, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
+          xywh {243 282 110 18} type {Horz Knob} box THIN_DOWN_BOX labelsize 11 align 8 maximum 127 step 1
+          code0 {o->value(respar->Poctavesfreq);}
+          class mwheel_slider_rev
+        }
+        Fl_Button {} {
+          label Rnd1
+          callback {//
+          send_data(RESONANCE::control::randomType, 0, TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
+          tooltip {Randomize the resonance function} xywh {583 264 42 12} box THIN_UP_BOX labelfont 1 labelsize 10
+        }
+        Fl_Button {} {
+          label Rnd2
+          callback {//
+          send_data(RESONANCE::control::randomType, 1, TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
+          tooltip {Randomize the resonance function} xywh {583 276 42 12} box THIN_UP_BOX labelfont 1 labelsize 10
+        }
+        Fl_Button {} {
+          label Rnd3
+          callback {//
+          send_data(RESONANCE::control::randomType, 2, TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
+          tooltip {Randomize the resonance function} xywh {583 288 42 12} box THIN_UP_BOX labelfont 1 labelsize 10
+        }
+        Fl_Check_Button p1st {
+          label {Prot.1st}
+          callback {//
+          send_data(RESONANCE::control::protectFundamental, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
+          tooltip {Protect the fundamental frequency (do not damp the first harmonic)} xywh {106 265 45 15} down_box DOWN_BOX labelsize 12
+          code0 {o->value(respar->Pprotectthefundamental);}
+        }
+        Fl_Text_Display {} {
+          label InterpPk
+          xywh {364 280 62 0} box NO_BOX labelsize 13 align 33 textsize 13
+        }
+        Fl_Box {} {
+          tooltip {Interpolate the peaks (left button smooth, right button linear)} xywh {359 264 72 36} box THIN_DOWN_FRAME
+        }
+        Fl_Button {} {
+          label S
+          callback {//
+          send_data(RESONANCE::control::interpolatePeaks, 0, TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
+          tooltip {Smooth interpolation} xywh {365 282 14 14} labelfont 1 labelsize 12
+        }
+        Fl_Button {} {
+          label L
+          callback {//
+          send_data(RESONANCE::control::interpolatePeaks, 1, TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
+          tooltip {Linear interpolation} xywh {411 282 14 14} labelfont 1 labelsize 12
+        }
+        Fl_Button {} {
+          label C
+          callback {synth->getGuiMaster()->getPresetsUi()->copy(respar);}
+          xywh {635 275 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 7
+        }
+        Fl_Button {} {
+          label P
+          callback {synth->getGuiMaster()->getPresetsUi()->paste(respar,this);}
+          xywh {665 275 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 7
+        }
       }
       Fl_Check_Button enabled {
         label Enable
@@ -358,115 +453,24 @@ class ResonanceUI {selected : PresetsUI_
         xywh {6 265 78 15} down_box DOWN_BOX labelfont 1 labelsize 12
         code0 {o->value(respar->Penabled);}
       }
-      Fl_Value_Output maxdbvo {
-        label {Max dB}
-        callback {//
-        o->value(respar->PmaxdB);}
-        tooltip {The Maximum amplitude (dB)} xywh {55 282 22 18} box THIN_DOWN_BOX labelsize 12 minimum 1 maximum 127 step 1 value 30 textfont 1 textsize 12
-        code0 {o->value(respar->PmaxdB);}
-      }
-      Fl_Slider maxdb {
-        callback {//
-        if (Fl::event_button() == 3)
-            o->value(20);
-
-        send_data(RESONANCE::control::maxDb, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
-        xywh {77 282 98 18} type {Horz Knob} box THIN_DOWN_BOX labelsize 11 align 8 minimum 1 maximum 90 step 1 value 20
-        code0 {o->value(respar->PmaxdB);}
-        class mwheel_slider_rev
-      }
-      Fl_Value_Output centerfreqvo {
-        label {C.f.}
-        callback {o->value(respar->getcenterfreq()/1000.0);}
-        tooltip {Center Frequency (kHz)} xywh {210 264 33 18} labelsize 12 when 3 minimum 1 maximum 10 value 1 textfont 1 textsize 12
-        code0 {o->step(0.01, 1);}
-        code1 {o->value(respar->getcenterfreq()/1000.0);}
-      }
-      Fl_Slider centerfreq {
-        callback {//
-        if (Fl::event_button() == 3)
-            o->value(64);
-
-        send_data(RESONANCE::control::centerFrequency, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
-        xywh {243 264 110 18} type {Horz Knob} box THIN_DOWN_BOX labelsize 11 align 8 maximum 127 step 1
-        code0 {o->value(respar->Pcenterfreq);}
-        class mwheel_slider_rev
-      }
-      Fl_Value_Output octavesfreqvo {
-        label {Oct.}
-        callback {o->value(respar->getoctavesfreq());}
-        tooltip {No. of octaves} xywh {210 282 33 18} labelsize 12 when 3 minimum 1 maximum 127 step 1 value 5 textfont 1 textsize 12
-        code0 {o->value(respar->getoctavesfreq());}
-      }
-      Fl_Slider octavesfreq {
-        callback {//
-        if (Fl::event_button() == 3)
-            o->value(64);
-
-        send_data(RESONANCE::control::octaves, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
-        xywh {243 282 110 18} type {Horz Knob} box THIN_DOWN_BOX labelsize 11 align 8 maximum 127 step 1
-        code0 {o->value(respar->Poctavesfreq);}
-        class mwheel_slider_rev
-      }
-      Fl_Button {} {
-        label Rnd1
-        callback {//
-        send_data(RESONANCE::control::randomType, 0, TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
-        tooltip {Randomize the resonance function} xywh {583 264 42 12} box THIN_UP_BOX labelfont 1 labelsize 10
-      }
-      Fl_Button {} {
-        label Rnd2
-        callback {//
-        send_data(RESONANCE::control::randomType, 1, TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
-        tooltip {Randomize the resonance function} xywh {583 276 42 12} box THIN_UP_BOX labelfont 1 labelsize 10
-      }
-      Fl_Button {} {
-        label Rnd3
-        callback {//
-        send_data(RESONANCE::control::randomType, 2, TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
-        tooltip {Randomize the resonance function} xywh {583 288 42 12} box THIN_UP_BOX labelfont 1 labelsize 10
-      }
-      Fl_Check_Button p1st {
-        label {Prot.1st}
-        callback {//
-        send_data(RESONANCE::control::protectFundamental, o->value(), TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
-        tooltip {Protect the fundamental frequency (do not damp the first harmonic)} xywh {106 265 45 15} down_box DOWN_BOX labelsize 12
-        code0 {o->value(respar->Pprotectthefundamental);}
-      }
-      Fl_Text_Display {} {
-        label InterpPk
-        xywh {364 280 62 0} box NO_BOX labelsize 13 align 33 textsize 13
-      }
-      Fl_Box {} {
-        tooltip {Interpolate the peaks (left button smooth, right button linear)} xywh {359 264 72 36} box THIN_DOWN_FRAME
-      }
-      Fl_Button {} {
-        label S
-        callback {//
-        send_data(RESONANCE::control::interpolatePeaks, 0, TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
-        tooltip {Smooth interpolation} xywh {365 282 14 14} labelfont 1 labelsize 12
-      }
-      Fl_Button {} {
-        label L
-        callback {//
-        send_data(RESONANCE::control::interpolatePeaks, 1, TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
-        tooltip {Linear interpolation} xywh {411 282 14 14} labelfont 1 labelsize 12
-      }
-      Fl_Button {} {
-        label C
-        callback {synth->getGuiMaster()->getPresetsUi()->copy(respar);}
-        xywh {635 275 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 7
-      }
-      Fl_Button {} {
-        label P
-        callback {synth->getGuiMaster()->getPresetsUi()->paste(respar,this);}
-        xywh {665 275 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 7
-      }
       Fl_Button applybutton {
         label Apply
         callback {//
-            send_data(PART::control::padsynthParameters, 0, TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
+              send_data(PART::control::padsynthParameters, 0, TOPLEVEL::type::Integer | TOPLEVEL::source::UpdateAfterSet);}
         xywh {700 265 74 17} box THIN_UP_BOX down_box THIN_DOWN_BOX labelfont 1 labelsize 11
+      }
+      Fl_Button {} {
+        label Close
+        callback {//
+          resonancewindow->hide();
+          if ((Fl::event_button() == 3))
+          {
+              if (ADvsPAD)
+                  synth->getGuiMaster()->partui->adnoteui->ADnoteGlobalParameters->show();
+              else
+                  synth->getGuiMaster()->partui->padnoteui->padnotewindow->show();
+          }}
+        xywh {700 285 74 16} box THIN_UP_BOX
       }
     }
   }
@@ -519,7 +523,16 @@ class ResonanceUI {selected : PresetsUI_
                 break;
 
             case 8:
-                enabled->value(value != 0);
+                if (YOSH::F2B(value))
+                {
+                    enabled->value(1);
+                    editor->activate();
+                }
+                else
+                {
+                    enabled->value(0);
+                    editor->deactivate();
+                }
                 break;
 
             case 10:
@@ -531,7 +544,7 @@ class ResonanceUI {selected : PresetsUI_
                 break;
 
             case 21:
-                p1st->value(value != 0);
+                p1st->value(YOSH::F2B(value));
                 break;
 
             case 96:
@@ -560,10 +573,11 @@ class ResonanceUI {selected : PresetsUI_
     npart = npart_;
     kititem = kititem_;
     engine = engine_;
-        cbwidget = NULL;
-        cbapplywidget = NULL;
-        make_window();
-        applybutton->hide();} {}
+    cbwidget = NULL;
+    cbapplywidget = NULL;
+    make_window();
+    applybutton->hide();
+    refresh();} {}
   }
   Function {~ResonanceUI()} {return_type virtual
   } {
@@ -586,7 +600,16 @@ class ResonanceUI {selected : PresetsUI_
   Function {refresh()} {} {
     code {//
     redrawPADnoteApply();
-    enabled->value(respar->Penabled);
+    if (YOSH::F2B(respar->Penabled))
+    {
+        enabled->value(1);
+        editor->activate();
+    }
+    else
+    {
+        enabled->value(0);
+        editor->deactivate();
+    }
     maxdb->value(respar->PmaxdB);
     maxdbvo->value(respar->PmaxdB);
     centerfreqvo->value(respar->getcenterfreq()/1000.0);

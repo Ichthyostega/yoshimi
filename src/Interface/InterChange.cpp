@@ -17,7 +17,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    Modified September 2018
+    Modified December 2018
 */
 
 #include <iostream>
@@ -200,7 +200,15 @@ void *InterChange::sortResultsThread(void)
 {
     while(synth->getRuntime().runSynth)
     {
-        /*if (!(tick & 8191))
+        /*
+         * To maitain portability we synthesise a very simple low accuracy
+         * timer based on the loop time of this function. As it makes no system
+         * calls apart from usleep() it is lightweight and should have no thread
+         * safety issues. It is used mostly for timeouts.
+         */
+        ++ tick;
+        /*
+        if (!(tick & 8191))
         {
             if (tick & 16383)
                 cout << "Tick" << endl;
@@ -208,7 +216,6 @@ void *InterChange::sortResultsThread(void)
                 cout << "Tock" << endl;
         }*/
 
-        ++ tick;
         // a false positive here is not actually a problem.
         unsigned char testRead = blockRead;//__sync_or_and_fetch(&blockRead, 0);
         if (lockTime == 0 && testRead != 0)
@@ -317,7 +324,7 @@ void InterChange::indirectTransfers(CommandBlock *getData)
     int switchNum = npart;
     if (control == TOPLEVEL::control::errorMessage && insert != TOPLEVEL::insert::resonanceGraphInsert)
         switchNum = 256; // this is a bit hacky :(
-
+    bool testThing = false;
     switch(switchNum)
     {
         case TOPLEVEL::section::vector:
@@ -612,14 +619,17 @@ void InterChange::indirectTransfers(CommandBlock *getData)
                     value = miscMsgPush(text);
                     break;
                 case MAIN::control::exportPadSynthSamples:
-                    synth->partonoffWrite(npart, -1);
+                {
+                    unsigned char partnum = parameter & 0x3f;
+                    synth->partonoffWrite(partnum, -1);
                     setpadparams(parameter | (kititem << 8));
-                    if (synth->part[parameter & 0x3f]->kit[kititem].padpars->export2wav(text))
+                    if (synth->part[partnum]->kit[kititem].padpars->export2wav(text))
                         text = "d " + text;
                     else
                         text = " FAILED some samples " + text;
                     value = miscMsgPush(text);
                     break;
+                }
                 case MAIN::control::masterReset:
                     synth->resetAll(0);
                     break;
@@ -910,7 +920,7 @@ void InterChange::indirectTransfers(CommandBlock *getData)
                         }
                         break;
                     case PART::control::instrumentName: // part or kit item names
-                        if (parameter == TOPLEVEL::route::lowPriority)
+                        if (kititem == UNUSED)
                         {
                             if (write)
                             {
@@ -918,9 +928,11 @@ void InterChange::indirectTransfers(CommandBlock *getData)
                                 guiTo = true;
                             }
                             else
+                            {
                                 text = synth->part[npart]->Pname;
+                            }
                         }
-                        else if (synth->part[npart]->Pkitmode == true)
+                        else if (synth->part[npart]->Pkitmode)
                         {
                             if (kititem >= NUM_KIT_ITEMS)
                                 text = " FAILED out of range";
@@ -932,7 +944,9 @@ void InterChange::indirectTransfers(CommandBlock *getData)
                                     guiTo = true;
                                 }
                                 else
+                                {
                                     text = synth->part[npart]->kit[kititem].Pname;
+                                }
                             }
                         }
                         else
@@ -967,6 +981,8 @@ void InterChange::indirectTransfers(CommandBlock *getData)
     __sync_and_and_fetch(&blockRead, 0xfd);
     if (getData->data.parameter < TOPLEVEL::route::lowPriority)
     {
+        if (testThing)
+            cout << "test " << value << endl;
         if (jack_ringbuffer_write_space(returnsBuffer) >= commandSize)
         {
             getData->data.value = float(value);
@@ -1091,7 +1107,8 @@ float InterChange::readAllData(CommandBlock *getData)
          * remote chance of getting garbled text :(
          */
         indirectTransfers(&tryData);
-        return 0;
+        synth->getRuntime().finishedCLI = true;
+        return tryData.data.value;
     }
     else
         commandSendReal(&tryData);
@@ -1136,8 +1153,10 @@ void InterChange::resolveReplies(CommandBlock *getData)
     if (npart == TOPLEVEL::section::scales && (control <= SCALES::control::tuning || control >= SCALES::control::retune))
         synth->setAllPartMaps();
 
-    bool isCli = ((type & (TOPLEVEL::source::CLI | TOPLEVEL::source::GUI )) == TOPLEVEL::source::CLI); // elminate Gui redraw
+    bool isCli = ((type & (TOPLEVEL::source::CLI | TOPLEVEL::source::GUI )) == TOPLEVEL::source::CLI); // eliminate Gui redraw
     bool isGui = type & TOPLEVEL::source::GUI;
+    //cout << "Is CLI " << isCli << endl;
+    //cout << "Is GUI " << isGui << endl;
     char button = type & 3;
     string isValue;
     string commandName;
@@ -1575,10 +1594,11 @@ string InterChange::resolveMicrotonal(CommandBlock *getData)
 
 string InterChange::resolveConfig(CommandBlock *getData)
 {
-    int value_int = lrint(getData->data.value);
+    float value = getData->data.value;
     unsigned char control = getData->data.control;
     bool write = getData->data.type & TOPLEVEL::type::Write;
-    bool value_bool = value_int > 0;
+    int value_int = lrint(value);
+    bool value_bool = YOSH::F2B(value);
     bool yesno = false;
     string contstr = "";
     switch (control)
@@ -2093,7 +2113,7 @@ string InterChange::resolveMain(CommandBlock *getData)
 
 string InterChange::resolvePart(CommandBlock *getData)
 {
-    int value_int = lrint(getData->data.value);
+    float value = getData->data.value;
     unsigned char control = getData->data.control;
     unsigned char npart = getData->data.part;
     unsigned char kititem = getData->data.kit;
@@ -2104,7 +2124,8 @@ string InterChange::resolvePart(CommandBlock *getData)
     unsigned char effNum = engine;
 
     bool kitType = (insert == TOPLEVEL::insert::kitGroup);
-    bool value_bool = value_int > 0;
+    int value_int = lrint(value);
+    bool value_bool = YOSH::F2B(value);
     bool yesno = false;
 
     if (control == UNUSED)
@@ -4499,7 +4520,7 @@ void InterChange::commandMicrotonal(CommandBlock *getData)
         __sync_or_and_fetch(&blockRead, 1);
 
     int value_int = lrint(value);
-    char value_bool = (value > 0.5f);
+    bool value_bool = YOSH::F2B(value);
 
     switch (control)
     {
@@ -4655,7 +4676,7 @@ void InterChange::commandConfig(CommandBlock *getData)
 
     bool mightChange = true;
     int value_int = lrint(value);
-    bool value_bool = value_int > 0;
+    bool value_bool = YOSH::F2B(value);
 
     switch (control)
     {
@@ -4663,7 +4684,7 @@ void InterChange::commandConfig(CommandBlock *getData)
         case CONFIG::control::oscillatorSize:
             if (write)
             {
-                value = nearestPowerOf2(value_int, 256, 16384);
+                value = nearestPowerOf2(value_int, MIN_OSCIL_SIZE, MAX_OSCIL_SIZE);
                 getData->data.value = value;
                 synth->getRuntime().Oscilsize = value;
             }
@@ -4673,7 +4694,7 @@ void InterChange::commandConfig(CommandBlock *getData)
         case CONFIG::control::bufferSize:
             if (write)
             {
-                value = nearestPowerOf2(value_int, 16, 4096);
+                value = nearestPowerOf2(value_int, MIN_BUFFER_SIZE, MAX_BUFFER_SIZE);
                 getData->data.value = value;
                 synth->getRuntime().Buffersize = value;
             }
@@ -5188,7 +5209,7 @@ void InterChange::commandPart(CommandBlock *getData)
         return;
     }
     int value_int = lrint(value);
-    char value_bool = (value > 0.5f);
+    char value_bool = YOSH::F2B(value);
 
     Part *part;
     part = synth->part[npart];
@@ -5209,7 +5230,7 @@ void InterChange::commandPart(CommandBlock *getData)
             break;
         case PART::control::panning:
             if (write)
-                part->SetController(C_panning, value);
+                part->SetController(MIDI::CC::panning, value);
             else
                 value = part->Ppanning;
             break;
@@ -5221,16 +5242,7 @@ void InterChange::commandPart(CommandBlock *getData)
             break;
         case PART::control::midiChannel:
             if (write)
-            {
                 part->Prcvchn = value_int;
-                /*if (synth->getRuntime().channelSwitchType > 0 && synth->getRuntime().channelSwitchType != 2)
-                {
-                    for (int i = 0; i < NUM_MIDI_CHANNELS; ++i)
-                        synth->part[i]->Prcvchn = 16;
-                    synth->getRuntime().channelSwitchValue = npart;
-                    part->Prcvchn = 0;
-                }*/
-            }
             else
                 value = part->Prcvchn;
             break;
@@ -5749,7 +5761,7 @@ void InterChange::commandPart(CommandBlock *getData)
         case PART::control::midiExpression:
             if (write)
             {
-                part->SetController(C_expression, value);
+                part->SetController(MIDI::CC::expression, value);
             }
             else
                 value = part->ctl->expression.data;
@@ -5813,7 +5825,7 @@ void InterChange::commandAdd(CommandBlock *getData)
         __sync_or_and_fetch(&blockRead, 1);
 
     int value_int = lrint(value);
-    char value_bool = (value > 0.5f);
+    char value_bool = YOSH::F2B(value);
 
     Part *part;
     part = synth->part[npart];
@@ -5970,7 +5982,7 @@ void InterChange::commandAddVoice(CommandBlock *getData)
         __sync_or_and_fetch(&blockRead, 1);
 
     int value_int = lrint(value);
-    char value_bool = (value > 0.5f);
+    char value_bool = YOSH::F2B(value);
 
     Part *part;
     part = synth->part[npart];
@@ -6359,7 +6371,7 @@ void InterChange::commandSub(CommandBlock *getData)
         __sync_or_and_fetch(&blockRead, 1);
 
     int value_int = lrint(value);
-    char value_bool = (value > 0.5f);
+    char value_bool = YOSH::F2B(value);
 
     Part *part;
     part = synth->part[npart];
@@ -6611,7 +6623,7 @@ void InterChange::commandPad(CommandBlock *getData)
         __sync_or_and_fetch(&blockRead, 1);
 
     int value_int = lrint(value);
-    char value_bool = (value > 0.5f);
+    char value_bool = YOSH::F2B(value);
 
     Part *part;
     part = synth->part[npart];
@@ -6907,12 +6919,13 @@ void InterChange::commandPad(CommandBlock *getData)
 
 void InterChange::commandOscillator(CommandBlock *getData, OscilGen *oscil)
 {
-    int value = lrint(getData->data.value); // no floats here!
-    char value_bool = (getData->data.value > 0.5f);
+    float value = getData->data.value;
     unsigned char type = getData->data.type;
     unsigned char control = getData->data.control;
     unsigned char insert = getData->data.insert;
 
+    int value_int = lrint(value);
+    bool value_bool = YOSH::F2B(value);
     bool write = (type & TOPLEVEL::type::Write) > 0;
     if (write)
         __sync_or_and_fetch(&blockRead, 1);
@@ -6921,8 +6934,8 @@ void InterChange::commandOscillator(CommandBlock *getData, OscilGen *oscil)
     {
         if (write)
         {
-            oscil->Phmag[control] = value;
-            if (value == 64)
+            oscil->Phmag[control] = value_int;
+            if (value_int == 64)
                 oscil->Phphase[control] = 64;
             oscil->prepare();
         }
@@ -6934,7 +6947,7 @@ void InterChange::commandOscillator(CommandBlock *getData, OscilGen *oscil)
     {
         if (write)
         {
-            oscil->Phphase[control] = value;
+            oscil->Phphase[control] = value_int;
             oscil->prepare();
         }
         else
@@ -6946,62 +6959,62 @@ void InterChange::commandOscillator(CommandBlock *getData, OscilGen *oscil)
     {
         case OSCILLATOR::control::phaseRandomness:
             if (write)
-                oscil->Prand = value + 64;
+                oscil->Prand = value_int + 64;
             else
                 value = oscil->Prand - 64;
             break;
         case OSCILLATOR::control::magType:
             if (write)
-                oscil->Phmagtype = value;
+                oscil->Phmagtype = value_int;
             else
                 value = oscil->Phmagtype;
             break;
         case OSCILLATOR::control::harmonicAmplitudeRandomness:
             if (write)
-                oscil->Pamprandpower = value;
+                oscil->Pamprandpower = value_int;
             else
                 value = oscil->Pamprandpower;
             break;
         case OSCILLATOR::control::harmonicRandomnessType:
             if (write)
-                oscil->Pamprandtype = value;
+                oscil->Pamprandtype = value_int;
             else
                 value = oscil->Pamprandtype;
             break;
 
         case OSCILLATOR::control::baseFunctionParameter:
             if (write)
-                oscil->Pbasefuncpar = value + 64;
+                oscil->Pbasefuncpar = value_int + 64;
             else
                 value = oscil->Pbasefuncpar - 64;
             break;
         case OSCILLATOR::control::baseFunctionType:
             if (write)
-                oscil->Pcurrentbasefunc = value;
+                oscil->Pcurrentbasefunc = value_int;
             else
                 value = oscil->Pcurrentbasefunc;
             break;
         case OSCILLATOR::control::baseModulationParameter1:
             if (write)
-                oscil->Pbasefuncmodulationpar1 = value;
+                oscil->Pbasefuncmodulationpar1 = value_int;
             else
                 value = oscil->Pbasefuncmodulationpar1;
             break;
         case OSCILLATOR::control::baseModulationParameter2:
             if (write)
-                oscil->Pbasefuncmodulationpar2 = value;
+                oscil->Pbasefuncmodulationpar2 = value_int;
             else
                 value = oscil->Pbasefuncmodulationpar2;
             break;
         case OSCILLATOR::control::baseModulationParameter3:
             if (write)
-                oscil->Pbasefuncmodulationpar3 = value;
+                oscil->Pbasefuncmodulationpar3 = value_int;
             else
                 value = oscil->Pbasefuncmodulationpar3;
             break;
         case OSCILLATOR::control::baseModulationType:
             if (write)
-                oscil->Pbasefuncmodulation = value;
+                oscil->Pbasefuncmodulation = value_int;
             else
                 value = oscil->Pbasefuncmodulation;
             break;
@@ -7031,26 +7044,26 @@ void InterChange::commandOscillator(CommandBlock *getData, OscilGen *oscil)
 
         case OSCILLATOR::control::waveshapeParameter:
             if (write)
-                oscil->Pwaveshaping = value + 64;
+                oscil->Pwaveshaping = value_int + 64;
             else
                 value = oscil->Pwaveshaping - 64;
             break;
         case OSCILLATOR::control::waveshapeType:
             if (write)
-                oscil->Pwaveshapingfunction = value;
+                oscil->Pwaveshapingfunction = value_int;
             else
                 value = oscil->Pwaveshapingfunction;
             break;
 
         case OSCILLATOR::control::filterParameter1:
             if (write)
-                oscil->Pfilterpar1 = value;
+                oscil->Pfilterpar1 = value_int;
             else
                 value = oscil->Pfilterpar1;
             break;
         case OSCILLATOR::control::filterParameter2:
             if (write)
-                oscil->Pfilterpar2 = value;
+                oscil->Pfilterpar2 = value_int;
             else
                 value = oscil->Pfilterpar2;
             break;
@@ -7062,50 +7075,50 @@ void InterChange::commandOscillator(CommandBlock *getData, OscilGen *oscil)
             break;
         case OSCILLATOR::control::filterType:
             if (write)
-                oscil->Pfiltertype = value;
+                oscil->Pfiltertype = value_int;
             else
                 value = oscil->Pfiltertype;
             break;
         case OSCILLATOR::control::modulationParameter1:
             if (write)
-                oscil->Pmodulationpar1 = value;
+                oscil->Pmodulationpar1 = value_int;
             else
                 value = oscil->Pmodulationpar1;
             break;
         case OSCILLATOR::control::modulationParameter2:
             if (write)
-                oscil->Pmodulationpar2 = value;
+                oscil->Pmodulationpar2 = value_int;
             else
                 value = oscil->Pmodulationpar2;
             break;
         case OSCILLATOR::control::modulationParameter3:
             if (write)
-                oscil->Pmodulationpar3 = value;
+                oscil->Pmodulationpar3 = value_int;
             else
                 value = oscil->Pmodulationpar3;
             break;
         case OSCILLATOR::control::modulationType:
             if (write)
-                oscil->Pmodulation = value;
+                oscil->Pmodulation = value_int;
             else
                 value = oscil->Pmodulation;
             break;
         case OSCILLATOR::control::spectrumAdjustParameter:
             if (write)
-                oscil->Psapar = value;
+                oscil->Psapar = value_int;
             else
                 value = oscil->Psapar;
             break;
         case OSCILLATOR::control::spectrumAdjustType:
             if (write)
-                oscil->Psatype = value;
+                oscil->Psatype = value_int;
             else
                 value = oscil->Psatype;
             break;
 
         case OSCILLATOR::control::harmonicShift:
             if (write)
-                oscil->Pharmonicshift = value;
+                oscil->Pharmonicshift = value_int;
             else
                 value = oscil->Pharmonicshift;
             break;
@@ -7121,25 +7134,25 @@ void InterChange::commandOscillator(CommandBlock *getData, OscilGen *oscil)
             break;
         case OSCILLATOR::control::adaptiveHarmonicsParameter:
             if (write)
-                oscil->Padaptiveharmonicspar = value;
+                oscil->Padaptiveharmonicspar = value_int;
             else
                 value = oscil->Padaptiveharmonicspar;
             break;
         case OSCILLATOR::control::adaptiveHarmonicsBase:
             if (write)
-                oscil->Padaptiveharmonicsbasefreq = value;
+                oscil->Padaptiveharmonicsbasefreq = value_int;
             else
                 value = oscil->Padaptiveharmonicsbasefreq;
             break;
         case OSCILLATOR::control::adaptiveHarmonicsPower:
             if (write)
-                oscil->Padaptiveharmonicspower = value;
+                oscil->Padaptiveharmonicspower = value_int;
             else
                 value = oscil->Padaptiveharmonicspower;
             break;
         case OSCILLATOR::control::adaptiveHarmonicsType:
             if (write)
-                oscil->Padaptiveharmonics = value;
+                oscil->Padaptiveharmonics = value_int;
             else
                 value = oscil->Padaptiveharmonics;
             break;
@@ -7168,12 +7181,12 @@ void InterChange::commandOscillator(CommandBlock *getData, OscilGen *oscil)
 
 void InterChange::commandResonance(CommandBlock *getData, Resonance *respar)
 {
-    int value = lrint(getData->data.value); // no floats here
-    char value_bool = (getData->data.value > 0.5);
+    float value = getData->data.value;
     unsigned char type = getData->data.type;
     unsigned char control = getData->data.control;
     unsigned char insert = getData->data.insert;
-
+    int value_int = lrint(value);
+    bool value_bool = YOSH::F2B(value);
     bool write = (type & TOPLEVEL::type::Write) > 0;
     if (write)
         __sync_or_and_fetch(&blockRead, 1);
@@ -7181,11 +7194,9 @@ void InterChange::commandResonance(CommandBlock *getData, Resonance *respar)
     if (insert == TOPLEVEL::insert::resonanceGraphInsert)
     {
         if (write)
-            respar->setpoint(control, value);
+            respar->setpoint(control, value_int);
         else
-            value = respar->Prespoints[control];
-        if (!write)
-            getData->data.value = value;
+            getData->data.value = respar->Prespoints[control];
         return;
     }
 
@@ -7193,19 +7204,19 @@ void InterChange::commandResonance(CommandBlock *getData, Resonance *respar)
     {
         case RESONANCE::control::maxDb:
             if (write)
-                respar->PmaxdB = value;
+                respar->PmaxdB = value_int;
             else
                 value = respar->PmaxdB;
             break;
         case RESONANCE::control::centerFrequency:
             if (write)
-                respar->Pcenterfreq = value;
+                respar->Pcenterfreq = value_int;
             else
                 value = respar->Pcenterfreq;
             break;
         case RESONANCE::control::octaves:
             if (write)
-                respar->Poctavesfreq = value;
+                respar->Poctavesfreq = value_int;
             else
                 value = respar->Poctavesfreq;
             break;
@@ -7219,7 +7230,7 @@ void InterChange::commandResonance(CommandBlock *getData, Resonance *respar)
 
         case RESONANCE::control::randomType:
             if (write)
-                respar->randomize(value);
+                respar->randomize(value_int);
             break;
 
         case RESONANCE::control::interpolatePeaks:
@@ -8089,7 +8100,12 @@ void InterChange::commandEffects(CommandBlock *getData)
             getData->data.parameter = eff->geteffectpar(1);
         }
         else
-            value = eff->geteffectpar(control);
+        {
+            if (control == 16)
+                value = eff->getpreset();
+            else
+                value = eff->geteffectpar(control);
+        }
     }
 
     if (!write)
@@ -8158,7 +8174,7 @@ float InterChange::returnLimits(CommandBlock *getData)
     float value = getData->data.value;
     int request = int(getData->data.type & TOPLEVEL::type::Default); // catches Adj, Min, Max, Def
 
-    //cout << "Top  Control " << control << " Part " << (int) getData->data.part << "  Kit " << kititem << " Engine " << engine << "  Insert " << insert << endl;
+    //cout << "Limits Control " << control << " Part " << npart << "  Kit " << kititem << " Engine " << engine << "  Insert " << insert << "  Parameter " << parameter << endl;
 
     //cout << "Top request " << request << endl;
 
@@ -8180,6 +8196,13 @@ float InterChange::returnLimits(CommandBlock *getData)
     float min;
     float max;
     float def;
+
+    if (insert == TOPLEVEL::insert::filterGroup)
+    {
+        filterLimit filterLimits;
+        return filterLimits.getFilterLimits(getData);
+    }
+    // should prolly move other inserts up here
 
     if (kititem >= EFFECT::type::none && kititem <= EFFECT::type::dynFilter)
     {
@@ -8206,7 +8229,7 @@ float InterChange::returnLimits(CommandBlock *getData)
 
         if ((insert == TOPLEVEL::insert::kitGroup || insert == UNUSED) && parameter == UNUSED && par2 == UNUSED)
         {
-            if (engine == PART::engine::addSynth || (engine >= PART::engine::addVoice1 && engine <= PART::engine::addVoice8))
+            if (engine == PART::engine::addSynth || (engine >= PART::engine::addVoice1 && engine <= PART::engine::addMod8))
             {
                 ADnoteParameters *adpars;
                 adpars = part->kit[kititem].adpars;
@@ -8257,72 +8280,15 @@ float InterChange::returnLimits(CommandBlock *getData)
             // we also use this for pad limits
             // as oscillator values identical
         }
-        if (insert == TOPLEVEL::insert::resonanceGroup)
+        if (insert == TOPLEVEL::insert::resonanceGroup || insert == TOPLEVEL::insert::resonanceGraphInsert)
         {
-            unsigned char type = getData->data.type;
-            type &= (TOPLEVEL::source::MIDI | TOPLEVEL::source::CLI | TOPLEVEL::source::GUI); // source bits only
-            if (control == RESONANCE::control::maxDb) // a cheat!
-            {
-                min = 1;
-                max = 90;
-                def = 50;
-                getData->data.type |= TOPLEVEL::type::Learnable;
-
-                switch (request)
-                {
-                    case TOPLEVEL::type::Adjust:
-                        if(value < min)
-                            value = min;
-                        else if(value > max)
-                            value = max;
-                        break;
-                    case TOPLEVEL::type::Minimum:
-                        value = min;
-                        break;
-                    case TOPLEVEL::type::Maximum:
-                        value = max;
-                        break;
-                    case TOPLEVEL::type::Default:
-                        value = def;
-                        break;
-                }
-                return value;
-            }
-            // there may be other stuff
-            min = 0;
-            max = 127;
-            def = 0;
-
-            cout << "Using resonance defaults" << endl;
-            switch (request)
-            {
-                case TOPLEVEL::type::Adjust:
-                    if(value < min)
-                        value = min;
-                    else if(value > max)
-                        value = max;
-                    break;
-                case TOPLEVEL::type::Minimum:
-                    value = min;
-                    break;
-                case TOPLEVEL::type::Maximum:
-                    value = max;
-                    break;
-                case TOPLEVEL::type::Default:
-                    value = def;
-                    break;
-            }
-            return value;
+            ResonanceLimits resonancelimits;
+            return resonancelimits.getLimits(getData);
         }
         if (insert == TOPLEVEL::insert::LFOgroup && engine != PART::engine::subSynth && parameter <= TOPLEVEL::insertType::filter)
         {
             LFOlimit lfolimits;
             return lfolimits.getLFOlimits(getData);
-        }
-        if (insert == TOPLEVEL::insert::filterGroup)
-        {
-            filterLimit filterLimits;
-            return filterLimits.getFilterLimits(getData);
         }
         if (insert == TOPLEVEL::insert::envelopeGroup)
         {
@@ -8356,7 +8322,8 @@ float InterChange::returnLimits(CommandBlock *getData)
             }
             return value;
     }
-     // these two should realy be in effects
+
+    // these two should realy be in effects
     if (npart == TOPLEVEL::section::systemEffects)
     {
         min = 0;

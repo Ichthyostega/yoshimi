@@ -17,7 +17,7 @@
     You should have received a copy of the GNU General Public License
     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 
-    Modifed June 2018
+    Modified November 2018
 */
 
 #ifndef MISCFUNCS_H
@@ -49,12 +49,15 @@ class MiscFuncs
         string asLongString(float n);
         string asHexString(int x);
         string asHexString(unsigned int x);
+        string asAlignedString(int n, int len);
 
         static float string2float(string str);
         static double string2double(string str);
         static int string2int(string str);
         static int string2int127(string str);
         static unsigned int string2uint(string str);
+
+        int stringNumInList(string toFind, string *listname, int convert = 0);
 
         bool isRegFile(string chkpath);
         bool isDirectory(string chkpath);
@@ -86,6 +89,7 @@ class MiscFuncs
         void bitSet(unsigned int& value, unsigned int bit);
         void bitClear(unsigned int& value, unsigned int bit);
         void bitClearHigh(unsigned int& value);
+        void bitClearAbove(unsigned int& value, int bitLevel);
         bool bitTest(unsigned int value, unsigned int bit);
 
         float dB2rap(float dB);

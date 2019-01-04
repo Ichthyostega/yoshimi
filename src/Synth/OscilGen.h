@@ -22,7 +22,7 @@
 
     This file is derivative of original ZynAddSubFX code.
 
-    Modified March 2018
+    Modified December 2018
 */
 
 #ifndef OSCIL_GEN_H
@@ -30,6 +30,7 @@
 
 #include <limits.h>
 
+#include "Misc/RandomGen.h"
 #include "Misc/WaveShapeSamples.h"
 #include "Misc/XMLwrapper.h"
 #include "DSP/FFTwrapper.h"
@@ -67,7 +68,7 @@ class OscilGen : public Presets, private WaveShapeSamples
 
         // Make a new random seed for Amplitude Randomness -
         //   should be called every noteon event
-        inline void newrandseed(void) { randseed = (unsigned int)randomOG(); }
+        void newrandseed() { randseed = prng.randomINT() + INT_MAX/2; }
 
         // Parameters
 
@@ -119,9 +120,6 @@ class OscilGen : public Presets, private WaveShapeSamples
 
         bool ADvsPAD; // if it is used by ADsynth or by PADsynth
 
-        float numRandom(void);
-        unsigned int randomOG(void);
-
     private:
         float *tmpsmps;
         FFTFREQS outoscilFFTfreqs;
@@ -171,8 +169,6 @@ class OscilGen : public Presets, private WaveShapeSamples
         float basefunc_spike(float x, float a);
         float basefunc_circle(float x, float a);
 
-        float harmonicRandom(void);
-
         // Internal Data
         unsigned char oldbasefunc,
                       oldbasepar,
@@ -204,82 +200,10 @@ class OscilGen : public Presets, private WaveShapeSamples
 
         Resonance *res;
 
-        unsigned int randseed;
+        uint32_t randseed;
 
-        float random_0_1;
-        char random_state[256];
-
-#if (HAVE_RANDOM_R)
-        int32_t random_result;
-        struct random_data random_buf;
-#else
-        long int random_result;
-#endif
-
-        float harmonic_random_0_1;
-        char harmonic_random_state[256];
-
-#if (HAVE_RANDOM_R)
-        int32_t harmonic_random_result;
-        struct random_data harmonic_random_buf;
-#else
-        long int harmonic_random_result;
-#endif
+        RandomGen prng;
+        RandomGen harmonicPrng;
 };
-
-
-inline float OscilGen::numRandom(void)
-{
-    int ret;
-#if (HAVE_RANDOM_R)
-    ret = random_r(&random_buf, &random_result);
-#else
-    random_result = random();
-    ret = 0;
-#endif
-
-    if (!ret)
-    {
-        random_0_1 = (float)random_result / (float)INT_MAX;
-        random_0_1 = (random_0_1 > 1.0f) ? 1.0f : random_0_1;
-        random_0_1 = (random_0_1 < 0.0f) ? 0.0f : random_0_1;
-        return random_0_1;
-    }
-    return 0.05f;
-}
-
-
-inline float OscilGen::harmonicRandom(void)
-{
-    int ret;
-#if (HAVE_RANDOM_R)
-    ret = random_r(&harmonic_random_buf, &harmonic_random_result);
-#else
-    harmonic_random_result = random();
-    ret = 0;
-#endif
-
-    if (!ret)
-    {
-        harmonic_random_0_1 = (float)harmonic_random_result / (float)INT_MAX;
-        harmonic_random_0_1 = (harmonic_random_0_1 > 1.0f) ? 1.0f : harmonic_random_0_1;
-        harmonic_random_0_1 = (harmonic_random_0_1 < 0.0f) ? 0.0f : harmonic_random_0_1;
-        return harmonic_random_0_1;
-    }
-    return 0.05f;
-}
-
-
-inline unsigned int OscilGen::randomOG(void)
-{
-#if (HAVE_RANDOM_R)
-    if (!random_r(&random_buf, &random_result))
-        return random_result + INT_MAX / 2;
-    return INT_MAX;
-#else
-    random_result = random();
-    return (unsigned int)random_result + INT_MAX / 2;
-#endif
-}
 
 #endif

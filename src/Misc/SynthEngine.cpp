@@ -23,10 +23,10 @@
 
     This file is derivative of original ZynAddSubFX code.
 
-    Modified September 2018
+    Modified December 2018
 */
 
-#define NOLOCKS
+//#define NOLOCKS
 
 #include<stdio.h>
 #include <sys/time.h>
@@ -92,6 +92,7 @@ SynthEngine::SynthEngine(int argc, char **argv, bool _isLV2Plugin, unsigned int 
     interchange(this),
     midilearn(this),
     mididecode(this),
+    //unifiedpresets(this),
     Runtime(this, argc, argv),
     presetsstore(this),
     fadeAll(0),
@@ -122,7 +123,6 @@ SynthEngine::SynthEngine(int argc, char **argv, bool _isLV2Plugin, unsigned int 
 {
     if (bank.roots.empty())
         bank.addDefaultRootDirs();
-    memset(&random_state, 0, sizeof(random_state));
 
     ctl = new Controller(this);
     for (int i = 0; i < NUM_MIDI_CHANNELS; ++ i)
@@ -134,6 +134,9 @@ SynthEngine::SynthEngine(int argc, char **argv, bool _isLV2Plugin, unsigned int 
     for (int nefx = 0; nefx < NUM_SYS_EFX; ++nefx)
         sysefx[nefx] = NULL;
     fadeAll = 0;
+
+    // seed the shared master random number generator
+    prng.init(time(NULL));
 }
 
 
@@ -216,26 +219,15 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
         goto bail_out;
     }
 
-    if (!pthread_mutex_init(&processMutex, NULL))
+    /*if (!pthread_mutex_init(&processMutex, NULL))
         processLock = &processMutex;
     else
     {
         Runtime.Log("SynthEngine actionLock init fails :-(");
         processLock = NULL;
         goto bail_out;
-    }
+    }*/
 
-    memset(random_state, 0, sizeof(random_state));
-#if (HAVE_RANDOM_R)
-    memset(&random_buf, 0, sizeof(random_buf));
-
-    if (initstate_r(samplerate + buffersize + oscilsize, random_state,
-                    sizeof(random_state), &random_buf))
-        Runtime.Log("SynthEngine Init failed on general randomness");
-#else
-    if (!initstate(samplerate + buffersize + oscilsize, random_state, sizeof(random_state)))
-        Runtime.Log("SynthEngine Init failed on general randomness");
-#endif
 
     if (oscilsize < (buffersize / 2))
     {
@@ -485,9 +477,9 @@ void SynthEngine::NoteOn(unsigned char chan, unsigned char note, unsigned char v
         {
             if (partonoffRead(npart))
             {
-                actionLock(lockType);
+                //actionLock(lockType);
                 part[npart]->NoteOn(note, velocity);
-                actionLock(unlockType);
+                //actionLock(unlockType);
             }
             else if (VUpeak.values.parts[npart] > (-velocity))
                 VUpeak.values.parts[npart] = -(0.2 + velocity); // ensure fake is always negative
@@ -523,9 +515,9 @@ void SynthEngine::NoteOff(unsigned char chan, unsigned char note)
         // mask values 16 - 31 to still allow a note off
         if (chan == (part[npart]->Prcvchn & 0xef) && partonoffRead(npart))
         {
-            actionLock(lockType);
+            //actionLock(lockType);
             part[npart]->NoteOff(note);
-            actionLock(unlockType);
+            //actionLock(unlockType);
         }
     }
 }
@@ -621,7 +613,7 @@ void SynthEngine::SetController(unsigned char chan, int CCtype, short int par)
         RunChannelSwitch(par);
         return;
     }
-    if (CCtype == C_allsoundsoff)
+    if (CCtype == MIDI::CC::allSoundOff)
     {   // cleanup insertion/system FX
         for (int nefx = 0; nefx < NUM_SYS_EFX; ++nefx)
             sysefx[nefx]->cleanup();
@@ -658,8 +650,8 @@ void SynthEngine::SetController(unsigned char chan, int CCtype, short int par)
         {
             if (CCtype == part[npart]->PbreathControl) // breath
             {
-                part[npart]->SetController(C_volume, 64 + par / 2);
-                part[npart]->SetController(C_filtercutoff, par);
+                part[npart]->SetController(MIDI::CC::volume, 64 + par / 2);
+                part[npart]->SetController(MIDI::CC::filterCutoff, par);
             }
             else if (CCtype == 0x44) // legato switch
             {
@@ -701,24 +693,27 @@ void SynthEngine::SetZynControls(bool in_place)
     CommandBlock putData;
     memset(&putData, 0xff, sizeof(putData));
     putData.data.value = value;
-    putData.data.type = 0xd0;
+    putData.data.type = TOPLEVEL::type::Write | TOPLEVEL::type::Integer;
+    // TODO the next line is wrong, it should really be
+    // handled by MIDI
+    putData.data.type |= TOPLEVEL::source::CLI;
 
-    if (group == 0x24) // system
+    if (group == 0x24)
     {
-        putData.data.part = 0xf1;
+        putData.data.part = TOPLEVEL::section::systemEffects;
         if (efftype == 0x40)
             putData.data.control = 1;
         //else if (efftype == 0x60) // not done yet
             //putData.data.control = 2;
         else
         {
-            putData.data.kit = 0x80 + sysefx[effnum]->geteffect();
+            putData.data.kit = EFFECT::type::none + sysefx[effnum]->geteffect();
             putData.data.control = parnum;
         }
     }
-    else // insertion
+    else
     {
-        putData.data.part = 0xf2;
+        putData.data.part = TOPLEVEL::section::insertEffects;
         //cout << "efftype " << int(efftype) << endl;
         if (efftype == 0x40)
             putData.data.control = 1;
@@ -726,7 +721,7 @@ void SynthEngine::SetZynControls(bool in_place)
             putData.data.control = 2;
         else
         {
-            putData.data.kit = 0x80 + insefx[effnum]->geteffect();
+            putData.data.kit = EFFECT::type::none + insefx[effnum]->geteffect();
             putData.data.control = parnum;
         }
     }
@@ -734,7 +729,7 @@ void SynthEngine::SetZynControls(bool in_place)
 
     if (in_place)
         interchange.commandEffects(&putData);
-    else
+    else // TODO next line is a hack!
         midilearn.writeMidi(&putData, sizeof(putData), false);
 }
 
@@ -1135,34 +1130,6 @@ void SynthEngine::ListInstruments(int bankNum, list<string>& msg_buf)
     }
     else
                 msg_buf.push_back("No Root ID " + asString(root));
-}
-
-
-void SynthEngine::ListCurrentParts(list<string>& msg_buf)
-{
-    int dest;
-    string name;
-    int avail = Runtime.NumAvailableParts;
-
-    msg_buf.push_back(asString(avail) + " parts available");
-    for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
-    {
-        if ((part[npart]->Pname) != "Simple Sound" || (partonoffRead(npart)))
-        {
-            name = "  " + asString(npart + 1);
-            dest = part[npart]->Paudiodest;
-            if (!partonoffRead(npart) || npart >= avail)
-                name += " -";
-            else if(dest == 1)
-                name += " M";
-            else if(dest == 2)
-                name += " P";
-            else
-                name += " B";
-            name +=  " " + part[npart]->Pname;
-            msg_buf.push_back(name);
-        }
-    }
 }
 
 
@@ -1608,9 +1575,9 @@ void SynthEngine::vectorSet(int dHigh, unsigned char chan, int par)
             }
             SetPartChan(chan, chan);
             SetPartChan(chan | 16, chan);
-            Runtime.vectordata.Xcc2[chan] = C_panning;
-            Runtime.vectordata.Xcc4[chan] = C_filtercutoff;
-            Runtime.vectordata.Xcc8[chan] = C_modwheel;
+            Runtime.vectordata.Xcc2[chan] = MIDI::CC::panning;
+            Runtime.vectordata.Xcc4[chan] = MIDI::CC::filterCutoff;
+            Runtime.vectordata.Xcc8[chan] = MIDI::CC::modulation;
             //Runtime.Log("Vector " + asString((int) chan) + " X CC set to " + asString(par));
             break;
 
@@ -1622,9 +1589,9 @@ void SynthEngine::vectorSet(int dHigh, unsigned char chan, int par)
                 SetPartChan(chan | 32, chan);
                 SetPartChan(chan | 48, chan);
                 Runtime.vectordata.Yaxis[chan] = par;
-                Runtime.vectordata.Ycc2[chan] = C_panning;
-                Runtime.vectordata.Ycc4[chan] = C_filtercutoff;
-                Runtime.vectordata.Ycc8[chan] = C_modwheel;
+                Runtime.vectordata.Ycc2[chan] = MIDI::CC::panning;
+                Runtime.vectordata.Ycc4[chan] = MIDI::CC::filterCutoff;
+                Runtime.vectordata.Ycc8[chan] = MIDI::CC::modulation;
                 //Runtime.Log("Vector " + asString(int(chan) + 1) + " Y CC set to " + asString(par));
             }
             break;
@@ -1760,7 +1727,7 @@ void SynthEngine::partonoffLock(int npart, int what)
 }
 
 /*
- * Intellegent switch for unknown part status that always
+ * Intelligent switch for unknown part status that always
  * switches off and later returns original unknown state
  */
 void SynthEngine::partonoffWrite(int npart, int what)
@@ -1848,7 +1815,7 @@ void SynthEngine::Mute()
 }
 
 /*
- * Intellegent switch for unknown mute status that always
+ * Intelligent switch for unknown mute status that always
  * switches off and later returns original unknown state
  */
 void SynthEngine::mutewrite(int what)
@@ -1928,7 +1895,7 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
  */
     else
     {
-        actionLock(lockType);
+        //actionLock(lockType);
         // Compute part samples and store them ->partoutl,partoutr
         for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
         {
@@ -2083,7 +2050,7 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
                 fadeLevel -= fadeStep;
             }
         }
-        actionLock(unlockType);
+        //actionLock(unlockType);
 
         // Peak calculation for mixed outputs
         float absval;
@@ -2248,7 +2215,7 @@ void SynthEngine::allStop(unsigned int stopType)
 }
 
 
-bool SynthEngine::actionLock(lockset request)
+/*bool SynthEngine::actionLock(lockset request)
 {
 #ifdef NOLOCKS
     lockset a = request; request = a; // suppress warning
@@ -2271,7 +2238,7 @@ bool SynthEngine::actionLock(lockset request)
     }
     return (chk == 0) ? true : false;
 #endif
-}
+}*/
 
 
 bool SynthEngine::loadStateAndUpdate(string filename)
@@ -3289,8 +3256,8 @@ float SynthEngine::getLimits(CommandBlock *getData)
             break;
 
         case MAIN::control::soloType:
-            def = 0;
-            max = 3;
+            def = 0; // Off
+            max = 4;
             break;
 
         case MAIN::control::soloCC:
@@ -3450,14 +3417,14 @@ float SynthEngine::getConfigLimits(CommandBlock *getData)
     switch (control)
     {
         case CONFIG::control::oscillatorSize:
-            min = 256;
+            min = MIN_OSCIL_SIZE;
             def = 1024;
-            max = 16384;
+            max = MAX_OSCIL_SIZE;
             break;
         case CONFIG::control::bufferSize:
-            min = 16;
+            min = MIN_BUFFER_SIZE;
             def = 512;
-            max = 4096;
+            max = MAX_BUFFER_SIZE;
            break;
         case CONFIG::control::padSynthInterpolation:
             break;

@@ -23,7 +23,7 @@
 
     This file is derivative of ZynAddSubFX original code.
 
-    Modified August 2018
+    Modified November 2018
 */
 
 #include <cstring>
@@ -718,60 +718,60 @@ void Part::SetController(unsigned int type, int par)
 {
     switch (type)
     {
-        case C_pitchwheel:
+        case MIDI::CC::pitchWheel:
             ctl->setpitchwheel(par);
             break;
 
-        case C_expression:
+        case MIDI::CC::expression:
             ctl->setexpression(par);
             setVolume(Pvolume);
             break;
 
-        case C_portamento:
+        case MIDI::CC::portamento:
             ctl->setportamento(par);
             break;
 
-        case C_panning:
+        case MIDI::CC::panning:
             par = 64 + (par - 64) * (ctl->panning.depth / 64.0); // force float during calculation
             setPan(par);
             break;
 
-        case C_filtercutoff:
+        case MIDI::CC::filterCutoff:
             ctl->setfiltercutoff(par);
             break;
 
-        case C_filterq:
+        case MIDI::CC::filterQ:
             ctl->setfilterq(par);
             break;
 
-        case C_bandwidth:
+        case MIDI::CC::bandwidth:
             ctl->setbandwidth(par);
             break;
 
-        case C_modwheel:
+        case MIDI::CC::modulation:
             ctl->setmodwheel(par);
             break;
 
-        case C_fmamp:
+        case MIDI::CC::fmamp:
             ctl->setfmamp(par);
             break;
 
-        case C_volume:
+        case MIDI::CC::volume:
             if (ctl->volume.receive)
                 setVolume(par * ctl->volume.volume);
             break;
 
-        case C_sustain:
+        case MIDI::CC::sustain:
             ctl->setsustain(par);
             if (!ctl->sustain.sustain)
                 RelaseSustainedKeys();
             break;
 
-        case C_allsoundsoff:
+        case MIDI::CC::allSoundOff:
             AllNotesOff(); // Panic
             break;
 
-        case C_resetallcontrollers:
+        case MIDI::CC::resetAllControllers:
             ctl->resetall();
             RelaseSustainedKeys();
             setVolume(Pvolume);
@@ -783,37 +783,37 @@ void Part::SetController(unsigned int type, int par)
             {
                 if (!kit[item].adpars)
                     continue;
-                kit[item].adpars->GlobalPar.Reson->sendcontroller(C_resonance_center, 1.0);
-                kit[item].adpars->GlobalPar.Reson->sendcontroller(C_resonance_bandwidth, 1.0);
+                kit[item].adpars->GlobalPar.Reson->sendcontroller(MIDI::CC::resonanceCenter, 1.0);
+                kit[item].adpars->GlobalPar.Reson->sendcontroller(MIDI::CC::resonanceBandwidth, 1.0);
             }
             // more update to add here if I add controllers
             break;
 
-        case C_allnotesoff:
+        case MIDI::CC::allNotesOff:
             RelaseAllKeys();
             break;
 
-        case C_resonance_center:
+        case MIDI::CC::resonanceCenter:
             ctl->setresonancecenter(par);
             for (int item = 0; item < NUM_KIT_ITEMS; ++item)
             {
                 if (!kit[item].adpars)
                     continue;
-                kit[item].adpars->GlobalPar.Reson->sendcontroller(C_resonance_center,
+                kit[item].adpars->GlobalPar.Reson->sendcontroller(MIDI::CC::resonanceCenter,
                                                                   ctl->resonancecenter.relcenter);
             }
             break;
 
-        case C_resonance_bandwidth:
+        case MIDI::CC::resonanceBandwidth:
             ctl->setresonancebw(par);
-            kit[0].adpars->GlobalPar.Reson->sendcontroller(C_resonance_bandwidth,
+            kit[0].adpars->GlobalPar.Reson->sendcontroller(MIDI::CC::resonanceBandwidth,
                                                            ctl->resonancebandwidth.relbw);
             break;
     }
 }
 
 
-// Relase the sustained keys
+// Release the sustained keys
 void Part::RelaseSustainedKeys(void)
 {
     // Let's call MonoMemRenote() on some conditions:
@@ -829,7 +829,7 @@ void Part::RelaseSustainedKeys(void)
 }
 
 
-// Relase all keys
+// Release all keys
 void Part::RelaseAllKeys(void)
 {
     for (int i = 0; i < POLIPHONY; ++i)
@@ -1665,23 +1665,37 @@ float Part::getLimits(CommandBlock *getData)
             break;
 
         case PART::control::midiModWheel:
-        case PART::control::midiFilterQ:
-        case PART::control::midiFilterCutoff:
-        case PART::control::midiBandwidth:
             type |= learnable;
             break;
-
+        case PART::control::midiBreath: // not done yet
+            break;
         case PART::control::midiExpression:
             type |= learnable;
             def = 127;
             break;
+        case PART::control::midiSustain: // not done yet
+            break;
+        case PART::control::midiPortamento: // not done yet
+            break;
+        case PART::control::midiFilterQ:
+            type |= learnable;
+            break;
+        case PART::control::midiFilterCutoff:
+            type |= learnable;
+            break;
+        case PART::control::midiBandwidth:
+            type |= learnable;
+            break;
 
-        // these haven't been done
-        case PART::control::midiBreath:
+// the following have no limits but are here so they don't
+// create errors when tested.
+        case PART::control::instrumentCopyright:
             break;
-        case PART::control::midiSustain:
+        case PART::control::instrumentComments:
             break;
-        case PART::control::midiPortamento:
+        case PART::control::instrumentName:
+            break;
+        case PART::control::defaultInstrumentCopyright:
             break;
 
         case 255: // number of parts

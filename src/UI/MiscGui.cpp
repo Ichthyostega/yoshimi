@@ -160,19 +160,19 @@ void GuiUpdates::decode_updates(SynthEngine *synth, CommandBlock *getData)
 
 //        cout << "Con " << int(control) << "  Kit " << int(kititem) << "  Eng " << int(engine) << "  Ins " << int(insert) << endl;
 
-    if (control == TOPLEVEL::control::errorMessage && insert != TOPLEVEL::insert::resonanceGraphInsert) // just show a messge
+    if (control == TOPLEVEL::control::errorMessage && insert != TOPLEVEL::insert::resonanceGraphInsert) // just show a message
     {
         synth->getGuiMaster()->words->copy_label(miscMsgPop(insertPar2).c_str());
         synth->getGuiMaster()->cancel->hide();
         synth->getGuiMaster()->message->show();
         return;
     }
-    if (npart == TOPLEVEL::section::scales) // scales
+    if (npart == TOPLEVEL::section::scales)
     {
         synth->getGuiMaster()->microtonalui->returns_update(getData);
         return;
     }
-    if (npart == TOPLEVEL::section::vector) // vector
+    if (npart == TOPLEVEL::section::vector)
     {
         synth->getGuiMaster()->vectorui->returns_update(getData);
         return;
@@ -182,7 +182,7 @@ void GuiUpdates::decode_updates(SynthEngine *synth, CommandBlock *getData)
         synth->getGuiMaster()->midilearnui->returns_update(getData);
         return;
     }
-    if (npart == TOPLEVEL::section::midiIn) // midi messages - catch this early
+    if (npart == TOPLEVEL::section::midiIn) //  catch this early
     {
         synth->getGuiMaster()->returns_update(getData);
         return;
@@ -250,9 +250,6 @@ void GuiUpdates::decode_updates(SynthEngine *synth, CommandBlock *getData)
         return;
     }
 
-    if (kititem != UNUSED && kititem != 0 && engine != UNUSED && control != PART::control::enable && part->kit[kititem].Penabled == false)
-        return; // attempt to access non existant kititem
-
     if (insert != UNUSED || (control != PART::control::enable && control != PART::control::instrumentName))
     {
         if (synth->getGuiMaster()->partui->partname == "Simple Sound")
@@ -265,9 +262,6 @@ void GuiUpdates::decode_updates(SynthEngine *synth, CommandBlock *getData)
         synth->getGuiMaster()->partui->returns_update(getData);
         return;
     }
-
-    if (kititem > 0 && kititem != UNUSED && part->Pkitmode == 0)
-        return; // invalid access
 
     if (engine == PART::engine::padSynth) // padsynth
     {

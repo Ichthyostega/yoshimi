@@ -29,7 +29,7 @@ Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 This file is a derivative of the ZynAddSubFX original
 
-Modified September 2018} {in_source in_header
+Modified November 2018} {in_source in_header
 }
 
 decl {\#include <string>} {public local
@@ -1462,7 +1462,7 @@ class EffUI {selected : {public Fl_Group,public PresetsUI_}
       Fl_Group fwin_filterui {
         label {DynFilter effect  - Filter} open
         xywh {5 5 275 75} box FLAT_BOX color 50 labelsize 12 align 144
-        code0 {o->init(eff->filterpars,NULL,NULL, npart, FILTERINSERT::control::dynFilter, neff);}
+        code0 {o->init(eff->filterpars,NULL,NULL, npart, EFFECT::type::dynFilter, neff);}
         class FilterUI
       } {}
       Fl_Button {} {
@@ -1483,7 +1483,7 @@ class EffUI {selected : {public Fl_Group,public PresetsUI_}
     int value_int = int(value + 0.5f);
     unsigned char control = getData->data.control;
     unsigned char efftype = getData->data.kit;
-    bool isdynfilter = (getData->data.engine == FILTERINSERT::control::dynFilter);
+    bool isdynfilter = (getData->data.engine == EFFECT::type::dynFilter);
     unsigned char secondary = getData->data.par2;
 
     //cout << "cont " << (int)control << "  type " << (int)efftype << "  num " << (int)effnum << endl;
@@ -1729,10 +1729,10 @@ class EffUI {selected : {public Fl_Group,public PresetsUI_}
                     distp4->value(value);
                     break;
                 case 5:
-                    distp6->value(value_int);
+                    distp5->value(value_int);
                     break;
                 case 6:
-                    distp5->value(value_int);
+                    distp6->value(value_int);
                     break;
                 case 7:
                     distp7->value(value);
