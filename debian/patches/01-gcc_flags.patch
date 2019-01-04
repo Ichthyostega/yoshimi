@@ -7,16 +7,16 @@ Origin: Debian
 Bug: http://bugs.debian.org/584492
 Forwarded: yes
 ---
- src/CMakeLists.txt | 4 ++++
- 1 file changed, 4 insertions(+)
+ src/CMakeLists.txt | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
 diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
-index 10dffae..65b5c62 100644
+index 27d5bc0..19b6540 100644
 --- a/src/CMakeLists.txt
 +++ b/src/CMakeLists.txt
-@@ -127,6 +127,9 @@ set (BuildOptionsBasic
- set (BuildOptionsDebug
-     "-O0 -g3 -ggdb -Wall -Wpointer-arith" CACHE STRING "Debug build flags")
+@@ -130,6 +130,9 @@ set (BuildOptionsDebug
+ set (BuildOptionsRelease
+     "-O3" CACHE STRING "Compile with optimisation for Release builds")
  
 +set (BuildOptionsDebian
 +    "-O3 -ffast-math -fomit-frame-pointer -ldl" CACHE STRING "Debian build flags")
@@ -24,11 +24,13 @@ index 10dffae..65b5c62 100644
  find_package (PkgConfig REQUIRED)
  if (PKG_CONFIG_FOUND)
      message(STATUS "Found pkg-config ${PKG_CONFIG_EXECUTABLE}")
-@@ -330,6 +333,7 @@ else (BuildForDebug)
-             endif (BuildForCore2_X86_64)
-         endif (BuildForAMD_X86_64)
-     endif (BuildFor0ld_X86)
+@@ -330,7 +333,8 @@ if (BuildForDebug)
+     message (STATUS "DEBUG Build, flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG}")
+ else (BuildForDebug)
+     set (CMAKE_BUILD_TYPE "Release")
+-    set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptionsRelease})
++#   set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptionsRelease})
 +    set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptionsDebian})
-     message (STATUS "Building for ${CMAKE_BUILD_TYPE}, flags: ${CMAKE_CXX_FLAGS_RELEASE}")
+     message (STATUS "RELEASE Build, flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE}")
  endif (BuildForDebug)
  
