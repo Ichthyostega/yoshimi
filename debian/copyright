@@ -9,9 +9,8 @@ Copyright: 2009-2011, Alan Calvert
            2009, James Morris
            2002-2005, Nasca Octavian Paul
            2002-2009, Nasca Octavian Paul and others
-           2014-2018, Will Godfrey
-           2014-2018, Will Godfrey & others
-           in interfata
+           2014-2019, Will Godfrey
+           2014-2019, Will Godfrey & others
 License: GPL-2+
 
 Files: src/DSP/*
@@ -29,6 +28,7 @@ Files: src/DSP/*
        src/Misc/Microtonal.h
        src/Misc/Part.cpp
        src/Misc/Part.h
+       src/Misc/RandomGen.h
        src/Misc/Splash.cpp
        src/Misc/Splash.h
        src/Misc/SplashPngHex
@@ -86,8 +86,8 @@ Copyright: 2009-2011, Alan Calvert
            2017, Jesper Lloyd
            2002-2009, Nasca Octavian Paul and others
            2016, Rob Couto & Will Godfrey
-           2014-2018, Will Godfrey
-           2014-2018, Will Godfrey and others
+           2014-2019, Will Godfrey
+           2014-2019, Will Godfrey and others
 License: LGPL-2+
 
 Files: debian/*
