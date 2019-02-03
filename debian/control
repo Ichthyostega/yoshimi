@@ -25,7 +25,7 @@ Build-Depends:
  lv2-dev,
  sharutils,
  zlib1g-dev
-Standards-Version: 4.1.4
+Standards-Version: 4.3.0
 Vcs-Git: https://salsa.debian.org/multimedia-team/yoshimi.git
 Vcs-Browser: https://salsa.debian.org/multimedia-team/yoshimi
 Homepage: https://yoshimi.sourceforge.io
