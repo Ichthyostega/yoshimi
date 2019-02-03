@@ -2,7 +2,7 @@
 #   CMakeLists.txt
 #
 #   Copyright 2009-2011, Alan Calvert
-#   Copyright 2014-2018, Will Godfrey & others
+#   Copyright 2014-2019, Will Godfrey & others
 #
 #   This file is part of yoshimi, which is free software: you can
 #   redistribute it and/or modify it under the terms of the GNU General
@@ -17,7 +17,7 @@
 #   You should have received a copy of the GNU General Public License
 #   along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 
-# Modifed June 2018
+# Modified January 2019
 
 project (Yoshimi)
 cmake_minimum_required (VERSION 3.0)
@@ -32,14 +32,15 @@ endif (POLICY CMP0072)
 set (CMAKE_CXX_STANDARD 11) # we seem to need both for
 add_definitions(-std=gnu++11) # various versions of cmake
 
-# vvv
 add_definitions(-Wall)
-add_definitions(-Werror=format-security)
+
+# vvv
 #add_definitions(-Wpedantic)
-add_definitions(-Wextra)
+#add_definitions(-Werror=format-security)
+#add_definitions(-Wextra)
 # ^^^ comment these out on release pushes
 
-set (YOSHIMI_VERSION "1.5.8.2")
+set (YOSHIMI_VERSION "1.5.10.1")
 add_definitions (-DMIN_CONFIG_MAJOR=1)
 add_definitions (-DMIN_CONFIG_MINOR=5)
 
@@ -83,7 +84,7 @@ option (BuildForAMD_X86_64 "Build for AMD x86_64 system" OFF)
 option (BuildForCore2_X86_64 "Build for Intel Core2 x86_64 system" OFF)
 option (BuildForNEON "Build for ARM Cortex A9 system" OFF)
 option (BuildForThisCPU "Build for presently running system" OFF)
-option (BuildForDebug "Include gdb debugging support" OFF)
+option (BuildForDebug "Debug build without optimisation. Enable gdb debugging support" OFF)
 
 #option to build lv2 plugin
 option (LV2Plugin "Build yoshimi lv2 plugin interface" ON)
@@ -95,37 +96,39 @@ option (ReportNotes "Report Notes On/Off" OFF)
 
 
 set (BuildOptions_X86
-    "-O3 -msse -msse2 -mfpmath=sse -ffast-math -fomit-frame-pointer"
-    CACHE STRING "basic X86 complier options"
+    "-msse -msse2 -mfpmath=sse -ffast-math -fomit-frame-pointer"
+    CACHE STRING "basic X86 compiler options"
 )
 
 set (BuildOptions_X86_64AMD
-    "-O3 -march=athlon64 -m64 -Wall -msse -msse2 -mfpmath=sse -ffast-math -fno-finite-math-only -fomit-frame-pointer"
+    "-march=athlon64 -m64 -Wall -msse -msse2 -mfpmath=sse -ffast-math -fno-finite-math-only -fomit-frame-pointer"
   CACHE STRING "X86_64 compiler options"
 )
 
 set (BuildOptions_X86_64Core2
-    "-O3 -march=core2 -m64 -Wall -msse -msse2 -mfpmath=sse -ffast-math -fno-finite-math-only -fomit-frame-pointer"
+    "-march=core2 -m64 -Wall -msse -msse2 -mfpmath=sse -ffast-math -fno-finite-math-only -fomit-frame-pointer"
   CACHE STRING "X86_64 compiler options"
 )
 
 set (BuildOptions_NEON
-"-O3 -march=armv7-a -mfloat-abi=hard -mfpu=neon -mcpu=cortex-a9 -mtune=cortex-a9 -pipe -mvectorize-with-neon-quad -funsafe-loop-optimizations"
+    "-march=armv7-a -mfloat-abi=hard -mfpu=neon -mcpu=cortex-a9 -mtune=cortex-a9 -pipe -mvectorize-with-neon-quad -funsafe-loop-optimizations"
   CACHE STRING "Cortex_a9 compiler options"
 )
 
 set (BuildOptionsThisCPU
-    "-O3 -march=native -Wall -msse -msse2 -mfpmath=sse -ffast-math -fno-finite-math-only -fomit-frame-pointer"
+    "-march=native -Wall -msse -msse2 -mfpmath=sse -ffast-math -fno-finite-math-only -fomit-frame-pointer"
   CACHE STRING "Current CPU compiler options"
 )
 
 set (BuildOptionsBasic
-    "-O3 -ffast-math -fomit-frame-pointer"
+    "-ffast-math -fomit-frame-pointer"
     CACHE STRING "basic compilier options"
 )
 
 set (BuildOptionsDebug
-    "-O0 -g3 -ggdb -Wall -Wpointer-arith" CACHE STRING "Debug build flags")
+    "-O0 -g3 -ggdb -Wpointer-arith -Wpedantic -Wextra" CACHE STRING "Compile without optimisation and with debug information")
+set (BuildOptionsRelease
+    "-O3" CACHE STRING "Compile with optimisation for Release builds")
 
 find_package (PkgConfig REQUIRED)
 if (PKG_CONFIG_FOUND)
@@ -135,12 +138,6 @@ else (PKG_CONFIG_FOUND)
 endif (PKG_CONFIG_FOUND)
 
 include (CheckFunctionExists)
-# musl systems don’t have random_r() and also need argp-standalone
-check_function_exists(random_r randomR)
-
-if (randomR)
-    add_definitions(-DHAVE_RANDOM_R)
-endif(randomR)
 
 check_function_exists(exp10f EXP10F)
 
@@ -304,33 +301,38 @@ endif(READLINE_FOUND)
 
 set (YOSHI_INCLUDES ${FLTK_INCLUDE_DIR})
 
+# set platform specific compiler flags
+if (BuildFor0ld_X86)
+    set (OurCxxFlags ${BuildOptions_X86})
+else (BuildFor0ld_X86)
+    if (BuildForAMD_X86_64)
+        set (OurCxxFlags ${BuildOptions_X86_64AMD})
+    else (BuildForAMD_X86_64)
+        if (BuildForCore2_X86_64)
+            set (OurCxxFlags ${BuildOptions_X86_64Core2})
+        else (BuildForCore2_X86_64)
+            if (BuildForNEON)
+                set (OurCxxFlags ${BuildOptions_NEON})
+            else (BuildForNEON)
+                if (BuildForThisCPU)
+                    set (OurCxxFlags ${BuildOptionsThisCPU})
+                else (BuildForThisCPU)
+                    set (OurCxxFlags ${BuildOptionsBasic})
+                endif (BuildForThisCPU)
+            endif (BuildForNEON)
+        endif (BuildForCore2_X86_64)
+    endif (BuildForAMD_X86_64)
+endif (BuildFor0ld_X86)
+set (CMAKE_CXX_FLAGS "${OurCxxFlags} ${CMAKE_CXX_FLAGS}")
+
 if (BuildForDebug)
     set (CMAKE_BUILD_TYPE "Debug")
-    message (STATUS "Building for ${CMAKE_BUILD_TYPE}, flags: ${CMAKE_CXX_FLAGS_DEBUG}")
+    set (CMAKE_CXX_FLAGS_DEBUG ${BuildOptionsDebug})
+    message (STATUS "DEBUG Build, flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG}")
 else (BuildForDebug)
     set (CMAKE_BUILD_TYPE "Release")
-    if (BuildFor0ld_X86)
-        set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptions_X86})
-    else (BuildFor0ld_X86)
-        if (BuildForAMD_X86_64)
-            set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptions_X86_64AMD})
-        else (BuildForAMD_X86_64)
-            if (BuildForCore2_X86_64)
-                set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptions_X86_64Core2})
-            else (BuildForCore2_X86_64)
-                if (BuildForNEON)
-                    set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptions_NEON})
-                else (BuildForNEON)
-                    if (BuildForThisCPU)
-                        set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptionsThisCPU})
-                    else (BuildForThisCPU)
-                        set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptionsBasic})
-                    endif (BuildForThisCPU)
-                endif (BuildForNEON)
-            endif (BuildForCore2_X86_64)
-        endif (BuildForAMD_X86_64)
-    endif (BuildFor0ld_X86)
-    message (STATUS "Building for ${CMAKE_BUILD_TYPE}, flags: ${CMAKE_CXX_FLAGS_RELEASE}")
+    set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptionsRelease})
+    message (STATUS "RELEASE Build, flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE}")
 endif (BuildForDebug)
 
 configure_file(
@@ -367,7 +369,8 @@ set (Params_sources
     Params/ADnoteParameters.cpp  Params/EnvelopeParams.cpp
     Params/FilterParams.cpp  Params/LFOParams.cpp
     Params/SUBnoteParameters.cpp  Params/PADnoteParameters.cpp
-    Params/Controller.cpp  Params/Presets.cpp Params/PresetsStore.cpp
+    Params/Controller.cpp  Params/Presets.cpp
+    Params/PresetsStore.cpp  Params/UnifiedPresets.cpp
 )
 
 set (Synth_sources
@@ -422,67 +425,7 @@ add_definitions (
     -DYOSHI_FIFO_DIR="${FifoDirectory}"
 )
 
-# many of these are here for convenience and consistency
-# changing them is likely to have unpredicable consequences
 add_definitions (-DYOSHIMI="yoshimi")
-add_definitions (-DCOMMAND_SIZE=80)
-add_definitions (-DMAX_HISTORY=25)
-add_definitions (-DMAX_PRESETS=1000)
-add_definitions (-DMAX_PRESET_DIRS=128)
-add_definitions (-DMAX_BANK_ROOT_DIRS=128)
-add_definitions (-DMAX_BANKS_IN_ROOT=128)
-add_definitions (-DMAX_AD_HARMONICS=128)
-add_definitions (-DMAX_SUB_HARMONICS=64)
-add_definitions (-DPAD_MAX_SAMPLES=96)
-add_definitions (-DADD_COLOUR=0xdfafbf00)
-add_definitions (-DBASE_COLOUR=0xbfbfbf00)
-add_definitions (-DSUB_COLOUR=0xafcfdf00)
-add_definitions (-DPAD_COLOUR=0xcfdfaf00)
-add_definitions (-DYOSHI_COLOUR=0x0000e100)
-add_definitions (-DNUM_MIDI_PARTS=64)
-add_definitions (-DNUM_MIDI_CHANNELS=16)
-add_definitions (-DMIDI_LEARN_BLOCK=200)
-add_definitions (-DMAX_ENVELOPE_POINTS=40)
-add_definitions (-DMIN_ENVELOPE_DB=-60)
-add_definitions (-DMAX_RESONANCE_POINTS=256)
-add_definitions (-DMAX_KEY_SHIFT=36)
-add_definitions (-DMIN_KEY_SHIFT=-36)
-
-add_definitions (-DPI=3.1415926536f)
-add_definitions (-DTWOPI=6.28318530718f)
-add_definitions (-DHALFPI=1.57079632679f)
-add_definitions (-DLOG_2=0.693147181f)
-
-#probably not the best way to do this :(
-add_definitions (-DXML_INSTRUMENT=1)
-add_definitions (-DXML_PARAMETERS=2)
-add_definitions (-DXML_MICROTONAL=3)
-add_definitions (-DXML_PRESETS=4)
-add_definitions (-DXML_STATE=5)
-add_definitions (-DXML_CONFIG=6)
-add_definitions (-DXML_BANK=7)
-add_definitions (-DXML_HISTORY=8)
-add_definitions (-DXML_VECTOR=9)
-add_definitions (-DXML_MIDILEARN=10)
-
-add_definitions (-DNO_MSG=255)
-
-# these were previously (pointlessly) user configurable
-add_definitions (-DNUM_VOICES=8)
-add_definitions (-DPOLIPHONY=80)
-add_definitions (-DNUM_SYS_EFX=4)
-add_definitions (-DNUM_INS_EFX=8)
-add_definitions (-DNUM_PART_EFX=3)
-add_definitions (-DNUM_KIT_ITEMS=16)
-add_definitions (-DVELOCITY_MAX_SCALE=8.0f)
-add_definitions (-DFADEIN_ADJUSTMENT_SCALE=20)
-add_definitions (-DMAX_EQ_BANDS=8) # MAX_EQ_BANDS must be less than 20
-add_definitions (-DMAX_FILTER_STAGES=5)
-add_definitions (-DFF_MAX_VOWELS=6)
-add_definitions (-DFF_MAX_FORMANTS=12)
-add_definitions (-DFF_MAX_SEQUENCE=8)
-add_definitions (-DMAX_PHASER_STAGES=12)
-add_definitions (-DMAX_ALIENWAH_DELAY=100)
 
 if (ShowGuiReports)
     add_definitions (-DENABLE_REPORTS)

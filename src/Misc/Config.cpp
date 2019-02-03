@@ -23,7 +23,7 @@
 
     This file is derivative of ZynAddSubFX original code.
 
-    Modified May 2018
+    Modified November 2018
 */
 
 #include <iostream>
@@ -57,7 +57,7 @@ static char prog_doc[] =
     "Copyright 2009-2011 Alan Calvert, "
     "Copyright 20012-2013 Jeremy Jongepier and others, "
     "Copyright 20014-2017 Will Godfrey and others";
-string argline = "Yoshimi " + (string) YOSHIMI_VERSION + "\nBuild Number " + to_string(BUILD_NUMBER);
+string argline = "Yoshimi " + (string) YOSHIMI_VERSION;// + "\nBuild Number " + to_string(BUILD_NUMBER);
 const char* argp_program_version = argline.c_str();
 
 static struct argp_option cmd_options[] = {
@@ -95,6 +95,7 @@ bool         Config::showSplash = true;
 bool         Config::showCLI = true;
 bool         Config::autoInstance = false;
 unsigned int Config::activeInstance = 0;
+int          Config::showCLIcontext = 1;
 
 Config::Config(SynthEngine *_synth, int argc, char **argv) :
     restoreState(false),
@@ -138,6 +139,10 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
     single_row_panel(1),
     NumAvailableParts(NUM_MIDI_CHANNELS),
     currentPart(0),
+    currentBank(0),
+    currentRoot(0),
+    tempBank(0),
+    tempRoot(0),
     VUcount(0),
     channelSwitchType(0),
     channelSwitchCC(128),
@@ -164,6 +169,12 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
     //as all calls to lrintf() are replaced with (int)truncf()
     //which befaves exactly the same when flag FE_TOWARDZERO is set
 
+    /*
+     * The above is now all completely redundant as we use
+     * in-line either fast assembly (where available) or the
+     * original Zyn float - int conversion rounding to zero
+     */
+
     cerr.precision(4);
     bRuntimeSetupCompleted = Setup(argc, argv);
 }
@@ -182,10 +193,10 @@ bool Config::Setup(int argc, char **argv)
         /*
          * These are needed here now, as for stand-alone they have
          * been moved to main to give the users the impression of
-         * a faster startup, and reduce the likelyhood of thinking
+         * a faster startup, and reduce the likelihood of thinking
          * they failed and trying to start again.
          */
-        synth->installBanks(synth->getUniqueId());
+        synth->installBanks();
         synth->loadHistory();
         return true;
     }
@@ -224,8 +235,8 @@ bool Config::Setup(int argc, char **argv)
     if (!midiDevice.size())
         midiDevice = "";
     loadCmdArgs(argc, argv);
-    Oscilsize = nearestPowerOf2(Oscilsize, MAX_AD_HARMONICS * 2, 16384);
-    Buffersize = nearestPowerOf2(Buffersize, 16, 4096);
+    Oscilsize = nearestPowerOf2(Oscilsize, MIN_OSCIL_SIZE, MAX_OSCIL_SIZE);
+    Buffersize = nearestPowerOf2(Buffersize, MIN_BUFFER_SIZE, MAX_BUFFER_SIZE);
     //Log(asString(Oscilsize));
     //Log(asString(Buffersize));
 
@@ -542,14 +553,15 @@ bool Config::extractBaseParameters(XMLwrapper *xml)
         return false;
     }
     Samplerate = xml->getpar("sample_rate", Samplerate, 44100, 192000);
-    Buffersize = xml->getpar("sound_buffer_size", Buffersize, 16, 4096);
-    Oscilsize = xml->getpar("oscil_size", Oscilsize, MAX_AD_HARMONICS * 2, 16384);
+    Buffersize = xml->getpar("sound_buffer_size", Buffersize, MIN_BUFFER_SIZE, MAX_BUFFER_SIZE);
+    Oscilsize = xml->getpar("oscil_size", Oscilsize, MIN_OSCIL_SIZE, MAX_OSCIL_SIZE);
     GzipCompression = xml->getpar("gzip_compression", GzipCompression, 0, 9);
     showGui = xml->getparbool("enable_gui", showGui);
     showSplash = xml->getparbool("enable_splash", showSplash);
     showCLI = xml->getparbool("enable_CLI", showCLI);
     autoInstance = xml->getparbool("enable_auto_instance", autoInstance);
     activeInstance = xml->getparU("active_instances", 0);
+    showCLIcontext = xml->getpar("show_CLI_context", 1, 0, 2);
     xml->exitbranch(); // BaseParameters
     return true;
 }
@@ -627,9 +639,12 @@ bool Config::extractConfigData(XMLwrapper *xml)
 
     //misc
     checksynthengines = xml->getpar("check_pad_synth", checksynthengines, 0, 1);
-    tempRoot = xml->getpar("root_current_ID", 0, 0, 127);
+    if (tempRoot == 0)
+        tempRoot = xml->getpar("root_current_ID", 0, 0, 127);
+    //else
+        //cout << "root? " << xml->getpar("root_current_ID", 0, 0, 127) << endl;
+    if (tempBank == 0)
     tempBank = xml->getpar("bank_current_ID", 0, 0, 127);
-
     xml->exitbranch(); // CONFIGURATION
     return true;
 }
@@ -808,11 +823,16 @@ void Config::LogError(const string &msg)
     Log("[ERROR] " + msg, 1);
 }
 
-#ifndef YOSHIMI_LV2_PLUGIN
-void Config::StartupReport(MusicClient *musicClient)
+//#ifndef YOSHIMI_LV2_PLUGIN
+void Config::StartupReport(string clientName)
 {
-    Log(string(argp_program_version));
-    Log("Clientname: " + musicClient->midiClientName());
+    bool fullInfo = (synth->getUniqueId() == 0);
+    if (fullInfo)
+    {
+        Log(argline);
+        Log("Build Number " + to_string(BUILD_NUMBER), 1);
+    }
+    Log("Clientname: " + clientName);
     string report = "Audio: ";
     switch (audioEngine)
     {
@@ -847,11 +867,14 @@ void Config::StartupReport(MusicClient *musicClient)
         midiDevice = "default";
     report += (" -> '" + midiDevice + "'");
     Log(report, 2);
-    Log("Oscilsize: " + asString(synth->oscilsize), 2);
-    Log("Samplerate: " + asString(synth->samplerate), 2);
-    Log("Period size: " + asString(synth->buffersize), 2);
+    if (fullInfo)
+    {
+        Log("Oscilsize: " + asString(synth->oscilsize), 2);
+        Log("Samplerate: " + asString(synth->samplerate), 2);
+        Log("Period size: " + asString(synth->buffersize), 2);
+    }
 }
-#endif
+//#endif
 
 
 void Config::setRtprio(int prio)
@@ -901,7 +924,7 @@ bool Config::startThread(pthread_t *pth, void *(*thread_fn)(void*), void *arg,
                     int prio = rtprio - priodec;
                     if (prio < 1)
                         prio = 1;
-                    Log(name + " priority is " + to_string(prio), 2);
+                    Log(name + " priority is " + to_string(prio), 1);
                     prio_params.sched_priority = prio;
                     if ((chk = pthread_attr_setschedparam(&attr, &prio_params)))
                     {
@@ -1300,9 +1323,8 @@ void GuiThreadMsg::processGuiMessages()
                     }
                     break;
 
-                case GuiThreadMsg::GuiAlert:
-                    if (msg->data)
-                        guiMaster->ShowAlert(msg->index);
+                case GuiThreadMsg::GuiCheck:
+                    guiMaster->checkBuffer();
                     break;
 
                 default:

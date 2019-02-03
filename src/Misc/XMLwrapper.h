@@ -43,7 +43,7 @@ class SynthEngine;
 class XMLwrapper : private MiscFuncs
 {
     public:
-        XMLwrapper(SynthEngine *_synth, bool _isYoshi = false);
+        XMLwrapper(SynthEngine *_synth, bool _isYoshi = false, bool includeBase = true);
         ~XMLwrapper();
 
         // SAVE to XML
@@ -94,7 +94,7 @@ class XMLwrapper : private MiscFuncs
         // get the the branch_id and limits it between the min and max
         // if min==max==0, it will not limit it
         // if there isn't any id, will return min
-        // this must be called only imediately after enterbranch()
+        // this must be called only immediately after enterbranch()
         int getbranchid(int min, int max);
 
         // it returns the parameter and limits it between min and max

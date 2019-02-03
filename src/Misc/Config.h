@@ -22,7 +22,7 @@
 
     This file is derivative of ZynAddSubFX original code.
 
-    Modified April 2018
+    Modified November 2018
 */
 
 #ifndef CONFIG_H
@@ -49,9 +49,9 @@ class Config : public MiscFuncs
         Config(SynthEngine *_synth, int argc, char **argv);
         ~Config();
         bool Setup(int argc, char **argv);
-#ifndef YOSHIMI_LV2_PLUGIN
-        void StartupReport(MusicClient *musicClient);
-#endif
+//#ifndef YOSHIMI_LV2_PLUGIN
+        void StartupReport(string clientName);
+//#endif
         void Announce(void);
         void Usage(void);
         void Log(const string &msg, char tostderr = 0); // 1 = cli only ored 2 = hideable
@@ -109,6 +109,7 @@ class Config : public MiscFuncs
         static bool          showCLI;
         static bool          autoInstance;
         static unsigned int  activeInstance;
+        static int           showCLIcontext;
 
         bool          runSynth;
         bool          finishedCLI;
@@ -144,8 +145,6 @@ class Config : public MiscFuncs
         bool          xmlmax;
         bool          configChanged;
         int           rtprio;
-        int           tempRoot;
-        int           tempBank;
         int           midi_bank_root;
         int           midi_bank_C;
         int           midi_upper_voice_C;
@@ -157,6 +156,10 @@ class Config : public MiscFuncs
         int           single_row_panel;
         int           NumAvailableParts;
         int           currentPart;
+        unsigned int  currentBank;
+        unsigned int  currentRoot;
+        int           tempBank;
+        int           tempRoot;
         int           noteOnSent; // note test
         int           noteOnSeen;
         int           noteOffSent;
@@ -246,17 +249,15 @@ public:
         UpdateMaster = 0,
         UpdateConfig,
         UpdatePaths,
-        UpdatePanel,
         UpdatePart,
         RefreshCurBank,
-        GuiAlert,
-        RegisterAudioPort,
+        GuiCheck,
         NewSynthEngine,
         UNDEFINED = 9999
     };
     void *data; //custom data, must be static or handled by called, does nod freed by receiver
     unsigned long length; //length of data member (determined by type member, can be set to 0, if data is known struct/class)
-    unsigned int index; // if there is integer data, it can be passed through index (to remove aditional receiver logic)
+    unsigned int index; // if there is integer data, it can be passed through index (to remove additional receiver logic)
     unsigned int type; // type of gui message (see enum above)
     static void sendMessage(void *_data, unsigned int _type, unsigned int _index)
     {

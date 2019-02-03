@@ -17,7 +17,7 @@
     You should have received a copy of the GNU General Public License
     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>
 
-    Modifed May 2018
+    Modifed November 2018
 */
 
 //#define REPORT_MISCMSG
@@ -135,6 +135,19 @@ string MiscFuncs::asHexString(unsigned int x)
 }
 
 
+string MiscFuncs::asAlignedString(int n, int len)
+{
+    string res = to_string(n);
+    int size = res.length();
+    if (size < len)
+    {
+        for (int i = size; i < len; ++ i)
+            res = " " + res;
+    }
+    return res;
+}
+
+
 float MiscFuncs::string2float(string str)
 {
     istringstream machine(str);
@@ -182,6 +195,40 @@ unsigned int MiscFuncs::string2uint(string str)
     unsigned int intval;
     machine >> intval;
     return intval;
+}
+
+
+int MiscFuncs::stringNumInList(string toFind, string *listname, int convert)
+{
+    string copy = "";
+    switch (convert)
+    {
+        case -1:
+            for (string::size_type i = 0; i < toFind.length(); ++i)
+                copy += (char) tolower(toFind[i]);
+            break;
+        case 1:
+            for (string::size_type i = 0; i < toFind.length(); ++i)
+                copy+= (char) toupper(toFind[i]);
+            break;
+        default:
+            copy = toFind;
+            break; // change nothing
+    }
+    int count = -1;
+    string name;
+    bool found = false;
+    do
+    {
+        ++ count;
+        name = listname[count];
+        if (copy == name)
+            found = true;
+    }
+    while (!found && name != "end");
+    if (name == "end")
+        return -1;
+    return count;
 }
 
 
@@ -267,7 +314,12 @@ string MiscFuncs::findfile(string path, string filename, string extension)
     fscanf(fp,"%[^\n]", line);
     pclose(fp);
 
-    if (findleafname(line) == filename)
+    string fullName(line);
+    unsigned int name_start = fullName.rfind("/") + 1;
+    // Extension might contain a dot, like e.g. '.pdf.gz'
+    unsigned int name_end = fullName.length() - extension.length();
+    fullName = fullName.substr(name_start, name_end - name_start);
+    if (fullName == filename)
         return line;
     return "";
 }
@@ -286,15 +338,18 @@ string MiscFuncs::findleafname(string name)
 
 int MiscFuncs::findSplitPoint(string name)
 {
-    int chk = 0;
+    unsigned int chk = 0;
     char ch = name.at(chk);
-    while (ch >= '0' and ch <= '9' and chk < 4)
+    unsigned int len =  name.length() - 1;
+    while (ch >= '0' and ch <= '9' and chk < len)
     {
         chk += 1;
         ch = name.at(chk);
     }
+    if (chk >= len)
+        return 0;
     if (ch != '-')
-        chk = 0;
+        return 0;
     return chk;
 }
 
@@ -445,7 +500,7 @@ int MiscFuncs::matchWord(int numChars, char *buf, const char *word)
 {
     int newp = 0;
     int size = strlen(word);
-    while (buf[newp] > 0x20 && buf[newp] < 0x7f && newp < size && (buf[newp] | 0x20) == (word[newp] | 0x20))
+    while (buf[newp] > 0x20 && buf[newp] < 0x7f && newp < size && (tolower(buf[newp])) == (tolower(word[newp])))
             ++ newp;
     if (newp >= numChars && (buf[newp] <= 0x20 || buf[newp] >= 0x7f))
         return newp;
@@ -578,12 +633,14 @@ float MiscFuncs::limitsF(float value, float min, float max)
 
 unsigned int MiscFuncs::bitFindHigh(unsigned int value)
 {
-    unsigned int bit = 0;
-    while (value >>= 1)
+    int bit = 32;
+    while (bit >= 0)
     {
-        bit ++;
+        bit --;
+        if ((value >> bit) == 1)
+            return bit;
     }
-    return bit;
+    return 0xff;
 }
 
 
@@ -600,6 +657,18 @@ void MiscFuncs::bitClear(unsigned int& value, unsigned int bit)
     value &= mask;
 }
 
+
+void MiscFuncs::bitClearHigh(unsigned int& value)
+{
+    bitClear(value, bitFindHigh(value));
+}
+
+
+void MiscFuncs::bitClearAbove(unsigned int& value, int bitLevel)
+{
+    unsigned int mask = (0xffffffff << bitLevel);
+    value = (value & ~mask);
+}
 
 bool MiscFuncs::bitTest(unsigned int value, unsigned int bit)
 {

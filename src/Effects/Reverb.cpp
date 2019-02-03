@@ -22,7 +22,7 @@
 
     This file is derivative of ZynAddSubFX original code.
 
-    Modified March 2018
+    Modified December 2018
 */
 
 #include <cmath>
@@ -95,7 +95,8 @@ Reverb::Reverb(bool insertion_, float *efxoutl_, float *efxoutr_, SynthEngine *_
     inputbuf = (float*)fftwf_malloc(synth->bufferbytes);
     for (int i = 0; i < REV_COMBS * 2; ++i)
     {
-        comblen[i] = 800 + (int)truncf(synth->numRandom() * 1400.0f);
+
+        comblen[i] = 800 + synth->randomINT() / (INT32_MAX/1400);
         combk[i] = 0;
         lpcomb[i] = 0;
         combfb[i] = -0.97f;
@@ -104,7 +105,7 @@ Reverb::Reverb(bool insertion_, float *efxoutl_, float *efxoutr_, SynthEngine *_
 
     for (int i = 0; i < REV_APS * 2; ++i)
     {
-        aplen[i] = 500 + (int)truncf(synth->numRandom() * 500.0f);
+        aplen[i] = 500 + synth->randomINT() / (INT32_MAX/500);
         apk[i] = 0;
         ap[i] = NULL;
     }
@@ -400,10 +401,11 @@ void Reverb::settype(unsigned char Ptype_)
     };
 
     float samplerate_adjust = synth->samplerate_f / 44100.0f;
-    // adjust the combs according to the samplerate
-    float tmp;
+
+    // adjust the combs according to samplerate and room size
     for (int i = 0; i < REV_COMBS * 2; ++i)
     {
+        float tmp;
         if (Ptype == 0)
             tmp = 800.0f + synth->numRandom() * 1400.0f;
         else
@@ -412,9 +414,9 @@ void Reverb::settype(unsigned char Ptype_)
         if (i > REV_COMBS)
             tmp += 23.0f;
         tmp *= samplerate_adjust; // adjust the combs according to the samplerate
-        if (tmp < 10.0f)
-            tmp = 10.0f;
-        comblen[i] = (int)truncf(tmp);
+        comblen[i] = int(tmp);
+        if (comblen[i] < 10)
+            comblen[i] = 10;
         combk[i] = 0;
         lpcomb[i] = 0;
         if (comb[i])
@@ -425,17 +427,20 @@ void Reverb::settype(unsigned char Ptype_)
 
     for (int i = 0; i < REV_APS * 2; ++i)
     {
+        float tmp;
         if (Ptype == 0)
-            tmp = 500 + (int)truncf(synth->numRandom() * 500.0f);
+        {
+            tmp = 500.0f + synth->numRandom() * 500.0f;
+        }
         else
             tmp = aptunings[Ptype][i % REV_APS];
         tmp *= roomsize;
         if (i > REV_APS)
             tmp += 23.0f;
         tmp *= samplerate_adjust; // adjust the combs according to the samplerate
-        if (tmp < 10)
-            tmp = 10;
-        aplen[i] = (int)truncf(tmp);
+        aplen[i] = int(tmp);
+        if (aplen[i] < 10)
+            aplen[i] = 10;
         apk[i] = 0;
         if (ap[i])
             delete [] ap[i];
@@ -596,7 +601,7 @@ float Revlimit::getlimits(CommandBlock *getData)
     switch (control)
     {
         case 0:
-            if (npart != 0xf1) // system effects
+            if (npart != TOPLEVEL::section::systemEffects) // system effects
                 def /=2;
             break;
         case 1:
@@ -628,26 +633,26 @@ float Revlimit::getlimits(CommandBlock *getData)
             canLearn = false;
             break;
         default:
-            getData->data.type |= 4; // error
+            getData->data.type |= TOPLEVEL::type::Error;
             return 1.0f;
             break;
     }
 
-    switch(request)
+    switch (request)
     {
-        case 0:
+        case TOPLEVEL::type::Adjust:
             if(value < min)
                 value = min;
             else if(value > max)
                 value = max;
             break;
-        case 1:
+        case TOPLEVEL::type::Minimum:
             value = min;
             break;
-        case 2:
+        case TOPLEVEL::type::Maximum:
             value = max;
             break;
-        case 3:
+        case TOPLEVEL::type::Default:
             value = def;
             break;
     }

@@ -23,7 +23,7 @@
 
     This file is derivative of ZynAddSubFX original code.
 
-    Modified March 2018
+    Modified November 2018
 */
 
 #include <cstring>
@@ -268,7 +268,7 @@ void Part::NoteOn(int note, int velocity, bool renote)
             monomemnotes.push_back(note);        // Add note to the list.
         monomem[note].velocity = velocity;       // Store this note's velocity.
         if (partnote[lastpos].status != KEY_PLAYING
-            && partnote[lastpos].status != KEY_RELASED_AND_SUSTAINED)
+            && partnote[lastpos].status != KEY_RELEASED_AND_SUSTAINED)
         {
             ismonofirstnote = true; // No other keys are held or sustained.
         }
@@ -305,8 +305,8 @@ void Part::NoteOn(int note, int velocity, bool renote)
             // Legato mode is valid, but this is only a first note.
             for (int i = 0; i < POLIPHONY; ++i)
                 if (partnote[i].status == KEY_PLAYING
-                    || partnote[i].status == KEY_RELASED_AND_SUSTAINED)
-                    RelaseNotePos(i);
+                    || partnote[i].status == KEY_RELEASED_AND_SUSTAINED)
+                    ReleaseNotePos(i);
 
             // Set posb
             posb = (pos + 1) % POLIPHONY; // We really want it (if the following fails)
@@ -329,9 +329,9 @@ void Part::NoteOn(int note, int velocity, bool renote)
             for (int i = 0; i < POLIPHONY; ++i)
             {
                 if (partnote[i].status == KEY_PLAYING)
-                    RelaseNotePos(i);
+                    ReleaseNotePos(i);
             }
-            RelaseSustainedKeys();
+            ReleaseSustainedKeys();
         }
     }
     lastlegatomodevalid = legatomodevalid;
@@ -686,7 +686,7 @@ void Part::NoteOn(int note, int velocity, bool renote)
 
 
 // Note Off Messages
-void Part::NoteOff(int note) //relase the key
+void Part::NoteOff(int note) //release the key
 {
     int i;
     // This note is released, so we remove it from the list.
@@ -702,11 +702,11 @@ void Part::NoteOff(int note) //relase the key
                 if (Pkeymode > 0  && !Pdrummode && !monomemnotes.empty())
                     MonoMemRenote(); // To play most recent still held note.
                 else
-                    RelaseNotePos(i);
+                    ReleaseNotePos(i);
             }
             else
             {   // the sustain pedal is pushed
-                partnote[i].status = KEY_RELASED_AND_SUSTAINED;
+                partnote[i].status = KEY_RELEASED_AND_SUSTAINED;
             }
         }
     }
@@ -718,62 +718,62 @@ void Part::SetController(unsigned int type, int par)
 {
     switch (type)
     {
-        case C_pitchwheel:
+        case MIDI::CC::pitchWheel:
             ctl->setpitchwheel(par);
             break;
 
-        case C_expression:
+        case MIDI::CC::expression:
             ctl->setexpression(par);
             setVolume(Pvolume);
             break;
 
-        case C_portamento:
+        case MIDI::CC::portamento:
             ctl->setportamento(par);
             break;
 
-        case C_panning:
+        case MIDI::CC::panning:
             par = 64 + (par - 64) * (ctl->panning.depth / 64.0); // force float during calculation
             setPan(par);
             break;
 
-        case C_filtercutoff:
+        case MIDI::CC::filterCutoff:
             ctl->setfiltercutoff(par);
             break;
 
-        case C_filterq:
+        case MIDI::CC::filterQ:
             ctl->setfilterq(par);
             break;
 
-        case C_bandwidth:
+        case MIDI::CC::bandwidth:
             ctl->setbandwidth(par);
             break;
 
-        case C_modwheel:
+        case MIDI::CC::modulation:
             ctl->setmodwheel(par);
             break;
 
-        case C_fmamp:
+        case MIDI::CC::fmamp:
             ctl->setfmamp(par);
             break;
 
-        case C_volume:
+        case MIDI::CC::volume:
             if (ctl->volume.receive)
                 setVolume(par * ctl->volume.volume);
             break;
 
-        case C_sustain:
+        case MIDI::CC::sustain:
             ctl->setsustain(par);
             if (!ctl->sustain.sustain)
-                RelaseSustainedKeys();
+                ReleaseSustainedKeys();
             break;
 
-        case C_allsoundsoff:
+        case MIDI::CC::allSoundOff:
             AllNotesOff(); // Panic
             break;
 
-        case C_resetallcontrollers:
+        case MIDI::CC::resetAllControllers:
             ctl->resetall();
-            RelaseSustainedKeys();
+            ReleaseSustainedKeys();
             setVolume(Pvolume);
             setPan(Ppanning);
             Pkeymode &= 3; // clear temporary legato mode
@@ -783,38 +783,38 @@ void Part::SetController(unsigned int type, int par)
             {
                 if (!kit[item].adpars)
                     continue;
-                kit[item].adpars->GlobalPar.Reson->sendcontroller(C_resonance_center, 1.0);
-                kit[item].adpars->GlobalPar.Reson->sendcontroller(C_resonance_bandwidth, 1.0);
+                kit[item].adpars->GlobalPar.Reson->sendcontroller(MIDI::CC::resonanceCenter, 1.0);
+                kit[item].adpars->GlobalPar.Reson->sendcontroller(MIDI::CC::resonanceBandwidth, 1.0);
             }
             // more update to add here if I add controllers
             break;
 
-        case C_allnotesoff:
-            RelaseAllKeys();
+        case MIDI::CC::allNotesOff:
+            ReleaseAllKeys();
             break;
 
-        case C_resonance_center:
+        case MIDI::CC::resonanceCenter:
             ctl->setresonancecenter(par);
             for (int item = 0; item < NUM_KIT_ITEMS; ++item)
             {
                 if (!kit[item].adpars)
                     continue;
-                kit[item].adpars->GlobalPar.Reson->sendcontroller(C_resonance_center,
+                kit[item].adpars->GlobalPar.Reson->sendcontroller(MIDI::CC::resonanceCenter,
                                                                   ctl->resonancecenter.relcenter);
             }
             break;
 
-        case C_resonance_bandwidth:
+        case MIDI::CC::resonanceBandwidth:
             ctl->setresonancebw(par);
-            kit[0].adpars->GlobalPar.Reson->sendcontroller(C_resonance_bandwidth,
+            kit[0].adpars->GlobalPar.Reson->sendcontroller(MIDI::CC::resonanceBandwidth,
                                                            ctl->resonancebandwidth.relbw);
             break;
     }
 }
 
 
-// Relase the sustained keys
-void Part::RelaseSustainedKeys(void)
+// Release the sustained keys
+void Part::ReleaseSustainedKeys(void)
 {
     // Let's call MonoMemRenote() on some conditions:
     if ((Pkeymode < 1 || Pkeymode > 2)&& (!monomemnotes.empty()))
@@ -824,19 +824,19 @@ void Part::RelaseSustainedKeys(void)
             MonoMemRenote(); // To play most recent still held note.
 
     for (int i = 0; i < POLIPHONY; ++i)
-        if (partnote[i].status == KEY_RELASED_AND_SUSTAINED)
-            RelaseNotePos(i);
+        if (partnote[i].status == KEY_RELEASED_AND_SUSTAINED)
+            ReleaseNotePos(i);
 }
 
 
-// Relase all keys
-void Part::RelaseAllKeys(void)
+// Release all keys
+void Part::ReleaseAllKeys(void)
 {
     for (int i = 0; i < POLIPHONY; ++i)
     {
-        if (partnote[i].status != KEY_RELASED
+        if (partnote[i].status != KEY_RELEASED
             && partnote[i].status != KEY_OFF) //thanks to Frank Neumann
-            RelaseNotePos(i);
+            ReleaseNotePos(i);
     }
 }
 
@@ -851,24 +851,24 @@ void Part::MonoMemRenote(void)
 
 
 // Release note at position
-void Part::RelaseNotePos(int pos)
+void Part::ReleaseNotePos(int pos)
 {
 
     for (int j = 0; j < NUM_KIT_ITEMS; ++j)
     {
         if (partnote[pos].kititem[j].adnote)
             if (partnote[pos].kititem[j].adnote)
-                partnote[pos].kititem[j].adnote->relasekey();
+                partnote[pos].kititem[j].adnote->releasekey();
 
         if (partnote[pos].kititem[j].subnote)
             if (partnote[pos].kititem[j].subnote)
-                partnote[pos].kititem[j].subnote->relasekey();
+                partnote[pos].kititem[j].subnote->releasekey();
 
         if (partnote[pos].kititem[j].padnote)
             if (partnote[pos].kititem[j].padnote)
-                partnote[pos].kititem[j].padnote->relasekey();
+                partnote[pos].kititem[j].padnote->releasekey();
     }
-    partnote[pos].status = KEY_RELASED;
+    partnote[pos].status = KEY_RELEASED;
 }
 
 
@@ -919,7 +919,7 @@ void Part::setkeylimit(unsigned char Pkeylimit_)
         for (int i = 0; i < POLIPHONY; ++i)
         {
             if (partnote[i].status == KEY_PLAYING
-                || partnote[i].status == KEY_RELASED_AND_SUSTAINED)
+                || partnote[i].status == KEY_RELEASED_AND_SUSTAINED)
                 notecount++;
         }
         int oldestnotepos = -1, maxtime = 0;
@@ -928,7 +928,7 @@ void Part::setkeylimit(unsigned char Pkeylimit_)
             for (int i = 0; i < POLIPHONY; ++i)
             {
                 if ((partnote[i].status == KEY_PLAYING
-                    || partnote[i].status == KEY_RELASED_AND_SUSTAINED)
+                    || partnote[i].status == KEY_RELEASED_AND_SUSTAINED)
                         && partnote[i].time > maxtime)
                 {
                     maxtime = partnote[i].time;
@@ -937,7 +937,7 @@ void Part::setkeylimit(unsigned char Pkeylimit_)
             }
         }
         if (oldestnotepos != -1)
-            RelaseNotePos(oldestnotepos);
+            ReleaseNotePos(oldestnotepos);
     }
 }
 
@@ -1522,57 +1522,59 @@ void Part::getfromXML(XMLwrapper *xml)
 float Part::getLimits(CommandBlock *getData)
 {
     float value = getData->data.value;
-    int request = int(getData->data.type & 3);
-
-    unsigned int type = (getData->data.type & 0xfc);
+    unsigned char type = getData->data.type;
+    int request = type & TOPLEVEL::type::Default;
     int control = getData->data.control;
     int npart = getData->data.part;
 
-    // defaults
+    type &= (TOPLEVEL::source::MIDI | TOPLEVEL::source::CLI | TOPLEVEL::source::GUI); // source bits only
+
+    // part defaults
     int min = 0;
     float def = 64;
     int max = 127;
-    //cout << "part control " << control << "  Request " << request << endl;
-
-    if ((control >= 128 && control <= 168) || control == 224)
+    type |= TOPLEVEL::type::Integer;
+    unsigned char learnable = TOPLEVEL::type::Learnable;
+    //cout << "part limits" << endl;
+    if ((control >= PART::control::volumeRange && control <= PART::control::receivePortamento) || control == PART::control::resetAllControllers)
         return ctl->getLimits(getData);
 
     switch (control)
     {
-        case 0:
-            type &= 0x3f;
-            type |= 0x40;
+        case PART::control::volume:
+            type &= ~TOPLEVEL::type::Integer;
+            type |= learnable;
             def = 96;
             break;
 
-        case 1:
-        case 4:
-            type |= 0x40;
+        case PART::control::velocitySense:
+        case PART::control::velocityOffset:
+            type |= learnable;
             break;
 
-        case 2:
-            type &= 0x3f;
-            type |= 0x40;
+        case PART::control::panning:
+            type &= ~TOPLEVEL::type::Integer;
+            type |= learnable;
             break;
 
-        case 5:
-            min = 1;
-            def = 1;
-            max = 16;
+        case PART::control::midiChannel:
+            min = 0;
+            def = 0;
+            max = 16; // disabled
             break;
 
-        case 6:
+        case PART::control::keyMode:
             def = 0;
             max = 2;
             break;
 
-        case 7:
-            type |= 0x40;
+        case PART::control::portamento:
+            type |= learnable;
             def = 0;
             max = 1;
             break;
 
-        case 8:
+        case PART::control::enable:
             if (npart == 0)
                 def = 1;
             else
@@ -1580,134 +1582,120 @@ float Part::getLimits(CommandBlock *getData)
             max = 1;
             break;
 
-        case 9:
+        case PART::control::kitItemMute:
+            type |= learnable;
             def = 0;
             max = 1;
             break;
 
-        case 16:
+        case PART::control::minNote:
             def = 0;
             break;
 
-        case 17:
+        case PART::control::maxNote:
             def = 127;
             break;
 
-        case 18:
-        case 19:
-        case 20:
-        case 96:
-            min = 0;
+        case PART::control::minToLastKey:
+        case PART::control::maxToLastKey:
+        case PART::control::resetMinMaxKey:
+        case PART::control::defaultInstrument:
             def = 0;
             max = 0;
             break;
+        case PART::control::kitEffectNum:
+            def = 1; // may be local to GUI
+            max = 3;
+            break;
 
-        case 33:
+        case PART::control::maxNotes:
             def = 20;
             max = 60;
             break;
 
-        case 35:
+        case PART::control::keyShift:
             min = -36;
             def = 0;
             max = 36;
             break;
 
-        case 40:
-        case 41:
-        case 42:
-        case 43:
-            type |= 0x40;
+        case PART::control::partToSystemEffect1:
+        case PART::control::partToSystemEffect2:
+        case PART::control::partToSystemEffect3:
+        case PART::control::partToSystemEffect4:
+            type |= learnable;
             def = 0;
             break;
 
-        case 48:
+        case PART::control::humanise:
+            type |= learnable;
             def = 0;
             max = 50;
             break;
 
-        case 57:
+        case PART::control::drumMode:
             def = 0;
             max = 1;
             break;
 
-        case 58:
+        case PART::control::kitMode:
             def = 0;
             max = 3;
             break;
-        case 120:
+        case PART::control::effectNumber:
+            max = 2;
+            def = 0;
+            break;
+        case PART::control::effectType:
+            def = 0;
+            break;
+        case PART::control::effectDestination:
+            max = 2;
+            def = 0;
+            break;
+        case PART::control::effectBypass:
+            max = 1;
+            def = 0;
+            break;
+
+        case PART::control::audioDestination:
             min = 1;
             def = 1;
             max = 3;
             break;
 
-        // the following are learnable MIDI controllers
-        case 128:
-            min = 64;
-            type |= 0x40;
+        case PART::control::midiModWheel:
+            type |= learnable;
             break;
-
-        case 130:
-            max = 64;
-            type |= 0x40;
+        case PART::control::midiBreath: // not done yet
             break;
-
-        case 131:
-            def = 80;
-            type |= 0x40;
-            break;
-
-        case 133:
-            type |= 0x40;
-            break;
-
-        case 138:
-            min = -6400;
-            def = 0;
-            max = 6400;
-            type |= 0x40;
-            break;
-
-        case 139:
-        case 140:
-        case 144:
-        case 145:
-            type |= 0x40;
-            break;
-
-        case 160:
-        case 161:
-            type |= 0x40;
-            break;
-
-        case 162:
-            def = 80;
-            type |= 0x40;
-            break;
-
-        case 166:
-            def = 90;
-            type |= 0x40;
-            break;
-
-        case 192:
-        case 197:
-        case 198:
-        case 199:
-            type |= 0x40;
-            break;
-
-        case 194:
-            type |= 0x40;
+        case PART::control::midiExpression:
+            type |= learnable;
             def = 127;
             break;
+        case PART::control::midiSustain: // not done yet
+            break;
+        case PART::control::midiPortamento: // not done yet
+            break;
+        case PART::control::midiFilterQ:
+            type |= learnable;
+            break;
+        case PART::control::midiFilterCutoff:
+            type |= learnable;
+            break;
+        case PART::control::midiBandwidth:
+            type |= learnable;
+            break;
 
-        // these haven't been done
-        case 193:
+// the following have no limits but are here so they don't
+// create errors when tested.
+        case PART::control::instrumentCopyright:
             break;
-        case 195:
+        case PART::control::instrumentComments:
             break;
-        case 196:
+        case PART::control::instrumentName:
+            break;
+        case PART::control::defaultInstrumentCopyright:
             break;
 
         case 255: // number of parts
@@ -1717,28 +1705,28 @@ float Part::getLimits(CommandBlock *getData)
             break;
 
         default:
-            type |= 4; // error
+            type |= TOPLEVEL::type::Error;
             break;
     }
     getData->data.type = type;
-    if (type & 4)
+    if (type & TOPLEVEL::type::Error)
         return 1;
 
     switch (request)
     {
-        case 0:
+        case TOPLEVEL::type::Adjust:
             if(value < min)
                 value = min;
             else if(value > max)
                 value = max;
         break;
-        case 1:
+        case TOPLEVEL::type::Minimum:
             value = min;
             break;
-        case 2:
+        case TOPLEVEL::type::Maximum:
             value = max;
             break;
-        case 3:
+        case TOPLEVEL::type::Default:
             value = def;
             break;
     }

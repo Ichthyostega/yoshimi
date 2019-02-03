@@ -22,7 +22,7 @@
 
     This file is derivative of original ZynAddSubFX code.
 
-    Modified April 2018
+    Modified August 2018
 */
 
 #include <zlib.h>
@@ -51,7 +51,7 @@ const char *XMLwrapper_whitespace_callback(mxml_node_t *node, int where)
 }
 
 
-XMLwrapper::XMLwrapper(SynthEngine *_synth, bool _isYoshi) :
+XMLwrapper::XMLwrapper(SynthEngine *_synth, bool _isYoshi, bool includeBase) :
     stackpos(0),
     isYoshi(_isYoshi),
     synth(_synth)
@@ -63,6 +63,9 @@ XMLwrapper::XMLwrapper(SynthEngine *_synth, bool _isYoshi) :
     memset(&parentstack, 0, sizeof(parentstack));
     tree = mxmlNewElement(MXML_NO_PARENT, "?xml version=\"1.0\" encoding=\"UTF-8\"?");
     mxml_node_t *doctype = mxmlNewElement(tree, "!DOCTYPE");
+
+    if (!includeBase)
+        return;
 
     if (isYoshi)
     {
@@ -92,10 +95,25 @@ XMLwrapper::XMLwrapper(SynthEngine *_synth, bool _isYoshi) :
 
     info = addparams0("INFORMATION"); // specifications
 
-    if (synth->getRuntime().xmlType <= XML_CONFIG)
+    if (synth->getUniqueId() == 0 && (synth->getRuntime().xmlType == XML_STATE || synth->getRuntime().xmlType == XML_CONFIG))
     {
-        if(synth->getRuntime().xmlType != XML_STATE && synth->getRuntime().xmlType != XML_CONFIG)
-        {
+        beginbranch("BASE_PARAMETERS");
+            addpar("sample_rate", synth->getRuntime().Samplerate);
+            addpar("sound_buffer_size", synth->getRuntime().Buffersize);
+            addpar("oscil_size", synth->getRuntime().Oscilsize);
+            addpar("gzip_compression", synth->getRuntime().GzipCompression);
+            addparbool("enable_gui", synth->getRuntime().showGui);
+            addparbool("enable_splash", synth->getRuntime().showSplash);
+            addparbool("enable_CLI", synth->getRuntime().showCLI);
+            addparbool("enable_auto_instance", synth->getRuntime().autoInstance);
+            addparU("active_instances", synth->getRuntime().activeInstance);
+            addpar("show_CLI_context", synth->getRuntime().showCLIcontext);
+        endbranch();
+        return;
+    }
+
+    if (synth->getRuntime().xmlType <= XML_MICROTONAL || synth->getRuntime().xmlType == XML_PRESETS)
+    {
             beginbranch("BASE_PARAMETERS");
                 addpar("max_midi_parts", NUM_MIDI_CHANNELS);
                 addpar("max_kit_items_per_instrument", NUM_KIT_ITEMS);
@@ -104,21 +122,6 @@ XMLwrapper::XMLwrapper(SynthEngine *_synth, bool _isYoshi) :
                 addpar("max_instrument_effects", NUM_PART_EFX);
                 addpar("max_addsynth_voices", NUM_VOICES);
             endbranch();
-        }
-        else if (synth->getUniqueId() == 0)
-        {
-            beginbranch("BASE_PARAMETERS");
-                addpar("sample_rate", synth->getRuntime().Samplerate);
-                addpar("sound_buffer_size", synth->getRuntime().Buffersize);
-                addpar("oscil_size", synth->getRuntime().Oscilsize);
-                addpar("gzip_compression", synth->getRuntime().GzipCompression);
-                addparbool("enable_gui", synth->getRuntime().showGui);
-                addparbool("enable_splash", synth->getRuntime().showSplash);
-                addparbool("enable_CLI", synth->getRuntime().showCLI);
-                addparbool("enable_auto_instance", synth->getRuntime().autoInstance);
-                addparU("active_instances", synth->getRuntime().activeInstance);
-            endbranch();
-        }
     }
 }
 
@@ -159,7 +162,7 @@ void XMLwrapper::checkfileinformation(const string& filename)
     unsigned short names = 0;
 
     /* the following could be in any order. We are checking for
-     * the actual exisitence of the fields as well as their value.
+     * the actual existence of the fields as well as their value.
      */
     idx = strstr(start, "name=\"ADDsynth_used\"");
     if (idx != NULL)
@@ -255,7 +258,7 @@ void XMLwrapper::slowinfosearch(char *idx)
           & information.SUBsynth_used
           & information.PADsynth_used)
         {
-            break;
+            return;
         }
     }
   return;
@@ -334,24 +337,8 @@ char *XMLwrapper::getXMLdata()
             addparstr("XMLtype", "Scales");
             break;
 
-        case XML_PRESETS:
-            addparstr("XMLtype", "Presets");
-            break;
-
         case XML_STATE:
             addparstr("XMLtype", "Session");
-            break;
-
-        case XML_CONFIG:
-            addparstr("XMLtype", "Config");
-            break;
-
-        case XML_BANK:
-            addparstr("XMLtype", "Roots and Banks");
-            break;
-
-        case XML_HISTORY:
-            addparstr("XMLtype", "Recent Files");
             break;
 
         case XML_VECTOR:
@@ -360,6 +347,22 @@ char *XMLwrapper::getXMLdata()
 
         case XML_MIDILEARN:
             addparstr("XMLtype", "Midi Learn");
+            break;
+
+        case XML_CONFIG:
+            addparstr("XMLtype", "Config");
+            break;
+
+        case XML_PRESETS:
+            addparstr("XMLtype", "Presets");
+            break;
+
+        case XML_BANK:
+            addparstr("XMLtype", "Roots and Banks");
+            break;
+
+        case XML_HISTORY:
+            addparstr("XMLtype", "Recent Files");
             break;
 
         default:

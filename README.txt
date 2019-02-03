@@ -1,19 +1,27 @@
-V 1.5.8 - Kingfisher
-Bright flash of colour.
+V 1.5.10 Redwing
 
-The most significant changes in this release are all usability ones.
+Unfortunately a bug has been found that seems to affect only official fedora builds. To ensure complete compatibility we now have V 1.5.10.1 as a bugfix release.
 
-At the request of one user (and agreement of several others) some of the microtonal settings are now MIDI-learnable, and appropriately highlighted.
+Command Line access is now virtually complete.
 
-The CLI can now open and close instances, and switch between them.
+The graphic interface has had a minor makeover. Also, very occasional corruption of this is now resolved.
 
-There is a new 'Solo' type 'TwoWay' this works in a similar way to 'Loop', but (apart from zero) values less than 64 step from right to left, instead of the other way round. The highlighting is also a bit better. Both 'Loop' and 'TwoWay' also have debounce protection of approximately 60mS.
+All inactive controls are now shown as such - there were a number that previously weren't, thus causing considerable confusion for new users.
 
-The CLI can now clear a part's instrument. A fairly obvious option that somehow got missed.
+There is an improved pseudo-random number system, which does not rely on external libraries anymore.
 
-In the Banks windows Instruments can now be swapped between banks and bank roots. Banks can also be swapped between roots. This is an extension using exactly the same controls as those already available for in-bank swaps.
+Further details can be found in /doc/Yoshimi_1.5.10_features.txt
 
-The latest feature is autoloading instances. With this enabled, any instance that was open when the main one is closed will be re-opened on the next run. If these instances were set for starting with their default state, then all those settings will be performed. Therefore, a very comprehensive and detailed session can be started with a single command!
+By default, Yoshimi is supplied with 710 instruments spread across 23 banks.
 
-A lot of the documentation supplied with Yoshimi has been updated, including the Advanced User Manual.
+Yoshimi source code is available from either:
+https://sourceforge.net/projects/yoshimi
+Or:
+https://github.com/Yoshimi/yoshimi
 
+Full build instructions are in 'INSTALL'.
+
+Our list archive is at:
+https://www.freelists.org/archive/yoshimi
+To post, email to:
+yoshimi@freelists.org

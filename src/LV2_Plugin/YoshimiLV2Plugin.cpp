@@ -17,7 +17,7 @@
     You should have received a copy of the GNU General Public License
     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 
-    Modified May 2018
+    Modified October 2018
 */
 
 #include "YoshimiLV2Plugin.h"
@@ -52,6 +52,7 @@
 #define YOSHIMI_LV2_STATE__StateChanged      "http://lv2plug.in/ns/ext/state#StateChanged"
 
 extern SynthEngine *firstSynth;
+extern int startInstance;
 
 typedef enum {
     LV2_OPTIONS_INSTANCE,
@@ -107,7 +108,7 @@ void YoshimiLV2Plugin::process(uint32_t sample_count)
     {
         return;
     }
-    synth->sent_all_buffersize_f = min(sample_count, (uint32_t)synth->buffersize);
+    //synth->sent_all_buffersize_f = min(sample_count, (uint32_t)synth->buffersize);
     /*
      * The line above seems to cause problems with envelopes
      * in Carla.
@@ -115,8 +116,8 @@ void YoshimiLV2Plugin::process(uint32_t sample_count)
      * to ensure it's removal doesn't cause other problems.
      */
 
-    int real_sample_count = sample_count;
-    //int real_sample_count = min(sample_count, _bufferSize);
+    //int real_sample_count = sample_count;
+    int real_sample_count = min(sample_count, _bufferSize);
     // not sure which of the above two is the best :(
     int offs = 0;
     int next_frame = 0;
@@ -319,7 +320,7 @@ YoshimiLV2Plugin::YoshimiLV2Plugin(SynthEngine *synth, double sampleRate, const 
     }
 
     if (_bufferSize == 0)
-        _bufferSize = 8192;
+        _bufferSize = MAX_BUFFER_SIZE;
 }
 
 
@@ -539,7 +540,7 @@ const LV2_Program_Descriptor *YoshimiLV2Plugin::getProgram(uint32_t index)
     if (flatbankprgs.empty())
     {
         Bank &bankObj = synth->getBankRef();
-        const BankEntryMap &banks = bankObj.getBanks(bankObj.getCurrentRootID());
+        const BankEntryMap &banks = bankObj.getBanks(synth->getRuntime().currentRoot);
         BankEntryMap::const_iterator itB;
         InstrumentEntryMap::const_iterator itI;
         for (itB = banks.begin(); itB != banks.end(); ++itB)

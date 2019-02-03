@@ -17,7 +17,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    Modified March 2018
+    Modified December 2018
 */
 
 #include <iostream>
@@ -30,7 +30,6 @@
 using namespace std;
 
 #include "Interface/MidiDecode.h"
-#include "MusicIO/MidiControl.h"
 #include "Interface/InterChange.h"
 #include "Misc/MiscFuncs.h"
 #include "Misc/SynthEngine.h"
@@ -60,13 +59,13 @@ void MidiDecode::midiProcess(unsigned char par0, unsigned char par1, unsigned ch
     switch (ev)
     {
         case 0xA0: // key aftertouch
-            ctrltype = C_channelpressure;
+            ctrltype = MIDI::CC::channelPressure;
             /*
-             * temporarily pretend it's a chanel aftertouch
+             * temporarily pretend it's a channel aftertouch
              * need to work out how to use key numbers (par1)
              * for actual key pressure sensing.
              *
-             * ctrltype = C_keypressure;
+             * ctrltype = MIDI::CC::keyPressure;
              */
             par = par2;
             setMidiController(channel, ctrltype, par, in_place);
@@ -79,19 +78,19 @@ void MidiDecode::midiProcess(unsigned char par0, unsigned char par1, unsigned ch
             break;
 
         case 0xC0: // program change
-            ctrltype = C_programchange;
+            ctrltype = MIDI::CC::programchange;
             par = par1;
             setMidiProgram(channel, par, in_place);
             break;
 
         case 0xD0: // channel aftertouch
-            ctrltype = C_channelpressure;
+            ctrltype = MIDI::CC::channelPressure;
             par = par1;
             setMidiController(channel, ctrltype, par, in_place);
             break;
 
         case 0xE0: // pitch bend
-            ctrltype = C_pitchwheel;
+            ctrltype = MIDI::CC::pitchWheel;
             par = (par2 << 7) | par1;
             setMidiController(channel, ctrltype, par, in_place);
             break;
@@ -111,23 +110,23 @@ void MidiDecode::setMidiController(unsigned char ch, int ctrl, int param, bool i
         string ctltype;
         switch (ctrl)
         {
-            case C_NULL:
+            case MIDI::CC::null:
                 ctltype = "Ignored";
                 break;
 
-            case C_programchange:
+            case MIDI::CC::programchange:
                 ctltype = "program";
                 break;
 
-            case C_pitchwheel:
+            case MIDI::CC::pitchWheel:
                 ctltype = "Pitchwheel";
                 break;
 
-            case C_channelpressure:
+            case MIDI::CC::channelPressure:
                 ctltype = "Ch Press";
                 break;
 
-            case C_keypressure:
+            case MIDI::CC::keyPressure:
                 ctltype = "Key Press";
                 break;
 
@@ -175,7 +174,7 @@ void MidiDecode::setMidiController(unsigned char ch, int ctrl, int param, bool i
             return;
     }
     // pick up a drop-through if CC doesn't match the above
-    if (ctrl == C_resetallcontrollers && synth->getRuntime().ignoreResetCCs == true)
+    if (ctrl == MIDI::CC::resetAllControllers && synth->getRuntime().ignoreResetCCs == true)
     {
         //synth->getRuntime().Log("Reset controllers ignored");
         return;
@@ -193,14 +192,14 @@ void MidiDecode::setMidiController(unsigned char ch, int ctrl, int param, bool i
      * later calls, but are passed as 128+ for this call.
      * Pitch wheel is 640 and is 14 bit. It sets bit 1 of 'category'
      */
-    if (synth->midilearn.runMidiLearn(param, ctrl & 255, ch, in_place | ((ctrl == 640) << 1)))
-        return;
+    if (synth->midilearn.runMidiLearn(param, ctrl & 0xff, ch, in_place | ((ctrl == 640) << 1)))
+        return; // blocking while learning
 
     /*
     * This is done here instead of in 'setMidi' so MidiLearn
     * handles all 14 bit values the same.
     */
-    if (ctrl == C_pitchwheel)
+    if (ctrl == MIDI::CC::pitchWheel)
     {
         param -= 8192;
         sendMidiCC(inSync, ch, ctrl, param);
@@ -208,7 +207,7 @@ void MidiDecode::setMidiController(unsigned char ch, int ctrl, int param, bool i
     }
 
     // do what's left!
-    if (ctrl < 128) // don't want to pick up strays
+    if (ctrl < 0x80) // don't want to pick up strays
         sendMidiCC(inSync, ch, ctrl, param);
 }
 
@@ -228,7 +227,7 @@ void MidiDecode::sendMidiCC(bool inSync, unsigned char chan, int type, short int
     putData.data.value = par;
     putData.data.type = 0xc8;
     putData.data.control = 2;
-    putData.data.part = 0xd9;
+    putData.data.part = TOPLEVEL::section::midiIn;
     putData.data.kit = chan;
     putData.data.engine = type;
     synth->midilearn.writeMidi(&putData, sizeof(putData), false);
@@ -246,9 +245,9 @@ bool MidiDecode::nrpnDecode(unsigned char ch, int ctrl, int param, bool in_place
 {
     int nLow;
     int nHigh;
-    if (ctrl == C_nrpnL || ctrl == C_nrpnH)
+    if (ctrl == MIDI::CC::nrpnLSB || ctrl == MIDI::CC::nrpnMSB)
     {
-        if (ctrl == C_nrpnL)
+        if (ctrl == MIDI::CC::nrpnLSB)
         {
             if (synth->getRuntime().nrpnL != param)
             {
@@ -303,26 +302,26 @@ bool MidiDecode::nrpnDecode(unsigned char ch, int ctrl, int param, bool in_place
 
     if (synth->getRuntime().nrpnActive)
     {
-        if (ctrl == C_dataI || ctrl == C_dataD)
-        { // translate these to C_dataL and C_dataH
+        if (ctrl == MIDI::CC::dataINC || ctrl == MIDI::CC::dataDEC)
+        { // translate these to MIDI::CC::dataLSB and MIDI::CC::dataMSB
             int dHigh = synth->getRuntime().dataH;
             int dLow = synth->getRuntime().dataL;
 
             bool msbPar = (param >= 0x40);
             param &= 0x3f;
-            if (ctrl == C_dataI)
+            if (ctrl == MIDI::CC::dataINC)
             {
                 if (msbPar)
                 {
                     dHigh &= 0x7f; // clear disabled state
                     param += dHigh;
-                    ctrl = C_dataH; // change controller type
+                    ctrl = MIDI::CC::dataMSB; // change controller type
                 }
                 else
                 {
                     dLow &= 0x7f; // clear disabled state
                     param += dLow;
-                    ctrl = C_dataL; // change controller type
+                    ctrl = MIDI::CC::dataLSB; // change controller type
                 }
                 if (param > 0x7f)
                     param = 0x7f;
@@ -332,19 +331,19 @@ bool MidiDecode::nrpnDecode(unsigned char ch, int ctrl, int param, bool in_place
                 if (msbPar)
                 {
                     param = dHigh - param;
-                    ctrl = C_dataH; // change controller type
+                    ctrl = MIDI::CC::dataMSB; // change controller type
                 }
                 else
                 {
                     param = dLow - param;
-                    ctrl = C_dataL; // change controller type
+                    ctrl = MIDI::CC::dataLSB; // change controller type
                 }
                 if (param < 0)
                     param = 0;
             }
         }
 
-        if (ctrl == C_dataL || ctrl == C_dataH)
+        if (ctrl == MIDI::CC::dataLSB || ctrl == MIDI::CC::dataMSB)
         {
             nrpnProcessData(ch, ctrl, param, in_place);
             return true;
@@ -358,7 +357,7 @@ bool MidiDecode::nrpnRunVector(unsigned char ch, int ctrl, int param, bool inSyn
 {
     int Xopps = synth->getRuntime().vectordata.Xfeatures[ch];
     int Yopps = synth->getRuntime().vectordata.Yfeatures[ch];
-    int p_rev = 127 - param;
+    int p_rev = 0x7f - param;
     int swap1;
     int swap2;
     unsigned char type;
@@ -367,8 +366,8 @@ bool MidiDecode::nrpnRunVector(unsigned char ch, int ctrl, int param, bool inSyn
     {
         if (Xopps & 1) // fixed as volume
         {
-            sendMidiCC(inSync, ch | 0x80, C_volume, 127 - (p_rev * p_rev / 127));
-            sendMidiCC(inSync, ch | 0x90, C_volume, 127 - (param * param / 127));
+            sendMidiCC(inSync, ch | 0x80, MIDI::CC::volume, 0x7f - (p_rev * p_rev / 0x7f));
+            sendMidiCC(inSync, ch | 0x90, MIDI::CC::volume, 0x7f - (param * param / 0x7f));
         }
         if (Xopps & 2) // default is pan
         {
@@ -400,8 +399,8 @@ bool MidiDecode::nrpnRunVector(unsigned char ch, int ctrl, int param, bool inSyn
     { // if Y hasn't been set these commands will be ignored
         if (Yopps & 1) // fixed as volume
         {
-            sendMidiCC(inSync, ch | 0xa0, C_volume, 127 - (p_rev * p_rev / 127));
-            sendMidiCC(inSync, ch | 0xb0, C_volume, 127 - (param * param / 127));
+            sendMidiCC(inSync, ch | 0xa0, MIDI::CC::volume, 0x7f - (p_rev * p_rev / 0x7f));
+            sendMidiCC(inSync, ch | 0xb0, MIDI::CC::volume, 0x7f - (param * param / 0x7f));
         }
         if (Yopps & 2) // default is pan
         {
@@ -438,14 +437,14 @@ void MidiDecode::nrpnProcessData(unsigned char chan, int type, int par, bool in_
     int nHigh = synth->getRuntime().nrpnH;
     int nLow = synth->getRuntime().nrpnL;
     bool noHigh = (synth->getRuntime().dataH > 0x7f);
-    if (type == C_dataL)
+    if (type == MIDI::CC::dataLSB)
     {
         synth->getRuntime().dataL = par;
 //        synth->getRuntime().Log("Data LSB    value " + asString(par));
         if (noHigh)
             return;
     }
-    if (type == C_dataH)
+    if (type == MIDI::CC::dataMSB)
     {
         synth->getRuntime().dataH = par;
 //        synth->getRuntime().Log("Data MSB    value " + asString(par));
@@ -473,11 +472,11 @@ void MidiDecode::nrpnProcessData(unsigned char chan, int type, int par, bool in_
 
     // For NRPNs midi learn must come before everything else
     if (synth->midilearn.runMidiLearn(dHigh << 7 | par, 0x10000 | (nHigh << 7) | nLow , chan, in_place | 2))
-        return;
+        return; // blocking while learning
 
     if (nLow < nHigh && (nHigh == 4 || nHigh == 8 ))
     {
-        if (type == C_dataL)
+        if (type == MIDI::CC::dataLSB)
             synth->getRuntime().dataL = par;
         else
              synth->getRuntime().dataH = par;
@@ -520,8 +519,8 @@ void MidiDecode::nrpnDirectPart(int dHigh, int par)
             }
             else // It's bad. Kill it
             {
-                synth->getRuntime().dataL = 128;
-                synth->getRuntime().dataH = 128;
+                synth->getRuntime().dataL = 0x80;
+                synth->getRuntime().dataH = 0x80;
             }
             break;
 
@@ -617,11 +616,11 @@ void MidiDecode::setMidiBankOrRootDir(unsigned int bank_or_root_num, bool in_pla
 {
     if (setRootDir)
     {
-        if (bank_or_root_num == synth->getBankRef().getCurrentRootID())
+        if (bank_or_root_num == synth->getRuntime().currentRoot)
             return; // nothing to do!
     }
     else
-        if (bank_or_root_num == synth->getBankRef().getCurrentBankID())
+        if (bank_or_root_num == synth->getRuntime().currentBank)
             return; // still nothing to do!
 
     CommandBlock putData;
@@ -629,7 +628,7 @@ void MidiDecode::setMidiBankOrRootDir(unsigned int bank_or_root_num, bool in_pla
     putData.data.value = 0xff;
     putData.data.type = 0xd0;
     putData.data.control = 8;
-    putData.data.part = 0xd9;
+    putData.data.part = TOPLEVEL::section::midiIn;
     putData.data.kit = 0;
     putData.data.parameter = 0xc0;
 
@@ -658,7 +657,7 @@ void MidiDecode::setMidiProgram(unsigned char ch, int prg, bool in_place)
     putData.data.value = prg;
     putData.data.type = 0xd0;
     putData.data.control = 8;
-    putData.data.part = 0xd9;
+    putData.data.part = TOPLEVEL::section::midiIn;
     putData.data.parameter = 0xc0;
 
     /*
@@ -666,7 +665,7 @@ void MidiDecode::setMidiProgram(unsigned char ch, int prg, bool in_place)
      * but it is the simplest way to ensure partonoff doesn't
      * get out of step.
      *
-     * Changes won't normally happen while MIDI is incomming
+     * Changes won't normally happen while MIDI is incoming
      * on the same channel.
      */
     if (ch < NUM_MIDI_CHANNELS)

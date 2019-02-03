@@ -22,7 +22,7 @@
 
     This file is derivative of ZynAddSubFX original code.
 
-    Modified March 2018
+    Modified November 2018
 */
 
 #include "Misc/SynthEngine.h"
@@ -159,7 +159,8 @@ void Echo::setvolume(unsigned char Pvolume_)
 void Echo::setdelay(const unsigned char Pdelay_)
 {
     Pdelay = Pdelay_;
-    delay = 1 + (int)truncf(Pdelay / 127.0f * synth->samplerate_f * 1.5f); // 0 .. 1.5 sec
+    delay = int(Pdelay / 127.0f * synth->samplerate_f * 1.5f);
+    delay += 1; // 0 .. 1.5 sec
     initdelays();
 }
 
@@ -283,7 +284,7 @@ float Echolimit::getlimits(CommandBlock *getData)
     switch (control)
     {
         case 0:
-            if (npart != 0xf1) // system effects
+            if (npart != TOPLEVEL::section::systemEffects) // system effects
                 def /= 2;
             break;
         case 1:
@@ -303,26 +304,26 @@ float Echolimit::getlimits(CommandBlock *getData)
             canLearn = false;
             break;
         default:
-            getData->data.type |= 4; // error
+            getData->data.type |= TOPLEVEL::type::Error;
             return 1.0f;
             break;
     }
 
-    switch(request)
+    switch (request)
     {
-        case 0:
+        case TOPLEVEL::type::Adjust:
             if(value < min)
                 value = min;
             else if(value > max)
                 value = max;
             break;
-        case 1:
+        case TOPLEVEL::type::Minimum:
             value = min;
             break;
-        case 2:
+        case TOPLEVEL::type::Maximum:
             value = max;
             break;
-        case 3:
+        case TOPLEVEL::type::Default:
             value = def;
             break;
     }
