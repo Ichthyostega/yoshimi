@@ -17,7 +17,7 @@
     You should have received a copy of the GNU General Public License
     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 
-    Modifed March 2018
+    Modified November 2018
 */
 
 #ifndef MISCFUNCS_H
@@ -27,6 +27,8 @@
 #include <string>
 #include <list>
 #include <semaphore.h>
+
+#include "globals.h"
 
 using namespace std;
 
@@ -47,12 +49,15 @@ class MiscFuncs
         string asLongString(float n);
         string asHexString(int x);
         string asHexString(unsigned int x);
+        string asAlignedString(int n, int len);
 
         static float string2float(string str);
         static double string2double(string str);
         static int string2int(string str);
         static int string2int127(string str);
         static unsigned int string2uint(string str);
+
+        int stringNumInList(string toFind, string *listname, int convert = 0);
 
         bool isRegFile(string chkpath);
         bool isDirectory(string chkpath);
@@ -83,6 +88,8 @@ class MiscFuncs
         unsigned int bitFindHigh(unsigned int value);
         void bitSet(unsigned int& value, unsigned int bit);
         void bitClear(unsigned int& value, unsigned int bit);
+        void bitClearHigh(unsigned int& value);
+        void bitClearAbove(unsigned int& value, int bitLevel);
         bool bitTest(unsigned int value, unsigned int bit);
 
         float dB2rap(float dB);
@@ -106,20 +113,5 @@ inline float MiscFuncs::dB2rap(float dB) {
 #endif
 }
 inline float MiscFuncs::rap2dB(float rap) { return 20.0f * log10f(rap); }
-
-union CommandBlock{
-    struct{
-        float value;
-        unsigned char type;
-        unsigned char control;
-        unsigned char part;
-        unsigned char kit;
-        unsigned char engine;
-        unsigned char insert;
-        unsigned char parameter;
-        unsigned char par2;
-    } data;
-    char bytes [sizeof(data)];
-};
 
 #endif

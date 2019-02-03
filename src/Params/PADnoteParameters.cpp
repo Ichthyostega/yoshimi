@@ -22,10 +22,11 @@
 
     This file is a derivative of a ZynAddSubFX original.
 
-    Modified March 2018
+    Modified October 2018
 */
 
 #include <cmath>
+#include <iostream>
 
 using namespace std;
 
@@ -147,6 +148,7 @@ void PADnoteParameters::defaults(void)
     FilterEnvelope->defaults();
     FilterLfo->defaults();
     deletesamples();
+    Papplied = false;
 }
 
 
@@ -344,7 +346,14 @@ float PADnoteParameters::getNhr(int n)
     switch (Phrpos.type)
     {
     case 1:
-        thresh = (int)truncf(par2 * par2 * 100.0f) + 1;
+        FR2Z2I(par2 * par2 * 100.0f, thresh);
+        thresh += 1;
+        /*
+         * leaving many of the old versions here
+         * as there may be subtle effects of adding
+         * or subtracting after the conversion
+         */
+        //thresh = (int)truncf(par2 * par2 * 100.0f) + 1;
         if (n < thresh)
             result = n;
         else
@@ -352,7 +361,9 @@ float PADnoteParameters::getNhr(int n)
         break;
 
     case 2:
-        thresh = (int)truncf(par2 * par2 * 100.0f) + 1;
+        FR2Z2I(par2 * par2 * 100.0f, thresh);
+        thresh += 1;
+        //thresh = (int)truncf(par2 * par2 * 100.0f) + 1;
         if (n < thresh)
             result = n;
         else
@@ -376,6 +387,10 @@ float PADnoteParameters::getNhr(int n)
         tmp = powf((par2 * 2.0f), 2.0f) + 0.1f;
         result = n0 * powf(1.0f + par1 * powf(n0 * 0.8f, tmp), tmp) + 1.0f;
         break;
+
+        case 7:
+            result = (n + Phrpos.par1 / 255.0f) / (Phrpos.par1 / 255.0f + 1);
+            break;
 
     default:
         result=n;
@@ -466,17 +481,25 @@ void PADnoteParameters::generatespectrum_bandwidthMode(float *spectrum,
             break;
         }
         bw = bw * powf(realfreq / basefreq, power);
-        int ibw = (int)truncf((bw / (synth->samplerate_f * 0.5f) * size)) + 1;
+        int ibw;
+        FR2Z2I(bw / (synth->samplerate_f * 0.5f) * size, ibw);
+        ibw += 1;
+        //int ibw = (int)truncf((bw / (synth->samplerate_f * 0.5f) * size)) + 1;
         float amp = harmonics[nh - 1];
         if (resonance->Penabled)
             amp *= resonance->getfreqresponse(realfreq);
         if (ibw > profilesize)
         {   // if the bandwidth is larger than the profilesize
             float rap = sqrtf((float)profilesize / (float)ibw);
-            int cfreq = (int)truncf(realfreq / (synth->halfsamplerate_f) * size) - ibw / 2;
+            int cfreq;
+            FR2Z2I(realfreq / (synth->halfsamplerate_f) * size, cfreq);
+            cfreq -= (ibw / 2);
+            //int cfreq = (int)truncf(realfreq / (synth->halfsamplerate_f) * size) - ibw / 2;
             for (int i = 0; i < ibw; ++i)
             {
-                int src = (int)truncf(i * rap * rap);
+                int src;
+                FR2Z2I(i * rap * rap, src);
+                //int src = (int)truncf(i * rap * rap);
                 int spfreq = i + cfreq;
                 if (spfreq < 0)
                     continue;
@@ -548,7 +571,9 @@ void PADnoteParameters::generatespectrum_otherModes(float *spectrum,
         float amp = harmonics[nh - 1];
         if (resonance->Penabled)
             amp *= resonance->getfreqresponse(realfreq);
-        int cfreq = (int)truncf(realfreq / (synth->halfsamplerate_f) * size);
+        int cfreq;
+        FR2Z2I(realfreq / (synth->halfsamplerate_f) * size, cfreq);
+        //int cfreq = (int)truncf(realfreq / (synth->halfsamplerate_f) * size);
         spectrum[cfreq] = amp + 1e-9f;
     }
 
@@ -666,6 +691,7 @@ void PADnoteParameters::applyparameters()
     // delete the additional samples that might exists and are not useful
     for (int i = samplemax; i < PAD_MAX_SAMPLES; ++i)
         deletesample(i);
+    Papplied = true;
 }
 
 
@@ -935,249 +961,259 @@ void PADnoteParameters::getfromXML(XMLwrapper *xml)
 float PADnoteParameters::getLimits(CommandBlock *getData)
 {
     float value = getData->data.value;
-    int request = int(getData->data.type & 3);
-
+    unsigned char type = getData->data.type;
+    int request = type & TOPLEVEL::type::Default;
     int control = getData->data.control;
 
-    // defaults
-    int type = 0;
+    type &= (TOPLEVEL::source::MIDI || TOPLEVEL::source::CLI || TOPLEVEL::source::GUI); // source bits only
+
+    // padnote defaults
     int min = 0;
     int def = 64;
     int max = 127;
-
+    type |= TOPLEVEL::type::Integer;
+    unsigned char learnable = TOPLEVEL::type::Learnable;
     switch (control)
     {
-        case 0:
-            type |= 0x40;
+        case PADSYNTH::control::volume:
+            type |= learnable;
             def = 90;
             break;
 
-        case 1:
-            type |= 0x40;
+        case PADSYNTH::control::velocitySense:
+            type |= learnable;
             def = 72;
             break;
 
-        case 2:
-            type |= 0x40;
+        case PADSYNTH::control::panning:
+            type |= learnable;
             break;
 
-        case 8:
-            type |= 0x40;
+        case PADSYNTH::control::enable:
+            type |= learnable;
             def = 0;
             max = 1;
             break;
 
-        case 16:
+        case PADSYNTH::control::bandwidth:
             def = 500;
             max = 1000;
             break;
 
-        case 17:
+        case PADSYNTH::control::bandwidthScale:
             def = 0;
             max = 7;
             break;
 
-        case 19:
+        case PADSYNTH::control::spectrumMode:
             def = 0;
             max = 2;
             break;
 
-        case 32:
-            type |= 0x40;
+        case PADSYNTH::control::detuneFrequency:
+            type |= learnable;
             min = -8192;
             def = 0;
             max = 8191;
             break;
 
-        case 33:
-            type |= 0x40;
+        case PADSYNTH::control::equalTemperVariation:
+            type |= learnable;
             def = 0;
             break;
 
-        case 34:
+        case PADSYNTH::control::baseFrequencyAs440Hz:
             def = 0;
             max = 1;
             break;
 
-        case 35:
-            type |= 0x40;
+        case PADSYNTH::control::octave:
+            type |= learnable;
             min = -8;
             def = 0;
             max = 7;
             break;
 
-        case 36:
+        case PADSYNTH::control::detuneType:
             def = 0;
             max = 3;
             break;
 
-        case 37:
+        case PADSYNTH::control::coarseDetune:
             min = -64;
             def = 0;
             max = 63;
             break;
 
-        case 38:
-            type |= 0x40;
+        case PADSYNTH::control::pitchBendAdjustment:
+            type |= learnable;
             def = 88;
             break;
 
-        case 39:
-            type |= 0x40;
+        case PADSYNTH::control::pitchBendOffset:
+            type |= learnable;
             break;
 
 
-        case 48:
-        case 49:
-            type |= 0x40;
+        case PADSYNTH::control::overtoneParameter1:
+            type |= learnable;
             max = 255;
             break;
 
-        case 50:
-            type |= 0x40;
+        case PADSYNTH::control::overtoneParameter2:
+            type |= learnable;
+            max = 255;
+            break;
+
+        case PADSYNTH::control::overtoneForceHarmonics:
+            type |= learnable;
             def = 0;
             max = 255;
             break;
 
-        case 51:
+        case PADSYNTH::control::overtonePosition:
             def = 0;
-            max = 6;
+            max = 7;
             break;
 
-        case 64:
-            type |= 0x40;
+        case PADSYNTH::control::baseWidth:
+            type |= learnable;
             def = 80;
             break;
 
-        case 65:
-            type |= 0x40;
+        case PADSYNTH::control::frequencyMultiplier:
+            type |= learnable;
             def = 0;
             break;
 
-        case 66:
-            type |= 0x40;
+        case PADSYNTH::control::modulatorStretch:
+            type |= learnable;
             def = 0;
             break;
 
-        case 67:
-            type |= 0x40;
+        case PADSYNTH::control::modulatorFrequency:
+            type |= learnable;
             def = 30;
             break;
 
-        case 68:
-            type |= 0x40;
+        case PADSYNTH::control::size:
+            type |= learnable;
             def = 127;
             break;
 
-        case 69:
+        case PADSYNTH::control::baseType:
             def = 0;
             max = 2;
             break;
 
-        case 70:
+        case PADSYNTH::control::harmonicSidebands:
             def = 0;
             max = 2;
             break;
 
-        case 71:
-            type |= 0x40;
+        case PADSYNTH::control::spectralWidth:
+            type |= learnable;
             def = 80;
             break;
 
-        case 72:
-            type |= 0x40;
+        case PADSYNTH::control::spectralAmplitude:
+            type |= learnable;
             break;
 
-        case 73:
-        case 74:
+        case PADSYNTH::control::amplitudeMultiplier:
             def = 0;
             max = 3;
             break;
 
-        case 75:
+        case PADSYNTH::control::amplitudeMode:
+            def = 0;
+            max = 3;
+            break;
+
+        case PADSYNTH::control::autoscale:
             def = 1;
             max = 1;
             break;
 
-        case 80:
+        case PADSYNTH::control::harmonicBase:
             def = 4;
             max = 8;
             break;
 
-        case 81:
+        case PADSYNTH::control::samplesPerOctave:
             def = 2;
             max = 6;
             break;
 
-        case 82:
+        case PADSYNTH::control::numberOfOctaves:
             def = 3;
             max = 7;
             break;
 
-        case 83:
+        case PADSYNTH::control::sampleSize:
             def = 3;
             max = 6;
             break;
 
-        case 104:
+        case PADSYNTH::control::applyChanges:
             min = 0;
             def = 0;
             max = 0;
             break;
 
-        case 112:
-            type |= 0x40;
+        case PADSYNTH::control::stereo:
+            type |= learnable;
             def = 1;
             max = 1;
             break;
 
-        case 120:
-            type |= 0x40;
+        case PADSYNTH::control::dePop:
+            type |= learnable;
             def = FADEIN_ADJUSTMENT_SCALE;
             break;
 
-        case 121:
-            type |= 0x40;
+        case PADSYNTH::control::punchStrength:
+            type |= learnable;
             def = 0;
             break;
 
-        case 122:
-            type |= 0x40;
+        case PADSYNTH::control::punchDuration:
+            type |= learnable;
             def = 60;
             break;
 
-        case 123:
-            type |= 0x40;
+        case PADSYNTH::control::punchStretch:
+            type |= learnable;
             break;
 
-        case 124:
-            type |= 0x40;
+        case PADSYNTH::control::punchVelocity:
+            type |= learnable;
             def = 72;
             break;
 
         default:
-            type |= 4; // error
+            type |= TOPLEVEL::type::Error; // error
             break;
     }
     getData->data.type = type;
-    if (type & 4)
+    if (type & TOPLEVEL::type::Error)
         return 1;
 
     switch (request)
     {
-        case 0:
+        case TOPLEVEL::type::Adjust:
             if(value < min)
                 value = min;
             else if(value > max)
                 value = max;
         break;
-        case 1:
+        case TOPLEVEL::type::Minimum:
             value = min;
             break;
-        case 2:
+        case TOPLEVEL::type::Maximum:
             value = max;
             break;
-        case 3:
+        case TOPLEVEL::type::Default:
             value = def;
             break;
     }

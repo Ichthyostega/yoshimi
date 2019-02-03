@@ -4,6 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2010, Alan Calvert
+    Copyright 2018 Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -19,10 +20,15 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of a ZynAddSubFX original, modified October 2010
+    This file is a derivative of a ZynAddSubFX original
+
+    Modified December 2018
 */
 
 #include <cmath>
+#include <iostream>
+
+using namespace std;
 
 #include "Misc/SynthEngine.h"
 #include "Synth/Resonance.h"
@@ -153,16 +159,16 @@ void Resonance::smooth()
 // Randomize the resonance function
 void Resonance::randomize(int type)
 {
-    int r = (int)(synth->numRandom() * 127.0f);
+    uint32_t r = synth->randomINT() >> 24;
     for (int i = 0; i < MAX_RESONANCE_POINTS; ++i)
     {
         Prespoints[i] = r;
-        if (synth->numRandom() < 0.1f && type == 0)
-            r = (synth->numRandom() * 127.0f);
-        if (synth->numRandom() < 0.3f && type == 1)
-            r = (synth->numRandom() * 127.0f);
+        if (type == 0 && synth->numRandom() < 0.1f)   // draw new random only for 10% of all slots
+            r = synth->randomINT() >> 24;
+        if (type == 1 && synth->numRandom() < 0.3f)   // ...only for 30% of all slots
+            r = synth->randomINT() >> 24;
         if (type == 2)
-            r = (synth->numRandom() * 127.0f);
+            r = synth->randomINT() >> 24;
     }
     smooth();
 }
@@ -222,9 +228,9 @@ float Resonance::getoctavesfreq(void)
 }
 
 
-void Resonance::sendcontroller(MidiControllers ctl, float par)
+void Resonance::sendcontroller(unsigned short int ctl, float par)
 {
-    if (ctl == C_resonance_center)
+    if (ctl == MIDI::CC::resonanceCenter)
         ctlcenter = par;
     else
         ctlbw = par;
@@ -265,4 +271,109 @@ void Resonance::getfromXML(XMLwrapper *xml)
         Prespoints[i]=xml->getpar127("val",Prespoints[i]);
         xml->exitbranch();
     }
+}
+
+
+float ResonanceLimits::getLimits(CommandBlock *getData)
+{
+    float value = getData->data.value;
+    unsigned char type = getData->data.type;
+    int request = type & TOPLEVEL::type::Default;
+    int control = getData->data.control;
+    int insert = getData->data.insert;
+
+    type &= (TOPLEVEL::source::MIDI | TOPLEVEL::source::CLI | TOPLEVEL::source::GUI); // source bits only
+
+    // resonance defaults
+    int min = 0;
+    int max = 1;
+    int def = 0;
+    type |= TOPLEVEL::type::Integer;
+
+    if (insert == TOPLEVEL::insert::resonanceGraphInsert)
+    {
+        min = 1;
+        max = 127;
+        def = 64;
+
+        getData->data.type = type;
+
+        switch (request)
+        {
+        case TOPLEVEL::type::Adjust:
+            if(value < min)
+                value = min;
+            else if(value > max)
+                value = max;
+        break;
+        case TOPLEVEL::type::Minimum:
+            value = min;
+            break;
+        case TOPLEVEL::type::Maximum:
+            value = max;
+            break;
+        case TOPLEVEL::type::Default:
+            value = def;
+            break;
+        }
+        return value;
+    }
+
+    switch (control)
+    {
+        case RESONANCE::control::maxDb:
+            min = 1;
+            max = 90;
+            def = 20;
+            break;
+        case RESONANCE::control::centerFrequency:
+            max = 127;
+            def = 64;
+            break;
+        case RESONANCE::control::octaves:
+            max = 127;
+            def = 64;
+            break;
+        case RESONANCE::control::enableResonance:
+            break;
+        case RESONANCE::control::randomType:
+            max = 2;
+            break;
+        case RESONANCE::control::interpolatePeaks:
+            break;
+        case RESONANCE::control::protectFundamental:
+            break;
+        case RESONANCE::control::clearGraph:
+            max = 0;
+            break;
+        case RESONANCE::control::smoothGraph:
+            max = 0;
+            break;
+        default:
+            type |= TOPLEVEL::type::Error;
+            break;
+    }
+    getData->data.type = type;
+    if (type & TOPLEVEL::type::Error)
+        return 1;
+
+    switch (request)
+    {
+        case TOPLEVEL::type::Adjust:
+            if(value < min)
+                value = min;
+            else if(value > max)
+                value = max;
+        break;
+        case TOPLEVEL::type::Minimum:
+            value = min;
+            break;
+        case TOPLEVEL::type::Maximum:
+            value = max;
+            break;
+        case TOPLEVEL::type::Default:
+            value = def;
+            break;
+    }
+    return value;
 }

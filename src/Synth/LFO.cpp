@@ -21,7 +21,7 @@
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
     This file is derivative of ZynAddSubFX original code
-    Modified February 2017
+    Modified December 2018
 */
 
 #include <cmath>
@@ -57,6 +57,8 @@ LFO::LFO(LFOParams *_lfopars, float _basefreq, SynthEngine *_synth):
     incrnd = nextincrnd = 1.0f;
 
     Recompute();
+    if (lfopars->fel == 0) // this is a Frequency LFO
+        x -= 0.25f; // change the starting phase
     amp1 = (1 - lfornd) + lfornd * synth->numRandom();
     amp2 = (1 - lfornd) + lfornd * synth->numRandom();
     computenextincrnd(); // twice because I want incrnd & nextincrnd to be random

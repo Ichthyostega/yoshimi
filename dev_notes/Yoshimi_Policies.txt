@@ -20,8 +20,9 @@ Minor version 3
 We now implement a build number. This is only bumped up when I push new commits to master (both github and sourceforge) so may represent several actual commits.
 
 
-We won't accept fixes for spelling errors in the *code*
+We won't normally accept fixes for spelling errors in the *code*
 For a start, from bitter experience it is fatally easy to change two variables to the same name! Also, there's no point, after all they are only a mnemonic for memory addresses etc. 'volume' and 'LFO' could just as well be 'turnyfing' and 'derfingwotwiggles'.
+Finally, some of these errors are in the identifier names of the saved XML files, and have been there since ZynAddSubFX Version 2.2.1 To change them would break all the instrument files that have been created since then.
 
 
 If using Fluid to edit GUI files, please close all windows and collapse all menus *before* the last save. I know it's tedious, but it avoids storms of spurious 'changes' that make genuine ones harder to see.
@@ -42,4 +43,4 @@ There seems to be no easy way to copy commit messages to the changelog, and peop
 * Sys/Ins effect controls now transferred to lock free.
   But could be improved.
 
-Lines without '*' are continuations/extra info keeping the line length short, and I don't usually include them in commit messages.
+Lines without '*' are continuations/extra info keeping the line length short, and are not usually included in commit messages.

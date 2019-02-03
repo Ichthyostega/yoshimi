@@ -1,4 +1,734 @@
-yoshimi 1.5.8 M
+yoshimi 1.5.10.1
+
+2019-1-13 Will.
+* Confirmed previous fix and set release as 1.5.10.1
+
+2019-1-12 Rob, Will, Hermann
+* BugFix: Changes to CMakeLists.txt failed fedora build.
+  Directly setting CMAKE_CXX_FLAGS overwrote previously
+  defined flags the distro package required. We now add
+  our settings as a prefix to existing CMAKE_CXX_FLAGS
+  so the distro values take priority.
+* Changed Examples/synth_prelude files to link to original.
+  Done to avoid possible licensing issues.
+* Added new warning file to dev_notes about spelling errors.
+* Set bugfix release as 1.5.10.1 rc1
+
+2019-1-6 Will
+* Modified 'main' to remove stand-alone/LV2 build contention.
+* Bank.h, Config.h, Config.cpp no longer different builds.
+* Added warning about XML names in dev_notes.
+
+2019-1-3 Will
+* Fixed regression - Resonance deactivated 'Close' button.
+* Added 'Multi Rushes' instrument to 'Will Godfrey Collection'.
+* Corrected some file dates.
+* Final updates to docs.
+* Set release version as 1.5.10
+
+2019-1-2 Hermann
+* Refactored the PRNG code into a class.
+* Extracted the source code of the random_r() function
+  from C standard lib, which Yoshimi relied on previously.
+* Simplified and adapted this code to our usage, verified
+  it produces exactly the same random numbers as Glibc 2.24
+* re-integrated all further float->int optimisations done
+  by Will while reworking the PRNGs.
+
+2018-12-22 Will
+* Frequency LFO regresion fix from Rob.
+* Set version as 1.5.10 rc3
+
+2018-12-21 Hermann
+* While RC testing, spotted subtle sonic changes
+  to some complex layered instruments.
+* Investigation indicates a different fluctuation patterning
+  of the Jenkins PRNG algo as reason, while, on average,
+  both the new and the old PRNG algos perform similar.
+
+2018-12-18 Will
+* Changed PRNGs to specifically use uint32_t
+* Updated most docs for release.
+* Set version as 1.5.10 rc2
+
+2018-12-9 Will
+* Some minor code cleanups.
+* Doc updates.
+* Set version as 1.5.10 rc1
+
+2018-12-6 Will
+* Fixed GUI regression Resonance Apply button
+  inoperable when resonance disabled!
+* Added 'Echo Multimod' to Will_Godfrey_Companion.
+* Also added 'Cathedral Pipe organ'.
+
+2018-12-5 Will
+* Added CLI warning when insEffect is unrouted.
+* Fixed CLI regression. Set part program blocked
+  if part was not enabled - should auto-enable.
+
+2018-12-3 Will
+* BugFix: CLI Solo not accessing twoWay mode.
+* Doc updates.
+
+2018-12-2 Will
+* BugFix: readAllData() not returning indirect value.
+* More details available in CLI list part.
+
+2018-12-1 Will
+* CLI List part gives detailed current status.
+  It gives further details if in part context.
+
+2018-11-30 Will
+* Prng behaviour now confirmed and reseeds removed.
+  Quite unnecessary. Needs many hours of continuous
+  playing to begin to get anywhere near pattern repeat.
+
+2018-11-28 Will
+* Inplemented a new prng with no external libraries
+  based on "A small noncryptographic PRNG"
+  by Bob Jenkins
+
+2018-11-27 Will
+* Randomness can now be disabled for test purposes.
+  Enabe #define NORANDOM in globals.h
+  This makes subSynth and padSynth sound strange :o
+* A bit more work on unified presets placeholders.
+
+2018-11-25 Will
+* Moved all static CmdInterface strings from .cpp to .h
+* Corrected some CLI EQ text.
+* Changed CLI internal names to avoid potential clashes.
+
+2018-11-24 Will
+* BugFix: Limits tests not finding dynfilter-filter.
+* Completed CLI access to dynfilter. Phew!
+* Some extra CLI code cleanups.
+
+2018-11-23 Will
+* All CLI effects help lists done.
+* CLI EQ controls done.
+  (band and stages don't update GUI yet)
+* Some code cleanups.
+* CLI dynfilter mostly done.
+  Not the actual filter editor.
+
+2018-11-22 Will
+* Revised CLI effects code.
+* BugFix: SysEff 'send' returned wrong value.
+* CLI help effect lists complete to distortion.
+* No top level CLI help data when calling by name.
+
+2018-11-21 Will
+* CLI Reverb and Echo controls completed.
+  and created new help lists for these.
+* Added help list of all effects (by name).
+
+2018-11-20 Will
+* Small adjustments to NRPN effects in synthEngine.
+* Started defining CLI effect controls.
+
+2018-11-18 Will
+* Created placeholders for unified presets system.
+
+2018-11-17 Will
+* Changed CLI formant filter formant number for clarity.
+* Improved CLI filter help list.
+* Added CLI display of filter's current vowel/formant.
+
+2018-11-11 Will
+* Improved CLI kit mode controls.
+* Added CLI min to last note and max to last note.
+
+2018-11-10 Will
+* CLI fine tuning.
+* Added dummy Part entries in limits for text entries
+  that have no 'value' to prevent errors when tested.
+* Changed CLI Velocity 'Offset' to 'Level'.
+  This prevents a clash with ON/OFF commands.
+* More CLI adjustments and conversion to sendNormal().
+  This provides better error checking and reporting.
+* Corrected CLI Voice Modulator type message.
+* BugFix: CLI Voice number blocked if current disabled.
+* CLI kitmode is now a pseudo context level.
+  It emulates normal 'back' actions.
+
+2018-11-9 Will
+* All CLI part contexts checked for enable.
+* Substantially revised CLI part level controls.
+  No need for KMode, KItem as names unique and
+  numbers assumed to be kit items in this mode.
+  Effect and Name no longer need 'K' prefix.
+
+2018-11-8 Will
+* Further revision to CLI AddVoice controls.
+* BugFix: CLI waveform change only setting voice 1.
+* Improved CLI waveform selection.
+* CLI checks part enabled before other controls.
+
+2018-11-7 Will
+* Added missing controls to CLI voice modulator.
+* Simplified CLI voice modulator type setting.
+* Revised CLI common controls.
+  Detune types now names, not numbers.
+* BugFix: limits test not seeing AddSynth Modulator.
+
+2018-11-4 Will
+* Completed all CLI waveform controls.
+ I think!
+* Adjustments to CLI minimum abbreviations.
+
+2018-11-3 Will
+* Added CLI waveform access for modulators.
+
+2018-11-2 Will
+* Completed CLI AddVoice controls :)
+
+2018-11-1 Will
+* Enabled formal CLI access to AddVoice Modulator.
+  Envelope inserts and common controls not done.
+
+2018-10-31 Will
+* Fixed regression - disappearing waveform Mag Type.
+* Removed Harmonic Shift Reset.
+  It's function is performed by a right click on the
+  Harmonic Shift up or down button.
+* Implemented CLI voice unison controls.
+* Implemented CLI remaining voice controls.
+  Not modulator ones.
+
+2018-10-30 Will
+* CMakeLists.txt improvement from Hermann.
+* GUI waveform deactivation adjustments:
+  harmonic randomness.
+  waveshape.
+  spectrum adjust.
+  filter.
+  modulation.
+  adaptive harmonics.
+  base type parameter.
+  base modulation parameters.
+* Further adjustments to GUI waveform deactivation.
+
+2018-10-28 Will
+* PadSynth GUI 'apply' button updates when exporting.
+* Added 'wait' command to CLI scripts.
+* Added read/write part kit item name to CLI.
+* Properly resolved PadSynth segfault.
+  Due to invalid error check!
+* Minor adjustments to CLI PadSynth text.
+* Added ID for context level for AddSynth Voice Modulator.
+
+2018-10-27 Will
+* BugFix: GUI segfault exporting padsyth samples.
+  Only on kit items > 0 and fix is temporary hack :(
+
+2018-10-26 Will
+* Implemented CLI PadSynth Controls.
+
+2018-10-25 Will
+* Found missing PadSynth overtones option.
+* Deactivate PadSynth overtones if set as harmonic.
+* Small revision to PadSynth GUI.
+* Deactivate SubSynth overtones if set as harmonic.
+
+2018-10-24 Will
+* Deactivate PadSynth amp group if Multiplier off.
+
+2018-10-23 Will
+* Started defining CLI PadSynth Controls.
+
+2018-10-21 Will
+* Implemented proper resonance limits.
+* Corrected 2 AddSynth tooltips.
+
+2018-10-20 Will
+* Added Lorenzo's synth_prelude to examples.
+* Possibly cured occasional GUI corruption.
+* Completed CLI AddSynth base controls.
+
+2018-10-19 Will
+* Most #defines in globals.h changed to const.
+* BugFix: CLI not reading resonance points.
+* Completed initial trial of CLI resonance entry.
+
+2018-10-18 Will
+* Some cleanups to Resonance GUI.
+
+2018-10-17 Will
+* Deactivate resonance GUI if not enabled.
+* All mutex code now commented out.
+  Will eventually be removed if no problems.
+
+2018-10-15 Will
+* Minor code cleanups.
+* Doc updates.
+
+2018-10-14 Will
+* BugFix: wrong defaults for resonance.
+* Resolved more magic numbers.
+* Set max buffersize to 8192.
+* Revised and unified MIDI controllers.
+* Moved CC definitions to globals.h
+
+2018-10-13 Will
+* Created global YOSH namespace.
+* Implemented common F2B (float to bool) function.
+* Updated docs.
+
+2018-10-12 Will
+* Converted remaining truncf calls to FR2Z2I.
+  Behaviour is now entirely consistent.
+* Temporarily disabled assembler FR2Z2I code.
+  It screws up in LV2 :(
+* Unified DynFilter Filter/Effect controls.
+
+2018-10-2 Will
+* Changed F2I to FR2Z2I to clarify behaviour.
+  i.e. float round to zero to integer.
+
+2018-10-1 Will
+* Completed F2I adjustments.
+* Started populating with new F2I.
+
+2018-9-30 Will
+* BugFix: AddSynth FM mod was cogging notes.
+  Only that mod and at notes close to sample rate.
+* Improved note/mod oscillator frequency calculations.
+* Reinstated a more advanced version of F2I.
+  Some misinformation earlier :(
+
+2018-9-27 Will
+* Accepted typo checks from debian.
+* Some doc corrections.
+
+2018-9-24 Will
+* Bugfix voice list out of sync with voice editor.
+* Copied in new user guide.
+* set new README.txt
+* Set version as 1.5.9 release
+
+2018-9-23 Will
+* BugFix: CLI not setting midilearn mute.
+* Enabled comments in CLI script.
+  Also added more error checks.
+* Typo corrections:(
+* Corrected CLI 'expand' info.
+* Updated docs.
+* Added Sub Choir to Will_Godfrey_Companion.
+* Set version as 1.5.9 rc3
+
+2018-9-19 Will
+* BugFix: Failed older manual if current missing.
+* Revised CLI status to compress line length.
+* Set version as 1.5.9 rc2
+
+2018-9-18 Will
+* Most important parts of CLI waveform done.
+* Set version as 1.5.9 rc1
+
+2018-9-17 Will
+* Started work on CLI waveform controls.
+
+2018-9-16 Will
+* Added contributors list to About window.
+* Made some startup entries stdout only.
+* Removed some instance startup dublication.
+* CLI envelope freemode done.
+  Some reporting errors and missing checks.
+* Improved CLI filter help list.
+* Corrected CLI freemode reporting.
+* Added CLI freemode error checks.
+* Improved CLI envelope help list.
+
+2018-9-15 Will
+* Completed CLI scripts.
+* Implemented CLI context report control.
+* Further CLI clean-ups.
+* Implemented CLI formant filter controls
+  but needs more testing.
+
+2018-9-14 Will
+* Refactored CLI internal messaging.
+* Implimented CLI scripts.
+
+2018-9-13 Will
+* Set up CLI list entries for formant filter.
+  Not implemented yet.
+
+2018-9-12 Will
+* Added CLI placeholder for formant editor.
+* Added filter category to prompt.
+
+2018-9-11 Will
+* Added CLI placeholder for freemode envelopes.
+* Added freemode status to prompt.
+
+2018-9-10
+* CLI lfos & envelopes remember last type used.
+  amplitude, frequency, filter bandwidth
+* CLI prompt now shows type and status of these.
+
+2018-9-9 Will
+* Optimised some CLI selection routines.
+* Improved CLI prompt information.
+* Further refinements to CLI controls and messages.
+* CLI LFO & Envelope enables inplemented.
+* Simplifed ON/OFF controls in CLI lists.
+  Can still actually use any of:
+  ENable, ON, YEs or DIsable, OFf, NO
+* Corrected wrong CLI kitmode help entry.
+
+2018-9-8 Will
+* Added CLI placeholders for LFOs and filters.
+* Completed CLI controls for LFOs.
+* CLI filters done except formant editor.
+
+2018-9-7 Will
+* Found and mitigated cause of major memory leak.
+  In XML - needs more work to resolve completely.
+* Startup now counts banks and instruments seen.
+* All instances now use a single bank file.
+  They can still get out of sync per session but
+  there is no longer a risk of bank corruption.
+
+2018-9-6 Will
+* Bugfix: Occasional segfaults starting new instances.
+  Caused by call crossing threads :(
+* Moved currentRoot and currentBank from Bank to Config
+  Where they always should have been :@)
+
+2018-9-5 Will
+* BugFix: Reverb type not updating bandwidth control.
+  Thanks to Jesper for finding the cause.
+  Also some GUI effect 'switches' not set by CLI.
+* BugFix: (ancient) Reverb bandwidth control *value*
+  GUI not set to default when enabled.
+
+2018-9-4 Will
+* BugFix: instances not showing correct root list.
+  GuiThreadMsg for banks in wrong place.
+  May have caused crash when opening instances.
+
+2018-9-3 Will
+* BugFix: Crash if instrument name just 4 digits.
+  Thanks to Kristian for the hint :)
+
+2018-9-1 Will
+* BugFix: GUI not setting resonance points.
+
+2018-8-31 Will
+* Added CLI SubSynth bandwidth envelope.
+* Adjusted help lists.
+* Added more CLI error reporting.
+
+2018-8-30 Will
+* Added common envelope controls to CLI.
+  Not freemode yet.
+* Updated help lists.
+
+2018-8-29 Will
+* Made CLI help lists more consistent.
+* Added CLI overtones entries for sub and pad.
+* Added pad 'apply' control to CLI.
+* Updated query lists.
+* Completed CLI SubSynth main controls.
+  Not envelope/filter inserts.
+
+
+2018-8-28 Will
+* Completed CLI part common controls.
+* Moved Voice enable down to 8 for compatibility.
+* Moved Voice amplitude envelope enable down to 7.
+
+2018-8-27 Will
+* Improved CLI fault and context sensitivity.
+* Aded more info on CLI prompt.
+* Some settings now checked on each CLI loop.
+  Will be for checks against external changes.
+* Implemented new part 'common' controls list.
+* Updated ? lists to include subsynth.
+  Also more flexible for later additions.
+* Changed NRPN 7 bit command to remove ambiguity.
+
+2018-8-26 Will
+* More refinments to CLI command structure.
+* Added common stereo, octave, detunes.
+* subSynth CLI harmonic anp and bandwidth done :)
+
+2018-8-25 Will
+* Identified engines and kit mode in CLI prompt.
+* All CLI kit mode controls active.
+* Extended CLI parts help to include new controls.
+* Improved many enable/disable settings.
+* Revised and simplified CLI Mlearn section.
+
+2018-8-24 Will
+* Temporary fix to banks selection anomally
+  The whole of bank needs review.
+* More work on CLI part level controls.
+
+2018-8-20 Will
+* Implemented CLI placeholder function fo AddSynth.
+* Implemented CLI placeholder function fo SubSynth.
+* Implemented CLI placeholder function fo PadSynth.
+* Implemented CLI placeholder function fo AddVoice.
+* Implemented main CLI kit mode controls.
+  Enable engines, kits and kit engines, not AddVoice.
+* Implemented CLI Volume, Pan, Velocity for engines.
+  Includes kit engines but not AddVoice.
+
+2018-8-19 Will
+* Added GUI warning when active part disabled.
+* Removed some redundant test code.
+* Added "Simple Bass" and "Hollow Ghost Ensemble
+  to "Will Godfrey Companion" bank.
+* Set up enums for further CLI control levels.
+* Improved high bit detection in MiscFuncs.cpp
+* Added high bit clearing to MiscFuncs.cpp
+* Revised CLI sys, ins, part effect settings.
+* Revised naming for CLI context levels.
+
+2018-8-18 Rob
+* Initialise and freshen MasterUI->activePart.
+
+2018-8-18 Will
+* Improved patch load behaviour crossing CLI / GUI.
+* Started work on CLI kitmode.
+* BugFix: Saving to bank not updating GUI.
+
+2018-8-17 Will
+* Implemented read most CLI min, max, default
+  for formally defined ones.
+* Implemented most CLI Mlearn initialisation
+  for formally defined ones.
+  Can't cancel from CLI though and non-learnable
+  ones appear to learn.
+* Added CLI help info to new controls.
+
+2018-8-16 Will
+* BugFix: CLI not setting some values
+  and not reading any :(
+* Started on CLI for reading min, max, default.
+
+2018-8-15 Will
+* All GUI default requests now set by limits.
+  This is a major refactoring, considerably
+  reducing the duplication in the GUI and adding
+  more functionality.
+  Some switches don't yet update, but are correct.
+
+2018-8-14 Will
+* Added missing conversions in FilterUI.fl
+* Added missing conversions in EnvelopeUI.fl
+* BugFix: EffUI.fl updates incomplete :(
+* Added missing conversions in LFOUI.fl
+
+2018-8-13 Will
+* Separated system and insert control names.
+* Updated docs.
+* Added missing conversions in EffUI.fl
+
+2018-8-12 Will
+* Reorganised and combined XML & history types.
+  History lists now identified by name.
+* More 'type' and 'control' conversions in CLI.
+* Small GUI updates/corrections.
+
+2018-8-7 Will
+* BugFix: Corrected wrong operator use.
+  Was || when it should have been |
+* Envelope limits done.
+
+2018-8-6 Will
+* Found more missing conversions :(
+
+2018-8-5 Will
+* Updated addSynth limits.
+* Updated padsynth limits.
+* Updated subSynth limits.
+* Updated controller limits.
+* Completed sys/ins control change.
+  Envelope defaults still to do.
+
+2018-8-4 Will
+* BugFix: MIDI-learn Cancel.
+  It was only pretending to :(
+* Updated Microtonal.cpp limits.
+* MicrotonalUI.fl converted to enums.
+* Updated SynthEngine.cpp limits.
+* MasterMiscUI.fl converted to enums.
+* MasterUI.fl mostly converted to enums.
+  Still some control values for MIDI,
+  System and Insert effects to do.
+* ConfigUI converted to enums.
+* BankUI converted to enums.
+* All MIDI controls now done.
+  Effects still not complete.
+
+2018-8-3 Will
+* OscilGenUI.fl converted to enums.
+* Completed limits in Synth/OscilGen.cpp
+* PartUI.fl converted to enums.
+* Some minor cleanups.
+* VectorUI.fl converted to enums.
+* Vector limits now same format as others.
+* ResonanceUI.fl converted to enums.
+
+
+2018-8-2 Will
+* ADnoteUI.fl converted to enums.
+* More clarifcations in MiscGui.cpp
+  Also found more missing conversions :(
+* SUBnoteUI.fl converted to enums.
+* PADnoteUI.fl converted to enums.
+
+2018-8-1 Will
+* Partly implemented envelope limits.
+  Not defaults.
+* MIDI-learn test now using limits and
+  not the GUI version.
+
+2018-7-31 Will
+* Implemented filter limits.
+* Added MIDI-learn to filter limits.
+
+2018-7-30 Will
+* Implemented LFO limits.
+
+2018-7-29 Will
+* More work on Limits.
+* Converted limits error checks.
+* Updated limits doc.
+* Improved encoding in UI/MiscGui.cpp
+* More work on limits.
+* Picked up a few more stragglers.
+
+2018-7-28 Will
+* Cleaned up some missing conversions.
+  Also corrected previous date!
+* More identification of anonymous 255s.
+  e.g. NO_MSG, UNUSED, NO_ACTION
+* Converted bank controls to enums.
+* More missing conversions :(
+* Started identifying types and sources.
+* Still more missing conversions!
+* Rationalised limits in Interface/CmdInterface
+* Started converting limits to enums.
+
+2018-7-27 Will
+* Converted effect type controls to enums.
+  More work needed :(
+
+2018-7-26 Will
+* Converted envelope controls to enums.
+
+2018-7-25 Will
+* Converted MIDIlearn controls to enums.
+
+2018-7-24 Will
+* Revised enum namespace terminology.
+  No intrinsic code changes.
+* Converted resonance controls to enums.
+* Converted LFO controls to enums.
+* Converted filter controls to enums.
+
+2018-7-23 Will
+* Converted oscillator controls to enums.
+
+2018-7-22 Will
+* Converted main addSynth controls to enums.
+* Converted addVoice controls to enums.
+* BugFix: CLI not setting GUI Bypass GobalFilter.
+* Revised build dependencies.
+
+2018-7-21 Will
+* Completed scales enum conversion.
+* Converted subSynth controls to enums.
+* Converted padSynth controls to enums.
+
+2018-7-20 Will
+* Completed vector GUI enum updates.
+* Updated docs and images.
+* BugFix: scales CLI keymap entry wrong controls.
+* Started enum conversion of scales.
+* BugFix: scales CLI keymap not updating GUI.
+
+2018-7-10 Will
+* Corrected GUI Vector/Part/Mixer/Bank anomaly.
+  This whole area needs a *major* refactor :(
+
+2018-7-9 Will
+* Started conversion of Vectors.
+
+2018-7-5 Will
+* Separated common main/part controls.
+  Makes enums properly independent.
+
+2018-7-3 Will
+* Improved fade/mute/loopback isolation.
+* Added 'muted' enums.
+* Changed some names to improve clarity.
+* Restored lost main control conversions :(
+  Too many local branches?
+
+2018-7-1 Will
+* Caught more missing conversions :(
+
+2018-6-30 Will
+* Added some missing enum conversions in 'interchange'.
+* Implemented control routes as enums.
+
+2018-6-29 Will
+* GUI config controls converted to enum.
+* Defined 'insert' enums, and converted all occurrences.
+
+2018-6-25 Will
+* BugFix: GUI mixer controls not setting part window.
+* Forgot section changes in resolveReplies.
+* Interchange config controls converted to enum.
+* CLI config controls converted to enum.
+
+2018-6-24 Will
+* GUI part controls converted.
+* GUI main engine controls converted.
+* Further work on addVoice/addMod controls.
+  These no longer need to be fixed values.
+
+2018-6-23 Will
+* Added engines to globals.h
+* Further work on Interchange.cpp
+* CLI Part level mostly converted.
+* Corrected multiple commit/merge failures :(
+* Further adustments to Interchange.cpp
+
+2018-6-22 Will
+* Moved CommandBlock from MiscFuncs'.h to globals.h
+* Set up part level controls enum in globals.h
+  Converted actual commands in Interchange.cpp
+* Implimented small optimisation for reads.
+* Minor doc updates.
+* Completed part controls move in  Interchange.cpp
+
+2018-6-21 Will
+* Instruments can now be swapped between banks and roots.
+* Small doc updates.
+* Created new globals.h file.
+  Transfered definitions from CMakeLists.txt
+
+2018-6-13 Will
+* Small optimisation in 'zread'.
+  Also shortened read loop usleep time to 10uS.
+
+2018-6-13 Will
+* implimented 'zread' CLI test for command structure.
+
+2018-6-11 Will
+* Bugfix: Wasn't reloading solo-twoway.
+  Saved OK, but reloaded as loop.
+* Formalised manual search and opening.
+  GUI now only calls via command block.
+
 
 2018-6-5 Will
 * BugFix: Clearing kitmode key ranges was resetting.

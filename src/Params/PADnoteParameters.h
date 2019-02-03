@@ -88,7 +88,7 @@ class PADnoteParameters : public Presets
                 unsigned char par2;
             } amp;
             bool autoscale;        //  if the scale of the harmonic profile is
-                                   // computed automaticaly
+                                   // computed automatically
             unsigned char onehalf; // what part of the base function is used to
                                    // make the distribution
         } Php;
@@ -153,6 +153,7 @@ class PADnoteParameters : public Presets
         float setPbandwidth(int Pbandwidth); // returns the BandWidth in cents
         float getNhr(int n); // gets the n-th overtone position relatively to N harmonic
 
+        bool Papplied;
         void applyparameters(void);
         bool export2wav(std::string basefilename);
 

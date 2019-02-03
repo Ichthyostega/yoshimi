@@ -23,7 +23,7 @@
 
     This file is a derivative of a ZynAddSubFX original.
 
-    Modified March 2018
+    Modified December 2018
 */
 
 #include <cmath>
@@ -99,7 +99,7 @@ void OscilGen::defaults(void)
     Phmag[0] = 127;
     Phmagtype = 0;
     if (ADvsPAD)
-        Prand = 127; // max phase randomness (usefull if the oscil will be
+        Prand = 127; // max phase randomness (useful if the oscil will be
                      // imported to a ADsynth from a PADsynth
     else
         Prand = 64; // no randomness
@@ -543,7 +543,7 @@ void OscilGen::oscilfilter(void)
     float par = 1.0f - Pfilterpar1 / 128.0f;
     float par2 = Pfilterpar2 / 127.0f;
     float max = 0.0f;
-    float tmp = 0.0f;
+    //float tmp = 0.0f;
     float p2;
     float x;
 
@@ -553,101 +553,116 @@ void OscilGen::oscilfilter(void)
         switch (Pfiltertype)
         {
             case 1:
+            {
                 gain = powf((1.0f - par * par * par * 0.99f), i); // lp
-                tmp = par2 * par2 * par2 * par2 * 0.5f + 0.0001f;
+                float tmp = par2 * par2 * par2 * par2 * 0.5f + 0.0001f;
                 if (gain < tmp)
                     gain = powf(gain, 10.0f) / powf(tmp, 9.0f);
                 break;
-
+            }
             case 2:
+            {
                 gain = 1.0f - powf((1.0f - par * par), (float)(i + 1)); // hp1
                 gain = powf(gain, (par2 * 2.0f + 0.1f));
                 break;
-
+            }
             case 3:
+            {
                 if (par < 0.2f)
                     par = par * 0.25f + 0.15f;
                 gain = 1.0f - powf(1.0f - par * par * 0.999f + 0.001f,
                                  i * 0.05f * i + 1.0f); // hp1b
-                tmp = powf(5.0f, (par2 * 2.0f));
+                float tmp = powf(5.0f, (par2 * 2.0f));
                 gain = powf(gain, tmp);
                 break;
-
+            }
             case 4:
+            {
                 gain = (i + 1) - powf(2.0f, ((1.0f - par) * 7.5f)); // bp1
                 gain = 1.0f / (1.0f + gain * gain / (i + 1.0f));
-                tmp = powf(5.0f, (par2 * 2.0f));
+                float tmp = powf(5.0f, (par2 * 2.0f));
                 gain = powf(gain, tmp);
                 if (gain < 1e-5f)
                     gain = 1e-5f;
                 break;
-
+            }
             case 5:
+            {
                 gain = i + 1 - powf(2.0f, (1.0f - par) * 7.5f); // bs1
                 gain = powf(atanf(gain / (i / 10.0f + 1.0f)) / 1.57f, 6.0f);
                 gain = powf(gain, (par2 * par2 * 3.9f + 0.1f));
                 break;
-
+            }
             case 6:
-                tmp = powf(par2, 0.33f);
+            {
+                //float tmp = powf(par2, 0.33f);
                 gain = (i + 1 > powf(2.0f, (1.0f - par) * 10.0f) ? 0.0f : 1.0f)
                             * par2 + (1.0f - par2); // lp2
                 break;
-
+            }
             case 7:
-                tmp = powf(par2, 0.33f);
+            {
+                //float tmp = powf(par2, 0.33f);
                 // tmp=1.0-(1.0-par2)*(1.0-par2);
                 gain = (i + 1 > powf(2.0f, (1.0f - par) * 7.0f) ? 1.0f : 0.0f)
                         * par2 + (1.0f - par2); // hp2
                 if (Pfilterpar1 == 0)
                     gain = 1.0f;
                 break;
-
+            }
             case 8:
-                tmp = powf(par2, 0.33f);
+            {
+                //float tmp = powf(par2, 0.33f);
                 // tmp=1.0-(1.0-par2)*(1.0-par2);
                 gain = (fabsf(powf(2.0f, (1.0f - par) * 7.0f) - i) > i / 2 + 1 ? 0.0f : 1.0f)
                         * par2 + (1.0f - par2); // bp2
                 break;
-
+            }
             case 9:
-                tmp = powf(par2, 0.33f);
+            {
+                //float tmp = powf(par2, 0.33f);
                 gain = (fabsf(powf(2.0f, (1.0f - par) * 7.0f) - i) < i / 2 + 1 ? 0.0f : 1.0f)
                         * par2 + (1.0f - par2); // bs2
                 break;
-
+            }
             case 10:
-                tmp = powf(5.0f, par2 * 2.0f - 1.0f);
+            {
+                float tmp = powf(5.0f, par2 * 2.0f - 1.0f);
                 tmp = powf((i / 32.0f), tmp) * 32.0f;
                 if (Pfilterpar2 == 64)
                     tmp = i;
                 gain = cosf(par * par * HALFPI * tmp); // cos
                 gain *= gain;
                 break;
-
+            }
             case 11:
-                tmp = powf(5.0f, par2 * 2.0f - 1.0f);
+            {
+                float tmp = powf(5.0f, par2 * 2.0f - 1.0f);
                 tmp = powf((i / 32.0f), tmp) * 32.0f;
                 if (Pfilterpar2 == 64)
                     tmp = i;
                 gain = sinf(par * par * HALFPI * tmp); // sin
                 gain *= gain;
                 break;
-
+            }
             case 12:
+            {
                 p2 = 1.0f - par + 0.2f;
                 x = i / (64.0f * p2 * p2);
                 x = (x > 1.0f) ? 1.0f : x;
-                tmp = powf(1.0f - par2, 2.0f);
+                float tmp = powf(1.0f - par2, 2.0f);
                 gain = cosf(x * PI) * (1.0f - tmp) + 1.01f + tmp; // low shelf
                 break;
-
+            }
             case 13:
-                tmp = (int)truncf(powf(2.0f, ((1.0f - par) * 7.2f)));
+            {
+                int tmp;// = (int)truncf(powf(2.0f, ((1.0f - par) * 7.2f)));
+                FR2Z2I(powf(2.0f, ((1.0f - par) * 7.2f)), tmp);
                 gain = 1.0f;
                 if (i == tmp)
                     gain = powf(2.0f, par2 * par2 * 8.0f);
                 break;
+            }
         }
 
         oscilFFTfreqs.s[i] *= gain;
@@ -822,7 +837,8 @@ void OscilGen::modulation(void)
 
         t = (t - floorf(t)) * synth->oscilsize_f;
 
-        int poshi = (int)truncf(t);
+        int poshi;// = (int)truncf(t);
+        FR2Z2I(t, poshi);
         float poslo = t - floorf(t);
 
         tmpsmps[i] = in[poshi] * (1.0f - poslo) + in[poshi + 1] * poslo;
@@ -948,17 +964,10 @@ void OscilGen::shiftharmonics(void)
 // Prepare the Oscillator
 void OscilGen::prepare(void)
 {
-    float a, b, c, d, hmagnew;
-    memset(random_state, 0, sizeof(random_state));
-#if (HAVE_RANDOM_R)
-    memset(&random_buf, 0, sizeof(random_buf));
-    if (initstate_r(synth->randomSE(), random_state,
-                    sizeof(random_state), &random_buf))
-        synth->getRuntime().Log("OscilGen failed to init general randomness");
-#else
-    if (!initstate(synth->randomSE(), random_state, sizeof(random_state)))
-        synth->getRuntime().Log("OscilGen failed to init general randomness");
-#endif
+    // with each NoteON, reseed local rand gen from global PRNG
+    // Since NoteON happens at random times, this actually injects entropy,
+    // because it is essentially random at which cycle position the global PRNG is just now
+    prng.init(synth->randomINT() + INT_MAX/2);
 
     if (oldbasepar != Pbasefuncpar
         || oldbasefunc != Pcurrentbasefunc
@@ -973,7 +982,7 @@ void OscilGen::prepare(void)
 
     for (int i = 0; i < MAX_AD_HARMONICS; ++i)
     {
-        hmagnew = 1.0f - fabsf(Phmag[i] / 64.0f - 1.0f);
+        float hmagnew = 1.0f - fabsf(Phmag[i] / 64.0f - 1.0f);
         switch (Phmagtype)
         {
             case 1:
@@ -1027,10 +1036,10 @@ void OscilGen::prepare(void)
                 int k = i * (j + 1);
                 if (k >= synth->halfoscilsize)
                     break;
-                a = basefuncFFTfreqs.c[i];
-                b = basefuncFFTfreqs.s[i];
-                c = hmag[j] * cosf(hphase[j] * k);
-                d = hmag[j] * sinf(hphase[j] * k);
+                float a = basefuncFFTfreqs.c[i];
+                float b = basefuncFFTfreqs.s[i];
+                float c = hmag[j] * cosf(hphase[j] * k);
+                float d = hmag[j] * sinf(hphase[j] * k);
                 oscilFFTfreqs.c[k] += a * c - b * d;
                 oscilFFTfreqs.s[k] += a * d + b * c;
             }
@@ -1101,7 +1110,8 @@ void OscilGen::adaptiveharmonic(FFTFREQS f, float freq)
     for (int i = 0; i < synth->halfoscilsize - 2; ++i)
     {
         float h = i * rap;
-        int high = (int)truncf(i * rap);
+        int high;// = (int)truncf(i * rap);
+        FR2Z2I(i * rap, high);
         float low = fmodf(h, 1.0f);
 
         if (high >= synth->halfoscilsize - 2)
@@ -1241,13 +1251,15 @@ int OscilGen::get(float *smps, float freqHz, int resonance)
     if (oscilprepared != 1)
         prepare();
 
-    outpos = (int)truncf((numRandom() * 2.0f - 1.0f) * synth->oscilsize_f * (Prand - 64.0f) / 64.0f);
+    FR2Z2I((prng.numRandom() * 2.0f - 1.0f) * synth->oscilsize_f * (Prand - 64.0f) / 64.0f, outpos);
+//    outpos = (int)truncf((numRandom() * 2.0f - 1.0f) * synth->oscilsize_f * (Prand - 64.0f) / 64.0f);
     outpos = (outpos + 2 * synth->oscilsize) % synth->oscilsize;
 
     memset(outoscilFFTfreqs.c, 0, synth->halfoscilsize * sizeof(float));
     memset(outoscilFFTfreqs.s, 0, synth->halfoscilsize * sizeof(float));
-
-    nyquist = (int)truncf(0.5f * synth->samplerate_f / fabsf(freqHz)) + 2;
+    FR2Z2I(0.5f * synth->samplerate_f / fabsf(freqHz), nyquist);
+    nyquist += 2;
+//    nyquist = (int)truncf(0.5f * synth->samplerate_f / fabsf(freqHz)) + 2;
     if (ADvsPAD)
         nyquist = synth->halfoscilsize;
     if (nyquist > synth->halfoscilsize)
@@ -1282,7 +1294,7 @@ int OscilGen::get(float *smps, float freqHz, int resonance)
         rnd = PI * powf((Prand - 64.0f) / 64.0f, 2.0f);
         for (int i = 1; i < nyquist - 1; ++i)
         {   // to Nyquist only for AntiAliasing
-            angle = rnd * i * numRandom();
+            angle = rnd * i * prng.numRandom();
             a = outoscilFFTfreqs.c[i];
             b = outoscilFFTfreqs.s[i];
             c = cosf(angle);
@@ -1295,16 +1307,9 @@ int OscilGen::get(float *smps, float freqHz, int resonance)
     // Harmonic Amplitude Randomness
     if (freqHz > 0.1 && !ADvsPAD)
     {
-        memset(harmonic_random_state, 0, sizeof(harmonic_random_state));
-#if (HAVE_RANDOM_R)
-        memset(&harmonic_random_buf, 0, sizeof(harmonic_random_buf));
-        if (initstate_r(randseed, harmonic_random_state,
-                    sizeof(harmonic_random_state), &harmonic_random_buf))
-            synth->getRuntime().Log("OscilGen failed to init harmonic amplitude amplitude randomness");
-#else
-	if (!initstate(randseed, harmonic_random_state, sizeof(harmonic_random_state)))
-            synth->getRuntime().Log("OscilGen failed to init harmonic amplitude amplitude randomness");
-#endif
+        // randseed was drawn in ADnote::ADnote()
+        // see also comment at top of OscilGen::prepare()
+        harmonicPrng.init(randseed);
 
         float power = Pamprandpower / 127.0f;
         float normalize = 1.0f / (1.2f - power);
@@ -1315,7 +1320,7 @@ int OscilGen::get(float *smps, float freqHz, int resonance)
                 power = powf(15.0f, power);
                 for (int i = 1; i < nyquist - 1; ++i)
                 {
-                    float amp = powf(harmonicRandom(), power) * normalize;
+                    float amp = powf(harmonicPrng.numRandom(), power) * normalize;
                     outoscilFFTfreqs.c[i] *= amp;
                     outoscilFFTfreqs.s[i] *= amp;
                 }
@@ -1324,7 +1329,7 @@ int OscilGen::get(float *smps, float freqHz, int resonance)
             case 2:
                 power = power * 2.0f - 0.5f;
                 power = powf(15.0f, power) * 2.0f;
-                float rndfreq = TWOPI * harmonicRandom();
+                float rndfreq = TWOPI * harmonicPrng.numRandom();
                 for (int i = 1 ; i < nyquist - 1; ++i)
                 {
                     float amp = powf(fabsf(sinf(i * rndfreq)), power) * normalize;
@@ -1620,76 +1625,197 @@ void OscilGen::getfromXML(XMLwrapper *xml)
 float OscilGen::getLimits(CommandBlock *getData)
 {
     float value = getData->data.value;
-    int request = int(getData->data.type & 3);
+    unsigned char type = getData->data.type;
+    int request = type & TOPLEVEL::type::Default;
     int control = getData->data.control;
     int insert = getData->data.insert;
 
-    float min;
-    float max;
-    float def;
+    type &= (TOPLEVEL::source::MIDI || TOPLEVEL::source::CLI || TOPLEVEL::source::GUI); // source bits only
 
-    // defaults
-    min = 0;
-    max = 127;
-    def = 0;
+    // oscillator defaults
+    int min = 0;
+    int max = 127;
+    float def = 0;
+    type |= TOPLEVEL::type::Integer;
+    unsigned char learnable = TOPLEVEL::type::Learnable;
+    type |= learnable;
 
-    if (insert > 5)
+    if (insert == TOPLEVEL::insert::harmonicAmplitude || insert == TOPLEVEL::insert::harmonicPhaseBandwidth)
     { // do harmonics stuff
-        if (insert == 7)
+        if (insert == TOPLEVEL::insert::harmonicAmplitude && control == 0)
+            def = 127;
+        else
             def = 64;
+        getData->data.type = type;
         switch (request)
         {
-            case 0:
+            case TOPLEVEL::type::Adjust:
                 if(value < min)
                     value = min;
                 else if(value > max)
                     value = max;
             break;
-            case 1:
+            case TOPLEVEL::type::Minimum:
                 value = min;
                 break;
-            case 2:
+            case TOPLEVEL::type::Maximum:
                 value = max;
                 break;
-            case 3:
+            case TOPLEVEL::type::Default:
                 value = def;
                 break;
         }
         return value;
     }
+
     switch (control)
     {
-        case 0:
-        case 16:
-        case 34:
+        case OSCILLATOR::control::phaseRandomness:
+            break;
+        case OSCILLATOR::control::magType:
+            max = 4;
+            type &= ~learnable;
+            break;
+        case OSCILLATOR::control::harmonicAmplitudeRandomness:
+            def = 64;
+            break;
+        case OSCILLATOR::control::harmonicRandomnessType:
+            max = 2;
+            type &= ~learnable;
+            break;
+        case OSCILLATOR::control::baseFunctionParameter:
             min = -64;
             max = 63;
             break;
-        case 67:
+        case OSCILLATOR::control::baseFunctionType:
+            max = 15;
+            type &= ~learnable;
+            break;
+        case OSCILLATOR::control::baseModulationParameter1:
+            def = 64;
+            break;
+        case OSCILLATOR::control::baseModulationParameter2:
+            def = 64;
+            break;
+        case OSCILLATOR::control::baseModulationParameter3:
+            def = 32;
+            break;
+        case OSCILLATOR::control::baseModulationType:
+            max = 3;
+            type &= ~learnable;
+            break;
+        case OSCILLATOR::control::autoClear:
+            max = 1;
+            type &= ~learnable;
+            break;
+        case OSCILLATOR::control::useAsBaseFunction:
+            max = 1;
+            type &= ~learnable;
+            break;
+        case OSCILLATOR::control::waveshapeParameter:
+            min = -64;
+            max = 63;
+            break;
+        case OSCILLATOR::control::waveshapeType:
+            max = 10;
+            type &= ~learnable;
+            break;
+        case OSCILLATOR::control::filterParameter1:
+            def = 64;
+            break;
+        case OSCILLATOR::control::filterParameter2:
+            def = 64;
+            break;
+        case OSCILLATOR::control::filterBeforeWaveshape:
+            max = 1;
+            type &= ~learnable;
+            break;
+        case OSCILLATOR::control::filterType:
+            max = 13;
+            type &= ~learnable;
+            break;
+        case OSCILLATOR::control::modulationParameter1:
+            def = 64;
+            break;
+        case OSCILLATOR::control::modulationParameter2:
+            def = 64;
+            break;
+        case OSCILLATOR::control::modulationParameter3:
+            def = 32;
+            break;
+        case OSCILLATOR::control::modulationType:
+            max = 3;
+            type &= ~learnable;
+            break;
+        case OSCILLATOR::control::spectrumAdjustParameter:
+            def = 64;
+            break;
+        case OSCILLATOR::control::spectrumAdjustType:
+            max = 3;
+            type &= ~learnable;
+            break;
+        case OSCILLATOR::control::harmonicShift:
+            min = -64;
+            max = 64;
+            break;
+        case OSCILLATOR::control::clearHarmonicShift:
+            max = 1;
+            type &= ~learnable;
+            break;
+        case OSCILLATOR::control::shiftBeforeWaveshapeAndFilter:
+            max = 1;
+            type &= ~learnable;
+            break;
+
+        case OSCILLATOR::control::adaptiveHarmonicsParameter:
             max = 100;
+            def = 50;
             break;
-        case 68:
+        case OSCILLATOR::control::adaptiveHarmonicsBase:
             max = 255;
+            def = 128;
             break;
-        case 69:
+        case OSCILLATOR::control::adaptiveHarmonicsPower:
             max = 200;
+            def = 100;
+            break;
+        case OSCILLATOR::control::adaptiveHarmonicsType:
+            max = 8;
+            type &= ~learnable;
+            break;
+
+        case OSCILLATOR::control::clearHarmonics:
+            max = 1;
+            type &= ~learnable;
+            break;
+        case OSCILLATOR::control::convertToSine:
+            max = 1;
+            type &= ~learnable;
+            break;
+        default:
+            type |= TOPLEVEL::type::Error;
             break;
     }
+
+    getData->data.type = type;
+    if (type & TOPLEVEL::type::Error)
+        return 1;
+
     switch (request)
     {
-        case 0:
+        case TOPLEVEL::type::Adjust:
             if(value < min)
                 value = min;
             else if(value > max)
                 value = max;
         break;
-        case 1:
+        case TOPLEVEL::type::Minimum:
             value = min;
             break;
-        case 2:
+        case TOPLEVEL::type::Maximum:
             value = max;
             break;
-        case 3:
+        case TOPLEVEL::type::Default:
             value = def;
             break;
     }

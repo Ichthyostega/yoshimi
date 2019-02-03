@@ -22,7 +22,7 @@
 
     This file is derivative of ZynAddSubFX original code.
 
-    Modified March 2018
+    Modified September 2018
 */
 
 #include "Misc/SynthEngine.h"
@@ -117,8 +117,7 @@ void Chorus::out(float *smpsl, float *smpsr)
         if (++dlk >= maxdelay)
             dlk = 0;
         tmp = dlk - mdel + maxdelay * 2.0f; // where should I get the sample from
-        // F2I(tmp, dlhi);
-        dlhi = (tmp > 0.0f) ? (int)truncf(tmp) : (int)truncf(tmp - 1.0f);
+         FR2Z2I(tmp, dlhi);
         dlhi %= maxdelay;
 
         dlhi2 = (dlhi - 1 + maxdelay) % maxdelay;
@@ -133,8 +132,7 @@ void Chorus::out(float *smpsl, float *smpsr)
         if (++drk >= maxdelay)
             drk = 0;
         tmp = drk * 1.0f - mdel + maxdelay * 2.0f; // where should I get the sample from
-        // F2I(tmp, dlhi);
-        dlhi = (tmp > 0.0f) ? (int)truncf(tmp) : (int)truncf(tmp - 1.0f);
+        FR2Z2I(tmp, dlhi);
         dlhi %= maxdelay;
         dlhi2 = (dlhi - 1 + maxdelay) % maxdelay;
         dllo = 1.0f - fmodf(tmp, one);
@@ -305,7 +303,7 @@ float Choruslimit::getlimits(CommandBlock *getData)
     switch (control)
     {
         case 0:
-            if (npart != 0xf1) // system effects
+            if (npart != TOPLEVEL::section::systemEffects)
                 def /= 2;
             break;
         case 1:
@@ -337,26 +335,26 @@ float Choruslimit::getlimits(CommandBlock *getData)
             canLearn = false;
             break;
         default:
-            getData->data.type |= 4; // error
+            getData->data.type |= TOPLEVEL::type::Error;
             return 1.0f;
             break;
     }
 
-    switch(request)
+    switch (request)
     {
-        case 0:
+        case TOPLEVEL::type::Adjust:
             if(value < min)
                 value = min;
             else if(value > max)
                 value = max;
             break;
-        case 1:
+        case TOPLEVEL::type::Minimum:
             value = min;
             break;
-        case 2:
+        case TOPLEVEL::type::Maximum:
             value = max;
             break;
-        case 3:
+        case TOPLEVEL::type::Default:
             value = def;
             break;
     }

@@ -4,6 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2009 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
+    Copyright 2018, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -19,7 +20,9 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of a ZynAddSubFX original, modified January 2011
+    This file is a derivative of a ZynAddSubFX original
+
+    Modified October 2018
 */
 
 #include <cmath>
@@ -37,7 +40,7 @@ Unison::Unison(int update_period_samples_, float max_delay_sec_, SynthEngine *_s
     uv(NULL),
     update_period_samples(update_period_samples_),
     update_period_sample_k(0),
-    max_delay((int)truncf(_synth->samplerate_f * max_delay_sec_) + 1),
+//    max_delay((int)truncf(_synth->samplerate_f * max_delay_sec_) + 1),
     delay_k(0),
     first_time(false),
     delay_buffer(NULL),
@@ -45,6 +48,8 @@ Unison::Unison(int update_period_samples_, float max_delay_sec_, SynthEngine *_s
     unison_bandwidth_cents(10.0f),
     synth(_synth)
 {
+    FR2Z2I(_synth->samplerate_f * max_delay_sec_, max_delay);
+    max_delay += 1;
     if(max_delay < 10)
         max_delay = 10;
     delay_buffer = new float[max_delay];
@@ -156,8 +161,8 @@ void Unison::process(int bufsize, float *inbuf, float *outbuf)
         {
             float vpos = uv[k].realpos1 * (1.0f - xpos) + uv[k].realpos2 * xpos;
             float pos  = (float)(delay_k + max_delay) - vpos - 1.0f;
-            // F2I(pos, posi);
-            int posi = (pos > 0.0f) ? (int)truncf(pos) : (int)truncf(pos - 1.0f);
+            int posi;
+            FR2Z2I(pos, posi);
             int posi_next = posi + 1;
             if (posi >= max_delay)
                 posi -= max_delay;

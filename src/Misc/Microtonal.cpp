@@ -22,13 +22,14 @@
 
     This file is derivative of original ZynAddSubFX code.
 
-    Modified April 2018
+    Modified October 2018
 */
 
 #include <cmath>
 #include <iostream>
-# include <algorithm>
+#include <algorithm>
 #include <limits.h>
+
 #include "Misc/Config.h"
 #include "Misc/XMLwrapper.h"
 #include "Misc/Microtonal.h"
@@ -132,7 +133,7 @@ float Microtonal::getNoteFreq(int note, int keyshift)
         if (minus)
             rap_anote_middlenote = 1.0f / rap_anote_middlenote;
 
-        // Convert from note (midi) to degree (note from the tunning)
+        // Convert from note (midi) to degree (note from the tuning)
         int degoct = (note - Pmiddlenote + Pmapsize * 200)
                       / Pmapsize - 200;
         int degkey = (note - Pmiddlenote + Pmapsize * 100) % Pmapsize;
@@ -257,7 +258,8 @@ int Microtonal::linetotunings(unsigned int nline, const char *line)
         case 1:
             x1 = (int) floor(x);
             tmp = fmod(x, 1.0);
-            x2 = (int)truncf(floor(tmp * 1e6));
+            FR2Z2I(floor(tmp * 1e6), x2);
+            //x2 = (int)truncf(floor(tmp * 1e6));
             tuning = pow(2.0, x / 1200.0);
             break;
         case 2:
@@ -276,7 +278,7 @@ int Microtonal::linetotunings(unsigned int nline, const char *line)
 }
 
 
-// Convert the text to tunnings
+// Convert the text to tunings
 int Microtonal::texttotunings(const char *text)
 {
     int i;
@@ -380,7 +382,7 @@ string Microtonal::keymaptotext(void)
     return text;
 }
 
-// Convert tunning to text line
+// Convert tuning to text line
 void Microtonal::tuningtoline(int n, char *line, int maxn)
 {
     if (n > octavesize || n > MAX_OCTAVE_SIZE)
@@ -427,7 +429,7 @@ int Microtonal::loadline(FILE *file, char *line)
 }
 
 
-// Loads the tunnings from a scl file
+// Loads the tunings from a scl file
 int Microtonal::loadscl(string filename)
 {
     FILE *file = fopen(filename.c_str(), "r");
@@ -461,7 +463,7 @@ int Microtonal::loadscl(string filename)
     }
     if (err == 0)
     {
-    // load the tunnings
+    // load the tunings
         for (int nline = 0; nline < nnotes; ++nline)
         {
             err = loadline(file, &tmp[0]);
@@ -569,7 +571,7 @@ int Microtonal::loadkbm(string filename)
     }
 
     // the scale degree(which is the octave) is not loaded
-    // it is obtained by the tunnings with getoctavesize() method
+    // it is obtained by the tunings with getoctavesize() method
     if (loadline(file, &tmp[0]))
         err = -6;
 
@@ -788,79 +790,115 @@ bool Microtonal::loadXML(string filename)
 float Microtonal::getLimits(CommandBlock *getData)
 {
     float value = getData->data.value;
-    int request = int(getData->data.type & 3);
+    unsigned char type = getData->data.type;
+    int request = int(getData->data.type & TOPLEVEL::type::Default);
     int control = getData->data.control;
 
-    // defaults
-    unsigned int type = getData->data.type| 0xc0; // set as learnable integer;
+    type &= (TOPLEVEL::source::MIDI | TOPLEVEL::source::CLI | TOPLEVEL::source::GUI); // source bits only
+
+    // microtonal defaults
     int min = 0;
     float def = 0;
     int max = 127;
-    //cout << "config control " << to_string(control) << endl;
+    type |= TOPLEVEL::type::Integer;
+    unsigned char learnable = TOPLEVEL::type::Learnable;
+
     switch (control)
     {
-        case 0:
-            type &= 0x3f;
+        case SCALES::control::Afrequency:
             min = 1.0f;
             def = 440.0f;
             max = 20000.0f;
             break;
-        case 1:
+        case SCALES::control::Anote:
             def = 69;
+            type |= learnable;
             break;
-        case 2:
+        case SCALES::control::invertScale:
             max = 1;
+            type |= learnable;
             break;
-        case 3:
+        case SCALES::control::invertedScaleCenter:
             def = 60;
+            type |= learnable;
             break;
-        case 4:
+        case SCALES::control::scaleShift:
             min = -63;
             max = 64;
+            type |= learnable;
             break;
 
-        case 8:
+        case SCALES::control::enableMicrotonal:
             max = 1;
+            type |= learnable;
             break;
 
-        case 16:
+        case SCALES::control::enableKeyboardMap:
             max = 1;
+            type |= learnable;
             break;
-        case 17:
+        case SCALES::control::lowKey:
+            type |= learnable;
             break;
-        case 18:
+        case SCALES::control::middleKey:
             def = 60;
+            type |= learnable;
             break;
-        case 19:
+        case SCALES::control::highKey:
             def = 127;
+            type |= learnable;
+            break;
+
+        case SCALES::control::tuning:
+            max = 1;
+            break;
+        case SCALES::control::keyboardMap:
+            max = 1;
+            break;
+        case SCALES::control::importScl:
+            max = 1;
+            break;
+        case SCALES::control::importKbm:
+            max = 1;
+            break;
+        case SCALES::control::name:
+            max = 1;
+            break;
+        case SCALES::control::comment:
+            max = 1;
+            break;
+        case SCALES::control::retune:
+            max = 1;
+            break;
+        case SCALES::control::clearAll:
+            max = 1;
             break;
 
         default:
-            type |= 4; // error
+            type |= TOPLEVEL::type::Error;
             break;
     }
     getData->data.type = type;
-    if (type & 4)
+    if (type & TOPLEVEL::type::Error)
         return 1;
 
     switch (request)
     {
-        case 0:
+        case TOPLEVEL::type::Adjust:
             if(value < min)
                 value = min;
             else if(value > max)
                 value = max;
         break;
-        case 1:
+        case TOPLEVEL::type::Minimum:
             value = min;
             break;
-        case 2:
+        case TOPLEVEL::type::Maximum:
             value = max;
             break;
-        case 3:
+        case TOPLEVEL::type::Default:
             value = def;
             break;
     }
     return value;
-
 }
