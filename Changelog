@@ -1,6 +1,116 @@
-yoshimi 1.5.10.1
+yoshimi 1.5.10.2
 
-2019-1-13 Will.
+2019-3-4 Will.
+* Updated docs.
+* Set release as 1.5.10.2
+
+2019-3-3 Will
+* Applied mxml patch from Adam.
+* Temporarily disabled startup instance control
+  for bugfix release.
+* BugFix: Instrument window not showing controls
+  only first instance and called from bank window.
+
+2019-3-2 Will
+* Moved gzipped loading from XMLwrapper to FileMgr.
+  Used pointer to string to return error reports.
+
+2019-3-1 Will
+* Added endian check for PadSynth export.
+* Revised ALSA endian check.
+* Made (obvious) improvement to endian detection.
+* Moved gzipped saving from XMLwrapper to FileMgr.
+  This also fixed memory leak if saving failed.
+* Found several memory leaks in XML code
+  all triggered by file errors.
+* Improved gzipped saving.
+
+2019-2-28 Will
+* Added data block saving to Filemanager
+* Revised PadSynth export.
+  WaveFile.cpp is now redundant.
+
+2019-2-26 Will
+* MasterUI now only references files in widow code.
+* Removed file extension references in MicrotonalUI.
+* Removed file extension references in MidiLearnUI.
+* Removed file extension references in VectorUI.
+* Removed file extension references in config.cpp
+
+2019-2-25 Will
+* No more direct file access in 'Cmdinterface'.
+* New string parser in 'MiscFuncs'.
+* Improved 'XMLwrapper'.
+* Most file extension definitions now standardised
+  but fltk filer calls still fixed strings :(
+* No more direct file access in 'Microtonal'.
+
+2019-2-24 Will
+* All direct file access removed from 'Bank'
+  except two directory scans.
+
+2019-2-23 Will
+* Installed placeholder FileMgr in /src/Interface
+  This will eventually handle all actual file operations
+  for consistency and simlifying porting to other systems.
+* Started moving file functions from MiscFuncs to FileMgr.
+* Completed transfers from MiscFuncs to FileMgr.
+  Other calls to find in other files :(
+
+2019-2-20 Will.
+* Added missing LFO intensity control description to CLI.
+* Adjusted CMakeLists.txt for better 'native' recognition.
+* Copied in Rob's FLTK fix.
+* Moved cairo tests inside fltk build option.
+
+2019-2-14 Will
+* Now only the main instance can change bank structure.
+  Others can read/change their current selected ones.
+* Updated dependencies.
+
+2019-02-10 Rob
+* put FLTK sources & libs back in old places in CMakeLists -- tacking
+  the libs on at end of the list sometimes broke linker command line.
+  It's an empty string when GUI_FLTK=0, anyway.
+
+2019-2-6 Will
+* Almost completed GUI detachment for headless.
+* Applied patch from Rob - completes headless builds.
+
+2019-2-1 Will
+* Enabled headless build (Not LV2).
+  Not fully tested.
+
+2019-1-27 Will
+* Enabled full CLI start sequence .state .xmz .xiz .xly
+  but can be either jack session or state not both.
+
+2019-1-24 Will
+* Complex float rounding towards zero now just int(n).
+  Rationale: This in most cases restores the original
+  Zyn 2.2.1 method. Also, the assembler hack used to get
+  faster performance is not portable across CPU types.
+  These conversion were all for positive only values so
+  there is no +- zero issue and the int+truncf combination
+  is *much* slower than just int, yet does exacly the same.
+
+2019-1-23 Will
+* Removed all remaining mutex references.
+  Already almost entirely commented out.
+
+2019-1-22 Will
+* BugFix: missing 'else' so CLI filter not seeing L1/H1.
+* Implemented loading MIDI learn fro CLI.
+  Currently it seems you can only set one command line
+  argument. Observed priority is .state .xmz .xiz .xly
+  Need to see if this can be made recursive.
+* Minor adustments to startup handover.
+
+2019-1-20 Will
+* Sending SIGUSR2 to running Yoshimi starts new instance.
+* Yoshimi hands over startup if there's a running instance.
+
+2019-1-13 Will
 * Confirmed previous fix and set release as 1.5.10.1
 
 2019-1-12 Rob, Will, Hermann

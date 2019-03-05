@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2017-2018, Will Godfrey
+    Copyright 2017-2019, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -22,7 +22,7 @@
 
     This file is derivative of original ZynAddSubFX code.
 
-    Modified October 2018
+    Modified March 2019
 */
 
 #include <cmath>
@@ -258,8 +258,7 @@ int Microtonal::linetotunings(unsigned int nline, const char *line)
         case 1:
             x1 = (int) floor(x);
             tmp = fmod(x, 1.0);
-            FR2Z2I(floor(tmp * 1e6), x2);
-            //x2 = (int)truncf(floor(tmp * 1e6));
+            x2 = int(floor(tmp * 1e6));
             tuning = pow(2.0, x / 1200.0);
             break;
         case 2:
@@ -419,10 +418,12 @@ string Microtonal::tuningtotext()
 }
 
 
-int Microtonal::loadline(FILE *file, char *line)
+int Microtonal::loadLine(string text, size_t &point, char *line)
 {
     do {
-        if (!fgets(line, 500, file))
+        line[0] = 0;
+        C_lineInText(text, point, line);
+        if (line[0] == 0)
             return -5;
     } while (line[0] == '!');
     return 0;
@@ -432,16 +433,16 @@ int Microtonal::loadline(FILE *file, char *line)
 // Loads the tunings from a scl file
 int Microtonal::loadscl(string filename)
 {
-    FILE *file = fopen(filename.c_str(), "r");
-    if (!file)
-        return -3; // last time we can return before fclose
+    string text = loadText(filename);
+    if (text == "")
+        return -3;
     char tmp[500];
+    size_t point = 0;
     int err = 0;
     int nnotes;
 
-    fseek(file, 0, SEEK_SET);
     // loads the short description
-    if (loadline(file, &tmp[0]))
+    if (loadLine(text, point, tmp))
         err = -4;
     if (err == 0)
     {
@@ -451,7 +452,7 @@ int Microtonal::loadscl(string filename)
         Pname = findleafname(filename);
         Pcomment = string(tmp);
         // loads the number of the notes
-        if (loadline(file, &tmp[0]))
+        if (loadLine(text, point, tmp))
             err = -5;
     }
     if (err == 0)
@@ -466,14 +467,13 @@ int Microtonal::loadscl(string filename)
     // load the tunings
         for (int nline = 0; nline < nnotes; ++nline)
         {
-            err = loadline(file, &tmp[0]);
+            err = loadLine(text, point, tmp);
             if (err == 0)
                 err = linetotunings(nline, &tmp[0]);
             if (err < 0)
                 break;
         }
     }
-    fclose(file);
     if (err < 0)
         return err;
 
@@ -487,15 +487,15 @@ int Microtonal::loadscl(string filename)
 // Loads the mapping from a kbm file
 int Microtonal::loadkbm(string filename)
 {
-    FILE *file = fopen(filename.c_str(), "r");
-    if (!file)
-        return -3; // last time we can return before fclose
+    string text = loadText(filename);
+    if (text == "")
+        return -3;
     char tmp[500];
+    size_t point = 0;
     int err = 0;
     int tmpMapSize;
-    fseek(file, 0, SEEK_SET);
     // loads the mapsize
-    if (loadline(file,&tmp[0]))
+    if (loadLine(text, point, tmp))
         err = -4;
     else if (!sscanf(&tmp[0], "%d",&tmpMapSize))
         err = -2;
@@ -510,7 +510,7 @@ int Microtonal::loadkbm(string filename)
     if (err == 0)
     {
         // loads first MIDI note to retune
-        if (loadline(file, &tmp[0]))
+        if (loadLine(text, point, tmp))
             err = -5;
         else if (!sscanf(&tmp[0], "%d", &tmpFirst))
             return -6;
@@ -522,7 +522,7 @@ int Microtonal::loadkbm(string filename)
     if (err == 0)
     {
         // loads last MIDI note to retune
-       if (loadline(file, &tmp[0]))
+       if (loadLine(text, point, tmp))
             err = -5;
         else if (!sscanf(&tmp[0], "%d", &tmpLast))
             return -6;
@@ -534,7 +534,7 @@ int Microtonal::loadkbm(string filename)
     if (err == 0)
     {
         // loads the middle note where scale fro scale degree=0
-       if (loadline(file, &tmp[0]))
+       if (loadLine(text, point, tmp))
             err = -5;
         else if (!sscanf(&tmp[0], "%d", &tmpMid))
             return -6;
@@ -546,7 +546,7 @@ int Microtonal::loadkbm(string filename)
     if (err == 0)
     {
         // loads the reference note
-       if (loadline(file, &tmp[0]))
+       if (loadLine(text, point, tmp))
             err = -5;
         else if (!sscanf(&tmp[0], "%d", &tmpNote))
             return -6;
@@ -558,7 +558,7 @@ int Microtonal::loadkbm(string filename)
     if (err == 0)
     {
         // loads the reference freq.
-        if (loadline(file, &tmp[0]))
+        if (loadLine(text, point, tmp))
             err = -6;
         else
         {
@@ -572,7 +572,7 @@ int Microtonal::loadkbm(string filename)
 
     // the scale degree(which is the octave) is not loaded
     // it is obtained by the tunings with getoctavesize() method
-    if (loadline(file, &tmp[0]))
+    if (loadLine(text, point, tmp))
         err = -6;
 
     // load the mappings
@@ -582,7 +582,7 @@ int Microtonal::loadkbm(string filename)
     {
         for (int nline = 0; nline < tmpMapSize; ++nline)
         {
-            if (loadline(file, &tmp[0]))
+            if (loadLine(text, point, tmp))
             {
                 err = -5;
                 break;
@@ -592,7 +592,6 @@ int Microtonal::loadkbm(string filename)
             tmpMap[nline] = x;
         }
     }
-    fclose(file);
     if (err < 0)
         return err;
 
@@ -778,6 +777,7 @@ bool Microtonal::loadXML(string filename)
     if (!xml->enterbranch("MICROTONAL"))
     {
         synth->getRuntime().Log(filename + " is not a scale file", 1);
+        delete xml;
         return false;
     }
     getfromXML(xml);

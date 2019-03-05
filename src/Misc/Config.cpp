@@ -5,7 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
     Copyright 2013, Nikita Zlobin
-    Copyright 2014-2018, Will Godfrey & others
+    Copyright 2014-2019, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -23,7 +23,7 @@
 
     This file is derivative of ZynAddSubFX original code.
 
-    Modified November 2018
+    Modified February 2019
 */
 
 #include <iostream>
@@ -48,17 +48,21 @@ using namespace std;
 #include "Misc/XMLwrapper.h"
 #include "Misc/SynthEngine.h"
 #include "Misc/Config.h"
-#include "MasterUI.h"
+#ifdef GUI_FLTK
+    #include "MasterUI.h"
+#endif
 #include "ConfBuild.h"
 
 static char prog_doc[] =
     "Yoshimi " YOSHIMI_VERSION ", a derivative of ZynAddSubFX - "
     "Copyright 2002-2009 Nasca Octavian Paul and others, "
     "Copyright 2009-2011 Alan Calvert, "
-    "Copyright 20012-2013 Jeremy Jongepier and others, "
-    "Copyright 20014-2017 Will Godfrey and others";
-string argline = "Yoshimi " + (string) YOSHIMI_VERSION;// + "\nBuild Number " + to_string(BUILD_NUMBER);
+    "Copyright 2012-2013 Jeremy Jongepier and others, "
+    "Copyright 2014-2019 Will Godfrey and others";
+string argline = "Yoshimi " + (string) YOSHIMI_VERSION;
 const char* argp_program_version = argline.c_str();
+
+string stateText = "load saved state, defaults to '$HOME/" + EXTEN::config + "/yoshimi/yoshimi.state'";
 
 static struct argp_option cmd_options[] = {
     {"alsa-audio",        'A',  "<device>",   1,  "use alsa audio output", 0},
@@ -75,10 +79,11 @@ static struct argp_option cmd_options[] = {
     {"auto-connect",      'K',  NULL,         0,  "auto connect jack audio", 0},
     {"load",              'l',  "<file>",     0,  "load .xmz file", 0},
     {"load-instrument",   'L',  "<file>",     0,  "load .xiz file", 0},
+    {"load-midilearn",    'M',  "<file>",     0,  "load .xly file", 0},
     {"name-tag",          'N',  "<tag>",      0,  "add tag to clientname", 0},
     {"samplerate",        'R',  "<rate>",     0,  "set alsa audio sample rate", 0},
     {"oscilsize",         'o',  "<size>",     0,  "set AddSynth oscilator size", 0},
-    {"state",             'S',  "<file>",     1,  "load saved state, defaults to '$HOME/.config/yoshimi/yoshimi.state'", 0},
+    {"state",             'S',  "<file>",     1,  stateText.c_str(), 0},
     #if defined(JACK_SESSION)
         {"jack-session-uuid", 'U',  "<uuid>",     0,  "jack session uuid", 0},
         {"jack-session-file", 'u',  "<file>",     0,  "load named jack session file", 0},
@@ -161,8 +166,8 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
     {
         rtprio = 4; // To force internal threads below LV2 host
     }
-    else
-        fesetround(FE_TOWARDZERO); // Special thanks to Lars Luthman for conquering
+    //else
+        //fesetround(FE_TOWARDZERO); // Special thanks to Lars Luthman for conquering
                                // the heffalump. We need lrintf() to round
                                // toward zero.
     //^^^^^^^^^^^^^^^ This call is not needed aymore (at least for lv2 plugin)
@@ -171,8 +176,8 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
 
     /*
      * The above is now all completely redundant as we use
-     * in-line either fast assembly (where available) or the
-     * original Zyn float - int conversion rounding to zero
+     * a simple int(n). The values are all positive so there
+     * is no issue with +- zero.
      */
 
     cerr.precision(4);
@@ -426,7 +431,7 @@ bool Config::loadConfig(void)
     if (homedir.empty() || !isDirectory(homedir))
         homedir = string("/tmp");
     userHome = homedir + '/';
-    ConfigDir = homedir + string("/.config/") + YOSHIMI;
+    ConfigDir = homedir + "/" + string(EXTEN::config) + "/" + YOSHIMI;
     defaultStateName = ConfigDir + "/yoshimi";
     if (!isDirectory(ConfigDir))
     {
@@ -439,7 +444,7 @@ bool Config::loadConfig(void)
     }
     string yoshimi = "/" + string(YOSHIMI);
 
-    string baseConfig = ConfigDir + yoshimi + ".config";
+    string baseConfig = ConfigDir + yoshimi + string(EXTEN::config);
     int thisInstance = synth->getUniqueId();
     if (thisInstance > 0)
         yoshimi += ("-" + asString(thisInstance));
@@ -459,7 +464,7 @@ bool Config::loadConfig(void)
     if (thisInstance == 0)
         ConfigFile = baseConfig;
     else
-        ConfigFile += ".instance";
+        ConfigFile += EXTEN::instance;
 
     if (!isRegFile(baseConfig))
     {
@@ -520,7 +525,7 @@ void Config::defaultPresets(void)
         "/usr/local/share/yoshimi/presets",
         "/usr/share/zynaddsubfx/presets",
         "/usr/local/share/zynaddsubfx/presets",
-        string(getenv("HOME")) + "/.config/yoshimi/presets",
+        string(getenv("HOME")) + "/" + string(EXTEN::config) + "/yoshimi/presets",
         localPath("/presets"),
         "end"
     };
@@ -728,7 +733,7 @@ void Config::addConfigXML(XMLwrapper *xmltree)
 
 bool Config::saveSessionData(string savefile)
 {
-    savefile = setExtension(savefile, "state");
+    savefile = setExtension(savefile, EXTEN::state);
     synth->getRuntime().xmlType = XML_STATE;
     XMLwrapper *xmltree = new XMLwrapper(synth, true);
     if (!xmltree)
@@ -759,7 +764,7 @@ bool Config::restoreSessionData(string sessionfile, bool startup)
     bool ok = false;
 
     if (sessionfile.size() && !isRegFile(sessionfile))
-        sessionfile = setExtension(sessionfile, "state");
+        sessionfile = setExtension(sessionfile, EXTEN::state);
     if (!sessionfile.size() || !isRegFile(sessionfile))
     {
         Log("Session file " + sessionfile + " not available", 2);
@@ -1149,6 +1154,8 @@ static error_t parse_cmds (int key, char *arg, struct argp_state *state)
 
         case 'L': settings->instrumentLoad = string(arg); break;
 
+        case 'M':settings->midiLearnLoad = string(arg);break;
+
         case 'A':
             settings->configChanged = true;
             settings->audioEngine = alsa_audio;
@@ -1270,7 +1277,7 @@ void Config::loadCmdArgs(int argc, char **argv)
         restoreJackSession = true;
 }
 
-
+#ifdef GUI_FLTK
 void GuiThreadMsg::processGuiMessages()
 {
     GuiThreadMsg *msg = (GuiThreadMsg *)Fl::thread_message();
@@ -1334,3 +1341,4 @@ void GuiThreadMsg::processGuiMessages()
         delete msg;
     }
 }
+#endif

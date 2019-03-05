@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2010, Alan Calvert
-    Copyright 2014-2018, Will Godfrey & others
+    Copyright 2014-2019, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -22,7 +22,7 @@
 
     This file is a derivative of a ZynAddSubFX original.
 
-    Modified September 2018
+    Modified February 2019
 */
 
 #include <set>
@@ -46,13 +46,10 @@ using namespace std;
 #include "Misc/XMLwrapper.h"
 #include "Misc/Config.h"
 #include "Misc/Bank.h"
-#include "Misc/MiscFuncs.h"
 #include "Misc/SynthEngine.h"
 
 Bank::Bank(SynthEngine *_synth) :
     defaultinsname(string(" ")),
-    xizext(".xiz"),
-    xiyext(".xiy"),
     force_bank_dir_file(".bankdir"), // if this file exists in a directory, the
                                     // directory is considered a bank, even if
                                     // it doesn't contain an instrument file
@@ -61,6 +58,8 @@ Bank::Bank(SynthEngine *_synth) :
     InstrumentsInBanks = 0,
     BanksInRoots = 0;
     roots.clear();
+
+    //TestFunc(456); // just for testing
 }
 
 
@@ -138,20 +137,20 @@ bool Bank::setname(unsigned int ninstrument, string newname, int newslot, size_t
     int slot = (newslot >= 0) ? newslot + 1 : ninstrument + 1;
     string filename = "0000" + asString(slot);
 
-    filename = filename.substr(filename.size() - 4, 4) + "-" + newname + xizext;
+    filename = filename.substr(filename.size() - 4, 4) + "-" + newname + EXTEN::zynInst;
     legit_filename(filename);
 
-    int chk = -1;
-    int chk2 = -1;
+    bool chk = false;
+    bool chk2 = false;
     newfilepath += filename;
-    string oldfilepath = setExtension(getFullPath(oldRoot, oldBank, ninstrument), xizext);
-    chk = rename(oldfilepath.c_str(), newfilepath.c_str());
+    string oldfilepath = setExtension(getFullPath(oldRoot, oldBank, ninstrument), EXTEN::zynInst);
+    chk = renameFile(oldfilepath, newfilepath);
 
-    newfilepath = setExtension(newfilepath, xiyext);
-    oldfilepath = setExtension(oldfilepath, xiyext);
-    chk2 = rename(oldfilepath.c_str(), newfilepath.c_str());
+    newfilepath = setExtension(newfilepath, EXTEN::yoshInst);
+    oldfilepath = setExtension(oldfilepath, EXTEN::yoshInst);
+    chk2 = renameFile(oldfilepath, newfilepath);
 
-    if (chk < 0 && chk2 < 0)
+    if (chk == false && chk2 == false)
     {
         synth->getRuntime().Log("setName failed renaming " + oldfilepath + " -> " + newfilepath + ": " + string(strerror(errno)));
         return false;
@@ -186,26 +185,26 @@ bool Bank::emptyslot(unsigned int ninstrument)
 // Removes the instrument from the bank
 bool Bank::clearslot(unsigned int ninstrument)
 {
-    int chk = 0;
-    int chk2 = 0; // to stop complaints
+    bool chk = true;
+    bool chk2 = true; // to stop complaints
     if (emptyslot(ninstrument))
         return true;
-    string tmpfile = setExtension(getFullPath(synth->getRuntime().currentRoot, synth->getRuntime().currentBank, ninstrument), xiyext);
+    string tmpfile = setExtension(getFullPath(synth->getRuntime().currentRoot, synth->getRuntime().currentBank, ninstrument), EXTEN::yoshInst);
 
     if (isRegFile(tmpfile))
     {
-        chk = remove(tmpfile.c_str());
-        if (chk < 0)
+        chk = deleteFile(tmpfile);
+        if (!chk)
             synth->getRuntime().Log(asString(ninstrument) + " Failed to remove " + tmpfile);
     }
-    tmpfile = setExtension(tmpfile, xizext);
+    tmpfile = setExtension(tmpfile, EXTEN::zynInst);
     if (isRegFile(tmpfile))
     {
-        chk2 = remove(tmpfile.c_str());
-        if (chk2 < 0)
+        chk2 = deleteFile(tmpfile);
+        if (chk2 == false)
             synth->getRuntime().Log(asString(ninstrument) + " Failed to remove " + tmpfile);
     }
-    if (chk < 0 || chk2 < 0)
+    if (chk == false || chk2 == false)
         return false;
 
     deletefrombank(synth->getRuntime().currentRoot, synth->getRuntime().currentBank, ninstrument);
@@ -222,7 +221,7 @@ bool Bank::savetoslot(size_t rootID, size_t bankID, int ninstrument, int npart)
     clearslot(ninstrument);
     string filename = "0000" + asString(ninstrument + 1);
     filename = filename.substr(filename.size() - 4, 4)
-               + "-" + name + xizext;
+               + "-" + name + EXTEN::zynInst;
     legit_filename(filename);
 
     string fullpath = filepath + filename;
@@ -231,25 +230,21 @@ bool Bank::savetoslot(size_t rootID, size_t bankID, int ninstrument, int npart)
     int saveType = synth->getRuntime().instrumentFormat;
     if (isRegFile(fullpath))
     {
-        int chk = remove(fullpath.c_str());
-        if (chk < 0)
+        if (!deleteFile(fullpath))
         {
-            synth->getRuntime().Log("saveToSlot failed to unlink " + fullpath
-                        + ", " + string(strerror(errno)));
+            synth->getRuntime().Log("saveToSlot failed to unlink " + fullpath);
             return false;
         }
     }
     if (saveType & 1) // legacy
         ok2 = synth->part[npart]->saveXML(fullpath, false);
 
-    fullpath = setExtension(fullpath, xiyext);
+    fullpath = setExtension(fullpath, EXTEN::yoshInst);
     if (isRegFile(fullpath))
     {
-        int chk = remove(fullpath.c_str());
-        if (chk < 0)
+        if (!deleteFile(fullpath))
         {
-            synth->getRuntime().Log("saveToSlot failed to unlink " + fullpath
-                        + ", " + string(strerror(errno)));
+            synth->getRuntime().Log("saveToSlot failed to unlink " + fullpath);
             return false;
         }
     }
@@ -259,10 +254,7 @@ bool Bank::savetoslot(size_t rootID, size_t bankID, int ninstrument, int npart)
     if (!ok1 || !ok2)
         return false;
 
-    filepath += force_bank_dir_file;
-    FILE *tmpfile = fopen(filepath.c_str(), "w+");
-    fputs (YOSHIMI_VERSION, tmpfile);
-    fclose(tmpfile);
+    saveText(string(YOSHIMI_VERSION), filepath + force_bank_dir_file);
     addtobank(rootID, bankID, ninstrument, filename, name);
     return true;
 }
@@ -325,9 +317,7 @@ bool Bank::setbankname(unsigned int bankID, string newname)
 
     legit_filename(filename);
     string newfilepath = getRootPath(synth->getRuntime().currentRoot) + "/" + filename;
-    int chk = rename(getBankPath(synth->getRuntime().currentRoot,bankID).c_str(),
-                     newfilepath.c_str());
-    if (chk < 0)
+    if (!renameDir(getBankPath(synth->getRuntime().currentRoot,bankID), newfilepath))
     {
         synth->getRuntime().Log("Failed to rename " + getBankName(bankID)
                                + " to " + newname);
@@ -367,7 +357,7 @@ bool Bank::loadbank(size_t rootID, size_t banknum)
         candidate = string(fn->d_name);
         if (candidate == "."
             || candidate == ".."
-            || candidate.size() <= (xizext.size() + 2)) // actually a 3 char filename!
+            || candidate.size() <= (EXTEN::zynInst.size() + 2)) // actually a 3 char filename!
             continue;
         chkpath = bankdirname;
         if (chkpath.at(chkpath.size() - 1) != '/')
@@ -375,16 +365,16 @@ bool Bank::loadbank(size_t rootID, size_t banknum)
         chkpath += candidate;
         if (isRegFile(chkpath))
         {
-            if (chkpath.rfind(".xiz") != string::npos && isRegFile(setExtension(chkpath, xiyext)))
+            if (chkpath.rfind(EXTEN::zynInst) != string::npos && isRegFile(setExtension(chkpath, EXTEN::yoshInst)))
                 continue; // don't want .xiz if there is .xiy
 
-            xizpos = candidate.rfind(".xiy");
+            xizpos = candidate.rfind(EXTEN::yoshInst);
             if (xizpos == string::npos)
-                xizpos = candidate.rfind(xizext);
+                xizpos = candidate.rfind(EXTEN::zynInst);
 
             if (xizpos != string::npos)
             {
-                if (xizext.size() == (candidate.size() - xizpos))
+                if (EXTEN::zynInst.size() == (candidate.size() - xizpos))
                 {
                     // just NNNN-<name>.xiz files please
                     // sa verific daca e si extensia dorita
@@ -396,12 +386,12 @@ bool Bank::loadbank(size_t rootID, size_t banknum)
                         int instnum = string2int(candidate.substr(0, chk));
                         // remove "NNNN-" and .xiz extension for instrument name
                         // modified for numbered instruments with < 4 digits
-                        string instname = candidate.substr(chk + 1, candidate.size() - xizext.size() - chk - 1);
+                        string instname = candidate.substr(chk + 1, candidate.size() - EXTEN::zynInst.size() - chk - 1);
                         addtobank(rootID, banknum, instnum - 1, candidate, instname);
                     }
                     else
                     {
-                        string instname = candidate.substr(0, candidate.size() -  xizext.size());
+                        string instname = candidate.substr(0, candidate.size() -  EXTEN::zynInst.size());
                         addtobank(rootID, banknum, -1, candidate, instname);
                     }
                 }
@@ -539,7 +529,7 @@ unsigned int Bank::importBank(string importdir, size_t rootID, unsigned int bank
                     string nextfile = string(fn->d_name);                    if (nextfile.rfind(".bankdir") != string::npos)
                         continue; // new version will be generated
                     ++total;
-                    if (nextfile.rfind(".xiy") != string::npos || nextfile.rfind(".xiz") != string::npos)
+                    if (nextfile.rfind(EXTEN::yoshInst) != string::npos || nextfile.rfind(EXTEN::zynInst) != string::npos)
                     {
                         ++count;
                         int pos = -1; // default for un-numbered
@@ -583,9 +573,9 @@ bool Bank::isDuplicate(size_t rootID, size_t bankID, int pos, const string filen
 {
     //cout << filename << " count " << roots [rootID].banks.count(bankID) << endl;
     string path = getRootPath(rootID) + "/" + getBankName(bankID, rootID) + "/" + filename;
-    if (isRegFile(setExtension(path, xiyext)) && filename.rfind(xizext) < string::npos)
+    if (isRegFile(setExtension(path, EXTEN::yoshInst)) && filename.rfind(EXTEN::zynInst) < string::npos)
         return 1;
-    if (isRegFile(setExtension(path, xizext)) && filename.rfind(xiyext) < string::npos)
+    if (isRegFile(setExtension(path, EXTEN::zynInst)) && filename.rfind(EXTEN::yoshInst) < string::npos)
     {
         InstrumentEntry &Ref = getInstrumentReference(rootID, bankID, pos);
         Ref.yoshiType = true;
@@ -632,10 +622,7 @@ bool Bank::newbankfile(string newbankdir, size_t rootID)
     string forcefile = newbankpath;
     if (forcefile.at(forcefile.size() - 1) != '/')
         forcefile += "/";
-    forcefile += force_bank_dir_file;
-    FILE *tmpfile = fopen(forcefile.c_str(), "w+");
-    fputs (YOSHIMI_VERSION, tmpfile);
-    fclose(tmpfile);
+    saveText(string(YOSHIMI_VERSION), forcefile + force_bank_dir_file);
     return true;
 }
 
@@ -653,32 +640,32 @@ unsigned int Bank::removebank(unsigned int bankID, size_t rootID)
     }
     string bankName = getBankPath(rootID, bankID);
     string IDfile = bankName + "/.bankdir";
-    FILE *tmpfile = fopen(IDfile.c_str(), "w+");
-    if (!tmpfile)
+    if (!saveText(string(YOSHIMI_VERSION), IDfile))
+    {
         chk = 0x1000 | miscMsgPush("Can't delete from this location.");
-    else
-        fclose(tmpfile);
+        return chk;
+    }
 
-    int ck1 = 0;
-    int ck2 = 0;
+    bool ck1 = true;
+    bool ck2 = true;
     string name;
     for (int inst = 0; inst < BANK_SIZE; ++ inst)
     {
         if (!roots [rootID].banks [bankID].instruments [inst].name.empty())
         {
-            name = setExtension(getFullPath(synth->getRuntime().currentRoot, bankID, inst), xiyext);
+            name = setExtension(getFullPath(synth->getRuntime().currentRoot, bankID, inst), EXTEN::yoshInst);
             if (isRegFile(name))
-                ck1 = remove(name.c_str());
+                ck1 = deleteFile(name);
             else
-                ck1 = 0;
+                ck1 = true;
 
-            name = setExtension(name, xizext);
+            name = setExtension(name, EXTEN::zynInst);
             if (isRegFile(name))
-                ck2 = remove(name.c_str());
+                ck2 = deleteFile(name);
             else
-                ck2 = 0;
+                ck2 = true;
 
-            if (ck1 == 0 && ck2 == 0)
+            if (ck1 == true && ck2 == true)
                 deletefrombank(rootID, bankID, inst);
             else if (chk == 0) // only want to name one entry
                     chk = 0x1000 | miscMsgPush(findleafname(name) + ". Others may also still exist.");
@@ -687,16 +674,14 @@ unsigned int Bank::removebank(unsigned int bankID, size_t rootID)
     if (chk > 0)
         return chk;
 
-    if (isRegFile(IDfile))
-    { // only removed when bank cleared
-        if (remove(IDfile.c_str()) != 0)
-        {
-            chk = 0x1000 | miscMsgPush(findleafname(name));
-            return chk;
-        }
+    // only removed when bank cleared
+    if (!deleteFile(IDfile))
+    {
+        chk = 0x1000 | miscMsgPush(findleafname(name));
+        return chk;
     }
 
-    if (remove(bankName.c_str()) != 0)
+    if (!deleteDir(bankName))
     {
         chk = 0x1000 | miscMsgPush(bankName + ". Unrecognised contents still exist.");
         return chk;
@@ -841,8 +826,8 @@ unsigned int Bank::swapbanks(unsigned int firstID, unsigned int secondID, size_t
         string tempBankPath = getRootPath(firstRoot) + "/tempfile";
         if (secondBankPath == "") // move only
         {
-            result = rename(firstBankPath.c_str(), (getRootPath(secondRoot) + "/" + firstname).c_str());
-            if (result != 0)
+            result = !renameDir(firstBankPath, (getRootPath(secondRoot) + "/" + firstname));
+            if (result)
             {
                 synth->getRuntime().Log("move to " + to_string(secondRoot) + ": " + string(strerror(errno)), 2);
                 message = "Can't move from root " + to_string(firstRoot) + " to " + to_string(secondRoot);
@@ -851,8 +836,8 @@ unsigned int Bank::swapbanks(unsigned int firstID, unsigned int secondID, size_t
         }
         else if(firstBankPath == "") // move only
         {
-            result = rename(secondBankPath.c_str(), (getRootPath(firstRoot) + "/" + secondname).c_str());
-            if (result != 0)
+            result = !renameDir(secondBankPath, (getRootPath(firstRoot) + "/" + secondname));
+            if (result)
             {
                 synth->getRuntime().Log("move to " + to_string(firstRoot) + ": " + string(strerror(errno)), 2);
                 message = "Can't move from root " + to_string(secondRoot) + " to " + to_string(firstRoot);
@@ -867,31 +852,31 @@ unsigned int Bank::swapbanks(unsigned int firstID, unsigned int secondID, size_t
             //cout << "second " << secondBankPath << endl;
             //cout << "newfirst " << newfirstBankPath << endl;
             //cout << "newsecond " << newsecondBankPath << endl;
-            result = remove(tempBankPath.c_str()); // just to be sure
-            result = rename(firstBankPath.c_str(), tempBankPath.c_str());
+            deleteDir(tempBankPath); // just to be sure
+            result = !renameDir(firstBankPath, tempBankPath);
             if (result == 0)
             {
-                result = rename(secondBankPath.c_str(),newsecondBankPath.c_str());
+                result = !renameDir(secondBankPath,newsecondBankPath);
                 if (result == 0)
                 {
-                    result = rename(tempBankPath.c_str(), newfirstBankPath.c_str());
+                    result = !renameDir(tempBankPath, newfirstBankPath);
                     if (result != 0)
                     {
-                        synth->getRuntime().Log("move to " + to_string(secondRoot) + ": " + string(strerror(errno)), 2);
+                        synth->getRuntime().Log("failed move to " + to_string(secondRoot), 2);
                         message = "Can't move from temp dir to " + to_string(secondRoot);
                         result = 0x1000;
                     }
                 }
                 else
                 {
-                    synth->getRuntime().Log("move to " + to_string(firstRoot) + ": " + string(strerror(errno)), 2);
+                    synth->getRuntime().Log("failed move to " + to_string(firstRoot), 2);
                     message = "Can't move from root " + to_string(secondRoot) + " to " + to_string(firstRoot);
                     result = 0x1000;
                 }
             }
             else
             {
-                synth->getRuntime().Log("move to temp dir: " + string(strerror(errno)), 2);
+                synth->getRuntime().Log("failed move to temp dir", 2);
                 message = "Can't move from root " + to_string(firstRoot) + " to temp dir";
                 result = 0x1000;
             }
@@ -1021,9 +1006,9 @@ void Bank::scanrootdir(int root_idx)
             if (st.st_mode & (S_IFREG | S_IRGRP))
             {
                 // check for .xiz extension
-                if ((xizpos = possible.rfind(xizext)) != string::npos)
+                if ((xizpos = possible.rfind(EXTEN::zynInst)) != string::npos)
                 {
-                    if (xizext.size() == (possible.size() - xizpos))
+                    if (EXTEN::zynInst.size() == (possible.size() - xizpos))
                     {   // is an instrument, so add the bank
                         bankDirsMap [candidate] = chkdir;
                         break;
@@ -1100,9 +1085,9 @@ bool Bank::addtobank(size_t rootID, size_t bankID, int pos, const string filenam
     // see which engines are used
     if (synth->getRuntime().checksynthengines)
     {
-        string checkfile = setExtension(getFullPath(rootID, bankID, pos), xiyext);
+        string checkfile = setExtension(getFullPath(rootID, bankID, pos), EXTEN::yoshInst);
         if (!isRegFile(checkfile))
-            checkfile = setExtension(getFullPath(rootID, bankID, pos), xizext);
+            checkfile = setExtension(getFullPath(rootID, bankID, pos), EXTEN::zynInst);
         XMLwrapper *xml = new XMLwrapper(synth, true, false);
         xml->checkfileinformation(checkfile);
         instrRef.PADsynth_used = xml->information.PADsynth_used;

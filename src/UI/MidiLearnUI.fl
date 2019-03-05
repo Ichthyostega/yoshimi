@@ -8,7 +8,7 @@ comment {MidiLearnUI.h} {not_in_source in_header
 comment {MidiLearnUI.cc} {in_source not_in_header
 }
 
-comment {Copyright (C) 2016-2018, Will Godfrey
+comment {Copyright (C) 2016-2019, Will Godfrey
 
 This file is part of yoshimi, which is free software: you can redistribute
 it and/or modify it under the terms of the GNU Library General Public
@@ -24,7 +24,7 @@ You should have received a copy of the GNU General Public License along with
 yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
 Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-Modified August 2018
+Modified February 2019
 } {selected in_source in_header
 }
 
@@ -42,7 +42,7 @@ decl {\#include "MasterUI.h"} {private global
 decl {\#include "Misc/SynthEngine.h"} {private local
 }
 
-decl {\# include "Misc/MiscFuncs.h"} {private local
+decl {\# include "Interface/FileMgr.h"} {private local
 }
 
 decl {\#include "UI/MiscGui.h"
@@ -283,7 +283,7 @@ class MidiLearnKitItem {: {public Fl_Group}
   }
 }
 
-class MidiLearnUI {: {private MiscFuncs}
+class MidiLearnUI {: {private MiscFuncs, FileMgr}
 } {
   Function {make_window()} {} {
     Fl_Window midilearnwindow {
@@ -346,7 +346,8 @@ Note: Adding/deleting entries or changing CC/Chan will renumber the lines.} xywh
         if (lastname == "")
             lastname = synth->getRuntime().userHome;
         char *filename;
-        filename = fl_file_chooser("Load:", "({*.xly})", lastname.c_str(), 0);
+        string exten = "({*" + EXTEN::mlearn + "})";
+        filename = fl_file_chooser("Load:", exten.c_str(), lastname.c_str(), 0);
         if (filename == NULL)
             return;
         loadMidi(filename);}
@@ -359,7 +360,8 @@ Note: Adding/deleting entries or changing CC/Chan will renumber the lines.} xywh
         if (lastname == "")
             lastname = synth->getRuntime().userHome;
         char *filename;
-        filename = fl_file_chooser("Load:", "({*.xly})", lastname.c_str(), 0);
+        string exten = "({*" + EXTEN::mlearn + "})";
+        filename = fl_file_chooser("Load:", exten.c_str(), lastname.c_str(), 0);
         if (filename == NULL)
             return;
         send_data(MIDILEARN::control::saveList, 0, 0, 0, 0, 0, 0, miscMsgPush((string) filename));
