@@ -2,7 +2,7 @@
     MiscFuncs.h
 
     Copyright 2010, Alan Calvert
-    Copyright 2014-2018, Will Godfrey
+    Copyright 2014-2019, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -17,7 +17,7 @@
     You should have received a copy of the GNU General Public License
     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 
-    Modified November 2018
+    Modified February 2019
 */
 
 #ifndef MISCFUNCS_H
@@ -59,19 +59,8 @@ class MiscFuncs
 
         int stringNumInList(string toFind, string *listname, int convert = 0);
 
-        bool isRegFile(string chkpath);
-        bool isDirectory(string chkpath);
         bool isFifo(string chkpath);
-        void legit_filename(string& fname);
-        void legit_pathname(string& fname);
-        string findfile(string path, string filename, string extension);
-        string findleafname(string name);
         int findSplitPoint(string name);
-        string setExtension(string fname, string ext);
-        bool copyFile(string source, string destination);
-        string localPath(string leaf);
-        bool saveText(string text, string filename);
-        int loadText(string filename);
 
         char *skipSpace(char *buf);
         char *skipChars(char *buf);
@@ -91,6 +80,8 @@ class MiscFuncs
         void bitClearHigh(unsigned int& value);
         void bitClearAbove(unsigned int& value, int bitLevel);
         bool bitTest(unsigned int value, unsigned int bit);
+        string lineInText(string text, size_t &point);
+        void C_lineInText(string text, size_t &point, char *line);
 
         float dB2rap(float dB);
         float rap2dB(float rap);

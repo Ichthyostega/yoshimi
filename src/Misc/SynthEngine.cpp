@@ -5,7 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
     Copyright 2009, James Morris
-    Copyright 2014-2018, Will Godfrey & others
+    Copyright 2014-2019, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -23,20 +23,25 @@
 
     This file is derivative of original ZynAddSubFX code.
 
-    Modified December 2018
+    Modified March 2019
 */
 
-//#define NOLOCKS
-
-#include<stdio.h>
+#include <stdio.h>
 #include <sys/time.h>
 #include <set>
 
 using namespace std;
 
-#include "MasterUI.h"
+#ifdef GUI_FLTK
+    #include "MasterUI.h"
+#endif
+
 #include "Misc/SynthEngine.h"
 #include "Misc/Config.h"
+#include "Params/Controller.h"
+#include "Misc/Part.h"
+#include "Effects/EffectMgr.h"
+#include "Misc/XMLwrapper.h"
 
 #include <iostream>
 #include <fstream>
@@ -113,14 +118,22 @@ SynthEngine::SynthEngine(int argc, char **argv, bool _isLV2Plugin, unsigned int 
     microtonal(this),
     fft(NULL),
     muted(0),
-    processLock(NULL),
     //stateXMLtree(NULL),
+#ifdef GUI_FLTK
     guiMaster(NULL),
     guiClosedCallback(NULL),
     guiCallbackArg(NULL),
+#endif
     LFOtime(0),
     windowTitle("Yoshimi" + asString(uniqueId))
 {
+    union {
+        uint32_t u32 = 0x11223344;
+        uint8_t arr[4];
+    } x;
+    //cout << "byte " << int(x.arr[0]) << endl;
+    Runtime.isLittleEndian = (x.arr[0] == 0x44);
+
     if (bank.roots.empty())
         bank.addDefaultRootDirs();
 
@@ -137,12 +150,16 @@ SynthEngine::SynthEngine(int argc, char **argv, bool _isLV2Plugin, unsigned int 
 
     // seed the shared master random number generator
     prng.init(time(NULL));
+
+    //TestFunc(123); // just for testing
 }
 
 
 SynthEngine::~SynthEngine()
 {
+#ifdef GUI_FLTK
     closeGui();
+#endif
 
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
         if (part[npart])
@@ -172,7 +189,7 @@ SynthEngine::~SynthEngine()
 
     if (fft)
         delete fft;
-    pthread_mutex_destroy(&processMutex);
+
     sem_destroy(&partlock);
     sem_destroy(&mutelock);
     if (ctl)
@@ -218,16 +235,6 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
         Runtime.LogError("interChange init failed");
         goto bail_out;
     }
-
-    /*if (!pthread_mutex_init(&processMutex, NULL))
-        processLock = &processMutex;
-    else
-    {
-        Runtime.Log("SynthEngine actionLock init fails :-(");
-        processLock = NULL;
-        goto bail_out;
-    }*/
-
 
     if (oscilsize < (buffersize / 2))
     {
@@ -295,29 +302,43 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
              defaults();
          }
     }
-    else
+
+    if (Runtime.paramsLoad.size())
     {
-        if (Runtime.paramsLoad.size())
+        string file = setExtension(Runtime.paramsLoad, EXTEN::patchset);
+        ShutUp();
+        if (!loadXML(file))
         {
-            string file = setExtension(Runtime.paramsLoad, "xmz");
-            ShutUp();
-            if (!loadXML(file))
-            {
-                Runtime.Log("Failed to load parameters " + file);
-                Runtime.paramsLoad = "";
-            }
+            Runtime.Log("Failed to load parameters " + file);
+            Runtime.paramsLoad = "";
         }
-        else if (Runtime.instrumentLoad.size())
+    }
+    if (Runtime.instrumentLoad.size())
+    {
+        string feli = Runtime.instrumentLoad;
+        int loadtopart = 0;
+        if (part[loadtopart]->loadXMLinstrument(feli))
+            Runtime.Log("Instrument file " + feli + " loaded");
+        else
         {
-            string feli = Runtime.instrumentLoad;
-            int loadtopart = 0;
-            if (part[loadtopart]->loadXMLinstrument(feli))
-                Runtime.Log("Instrument file " + feli + " loaded");
-            else
-            {
-                Runtime.Log("Failed to load instrument file " + feli);
-                Runtime.instrumentLoad = "";
-            }
+            Runtime.Log("Failed to load instrument file " + feli);
+            Runtime.instrumentLoad = "";
+        }
+    }
+    if (Runtime.midiLearnLoad.size())
+    {
+        string feml = Runtime.midiLearnLoad;
+        if (midilearn.loadList(feml))
+        {
+#ifdef GUI_FLTK
+            midilearn.updateGui();
+#endif
+            Runtime.Log("midiLearn file " + feml + " loaded");
+        }
+        else
+        {
+            Runtime.Log("Failed to load midiLearn file " + feml);
+            Runtime.midiLearnLoad = "";
         }
     }
 
@@ -476,11 +497,7 @@ void SynthEngine::NoteOn(unsigned char chan, unsigned char note, unsigned char v
         if (chan == part[npart]->Prcvchn)
         {
             if (partonoffRead(npart))
-            {
-                //actionLock(lockType);
                 part[npart]->NoteOn(note, velocity);
-                //actionLock(unlockType);
-            }
             else if (VUpeak.values.parts[npart] > (-velocity))
                 VUpeak.values.parts[npart] = -(0.2 + velocity); // ensure fake is always negative
         }
@@ -514,11 +531,7 @@ void SynthEngine::NoteOff(unsigned char chan, unsigned char note)
     {
         // mask values 16 - 31 to still allow a note off
         if (chan == (part[npart]->Prcvchn & 0xef) && partonoffRead(npart))
-        {
-            //actionLock(lockType);
             part[npart]->NoteOff(note);
-            //actionLock(unlockType);
-        }
     }
 }
 
@@ -881,7 +894,7 @@ int SynthEngine::SetRBP(CommandBlock *getData, bool notinplace)
                     if (ok)
                     {
                         if (par2 < 0xff)
-                            addHistory(setExtension(fname, "xiz"), 1);
+                            addHistory(setExtension(fname, EXTEN::zynInst), 1);
                         name = name + " to Part " + to_string(npart + 1);
                     }
                 }
@@ -1332,13 +1345,17 @@ int SynthEngine::SetSystemValue(int type, int value)
                 value = MIN_KEY_SHIFT + 64;
             setPkeyshift(value);
             setAllPartMaps();
+#ifdef GUI_FLTK
             GuiThreadMsg::sendMessage(this, GuiThreadMsg::UpdateMaster, 0);
+#endif
             Runtime.Log("Master key shift set to " + asString(value - 64));
             break;
 
         case 7: // master volume
             setPvolume(value);
+#ifdef GUI_FLTK
             GuiThreadMsg::sendMessage(this, GuiThreadMsg::UpdateMaster, 0);
+#endif
             Runtime.Log("Master volume set to " + asString(value));
             break;
 
@@ -1368,7 +1385,9 @@ int SynthEngine::SetSystemValue(int type, int value)
                     part[npart]->Pkeyshift = value;
                     setPartMap(npart);
                     Runtime.Log("Part " +asString((int) npart) + "  key shift set to " + asString(value - 64));
+#ifdef GUI_FLTK
                     GuiThreadMsg::sendMessage(this, GuiThreadMsg::UpdatePart, 0);
+#endif
                 }
             break;
 
@@ -1386,7 +1405,9 @@ int SynthEngine::SetSystemValue(int type, int value)
                 else
                 {
                     Runtime.midi_bank_root = value;
+#ifdef GUI_FLTK
                     GuiThreadMsg::sendMessage(this, GuiThreadMsg::UpdateConfig, 4);
+#endif
                 }
             }
             if (value == 128) // but still report the setting
@@ -1409,7 +1430,9 @@ int SynthEngine::SetSystemValue(int type, int value)
                 else
                 {
                     Runtime.midi_bank_C = value;
+#ifdef GUI_FLTK
                     GuiThreadMsg::sendMessage(this, GuiThreadMsg::UpdateConfig, 4);
+#endif
                 }
             }
             if (value == 0)
@@ -1429,7 +1452,9 @@ int SynthEngine::SetSystemValue(int type, int value)
             if (value != Runtime.EnableProgChange)
             {
                 Runtime.EnableProgChange = value;
+#ifdef GUI_FLTK
                 GuiThreadMsg::sendMessage(this, GuiThreadMsg::UpdateConfig, 4);
+#endif
             }
             break;
 
@@ -1442,7 +1467,9 @@ int SynthEngine::SetSystemValue(int type, int value)
             if (value != Runtime.enable_part_on_voice_load)
             {
                 Runtime.enable_part_on_voice_load = value;
+#ifdef GUI_FLTK
                 GuiThreadMsg::sendMessage(this, GuiThreadMsg::UpdateConfig, 4);
+#endif
             }
             break;
 
@@ -1460,7 +1487,9 @@ int SynthEngine::SetSystemValue(int type, int value)
                 else
                 {
                     Runtime.midi_upper_voice_C = value;
+#ifdef GUI_FLTK
                     GuiThreadMsg::sendMessage(this, GuiThreadMsg::UpdateConfig, 4);
+#endif
                 }
             }
             if (value == 128) // but still report the setting
@@ -1474,7 +1503,9 @@ int SynthEngine::SetSystemValue(int type, int value)
             {
                 Runtime.NumAvailableParts = value;
                 Runtime.Log("Available parts set to " + asString(value));
+#ifdef GUI_FLTK
                 GuiThreadMsg::sendMessage(this, GuiThreadMsg::UpdatePart,0);
+#endif
             }
             else
                 Runtime.Log("Out of range");
@@ -1785,12 +1816,14 @@ void SynthEngine::SetMuteAndWait(void)
     putData.data.type = TOPLEVEL::type::Write | TOPLEVEL::type::Integer;
     putData.data.control = TOPLEVEL::control::errorMessage;
     putData.data.part = TOPLEVEL::section::main;
+#ifdef GUI_FLTK
     if (jack_ringbuffer_write_space(interchange.fromGUI) >= sizeof(putData))
     {
         jack_ringbuffer_write(interchange.fromGUI, (char*) putData.bytes, sizeof(putData));
         while(isMuted() == 0)
             usleep (1000);
     }
+#endif
 }
 
 
@@ -1895,7 +1928,6 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
  */
     else
     {
-        //actionLock(lockType);
         // Compute part samples and store them ->partoutl,partoutr
         for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
         {
@@ -2050,7 +2082,6 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
                 fadeLevel -= fadeStep;
             }
         }
-        //actionLock(unlockType);
 
         // Peak calculation for mixed outputs
         float absval;
@@ -2215,32 +2246,6 @@ void SynthEngine::allStop(unsigned int stopType)
 }
 
 
-/*bool SynthEngine::actionLock(lockset request)
-{
-#ifdef NOLOCKS
-    lockset a = request; request = a; // suppress warning
-    return 0;
-#else
-    int chk  = -1;
-
-    switch (request)
-    {
-        case lockType:
-            chk = pthread_mutex_lock(processLock);
-            break;
-
-        case unlockType:
-            chk = pthread_mutex_unlock(processLock);
-            break;
-
-        default:
-            break;
-    }
-    return (chk == 0) ? true : false;
-#endif
-}*/
-
-
 bool SynthEngine::loadStateAndUpdate(string filename)
 {
     bool result = Runtime.loadState(filename);
@@ -2254,7 +2259,7 @@ bool SynthEngine::loadStateAndUpdate(string filename)
 
 bool SynthEngine::saveState(string filename)
 {
-    filename = setExtension(filename, "state");
+    filename = setExtension(filename, EXTEN::state);
     bool result = Runtime.saveState(filename);
     string name = Runtime.ConfigDir + "/yoshimi";
     if (uniqueId > 0)
@@ -2269,7 +2274,7 @@ bool SynthEngine::saveState(string filename)
 bool SynthEngine::loadPatchSetAndUpdate(string fname)
 {
     bool result;
-    fname = setExtension(fname, "xmz");
+    fname = setExtension(fname, EXTEN::patchset);
     result = loadXML(fname); // load the data
     Unmute();
     if (result)
@@ -2285,7 +2290,7 @@ bool SynthEngine::loadMicrotonal(string fname)
 {
     bool ok = true;
     microtonal.defaults();
-    if (microtonal.loadXML(setExtension(fname, "xsz")))
+    if (microtonal.loadXML(setExtension(fname, EXTEN::scale)))
         addHistory(fname, 3);
     else
         ok = false;
@@ -2295,7 +2300,7 @@ bool SynthEngine::loadMicrotonal(string fname)
 bool SynthEngine::saveMicrotonal(string fname)
 {
     bool ok = true;
-    if (microtonal.saveXML(setExtension(fname, "xsz")))
+    if (microtonal.saveXML(setExtension(fname, EXTEN::scale)))
         addHistory(fname, 3);
     else
         ok = false;
@@ -2346,8 +2351,9 @@ bool SynthEngine::installBanks()
     delete xml;
     Runtime.Log("\nFound " + asString(bank.InstrumentsInBanks) + " instruments in " + asString(bank.BanksInRoots) + " banks");
     Runtime.Log(miscMsgPop(RootBank(Runtime.tempRoot, Runtime.tempBank)& 0xff));
+#ifdef GUI_FLTK
     GuiThreadMsg::sendMessage((this), GuiThreadMsg::RefreshCurBank, 1);
-
+#endif
     return true;
 }
 
@@ -2381,8 +2387,8 @@ void SynthEngine::newHistory(string name, int group)
 {
     if (findleafname(name) < "!")
         return;
-    if (group == 1 && (name.rfind(".xiy") != string::npos))
-        name = setExtension(name, "xiz");
+    if (group == 1 && (name.rfind(EXTEN::yoshInst) != string::npos))
+        name = setExtension(name, EXTEN::zynInst);
     vector<string> &listType = *getHistory(group);
     listType.push_back(name);
 }
@@ -2392,8 +2398,8 @@ void SynthEngine::addHistory(string name, int group)
 {
     if (findleafname(name) < "!")
         return;
-    if (group == 1 && (name.rfind(".xiy") != string::npos))
-        name = setExtension(name, "xiz");
+    if (group == 1 && (name.rfind(EXTEN::yoshInst) != string::npos))
+        name = setExtension(name, EXTEN::zynInst);
     vector<string> &listType = *getHistory(group);
     vector<string>::iterator itn = listType.begin();
     listType.insert(itn, name);
@@ -2498,6 +2504,7 @@ bool SynthEngine::loadHistory()
     if (!xml->enterbranch("HISTORY"))
     {
         Runtime. Log("extractHistoryData, no HISTORY branch");
+        delete xml;
         return false;
     }
     int hist_size;
@@ -2543,8 +2550,8 @@ bool SynthEngine::loadHistory()
                     filetype = xml->getparstr(extension);
                     if (extension == "xiz_file" && !isRegFile(filetype))
                     {
-                        if (filetype.rfind(".xiz") != string::npos)
-                            filetype = setExtension(filetype, "xiy");
+                        if (filetype.rfind(EXTEN::zynInst) != string::npos)
+                            filetype = setExtension(filetype, EXTEN::yoshInst);
                     }
                     if (filetype.size() && isRegFile(filetype))
                         newHistory(filetype, count);
@@ -2653,7 +2660,7 @@ unsigned char SynthEngine::loadVector(unsigned char baseChan, string name, bool 
         Runtime.Log("No filename", 2);
         return actualBase;
     }
-    string file = setExtension(name, "xvy");
+    string file = setExtension(name, EXTEN::vector);
     legit_pathname(file);
     if (!isRegFile(file))
     {
@@ -2668,7 +2675,10 @@ unsigned char SynthEngine::loadVector(unsigned char baseChan, string name, bool 
     }
     xml->loadXMLfile(file);
     if (!xml->enterbranch("VECTOR"))
+    {
             Runtime. Log("Extract Data, no VECTOR branch", 2);
+            delete xml;
+    }
     else
     {
         actualBase = extractVectorData(baseChan, xml, findleafname(name));
@@ -2797,7 +2807,7 @@ unsigned char SynthEngine::saveVector(unsigned char baseChan, string name, bool 
     if (Runtime.vectordata.Enabled[baseChan] == false)
         return miscMsgPush("No vector data on this channel");
 
-    string file = setExtension(name, "xvy");
+    string file = setExtension(name, EXTEN::vector);
     legit_pathname(file);
 
     Runtime.xmlType = XML_VECTOR;
@@ -2979,7 +2989,7 @@ void SynthEngine::putalldata(const char *data, int size)
 
 bool SynthEngine::savePatchesXML(string filename)
 {
-    filename = setExtension(filename, "xmz");
+    filename = setExtension(filename, EXTEN::patchset);
     Runtime.xmlType = XML_PARAMETERS;
     XMLwrapper *xml = new XMLwrapper(this, true);
     add2XML(xml);
@@ -3166,24 +3176,26 @@ SynthEngine *SynthEngine::getSynthFromId(unsigned int uniqueId)
     synth = synthInstances.begin()->first;
     return synth;
 }
-
+#ifdef GUI_FLTK
 MasterUI *SynthEngine::getGuiMaster(bool createGui)
 {
     if (guiMaster == NULL && createGui)
         guiMaster = new MasterUI(this);
     return guiMaster;
 }
-
+#endif
 
 void SynthEngine::guiClosed(bool stopSynth)
 {
     if (stopSynth && !isLV2Plugin)
         Runtime.runSynth = false;
+#ifdef GUI_FLTK
     if (guiClosedCallback != NULL)
         guiClosedCallback(guiCallbackArg);
+#endif
 }
 
-
+#ifdef GUI_FLTK
 void SynthEngine::closeGui()
 {
     if (guiMaster != NULL)
@@ -3192,6 +3204,7 @@ void SynthEngine::closeGui()
         guiMaster = NULL;
     }
 }
+#endif
 
 
 string SynthEngine::makeUniqueName(string name)

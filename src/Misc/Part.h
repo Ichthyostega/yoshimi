@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011 Alan Calvert
-    Copyright 2014-2018, Will Godfrey
+    Copyright 2014-2019, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -22,7 +22,7 @@
 
     This file is derivative of original ZynAddSubFX code.
 
-    Modified February 2018
+    Modified February 2019
 */
 
 #ifndef PART_H
@@ -33,6 +33,7 @@
 using namespace std;
 
 #include "Misc/MiscFuncs.h"
+#include "Interface/FileMgr.h"
 #include "Misc/SynthHelper.h"
 
 class ADnoteParameters;
@@ -49,10 +50,10 @@ class FFTwrapper;
 
 class SynthEngine;
 
-class Part : private MiscFuncs, SynthHelper
+class Part : private MiscFuncs, SynthHelper, FileMgr
 {
     public:
-        enum NoteStatus { KEY_OFF, KEY_PLAYING, KEY_RELASED_AND_SUSTAINED, KEY_RELASED };
+        enum NoteStatus { KEY_OFF, KEY_PLAYING, KEY_RELEASED_AND_SUSTAINED, KEY_RELEASED };
 
         Part(Microtonal *microtonal_, FFTwrapper *fft_, SynthEngine *_synth);
         ~Part();
@@ -68,8 +69,8 @@ class Part : private MiscFuncs, SynthHelper
         void NoteOff(int note);
         void AllNotesOff(void) { killallnotes = true; }; // panic, prepare all notes to be turned off
         void SetController(unsigned int type, int par);
-        void RelaseSustainedKeys(void);
-        void RelaseAllKeys(void);
+        void ReleaseSustainedKeys(void);
+        void ReleaseAllKeys(void);
         void ComputePartSmps(void);
 
         bool saveXML(string filename, bool yoshiFormat); // result true for load ok, otherwise false
@@ -160,7 +161,7 @@ class Part : private MiscFuncs, SynthHelper
 
     private:
         void KillNotePos(int pos);
-        void RelaseNotePos(int pos);
+        void ReleaseNotePos(int pos);
         void MonoMemRenote(void); // MonoMem stuff.
         void setPan(float value);
 

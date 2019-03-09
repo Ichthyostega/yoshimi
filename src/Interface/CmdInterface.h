@@ -1,7 +1,7 @@
 /*
     CmdInterface.h
 
-    Copyright 2015-2018, Will Godfrey & others.
+    Copyright 2015-2019, Will Godfrey & others.
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -16,7 +16,7 @@
     You should have received a copy of the GNU General Public License
     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 
-    Modified December 2018
+    Modified February 2019
 */
 
 #ifndef CMDINTERFACE_H
@@ -26,6 +26,7 @@
 using namespace std;
 
 #include "Misc/MiscFuncs.h"
+#include "Interface/FileMgr.h"
 #include "Misc/SynthEngine.h"
 #include "Interface/InterChange.h"
 #include "Effects/EffectMgr.h"
@@ -234,7 +235,7 @@ static string partlist [] = {
     "kit mode entries","",
     "KIT",                      "access controls but don't change type",
     "   <n>",                   "select kit item number (1-16)",
-    "   MUlti",                 "alow item overlaps",
+    "   MUlti",                 "allow item overlaps",
     "   SIngle",                "lowest numbered item in key range",
     "   CRoss",                 "cross fade pairs",
     "   QUiet <s>",             "silence this item (OFF, {other})",
@@ -292,7 +293,7 @@ static string commonlist [] = {
 };
 
 static string addsynthlist [] = {
-    "BAndwidth <n>",            "modifes relative fine detune of voices",
+    "BAndwidth <n>",            "modifies relative fine detune of voices",
     "GRoup <s>",                "disables harmonic amplitude randomness of voices with",
     "","a common oscllator (ON, {other})",
     "VOIce ...",                "enter Addsynth voice context",
@@ -445,6 +446,7 @@ static string LFOlist [] = {
     "FRequency ~",          "frequency type",
     "FIlter ~",             "filter type",
     "~  Rate <n>",          "frequency",
+    "~  Intensity <n>",     "depth",
     "~  Start <n>",         "start position in cycle",
     "~  Delay <n>",         "time before effect",
     "~  Expand <n>",        "rate / note pitch",
@@ -811,7 +813,7 @@ static string filtertype [] = {"OFF", "LP1", "HPA", "HPB", "BP1", "BS1", "LP2", 
 static string adaptive [] = {"OFF", "ON", "SQU", "2XS", "2XA", "3XS", "3XA", "4XS", "4XA"};
 
 
-class CmdInterface : private MiscFuncs
+class CmdInterface : private MiscFuncs, FileMgr
 {
     public:
         void defaults();

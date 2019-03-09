@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2014-2018, Will Godfrey & others
+    Copyright 2014-2019, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -22,7 +22,7 @@
 
     This file is derivative of ZynAddSubFX original code.
 
-    Modified November 2018
+    Modified February 2019
 */
 
 #ifndef SYNTHENGINE_H
@@ -44,20 +44,21 @@ using namespace std;
 #include "Interface/InterChange.h"
 #include "Interface/MidiLearn.h"
 #include "Interface/MidiDecode.h"
+#include "Interface/FileMgr.h"
 #include "Misc/Config.h"
 #include "Params/PresetsStore.h"
 #include "Params/UnifiedPresets.h"
-
-typedef enum { init, lockType, unlockType, destroy } lockset;
 
 class EffectMgr;
 class Part;
 class XMLwrapper;
 class Controller;
 
+#ifdef GUI_FLTK
 class MasterUI;
+#endif
 
-class SynthEngine : private SynthHelper, MiscFuncs
+class SynthEngine : private SynthHelper, MiscFuncs, FileMgr
 {
     private:
         unsigned int uniqueId;
@@ -76,7 +77,6 @@ class SynthEngine : private SynthHelper, MiscFuncs
         SynthEngine(int argc, char **argv, bool _isLV2Plugin = false, unsigned int forceId = 0);
         ~SynthEngine();
         bool Init(unsigned int audiosrate, int audiobufsize);
-        //bool actionLock(lockset request);
 
         bool savePatchesXML(string filename);
         void add2XML(XMLwrapper *xml);
@@ -228,7 +228,6 @@ class SynthEngine : private SynthHelper, MiscFuncs
         inline PresetsStore &getPresetsStore() {return presetsstore;}
         unsigned int getUniqueId() {return uniqueId;}
         SynthEngine *getSynthFromId(unsigned int uniqueId);
-        MasterUI *getGuiMaster(bool createGui = true);
         void guiClosed(bool stopSynth);
         void setGuiClosedCallback(void( *_guiClosedCallback)(void*), void *arg)
         {
@@ -254,11 +253,11 @@ class SynthEngine : private SynthHelper, MiscFuncs
 
         int keyshift;
 
-        pthread_mutex_t  processMutex;
-        pthread_mutex_t *processLock;
-
     public:
+#ifdef GUI_FLTK
         MasterUI *guiMaster; // need to read this in InterChange::returns
+        MasterUI *getGuiMaster(bool createGui = true);
+#endif
     private:
         void( *guiClosedCallback)(void*);
         void *guiCallbackArg;

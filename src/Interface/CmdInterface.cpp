@@ -1,7 +1,7 @@
 /*
     CmdInterface.cpp
 
-    Copyright 2015-2018, Will Godfrey & others.
+    Copyright 2015-2019, Will Godfrey & others.
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -16,7 +16,7 @@
     You should have received a copy of the GNU General Public License
     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 
-    Modified December 2018
+    Modified February 2019
 */
 
 #include <iostream>
@@ -1466,7 +1466,7 @@ int CmdInterface::filterSelect(unsigned char controlType)
                         value = 0;
                     else if (matchnMove(2, point, "h1"))
                         value = 1;
-                    if (matchnMove(2, point, "l2"))
+                    else if (matchnMove(2, point, "l2"))
                         value = 2;
                     else if (matchnMove(2, point, "h2"))
                         value = 3;
@@ -4751,56 +4751,54 @@ int CmdInterface::cmdIfaceProcessCommand(char *cCmd)
         string filename = string(point);
         if (filename > "!")
         {
-            char *to_send;
+            char to_send[100];
             char *mark;
-            to_send = (char*) malloc(0xff);;
             int count = 0;
             bool isok = true;
 
-            FILE *readfile = fopen(filename.c_str(), "r");
-            if (readfile)
+            string text = loadText(filename);
+            if (text != "")
             {
+                size_t linePoint = 0;
                 context = LEVEL::Top; // start from top level
-                while (!feof(readfile) && isok)
+                while (linePoint < text.length() && isok)
                 {
-                    if(fgets(to_send , 0xff , readfile))
+                    C_lineInText(text, linePoint, to_send);
+                    ++ count;
+                    mark = skipSpace(to_send);
+                    if ( mark[0] < ' ' || mark [0] == '#')
+                        continue;
+                    if (matchnMove(3, mark, "run"))
                     {
-                        ++ count;
-                        mark = skipSpace(to_send);
-                        if ( mark[0] < ' ' || mark [0] == '#')
-                            continue;
-                        if (matchnMove(3, mark, "run"))
-                        {
-                            isok = false;
-                            Runtime.Log("*** Error: scripts are not recursive @ line " + to_string(count) + " ***");
-                            continue;
-                        }
-                        if (matchnMove(4, mark, "wait"))
-                        {
-                            int tmp = string2int(mark);
-                            if (tmp < 1)
-                                tmp = 1;
-                            else if (tmp > 1000)
-                                tmp = 1000;
-                            Runtime.Log("Waiting " + to_string(tmp) + "mS");
-                            usleep((tmp - 1) * 1000);
-                            // total processing may add up to another 1 mS
-                        }
-                        else
-                            reply = cmdIfaceProcessCommand(mark);
-                        if (reply > done_msg)
-                        {
-                            isok = false;
-                            Runtime.Log("*** Error: " + replies[reply] + " @ line " + to_string(count) + " ***");
-                        }
+                        isok = false;
+                        Runtime.Log("*** Error: scripts are not recursive @ line " + to_string(count) + " ***");
+                        continue;
+                    }
+                    if (matchnMove(4, mark, "wait"))
+                    {
+                        int tmp = string2int(mark);
+                        if (tmp < 1)
+                            tmp = 1;
+                        else if (tmp > 1000)
+                            tmp = 1000;
+                        Runtime.Log("Waiting " + to_string(tmp) + "mS");
+                        usleep((tmp - 1) * 1000);
+                        // total processing may add up to another 1 mS
+                    }
+                    else
+                    {
+                        usleep(2000); // the loop is too fast otherwise!
+                        reply = cmdIfaceProcessCommand(mark);
+                    }
+                    if (reply > done_msg)
+                    {
+                        isok = false;
+                        Runtime.Log("*** Error: " + replies[reply] + " @ line " + to_string(count) + " ***");
                     }
                 }
-                fclose (readfile);
             }
             else
                 Runtime.Log("Can't read file " + filename);
-            free (to_send);
-            to_send = NULL;
             return done_msg;
         }
         replyString = "Exec";
@@ -4882,12 +4880,14 @@ int CmdInterface::cmdIfaceProcessCommand(char *cCmd)
             {
                 Runtime.Log("Can't find path " + (string) point);
             }
+#ifdef GUI_FLTK
             else
             {
                 GuiThreadMsg::sendMessage(synth, GuiThreadMsg::UpdatePaths, 0);
                 Runtime.Log("Added new root ID " + asString(found) + " as " + (string) point);
                 synth->saveBanks();
             }
+#endif
             return done_msg;
         }
         if (matchnMove(1, point, "bank"))
@@ -4904,7 +4904,9 @@ int CmdInterface::cmdIfaceProcessCommand(char *cCmd)
             }
 
             Runtime.Log("Created  new bank " + (string) point + " with ID " + asString(slot));
+#ifdef GUI_FLTK
             GuiThreadMsg::sendMessage(synth, GuiThreadMsg::UpdatePaths, 0);
+#endif
             return done_msg;
         }
         if (matchnMove(2, point, "yoshimi"))
@@ -4980,7 +4982,9 @@ int CmdInterface::cmdIfaceProcessCommand(char *cCmd)
                     else
                     {
                         synth->getBankRef().removeRoot(rootID);
+#ifdef GUI_FLTK
                         GuiThreadMsg::sendMessage(synth, GuiThreadMsg::UpdatePaths, 0);
+#endif
                         Runtime.Log("Un-linked " + rootname);
                         synth->saveBanks();
                     }

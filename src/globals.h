@@ -1,7 +1,7 @@
 /*
     globals.h - general static definitions
 
-    Copyright 2018, Will Godfrey
+    Copyright 2018-2019, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -17,7 +17,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    Created June 2018
+    Modifed February 2019
 */
 
 #ifndef GLOBALS_H
@@ -36,14 +36,6 @@
 #define TWOPI 6.28318530718f
 #define HALFPI 1.57079632679f
 #define LOG_2 0.693147181f
-
-// float round to zero to integer
-// the second version is faster but for positive values only
-// and not fully confirmed as correct
-
-#define FR2Z2I(f, i) (i) = ((f > 0) ? (int(trunc(f))) : (int(trunc(f - 1.0f))));
-//#define FR2Z2I(f, i) (i) = (int (f));
-
 
 // many of the following are for convenience and consistency
 // changing them is likely to have unpredicable consequences
@@ -335,8 +327,6 @@ namespace MIDILEARN // usage MIDILEARN::control::block
     };
 }
 
-// the following are actual MIDI numbers
-// not to be confused with part controls!
 namespace MIDI // usage MIDI::control::noteOn
 {
     enum control : unsigned char {
@@ -345,6 +335,8 @@ namespace MIDI // usage MIDI::control::noteOn
         controller,
         programChange = 8// also bank and root - split?
     };
+// the following are actual MIDI numbers
+// not to be confused with part controls!
     enum CC : unsigned short int {
         bankSelectMSB = 0,
         modulation,

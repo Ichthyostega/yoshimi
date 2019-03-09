@@ -2,7 +2,7 @@
     main.cpp
 
     Copyright 2009-2011, Alan Calvert
-    Copyright 2014-2018, Will Godfrey & others
+    Copyright 2014-2019, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -17,8 +17,13 @@
     You should have received a copy of the GNU General Public License
     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 
-    Modified October 2018
+    Modified February 2019
 */
+
+
+//#define AUTOSINGLE
+// this is still slighty experimental
+
 
 // approx timeout in seconds.
 #define SPLASH_TIME 3
@@ -34,11 +39,8 @@
 using namespace std;
 
 #include "Misc/Config.h"
-#include "Misc/Splash.h"
 #include "Misc/SynthEngine.h"
 #include "MusicIO/MusicClient.h"
-#include "MasterUI.h"
-#include "UI/MiscGui.h"
 #include <map>
 #include <list>
 #include <pthread.h>
@@ -46,9 +48,14 @@ using namespace std;
 #include <cstdio>
 #include <unistd.h>
 
-#include <FL/Fl.H>
-#include <FL/Fl_Window.H>
-#include <FL/Fl_PNG_Image.H>
+#ifdef GUI_FLTK
+    #include "MasterUI.h"
+    #include "UI/MiscGui.h"
+    #include <FL/Fl.H>
+    #include <FL/Fl_Window.H>
+    #include <FL/Fl_PNG_Image.H>
+    #include "Misc/Splash.h"
+#endif
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -90,7 +97,12 @@ void yoshimiSigHandler(int sig)
             firstRuntime->setLadi1Active();
             sigaction(SIGUSR1, &yoshimiSigAction, NULL);
             break;
-
+#ifdef AUTOSINGLE
+        case SIGUSR2: // start next instance
+            mainCreateNewInstance(0, true);
+            sigaction(SIGUSR2, &yoshimiSigAction, NULL);
+            break;
+#endif
         default:
             break;
     }
@@ -98,12 +110,15 @@ void yoshimiSigHandler(int sig)
 
 static void *mainGuiThread(void *arg)
 {
+#ifdef GUI_FLTK
     Fl::lock();
+#endif
 
     sem_post((sem_t *)arg);
 
     map<SynthEngine *, MusicClient *>::iterator it;
 
+#ifdef GUI_FLTK
     const int textHeight = 15;
     const int textY = 10;
     const unsigned char lred = 0xd7;
@@ -134,10 +149,12 @@ static void *mainGuiThread(void *arg)
     {
             usleep(33333);
     }
+#endif
     while (firstSynth == NULL); // just wait
 
+#ifdef GUI_FLTK
     GuiThreadMsg::sendMessage(firstSynth, GuiThreadMsg::NewSynthEngine, 0);
-
+#endif
     if (firstRuntime->autoInstance)
     {
         for (int i = 1; i < 32; ++i)
@@ -188,6 +205,7 @@ static void *mainGuiThread(void *arg)
                 cout << "\nStopped " << instanceID << "\n";
                 break;
             }
+#ifdef GUI_FLTK
             if (bShowGui)
             {
                 for (int i = 0; !_synth->getRuntime().LogList.empty() && i < 5; ++i)
@@ -199,6 +217,7 @@ static void *mainGuiThread(void *arg)
                     }
                 }
             }
+#endif
             if (_synth == firstSynth)
             {
                 int testInstance = startInstance;
@@ -208,6 +227,7 @@ static void *mainGuiThread(void *arg)
         }
 
         // where all the action is ...
+#ifdef GUI_FLTK
         if (bShowGui)
         {
             if (splashSet)
@@ -226,6 +246,7 @@ static void *mainGuiThread(void *arg)
             GuiThreadMsg::processGuiMessages();
         }
         else
+#endif
             usleep(33333);
     }
     if (firstRuntime->configChanged && (bShowGui | bShowCmdLine)) // don't want this if no cli or gui
@@ -283,7 +304,7 @@ int mainCreateNewInstance(unsigned int forceId, bool loadState)
             name = name + "-" + to_string(forceId);
         synth->loadStateAndUpdate(name);
     }
-
+#ifdef GUI_FLTK
     if (synth->getRuntime().showGui)
     {
         synth->setWindowTitle(musicClient->midiClientName());
@@ -296,8 +317,8 @@ int mainCreateNewInstance(unsigned int forceId, bool loadState)
         if (synth->getRuntime().midiEngine < 1)
             fl_alert("Yoshimi can't find an input system. Running with no MIDI");
     }
-
-    synth->getRuntime().StartupReport(musicClient);
+#endif
+    synth->getRuntime().StartupReport(musicClient->midiClientName());
     synth->Unmute();
 
     if (instanceID == 0)
@@ -343,6 +364,23 @@ void *commandThread(void *arg = NULL) // silence warning
 
 int main(int argc, char *argv[])
 {
+#ifdef AUTOSINGLE
+    char pidline[256];
+    memset(&pidline, 0, 255);
+    // test for *exact* name and only the oldest occurrance
+    FILE *fp = popen("pgrep -o -x yoshimi", "r");
+    fgets(pidline,255,fp);
+    //cout << "> " << pidline << " <" << endl;
+    pclose(fp);
+    int firstpid = stoi(pidline);
+    // we try to failsafe if no valid PID is returned
+    if (firstpid > 1 && firstpid != getpid())
+    {
+        //cout << "got it" << endl;
+        kill(firstpid, SIGUSR2);
+        return 0;
+    }
+#endif
     time(&old_father_time);
     here_and_now = old_father_time;
     struct termios  oldTerm;
@@ -353,7 +391,9 @@ int main(int argc, char *argv[])
     globalArgv = argv;
     bool bExitSuccess = false;
     map<SynthEngine *, MusicClient *>::iterator it;
+#ifdef GUI_FLTK
     bool guiStarted = false;
+#endif
     pthread_t thr;
     pthread_attr_t attr;
     sem_t semGui;
@@ -380,12 +420,14 @@ int main(int argc, char *argv[])
         {
             if (pthread_create(&thr, &attr, mainGuiThread, (void *)&semGui) == 0)
             {
+#ifdef GUI_FLTK
                 guiStarted = true;
+#endif
             }
             pthread_attr_destroy(&attr);
         }
     }
-
+#ifdef GUI_FLTK
     if (!guiStarted)
     {
         cout << "Yoshimi can't start main gui loop!" << endl;
@@ -393,11 +435,13 @@ int main(int argc, char *argv[])
     }
     sem_wait(&semGui);
     sem_destroy(&semGui);
-
+#endif
     memset(&yoshimiSigAction, 0, sizeof(yoshimiSigAction));
     yoshimiSigAction.sa_handler = yoshimiSigHandler;
     if (sigaction(SIGUSR1, &yoshimiSigAction, NULL))
         firstRuntime->Log("Setting SIGUSR1 handler failed");
+    if (sigaction(SIGUSR2, &yoshimiSigAction, NULL))
+        firstRuntime->Log("Setting SIGUSR2 handler failed");
     if (sigaction(SIGINT, &yoshimiSigAction, NULL))
         firstRuntime->Log("Setting SIGINT handler failed");
     if (sigaction(SIGHUP, &yoshimiSigAction, NULL))

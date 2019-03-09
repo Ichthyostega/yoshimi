@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2016-2018, Will Godfrey
+    Copyright 2016-2019, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -22,7 +22,7 @@
 
     This file is derivative of ZynAddSubFX original code.
 
-    Modified March 2018
+    Modified February 2019
 */
 
 #ifndef MICROTONAL_H
@@ -33,6 +33,7 @@
 using namespace std;
 
 #include "Misc/MiscFuncs.h"
+#include "Interface/FileMgr.h"
 
 class XMLwrapper;
 
@@ -40,7 +41,7 @@ class XMLwrapper;
 
 class SynthEngine;
 
-class Microtonal : private MiscFuncs
+class Microtonal : private MiscFuncs, FileMgr
 {
     public:
         Microtonal(SynthEngine *_synth): synth(_synth) { defaults(); }
@@ -94,8 +95,9 @@ class Microtonal : private MiscFuncs
         string reformatline(string text);
         bool validline(const char *line);
         int linetotunings(unsigned int nline, const char *line);
-        int loadline(FILE *file, char *line); // loads a line from the text file,
-                                              // ignoring the lines beginning with "!"
+        int loadLine(string text, size_t &point, char *line);
+        // loads a line from the text file,
+        // ignoring the lines beginning with "!"
         int octavesize;
 
         struct {

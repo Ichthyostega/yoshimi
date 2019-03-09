@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2009 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2014-2018, Will Godfrey & others
+    Copyright 2014-2019, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -21,7 +21,7 @@
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
     This file is derivative of original ZynAddSubFX code.
-    Modified December 2018
+    Modified January 2019
 */
 
 #include <cmath>
@@ -1594,8 +1594,7 @@ void ADnote::computeVoiceOscillatorFrequencyModulation(int nvoice, int FMmode)
 
         for (int i = 0; i < synth->sent_buffersize; ++i)
         {
-            int FMmodfreqhi;
-            FR2Z2I(tw[i], FMmodfreqhi);
+            int FMmodfreqhi = int(tw[i]);
             float FMmodfreqlo = tw[i]-FMmodfreqhi;
             if (FMmodfreqhi < 0)
                 FMmodfreqlo++;
@@ -2079,7 +2078,7 @@ int ADnote::noteout(float *outl, float *outr)
 
 
 // Release the key (NoteOff)
-void ADnote::relasekey(void)
+void ADnote::releasekey(void)
 {
     int nvoice;
     for (nvoice = 0; nvoice < NUM_VOICES; ++nvoice)
@@ -2087,19 +2086,19 @@ void ADnote::relasekey(void)
         if (!NoteVoicePar[nvoice].Enabled)
             continue;
         if (NoteVoicePar[nvoice].AmpEnvelope != NULL)
-            NoteVoicePar[nvoice].AmpEnvelope->relasekey();
+            NoteVoicePar[nvoice].AmpEnvelope->releasekey();
         if (NoteVoicePar[nvoice].FreqEnvelope != NULL)
-            NoteVoicePar[nvoice].FreqEnvelope->relasekey();
+            NoteVoicePar[nvoice].FreqEnvelope->releasekey();
         if (NoteVoicePar[nvoice].FilterEnvelope != NULL)
-            NoteVoicePar[nvoice].FilterEnvelope->relasekey();
+            NoteVoicePar[nvoice].FilterEnvelope->releasekey();
         if (NoteVoicePar[nvoice].FMFreqEnvelope != NULL)
-            NoteVoicePar[nvoice].FMFreqEnvelope->relasekey();
+            NoteVoicePar[nvoice].FMFreqEnvelope->releasekey();
         if (NoteVoicePar[nvoice].FMAmpEnvelope != NULL)
-            NoteVoicePar[nvoice].FMAmpEnvelope->relasekey();
+            NoteVoicePar[nvoice].FMAmpEnvelope->releasekey();
     }
-    NoteGlobalPar.FreqEnvelope->relasekey();
-    NoteGlobalPar.FilterEnvelope->relasekey();
-    NoteGlobalPar.AmpEnvelope->relasekey();
+    NoteGlobalPar.FreqEnvelope->releasekey();
+    NoteGlobalPar.FilterEnvelope->releasekey();
+    NoteGlobalPar.AmpEnvelope->releasekey();
 }
 
 // for future reference ... re replacing pow(x, y) by exp(y * log(x))

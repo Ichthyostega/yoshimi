@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2017-2018 Will Godfrey
+    Copyright 2017-2019 Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -22,7 +22,7 @@
 
     This file is a derivative of a ZynAddSubFX original.
 
-    Modified October 2018
+    Modified March 2019
 */
 
 #include <cmath>
@@ -346,14 +346,7 @@ float PADnoteParameters::getNhr(int n)
     switch (Phrpos.type)
     {
     case 1:
-        FR2Z2I(par2 * par2 * 100.0f, thresh);
-        thresh += 1;
-        /*
-         * leaving many of the old versions here
-         * as there may be subtle effects of adding
-         * or subtracting after the conversion
-         */
-        //thresh = (int)truncf(par2 * par2 * 100.0f) + 1;
+        thresh = int(par2 * par2 * 100.0f) + 1;
         if (n < thresh)
             result = n;
         else
@@ -361,9 +354,7 @@ float PADnoteParameters::getNhr(int n)
         break;
 
     case 2:
-        FR2Z2I(par2 * par2 * 100.0f, thresh);
-        thresh += 1;
-        //thresh = (int)truncf(par2 * par2 * 100.0f) + 1;
+        thresh = int(par2 * par2 * 100.0f) + 1;
         if (n < thresh)
             result = n;
         else
@@ -481,25 +472,17 @@ void PADnoteParameters::generatespectrum_bandwidthMode(float *spectrum,
             break;
         }
         bw = bw * powf(realfreq / basefreq, power);
-        int ibw;
-        FR2Z2I(bw / (synth->samplerate_f * 0.5f) * size, ibw);
-        ibw += 1;
-        //int ibw = (int)truncf((bw / (synth->samplerate_f * 0.5f) * size)) + 1;
+        int ibw = int((bw / (synth->samplerate_f * 0.5f) * size)) + 1;
         float amp = harmonics[nh - 1];
         if (resonance->Penabled)
             amp *= resonance->getfreqresponse(realfreq);
         if (ibw > profilesize)
         {   // if the bandwidth is larger than the profilesize
             float rap = sqrtf((float)profilesize / (float)ibw);
-            int cfreq;
-            FR2Z2I(realfreq / (synth->halfsamplerate_f) * size, cfreq);
-            cfreq -= (ibw / 2);
-            //int cfreq = (int)truncf(realfreq / (synth->halfsamplerate_f) * size) - ibw / 2;
+            int cfreq = int(realfreq / (synth->halfsamplerate_f) * size) - ibw / 2;
             for (int i = 0; i < ibw; ++i)
             {
-                int src;
-                FR2Z2I(i * rap * rap, src);
-                //int src = (int)truncf(i * rap * rap);
+                int src = int(i * rap * rap);
                 int spfreq = i + cfreq;
                 if (spfreq < 0)
                     continue;
@@ -571,9 +554,7 @@ void PADnoteParameters::generatespectrum_otherModes(float *spectrum,
         float amp = harmonics[nh - 1];
         if (resonance->Penabled)
             amp *= resonance->getfreqresponse(realfreq);
-        int cfreq;
-        FR2Z2I(realfreq / (synth->halfsamplerate_f) * size, cfreq);
-        //int cfreq = (int)truncf(realfreq / (synth->halfsamplerate_f) * size);
+        int cfreq = int(realfreq / (synth->halfsamplerate_f) * size);
         spectrum[cfreq] = amp + 1e-9f;
     }
 
@@ -709,9 +690,14 @@ void PADnoteParameters::setPan(char pan)
 }
 
 
-// Ported from ZynAddSubFX V 2.4.4
 bool PADnoteParameters::export2wav(std::string basefilename)
 {
+    string type;
+    if (synth->getRuntime().isLittleEndian)
+        type = "RIFF"; // default wave format
+    else
+        type = "RIFX";
+
     basefilename += "_PADsynth_";
     bool isOK = true;
     for(int k = 0; k < PAD_MAX_SAMPLES; ++k)
@@ -720,18 +706,47 @@ bool PADnoteParameters::export2wav(std::string basefilename)
             continue;
         char tmpstr[20];
         snprintf(tmpstr, 20, "_%02d", k + 1);
-        std::string filename = basefilename + std::string(tmpstr) + ".wav";
-        WavFile     wav(filename, synth->samplerate, 1);
-        if(wav.good())
+        string filename = basefilename + string(tmpstr) + EXTEN::MSwave;
+        int nsmps = sample[k].size;
+        unsigned int block;
+        unsigned short int sBlock;
+        unsigned int buffSize = 44 + sizeof(short int) * nsmps; // total size
+        char *buffer = (char*) malloc (buffSize);
+        strcpy(buffer, type.c_str());
+        block = nsmps * 4 + 36; // 2 channel shorts + part header
+        buffer[4] = block & 0xff;
+        buffer[5] = (block >> 8) & 0xff;
+        buffer[6] = (block >> 16) & 0xff;
+        buffer[7] = (block >> 24) & 0xff;
+        string temp = "WAVEfmt ";
+        strcpy(buffer + 8, temp.c_str());
+        block = 16; // subchunk size
+        memcpy(buffer + 16, &block, 4);
+        sBlock = 1; // AudioFormat uncompressed
+        memcpy(buffer + 20, &sBlock, 2);
+        sBlock = 1; // NumChannels mono
+        memcpy(buffer + 22, &sBlock, 2);
+        block = synth->samplerate;
+        memcpy(buffer + 24, &block, 4);
+        block = synth->samplerate * 2; // ByteRate (SampleRate * NumChannels * BitsPerSample) / 8
+        memcpy(buffer + 28, &block, 4);
+        sBlock = 2; // BlockAlign (bitsPerSample * channels) / 8
+        memcpy(buffer + 32, &sBlock, 2);
+        sBlock = 16; // BitsPerSample
+        memcpy(buffer + 34, &sBlock, 2);
+        temp = "data";
+        strcpy(buffer + 36, temp.c_str());
+        block = nsmps * 2; // data size
+        memcpy(buffer + 40, &block, 4);
+        for(int i = 0; i < nsmps; ++i)
         {
-            int nsmps = sample[k].size;
-            short int *smps = new short int[nsmps];
-            for(int i = 0; i < nsmps; ++i)
-                smps[i] = (short int)(sample[k].smp[i] * 32767.0f);
-            wav.writeMonoSamples(nsmps, smps);
+            sBlock = (sample[k].smp[i] * 32767.0f);
+            buffer [44 + i * 2] = sBlock & 0xff;
+            buffer [45 + i * 2] = (sBlock >> 8) & 0xff;
         }
-        else
-            isOK = false;
+        isOK = (saveData(buffer, buffSize, filename) == buffSize);
+        free (buffer);
+
     }
     return isOK;
 }
