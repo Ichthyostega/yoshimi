@@ -1,35 +1,42 @@
 From: Alessio Treglia <alessio@debian.org>
 Date: Fri, 4 Jun 2010 03:12:00 +0200
-Subject: Drop GCC options which are not supported on all architectures.
+Subject: Force common debian build options
+
+Drop GCC options which are not supported on all architectures.
 
 Author: Alessio Treglia <alessio@debian.org>
 Origin: Debian
 Bug: http://bugs.debian.org/584492
 Forwarded: yes
 ---
- src/CMakeLists.txt |    4 ++++
- 1 file changed, 4 insertions(+)
+ src/CMakeLists.txt | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
---- yoshimi.orig/src/CMakeLists.txt
-+++ yoshimi/src/CMakeLists.txt
-@@ -130,6 +130,9 @@
- set (BuildOptionsRelease
-     "-O3" CACHE STRING "Compile with optimisation for Release builds")
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index fe4b2f2..ab6223b 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -127,6 +127,12 @@ set (BuildOptionsBasic
+     CACHE STRING "basic compilier options"
+ )
  
 +set (BuildOptionsDebian
-+    "-O3 -ffast-math -fomit-frame-pointer -ldl" CACHE STRING "Debian build flags")
++    "-ffast-math -fomit-frame-pointer -ldl"
++    CACHE STRING "Debian build flags"
++)
 +
- find_package (PkgConfig REQUIRED)
- if (PKG_CONFIG_FOUND)
-     message(STATUS "Found pkg-config ${PKG_CONFIG_EXECUTABLE}")
-@@ -331,8 +334,8 @@
-     message (STATUS "DEBUG Build, flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG}")
- else (BuildForDebug)
-     set (CMAKE_BUILD_TYPE "Release")
--    set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptionsRelease})
--    message (STATUS "RELEASE Build, flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE}")
-+    set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptionsDebian})
-+    message (STATUS "RELEASE/Debian Build, flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE}")
- endif (BuildForDebug)
++
+ set (BuildOptionsDebug
+     "-O0 -g3 -ggdb -Wpointer-arith -Wpedantic -Wextra" CACHE STRING "Compile without optimisation and with debug information")
+ set (BuildOptionsRelease
+@@ -328,6 +334,10 @@ else (BuildFor0ld_X86)
+         endif (BuildForCore2_X86_64)
+     endif (BuildForAMD_X86_64)
+ endif (BuildFor0ld_X86)
++### Hard override patched in for Debian build
++set (OurCxxFlags ${BuildOptionsDebian})
++message (STATUS "DEBIAN Build: force build flags to: ${BuildOptionsDebian} ${CMAKE_CXX_FLAGS_RELEASE}")
++###(End) override patched in for Debian build
+ set (CMAKE_CXX_FLAGS "${OurCxxFlags} ${CMAKE_CXX_FLAGS}")
  
- configure_file(
+ if (BuildForDebug)
