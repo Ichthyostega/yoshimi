@@ -7,14 +7,12 @@ Origin: Debian
 Bug: http://bugs.debian.org/584492
 Forwarded: yes
 ---
- src/CMakeLists.txt | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ src/CMakeLists.txt |    4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
-index 27d5bc0..19b6540 100644
---- a/src/CMakeLists.txt
-+++ b/src/CMakeLists.txt
-@@ -130,6 +130,9 @@ set (BuildOptionsDebug
+--- yoshimi.orig/src/CMakeLists.txt
++++ yoshimi/src/CMakeLists.txt
+@@ -130,6 +130,9 @@
  set (BuildOptionsRelease
      "-O3" CACHE STRING "Compile with optimisation for Release builds")
  
@@ -24,13 +22,14 @@ index 27d5bc0..19b6540 100644
  find_package (PkgConfig REQUIRED)
  if (PKG_CONFIG_FOUND)
      message(STATUS "Found pkg-config ${PKG_CONFIG_EXECUTABLE}")
-@@ -330,7 +333,8 @@ if (BuildForDebug)
+@@ -331,8 +334,8 @@
      message (STATUS "DEBUG Build, flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG}")
  else (BuildForDebug)
      set (CMAKE_BUILD_TYPE "Release")
 -    set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptionsRelease})
-+#   set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptionsRelease})
+-    message (STATUS "RELEASE Build, flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE}")
 +    set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptionsDebian})
-     message (STATUS "RELEASE Build, flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE}")
++    message (STATUS "RELEASE/Debian Build, flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE}")
  endif (BuildForDebug)
  
+ configure_file(
