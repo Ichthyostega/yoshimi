@@ -104,12 +104,10 @@ LV2_Descriptor yoshimi_lv2_multi_desc =
 void YoshimiLV2Plugin::process(uint32_t sample_count)
 {
     if (sample_count == 0)
-    {
         return;
-    }
 
     /*
-     * Our implimentation of LV2 has a problem with envelopes. In general
+     * Our implementation of LV2 has a problem with envelopes. In general
      * the bigger the buffer size the shorter the envelope, and whichever
      * is the smallest (host size or Yoshimi size) determines the time.
      *
@@ -143,11 +141,11 @@ void YoshimiLV2Plugin::process(uint32_t sample_count)
             next_frame = event->time.frames;
             if (next_frame >= sample_count)
                 continue;
-            /*if (next_frame == _bufferSize - 1
+            if (next_frame == _bufferSize - 1
                && processed == 0)
             {
                 next_frame = 0;
-            }*/
+            }
             uint32_t to_process = next_frame - offs;
 
             if ((to_process > 0)
@@ -164,7 +162,6 @@ void YoshimiLV2Plugin::process(uint32_t sample_count)
                         tmpLeft [i] += mastered_chunk;
                         tmpRight [i] += mastered_chunk;
                     }
-
                     mastered += mastered_chunk;
                 }
                 processed += to_process;
@@ -192,7 +189,6 @@ void YoshimiLV2Plugin::process(uint32_t sample_count)
             mastered += mastered_chunk;
         }
         processed += to_process;
-
     }
 
     LV2_Atom_Sequence *aSeq = static_cast<LV2_Atom_Sequence *>(_notifyDataPortOut);
@@ -219,7 +215,6 @@ void YoshimiLV2Plugin::process(uint32_t sample_count)
     {
         aSeq->atom.size = sizeof(LV2_Atom_Sequence_Body);
     }
-
 }
 
 

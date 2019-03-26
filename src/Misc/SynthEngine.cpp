@@ -223,11 +223,9 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
     samplerate_f = samplerate = audiosrate;
     halfsamplerate_f = samplerate_f / 2;
 
-    buffersize = Runtime.Buffersize;
-    if (buffersize > audiobufsize)
-        buffersize = audiobufsize;
+    //buffersize = Runtime.Buffersize;
+    buffersize = ActualBufferSize;
     buffersize_f = buffersize;
-    sent_all_buffersize_f = buffersize_f;
     bufferbytes = buffersize * sizeof(float);
 
     oscilsize_f = oscilsize = Runtime.Oscilsize;
@@ -1946,8 +1944,6 @@ void SynthEngine::mutewrite(int what)
 // Master audio out (the final sound)
 int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_MIDI_PARTS + 1], int to_process)
 {
-    //if (to_process < 64)
-        //Runtime.Log("Process " + to_string(to_process));
     static unsigned int VUperiod = samplerate / 20;
     /*
      * The above line gives a VU refresh of at least 50mS
@@ -1961,12 +1957,12 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
     sent_buffersize = buffersize;
     sent_bufferbytes = bufferbytes;
     sent_buffersize_f = buffersize_f;
-
-    if ((to_process > 0) && (to_process < buffersize))
+    if (to_process < buffersize)
     {
         sent_buffersize = to_process;
         sent_bufferbytes = sent_buffersize * sizeof(float);
-        sent_buffersize_f = sent_buffersize;;
+        sent_buffersize_f = sent_buffersize;
+        //Runtime.Log("Short Buffer");
     }
 
     memset(mainL, 0, sent_bufferbytes);
