@@ -25,7 +25,6 @@
 #include "Misc/SynthEngine.h"
 #include "Misc/FormatFuncs.h"
 #include "MusicIO/AlsaEngine.h"
-#include <iostream>
 
 using func::asString;
 
@@ -68,8 +67,8 @@ bool AlsaEngine::openAudio(void)
             {
                 if (prepBuffers())
                 {
-                    int buffersize = getBuffersize();
-                    interleaved = new int[buffersize * card_chans];
+                    int buffersize = audio.period_size;
+                    interleaved = new int[audio.buffer_size * card_chans];
                     if (NULL == interleaved)
                         goto bail_out;
                     memset(interleaved, 0, sizeof(int) * buffersize * card_chans);
@@ -345,7 +344,7 @@ bool AlsaEngine::prepHwparams(void)
     {
         synth->getRuntime().Log("Asked for buffersize " + asString(ask_buffersize, 2)
                     + ", Alsa dictates " + asString((unsigned int)audio.period_size), 2);
-        //synth->getRuntime().Buffersize = audio.period_size; // we shouldn't need to do this :(
+        synth->getRuntime().Buffersize = audio.period_size; // we shouldn't need to do this :(
     }
     return true;
 
@@ -387,7 +386,7 @@ bail_out:
 
 void AlsaEngine::Interleave(int offset, int buffersize)
 {
-    int idx = offset;
+    //int idx = offset;
     bool byte_swap = (little_endian != card_endian);
     unsigned short int tmp16a, tmp16b;
     int chans;
@@ -398,6 +397,7 @@ void AlsaEngine::Interleave(int offset, int buffersize)
 
     if (card_bits == 16)
     {
+        int idx = offset;
         chans = card_chans / 2; // because we're pairing them on a single integer
         for (int frame = 0; frame < buffersize; ++frame)
         {
@@ -414,6 +414,7 @@ void AlsaEngine::Interleave(int offset, int buffersize)
     }
     else
     {
+        int idx = offset << 1;
         chans = card_chans;
         for (int frame = 0; frame < buffersize; ++frame)
         {
@@ -472,14 +473,26 @@ void *AlsaEngine::AudioThread(void)
             }
             audio.pcm_state = snd_pcm_state(audio.handle);
         }
+
         if (audio.pcm_state == SND_PCM_STATE_RUNNING)
         {
-            int alsa_buff = ActualBufferSize;//getBuffersize();
-            for (int offset = 0; offset < alsa_buff; offset += ActualBufferSize)
+            int alsa_buff = audio.buffer_size;
+            int offset = 0;
+            int loops = 0;
+            while ((offset + ActualBufferSize) < alsa_buff)
             {
-                synth->MasterAudio(zynLeft, zynRight, ActualBufferSize);//getAudio();
+                synth->MasterAudio(zynLeft, zynRight, ActualBufferSize);
                 Interleave(offset, ActualBufferSize);
+                offset += ActualBufferSize;
+                ++ loops;
             }
+            int remainder = alsa_buff - offset;
+            if ( remainder > 0)
+            {
+                synth->MasterAudio(zynLeft, zynRight, remainder);
+                Interleave(offset, remainder);
+            }
+
             Write(alsa_buff);
         }
         else

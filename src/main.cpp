@@ -335,7 +335,7 @@ int mainCreateNewInstance(unsigned int forceId, bool loadState)
         goto bail_out;
     }
 
-    if (!synth->Init(musicClient->getSamplerate(), musicClient->getBuffersize()))
+    if (!synth->Init(musicClient->getSamplerate()))
     {
         synth->getRuntime().Log("SynthEngine init failed");
         goto bail_out;

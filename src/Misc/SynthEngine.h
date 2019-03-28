@@ -80,7 +80,7 @@ class SynthEngine
         TextMsgBuffer& textMsgBuffer;
         SynthEngine(int argc, char **argv, bool _isLV2Plugin = false, unsigned int forceId = 0);
         ~SynthEngine();
-        bool Init(unsigned int audiosrate, int audiobufsize);
+        bool Init(unsigned int audiosrate);
 
         bool savePatchesXML(string filename);
         void add2XML(XMLwrapper *xml);
