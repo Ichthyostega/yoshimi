@@ -1,3 +1,10 @@
+yoshimi (1.5.10.2-1ppa1~bionic) bionic; urgency=low
+
+  * Build for Ubuntu/Bionic (18.04 LTS)
+  * This is the latest stable/bugfix Yoshimi release
+
+ -- Hermann Vosseler <deb@ichthyostega.de>  Sun, 07 Apr 2019 16:24:11 +0200
+
 yoshimi (1.5.10.2-1~stretch) Lumiera-stretch-tools; urgency=low
 
   * New upstream bugfix version 1.5.10.2
