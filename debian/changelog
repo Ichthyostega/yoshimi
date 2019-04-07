@@ -1,3 +1,13 @@
+yoshimi (1.5.10.2-1~stretch) Lumiera-stretch-tools; urgency=low
+
+  * New upstream bugfix version 1.5.10.2
+  * again includeing the examples in the doc package
+
+  * Rebuild/Backport for Debian/Stretch.
+  * unofficial DEB package by Ichthyostega
+
+ -- Hermann Vosseler <deb@ichthyostega.de>  Sun, 07 Apr 2019 03:57:20 +0200
+
 yoshimi (1.5.10.1-1) unstable; urgency=medium
 
   * Team upload.
