@@ -90,6 +90,8 @@ InterChange::InterChange(SynthEngine *_synth) :
     returnsBuffer(NULL),
     blockRead(0),
     tick(0),
+    flagsValue(0xffffffff),
+    sortResultsThreadHandle(0),
     lockTime(0),
     swapRoot1(UNUSED),
     swapBank1(UNUSED),
@@ -3691,7 +3693,7 @@ void InterChange::commandPart(CommandBlock *getData)
         case PART::control::instrumentType:// done elsewhere
             break;
         case PART::control::defaultInstrumentCopyright: // done elsewhere
-            ;
+            break;
         case PART::control::resetAllControllers:
             if (write)
                 part->SetController(0x79,0);

@@ -862,6 +862,7 @@ void SUBnote::initfilterbank(void)
 
             default:
                 hgain = 1.0f - hmagnew;
+                break;
         }
         gain *= hgain;
         reduceamp += hgain;

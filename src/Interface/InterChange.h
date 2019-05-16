@@ -54,7 +54,6 @@ class InterChange : private DataText
         ~InterChange();
         bool Init();
 
-        CommandBlock commandData;
 #ifndef YOSHIMI_LV2_PLUGIN
         ringBuff *fromCLI;
 #endif

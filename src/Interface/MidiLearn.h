@@ -44,7 +44,6 @@ class MidiLearn : private DataText
         bool saveXML(string filename); // true for load ok, otherwise false
         void add2XML(XMLwrapper *xml);
         void getfromXML(XMLwrapper *xml);
-        CommandBlock commandData;
 
         struct Control{
             unsigned char type;

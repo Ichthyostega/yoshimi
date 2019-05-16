@@ -113,17 +113,21 @@ SynthEngine::SynthEngine(int argc, char **argv, bool _isLV2Plugin, unsigned int 
     interchange(this),
     midilearn(this),
     mididecode(this),
-    //unifiedpresets(this),
+    unifiedpresets(),
     Runtime(this, argc, argv),
     presetsstore(this),
     textMsgBuffer(TextMsgBuffer::instance()),
+    legatoPart(0),
+    masterMono(false),
     fadeAll(0),
+    fadeStep(0),
     fadeLevel(0),
     samplerate(48000),
     samplerate_f(samplerate),
     halfsamplerate_f(samplerate / 2),
     buffersize(128),
     buffersize_f(buffersize),
+    bufferbytes(buffersize * sizeof(float)),
     oscilsize(512),
     oscilsize_f(oscilsize),
     halfoscilsize(oscilsize / 2),
@@ -131,18 +135,28 @@ SynthEngine::SynthEngine(int argc, char **argv, bool _isLV2Plugin, unsigned int 
     sent_buffersize(0),
     sent_bufferbytes(0),
     sent_buffersize_f(0),
+    TransVolume(0.0),
+    Pvolume(90),
+    ControlStep(0.0),
+    Pkeyshift(64),
+    syseffnum(0),
+    inseffnum(0),
     ctl(NULL),
     microtonal(this),
     fft(NULL),
+    VUcount(0),
+    VUready(false),
     muted(0),
-    //stateXMLtree(NULL),
+    volume(0.0),
+    keyshift(0),
 #ifdef GUI_FLTK
     guiMaster(NULL),
     guiClosedCallback(NULL),
     guiCallbackArg(NULL),
 #endif
     LFOtime(0),
-    windowTitle("Yoshimi" + asString(uniqueId))
+    windowTitle("Yoshimi" + asString(uniqueId)),
+    prng{}
 {
     union {
         uint32_t u32 = 0x11223344;
@@ -2048,8 +2062,8 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
             for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
             {
                 if (partLocal[npart]        // it's enabled
-                 && Psysefxvol[nefx][npart]      // it's sending an output
-                 && part[npart]->Paudiodest & 1) // it's connected to the main outs
+                 && Psysefxvol[nefx][npart]        // it's sending an output
+                 && (part[npart]->Paudiodest & 1)) // it's connected to the main outs
                 {
                     // the output volume of each part to system effect
                     float vol = sysefxvol[nefx][npart];
@@ -2336,11 +2350,6 @@ void SynthEngine::setPsysefxsend(int Pefxfrom, int Pefxto, char Pvol)
 {
     Psysefxsend[Pefxfrom][Pefxto] = Pvol;
     sysefxsend[Pefxfrom][Pefxto]  = powf(0.1f, (1.0f - Pvol / 96.0f) * 2.0f);
-}
-
-void SynthEngine::setPaudiodest(int value)
-{
-    Paudiodest = value;
 }
 
 
@@ -3619,6 +3628,7 @@ float SynthEngine::getConfigLimits(CommandBlock *getData)
             break;
         case CONFIG::control::enableNRPNs:
             def = 1;
+            break;
 
         case CONFIG::control::saveCurrentConfig:
             break;

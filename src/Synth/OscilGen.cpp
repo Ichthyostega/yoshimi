@@ -491,6 +491,7 @@ void OscilGen::getbasefunction(float *smps)
 
                 default:
                     smps[i] = -sinf(TWOPI * (float)i / synth->oscilsize_f);
+                    break;
         }
     }
 }

@@ -353,6 +353,7 @@ string DataText::resolveVector(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = "Unrecognised";
+            break;
     }
 
     if (control == VECTOR::control::undefined)
@@ -456,7 +457,7 @@ string DataText::resolveMicrotonal(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = "Unrecognised";
-
+            break;
     }
 
     if (value < 1 && control >= SCALES::control::tuning && control <= SCALES::control::importKbm)
@@ -761,6 +762,7 @@ string DataText::resolveConfig(CommandBlock *getData, bool addValue)
                         break;
                     default:
                         contstr += "OFF";
+                        break;
                 }
             }
             showValue = false;
@@ -780,6 +782,7 @@ string DataText::resolveConfig(CommandBlock *getData, bool addValue)
                         break;
                     default:
                         contstr += "OFF";
+                        break;
                 }
             }
             showValue = false;
@@ -1159,6 +1162,7 @@ string DataText::resolveMain(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = "Unrecognised";
+            break;
     }
 
     return ("Main " + contstr);
@@ -1542,7 +1546,7 @@ string DataText::resolvePart(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = "Unrecognised";
-
+            break;
     }
 
     if(addValue)
@@ -1633,6 +1637,7 @@ string DataText::resolveAdd(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = "Unrecognised";
+            break;
     }
 
     return ("Part " + to_string(npart + 1) + " Kit " + to_string(kititem + 1) + " AddSynth " + name + contstr);
@@ -1888,6 +1893,7 @@ string DataText::resolveAddVoice(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = "Unrecognised";
+            break;
     }
 
     if(addValue)
@@ -2040,6 +2046,7 @@ string DataText::resolveSub(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = "Unrecognised";
+            break;
     }
 
     if(addValue)
@@ -2234,6 +2241,7 @@ string DataText::resolvePad(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = "Unrecognised";
+            break;
     }
 
     if(addValue)
@@ -2417,6 +2425,7 @@ string DataText::resolveOscillator(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = "Unrecognised";
+            break;
     }
 
     return ("Part " + to_string(npart + 1) + " Kit " + to_string(kititem + 1) + eng_name + name + contstr + isPad);
@@ -2513,6 +2522,7 @@ string DataText::resolveResonance(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = "Unrecognised";
+            break;
     }
     if(addValue)
     {
@@ -2608,6 +2618,7 @@ string DataText::resolveLFO(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = "Unrecognised";
+            break;
     }
 
     return ("Part " + to_string(npart + 1) + " Kit " + to_string(kititem + 1) + name + lfo + " LFO " + contstr);
@@ -2758,6 +2769,7 @@ string DataText::resolveFilter(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = "Unrecognised";
+            break;
     }
     string extra = "";
     if (control >= FILTERINSERT::control::formantFrequency && control <= FILTERINSERT::control::formantAmplitude)
@@ -2891,6 +2903,7 @@ string DataText::resolveEnvelope(CommandBlock *getData, bool)
         default:
             showValue = false;
             contstr = "Unrecognised";
+            break;
     }
 
     return ("Part " + to_string(npart + 1) + " Kit " + to_string(int(kititem + 1)) + name  + env + " Env " + contstr);
@@ -3200,6 +3213,7 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = " Unrecognised";
+            break;
     }
     //std::cout << "control " << int(control) << std::endl;
     if (control == 16 && kititem != EFFECT::type::eq)
