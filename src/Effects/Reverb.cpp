@@ -170,7 +170,7 @@ void Reverb::processmono(int ch, float *output)
         int comblength = comblen[j];
         float lpcombj = lpcomb[j];
 
-        for (i = 0; i < synth->sent_buffersize; ++i)
+        for (i = 0; i < synth->buffersize; ++i)
         {
             fbout = comb[j][ck] * combfb[j];
             fbout = fbout * (1.0f - lohifb) + lpcombj * lohifb;
@@ -191,7 +191,7 @@ void Reverb::processmono(int ch, float *output)
     {
         int ak = apk[j];
         int aplength = aplen[j];
-        for (i = 0; i < synth->sent_buffersize; ++i)
+        for (i = 0; i < synth->buffersize; ++i)
         {
             tmp = ap[j][ak];
             ap[j][ak] = 0.7f * tmp + output[i];
@@ -210,7 +210,7 @@ void Reverb::out(float *smps_l, float *smps_r)
     if (!Pvolume && insertion)
         return;
     int i;
-    for (i = 0; i < synth->sent_buffersize; ++i)
+    for (i = 0; i < synth->buffersize; ++i)
     {
         inputbuf[i] = (smps_l[i] + smps_r[i]) / 2.0f;
         // Initial delay r
@@ -226,7 +226,7 @@ void Reverb::out(float *smps_l, float *smps_r)
     }
 
     if (bandwidth)
-        bandwidth->process(synth->sent_buffersize, inputbuf);
+        bandwidth->process(synth->buffersize, inputbuf);
 
     if (lpf)
     {
@@ -261,7 +261,7 @@ void Reverb::out(float *smps_l, float *smps_r)
         lvol *= 2.0f;
         rvol *= 2.0f;
     }
-    for (i = 0; i < synth->sent_buffersize; ++i)
+    for (i = 0; i < synth->buffersize; ++i)
     {
         efxoutl[i] *= lvol;
         efxoutr[i] *= rvol;

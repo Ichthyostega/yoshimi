@@ -968,8 +968,8 @@ void Part::ComputePartSmps(void)
     tmpoutr = synth->getRuntime().genMixr;
     for (int nefx = 0; nefx < NUM_PART_EFX + 1; ++nefx)
     {
-        memset(partfxinputl[nefx], 0, synth->sent_bufferbytes);
-        memset(partfxinputr[nefx], 0, synth->sent_bufferbytes);
+        memset(partfxinputl[nefx], 0, synth->bufferbytes);
+        memset(partfxinputr[nefx], 0, synth->bufferbytes);
     }
 
     for (k = 0; k < POLIPHONY; ++k)
@@ -992,7 +992,7 @@ void Part::ComputePartSmps(void)
                 if (adnote->isReady())
                 {
                     adnote->noteout(tmpoutl, tmpoutr);
-                    for (int i = 0; i < synth->sent_buffersize; ++i)
+                    for (int i = 0; i < synth->buffersize; ++i)
                     {   // add the ADnote to part(mix)
                         partfxinputl[sendcurrenttofx][i] += tmpoutl[i];
                         partfxinputr[sendcurrenttofx][i] += tmpoutr[i];
@@ -1011,7 +1011,7 @@ void Part::ComputePartSmps(void)
                 if (subnote->isReady())
                 {
                     subnote->noteout(tmpoutl, tmpoutr);
-                    for (int i = 0; i < synth->sent_buffersize; ++i)
+                    for (int i = 0; i < synth->buffersize; ++i)
                     {   // add the SUBnote to part(mix)
                         partfxinputl[sendcurrenttofx][i] += tmpoutl[i];
                         partfxinputr[sendcurrenttofx][i] += tmpoutr[i];
@@ -1030,7 +1030,7 @@ void Part::ComputePartSmps(void)
                 if (padnote->isReady())
                 {
                     padnote->noteout(tmpoutl, tmpoutr);
-                    for (int i = 0 ; i < synth->sent_buffersize; ++i)
+                    for (int i = 0 ; i < synth->buffersize; ++i)
                     {   // add the PADnote to part(mix)
                         partfxinputl[sendcurrenttofx][i] += tmpoutl[i];
                         partfxinputr[sendcurrenttofx][i] += tmpoutr[i];
@@ -1065,7 +1065,7 @@ void Part::ComputePartSmps(void)
             partefx[nefx]->out(partfxinputl[nefx], partfxinputr[nefx]);
             if (Pefxroute[nefx] == 2)
             {
-                for (int i = 0; i < synth->sent_buffersize; ++i)
+                for (int i = 0; i < synth->buffersize; ++i)
                 {
                     partfxinputl[nefx + 1][i] += partefx[nefx]->efxoutl[i];
                     partfxinputr[nefx + 1][i] += partefx[nefx]->efxoutr[i];
@@ -1073,21 +1073,21 @@ void Part::ComputePartSmps(void)
             }
         }
         int routeto = (Pefxroute[nefx] == 0) ? nefx + 1 : NUM_PART_EFX;
-        for (int i = 0; i < synth->sent_buffersize; ++i)
+        for (int i = 0; i < synth->buffersize; ++i)
         {
             partfxinputl[routeto][i] += partfxinputl[nefx][i];
             partfxinputr[routeto][i] += partfxinputr[nefx][i];
         }
     }
-    memcpy(partoutl, partfxinputl[NUM_PART_EFX], synth->sent_bufferbytes);
-    memcpy(partoutr, partfxinputr[NUM_PART_EFX], synth->sent_bufferbytes);
+    memcpy(partoutl, partfxinputl[NUM_PART_EFX], synth->bufferbytes);
+    memcpy(partoutr, partfxinputr[NUM_PART_EFX], synth->bufferbytes);
 
     // Kill All Notes if killallnotes true
     if (killallnotes)
     {
-        for (int i = 0; i < synth->sent_buffersize; ++i)
+        for (int i = 0; i < synth->buffersize; ++i)
         {
-            float tmp = (synth->sent_buffersize - i) / synth->sent_buffersize_f;
+            float tmp = (synth->buffersize - i) / synth->buffersize_f;
             partoutl[i] *= tmp;
             partoutr[i] *= tmp;
         }
