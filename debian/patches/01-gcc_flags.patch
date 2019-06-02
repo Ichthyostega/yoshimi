@@ -13,10 +13,10 @@ Forwarded: yes
  1 file changed, 10 insertions(+)
 
 diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
-index fe4b2f2..ab6223b 100644
+index 90344b2..6ec819e 100644
 --- a/src/CMakeLists.txt
 +++ b/src/CMakeLists.txt
-@@ -127,6 +127,12 @@ set (BuildOptionsBasic
+@@ -130,6 +130,12 @@ set (BuildOptionsBasic
      CACHE STRING "basic compilier options"
  )
  
@@ -29,7 +29,7 @@ index fe4b2f2..ab6223b 100644
  set (BuildOptionsDebug
      "-O0 -g3 -ggdb -Wpointer-arith -Wpedantic -Wextra" CACHE STRING "Compile without optimisation and with debug information")
  set (BuildOptionsRelease
-@@ -328,6 +334,10 @@ else (BuildFor0ld_X86)
+@@ -331,6 +337,10 @@ else (BuildFor0ld_X86)
          endif (BuildForCore2_X86_64)
      endif (BuildForAMD_X86_64)
  endif (BuildFor0ld_X86)
