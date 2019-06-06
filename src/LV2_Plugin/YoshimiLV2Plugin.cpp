@@ -256,7 +256,7 @@ YoshimiLV2Plugin::YoshimiLV2Plugin(SynthEngine *synth, double sampleRate, const 
     MusicIO(synth),
     _synth(synth),
     _sampleRate(static_cast<uint32_t>(sampleRate)),
-    _bufferSize(0),
+    _maxOutputBufferSize(0),
     _bundlePath(bundlePath),
     _midiDataPort(NULL),
     _notifyDataPortOut(NULL),
@@ -307,8 +307,8 @@ YoshimiLV2Plugin::YoshimiLV2Plugin(SynthEngine *synth, double sampleRate, const 
                 if ((options->key == minBufSz || options->key == maxBufSz) && options->type == atomInt)
                 {
                     uint32_t bufSz = *static_cast<const uint32_t *>(options->value);
-                    if (_bufferSize < bufSz)
-                        _bufferSize = bufSz;
+                    if (_maxOutputBufferSize < bufSz)
+                        _maxOutputBufferSize = bufSz;
                 }
                 if (options->key == nomBufSz && options->type == atomInt)
                     nomBufSize = *static_cast<const uint32_t *>(options->value);
@@ -319,9 +319,14 @@ YoshimiLV2Plugin::YoshimiLV2Plugin(SynthEngine *synth, double sampleRate, const 
 
     //_synth->getRuntime().Log("Buffer size " + to_string(nomBufSize));;
     if (nomBufSize > 0)
-        _bufferSize = nomBufSize;
-    else if (_bufferSize == 0)
-        _bufferSize = MAX_BUFFER_SIZE;
+    {
+//////////////////////////////////TODO buffer branch(Ichthyo 8/2019): find a way how to integrate the nomBufSize setting properly. Should set the buffer size of the Synth (=processing buffer), not the output buffer. The latter *can* always become as large as YOSHIMI_LV2_BUF_SIZE__maxBlockLength and thus we need to prepare that much memory allocation 
+//      _bufferSize = nomBufSize;
+        _synth->getRuntime().Log("TODO LV2: should set the *processing buffer size* to " + to_string(nomBufSize));
+    }
+
+    if (_maxOutputBufferSize == 0)
+        _maxOutputBufferSize = MAX_BUFFER_SIZE;
 }
 
 
@@ -343,7 +348,7 @@ YoshimiLV2Plugin::~YoshimiLV2Plugin()
 
 bool YoshimiLV2Plugin::init()
 {
-    if (_uridMap.map == NULL || _sampleRate == 0 || _bufferSize == 0 || _midi_event_id == 0 || _yoshimi_state_id == 0 || _atom_string_id == 0)
+    if (_uridMap.map == NULL || _sampleRate == 0 || _maxOutputBufferSize == 0 || _midi_event_id == 0 || _yoshimi_state_id == 0 || _atom_string_id == 0)
         return false;
     if (!prepBuffers())
         return false;
