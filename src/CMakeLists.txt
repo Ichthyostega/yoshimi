@@ -17,8 +17,6 @@
 #   You should have received a copy of the GNU General Public License
 #   along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 
-# Modified January 2019
-
 project (Yoshimi)
 cmake_minimum_required (VERSION 3.0)
 cmake_policy (VERSION 3.0)
@@ -35,14 +33,18 @@ add_definitions(-std=gnu++11) # various versions of cmake
 add_definitions(-Wall)
 
 # vvv
-#add_definitions(-Wpedantic)
+#add_definitions(-Wpedantic) # full ISO spec
+#add_definitions(-Werror) # warnings as errors
+#add_definitions(-Wfatal-errors) # stop on first
 #add_definitions(-Werror=format-security)
 #add_definitions(-Wextra)
+add_definitions(-Wno-vla) # Nothing wrong with variable length arrays
 # ^^^ comment these out on release pushes
 
-set (YOSHIMI_VERSION "1.5.10.1")
+set (YOSHIMI_VERSION "1.6.0")
+
 add_definitions (-DMIN_CONFIG_MAJOR=1)
-add_definitions (-DMIN_CONFIG_MINOR=5)
+add_definitions (-DMIN_CONFIG_MINOR=6)
 
 file (WRITE version.txt "${YOSHIMI_VERSION}")
 
@@ -86,11 +88,12 @@ option (BuildForNEON "Build for ARM Cortex A9 system" OFF)
 option (BuildForThisCPU "Build for presently running system" OFF)
 option (BuildForDebug "Debug build without optimisation. Enable gdb debugging support" OFF)
 
+option (BuildWithFLTK "Build with FLTK GUI" ON)
+
 #option to build lv2 plugin
 option (LV2Plugin "Build yoshimi lv2 plugin interface" ON)
 
 # developer info
-option (ShowGuiReports "Enable GUI control reports" OFF)
 option (ShowNoteOnTimes "Report Note-On Times" OFF)
 option (ReportNotes "Report Notes On/Off" OFF)
 
@@ -116,7 +119,7 @@ set (BuildOptions_NEON
 )
 
 set (BuildOptionsThisCPU
-    "-march=native -Wall -msse -msse2 -mfpmath=sse -ffast-math -fno-finite-math-only -fomit-frame-pointer"
+    "-march=native -mtune=native -Wall"
   CACHE STRING "Current CPU compiler options"
 )
 
@@ -129,6 +132,10 @@ set (BuildOptionsDebug
     "-O0 -g3 -ggdb -Wpointer-arith -Wpedantic -Wextra" CACHE STRING "Compile without optimisation and with debug information")
 set (BuildOptionsRelease
     "-O3" CACHE STRING "Compile with optimisation for Release builds")
+
+if (BuildWithFLTK)
+    add_definitions (-DGUI_FLTK)
+endif(BuildWithFLTK)
 
 find_package (PkgConfig REQUIRED)
 if (PKG_CONFIG_FOUND)
@@ -233,25 +240,26 @@ else(FONTCONFIG_FOUND)
 endif(FONTCONFIG_FOUND)
 
 
+if (BuildWithFLTK)
 # libcairo
-pkg_check_modules (LIBCAIRO REQUIRED cairo)
-if (LIBCAIRO_FOUND)
-    message (STATUS "Found libcairo ${LIBCAIRO_VERSION}")
-else (LIBCAIRO_FOUND)
-    message (FATAL_ERROR "libcairo required but not found")
-endif (LIBCAIRO_FOUND)
-
+    pkg_check_modules (LIBCAIRO REQUIRED cairo)
+    if (LIBCAIRO_FOUND)
+        message (STATUS "Found libcairo ${LIBCAIRO_VERSION}")
+    else (LIBCAIRO_FOUND)
+        message (FATAL_ERROR "libcairo required but not found")
+    endif (LIBCAIRO_FOUND)
 
 # fltk
-find_package (FLTK REQUIRED)
-if (FLTK_FOUND)
-    message (STATUS "Found FLTK")
-else (FLTK_FOUND)
-    message (FATAL_ERROR "FLTK required but not found")
-endif (FLTK_FOUND)
-mark_as_advanced (FLTK_DIR)
-mark_as_advanced (FLTK_FLUID_EXECUTABLE)
-mark_as_advanced (FLTK_MATH_LIBRARY)
+    find_package (FLTK REQUIRED)
+    if (FLTK_FOUND)
+        message (STATUS "Found FLTK")
+    else (FLTK_FOUND)
+        message (FATAL_ERROR "FLTK required but not found")
+    endif (FLTK_FOUND)
+    mark_as_advanced (FLTK_DIR)
+    mark_as_advanced (FLTK_FLUID_EXECUTABLE)
+    mark_as_advanced (FLTK_MATH_LIBRARY)
+endif(BuildWithFLTK)
 
 
 # libncurses / libcursesw
@@ -298,8 +306,6 @@ if(READLINE_FOUND)
 else(READLINE_FOUND)
     message( FATAL_ERROR "Readline library not found! Please install development components (libreadline-dev)" )
 endif(READLINE_FOUND)
-
-set (YOSHI_INCLUDES ${FLTK_INCLUDE_DIR})
 
 # set platform specific compiler flags
 if (BuildFor0ld_X86)
@@ -354,15 +360,22 @@ set (Effects_sources
 
 set (Misc_sources
     Misc/Config.cpp  Misc/SynthEngine.cpp  Misc/Bank.cpp  Misc/Splash.cpp
-    Misc/Microtonal.cpp   Misc/Part.cpp  Misc/XMLwrapper.cpp  Misc/MiscFuncs.cpp   Misc/WavFile.cpp
+    Misc/Microtonal.cpp   Misc/Part.cpp  Misc/XMLwrapper.cpp  Misc/WavFile.cpp
 )
 
 set (Interface_Sources
-    Interface/CmdInterface.cpp
     Interface/InterChange.cpp
+    Interface/Data2Text.cpp
     Interface/MidiLearn.cpp
     Interface/MidiDecode.cpp
-    UI/MiscGui.cpp
+    Interface/RingBuffer.cpp
+    Interface/TextLists.h
+)
+
+set (CLI_Sources
+    CLI/CmdInterface.cpp
+    #CLI/ConfigCLI.cpp
+    CLI/CmdInterpreter.cpp
 )
 
 set (Params_sources
@@ -383,39 +396,43 @@ set (MusicIO_sources
     MusicIO/AlsaEngine.cpp
 )
 
-set (FltkUI_names
-    "PresetsUI" "EnvelopeUI"
-    "LFOUI" "FilterUI" "VirKeyboardUI"
-    "ConfigUI" "SUBnoteUI" "ResonanceUI"
-    "OscilGenUI" "ADnoteUI" "PADnoteUI"
-    "EffUI" "BankUI" "PartUI"
-    "MicrotonalUI" "MasterUI" "MasterMiscUI"
-    "ParametersUI" "ConsoleUI" "VectorUI"
-    "MidiLearnUI"
-)
+if (BuildWithFLTK)
+    set (FltkUI_names
+        "PresetsUI" "EnvelopeUI"
+        "LFOUI" "FilterUI" "VirKeyboardUI"
+        "ConfigUI" "SUBnoteUI" "ResonanceUI"
+        "OscilGenUI" "ADnoteUI" "PADnoteUI"
+        "EffUI" "BankUI" "PartUI"
+        "MicrotonalUI" "MasterUI" "MasterMiscUI"
+        "ParametersUI" "ConsoleUI" "VectorUI"
+        "MidiLearnUI"
+    )
 
 # workaround fltk_wrap_ui breakage
-set (FltkUI_sources)
-set (FltkUI_headers)
-foreach(basename ${FltkUI_names})
-    set (fluidfile "${CMAKE_CURRENT_SOURCE_DIR}/UI/${basename}.fl")
-    set (sourcefile "${basename}.cpp")
-    set (headerfile "${basename}.h")
-    add_custom_command(
-        OUTPUT ${sourcefile}
-        COMMAND ${FLTK_FLUID_EXECUTABLE} ARGS -c -o .cpp ${fluidfile}
-        DEPENDS ${fluidfile}
-    )
-    set (FltkUI_sources ${FltkUI_sources} "${sourcefile}")
-    set (FltkUI_headers ${FltkUI_headers} "${headerfile}")
-endforeach(basename ${FltkUI_names})
+    set (FltkUI_sources)
+    set (FltkUI_headers)
+    foreach(basename ${FltkUI_names})
+        set (fluidfile "${CMAKE_CURRENT_SOURCE_DIR}/UI/${basename}.fl")
+        set (sourcefile "${basename}.cpp")
+        set (headerfile "${basename}.h")
+        add_custom_command(
+            OUTPUT ${sourcefile}
+            COMMAND ${FLTK_FLUID_EXECUTABLE} ARGS -c -o .cpp ${fluidfile}
+            DEPENDS ${fluidfile}
+        )
+        set (FltkUI_sources ${FltkUI_sources} "${sourcefile}")
+        set (FltkUI_headers ${FltkUI_headers} "${headerfile}")
+    endforeach(basename ${FltkUI_names})
 
-set (FltkUI_sources
-    ${FltkUI_sources}
-    UI/DynamicTooltip.cpp
-    UI/WidgetPDial.cpp
-    UI/WidgetMWSlider.cpp
-)
+    set (FltkUI_sources
+        ${FltkUI_sources}
+        UI/DynamicTooltip.cpp
+        UI/WidgetPDial.cpp
+        UI/WidgetMWSlider.cpp
+        UI/MiscGui.cpp
+    )
+    set (YOSHI_INCLUDES ${FLTK_INCLUDE_DIR})
+endif(BuildWithFLTK)
 
 add_definitions (
     -D'YOSHIMI_VERSION="${YOSHIMI_VERSION}"'
@@ -426,10 +443,6 @@ add_definitions (
 )
 
 add_definitions (-DYOSHIMI="yoshimi")
-
-if (ShowGuiReports)
-    add_definitions (-DENABLE_REPORTS)
-endif (ShowGuiReports)
 
 if (ShowNoteOnTimes)
     add_definitions (-DREPORT_NOTEON)
@@ -468,6 +481,7 @@ endif (HasJackLatency)
 
 set (ProgSources
     ${Interface_Sources}
+    ${CLI_Sources}
     ${Misc_sources}
     ${Params_sources}
     ${Synth_sources}
@@ -500,7 +514,6 @@ set(ExternLibraries
     ${CURSES_LIBRARIES}
     ${Readline_LIBRARY}
     z
-    #dl
     ${LIBDL_LINUX}
 )
 
@@ -511,7 +524,6 @@ endif()
 add_executable (yoshimi ${ProgSources} main.cpp)
 
 target_link_libraries (yoshimi ${ExternLibraries})
-
 
 
 if (ARGP_LIB)
@@ -603,6 +615,9 @@ add_custom_target (distclean
 
 
 if (LV2Plugin)
+    if (NOT BuildWithFLTK)
+        message(FATAL_ERROR "Can't build LV2 headless")
+    endif()
     if (EXISTS $ENV{LV2_PATH})
         set(LV2_INSTALL_DIR $ENV{LV2_PATH} CACHE PATH
         "Specifies where the LV2 libraries should be installed")

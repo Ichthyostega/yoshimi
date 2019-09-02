@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2009 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2018, Will Godfrey
+    Copyright 2018-2019, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -22,7 +22,6 @@
 
     This file is derivative of ZynAddSubFX original code.
 
-    Modified July 2018
 */
 
 using namespace std;
@@ -54,6 +53,7 @@ Alienwah::Alienwah(bool insertion_, float *efxoutl_, float *efxoutr_, SynthEngin
     cleanup();
     oldclfol = complex<float>(fb, 0.0);
     oldclfor = complex<float>(fb, 0.0);
+    Pchanged = false;
 }
 
 
@@ -197,11 +197,17 @@ void Alienwah::setpreset(unsigned char npreset)
         if (insertion && (param == 0))
             changepar(0, presets[preset][0] / 2);
     }
+    Pchanged = false;
 }
 
 
 void Alienwah::changepar(int npar, unsigned char value)
 {
+    if (npar == -1)
+    {
+        Pchanged = (value != 0);
+        return;
+    }
     switch (npar)
     {
         case 0:
@@ -242,6 +248,7 @@ void Alienwah::changepar(int npar, unsigned char value)
             setphase(value);
             break;
     }
+    Pchanged = true;
 }
 
 
@@ -249,6 +256,7 @@ unsigned char Alienwah::getpar(int npar)
 {
     switch (npar)
     {
+        case -1: return Pchanged;
         case 0:  return Pvolume;
         case 1:  return Ppanning;
         case 2:  return lfo.Pfreq;
@@ -268,7 +276,7 @@ unsigned char Alienwah::getpar(int npar)
 
 float Alienlimit::getlimits(CommandBlock *getData)
 {
-    int value = getData->data.value;
+    int value = getData->data.value.F;
     int control = getData->data.control;
     int request = getData->data.type & 3; // clear upper bits
     int npart = getData->data.part;
@@ -277,8 +285,8 @@ float Alienlimit::getlimits(CommandBlock *getData)
     int max = 127;
 
     int def = presets[presetNum][control];
-    bool canLearn = true;
-    bool isInteger = true;
+    unsigned char canLearn = TOPLEVEL::type::Learnable;
+    unsigned char isInteger = TOPLEVEL::type::Integer;
     switch (control)
     {
         case 0:
@@ -293,7 +301,7 @@ float Alienlimit::getlimits(CommandBlock *getData)
             break;
         case 4:
             max = 1;
-            canLearn = false;
+            canLearn = 0;
             break;
         case 5:
             break;
@@ -304,7 +312,7 @@ float Alienlimit::getlimits(CommandBlock *getData)
         case 8:
             min = 1;
             max = 100;
-            canLearn = false;
+            canLearn = 0;
             break;
         case 9:
             break;
@@ -312,7 +320,7 @@ float Alienlimit::getlimits(CommandBlock *getData)
             break;
         case 16:
             max = 3;
-            canLearn = false;
+            canLearn = 0;
             break;
         default:
             getData->data.type |= TOPLEVEL::type::Error; // error
@@ -338,7 +346,7 @@ float Alienlimit::getlimits(CommandBlock *getData)
             value = def;
             break;
     }
-    getData->data.type |= (canLearn * 64 + isInteger * 128);
+    getData->data.type |= (canLearn + isInteger);
     return float(value);
 }
 

@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2010, Alan Calvert
-    Copyright 2014-2018 Will Godfrey & others
+    Copyright 2014-2019 Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -21,20 +21,19 @@
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
     This file is a derivative of a ZynAddSubFX original.
-    Modified September 2018
+
 */
 
 #ifndef BANK_H
 #define BANK_H
 
-#include <list>
-
-using namespace std;
-
-#include "Misc/MiscFuncs.h"
 #include "Misc/Part.h"
+
+#include <string>
 #include <map>
-#include <vector>
+
+using std::string;
+using std::map;
 
 #define ROOT_SIZE 128
 #define BANK_SIZE 160
@@ -44,18 +43,20 @@ typedef struct _InstrumentEntry
 {
     string name;
     string filename;
+    int type;
     bool used;
-    bool PADsynth_used;
-    bool ADDsynth_used;
-    bool SUBsynth_used;
+    unsigned char PADsynth_used;
+    unsigned char ADDsynth_used;
+    unsigned char SUBsynth_used;
     bool yoshiType;
     _InstrumentEntry()
         :name(""),
          filename(""),
+         type(0),
          used(false),
-         PADsynth_used(false),
-         ADDsynth_used(false),
-         SUBsynth_used(false),
+         PADsynth_used(0),
+         ADDsynth_used(0),
+         SUBsynth_used(0),
          yoshiType(false)
     {
 
@@ -65,9 +66,9 @@ typedef struct _InstrumentEntry
         used = false;
         name.clear();
         filename.clear();
-        PADsynth_used = false;
-        ADDsynth_used = false;
-        SUBsynth_used = false;
+        PADsynth_used = 0;
+        ADDsynth_used = 0;
+        SUBsynth_used = 0;
         yoshiType = false;
     }
 } InstrumentEntry; // Contains the leafname of the instrument.
@@ -98,40 +99,36 @@ typedef map<size_t, map<string, size_t> > BankHintsMap;
 
 class SynthEngine;
 
-class Bank : private MiscFuncs
+class Bank
 {
-//#ifdef YOSHIMI_LV2_PLUGIN
-    friend class YoshimiLV2Plugin;
-//#endif
     friend class SynthEngine;
     public:
         Bank(SynthEngine *_synth);
         ~Bank();
-        string getname(unsigned int ninstrument, size_t bank = 0xff, size_t root = 0xff);
-        string getfilename(unsigned int ninstrument);
-        string getnamenumbered(unsigned int ninstrument);
-        bool setname(unsigned int ninstrument, string newname, int newslot, size_t oldBank = 0xff, size_t newBank = 0xff, size_t oldRoot = 0xff, size_t newRoot = 0xff);
+        int getType(unsigned int ninstrument, size_t bank, size_t root);
+        string getname(unsigned int ninstrument, size_t bank, size_t root);
+        string getnamenumbered(unsigned int ninstrument, size_t bank, size_t root);
+        bool setname(unsigned int ninstrument, string newname, int newslot, size_t oldBank, size_t newBank, size_t oldRoot, size_t newRoot);
              // if newslot==-1 then this is ignored, else it will be put on that slot
 
-        int engines_used(unsigned int ninstrument);
-        bool emptyslotWithID(size_t rootID, size_t bankID, unsigned int ninstrument);
-        bool emptyslot(unsigned int ninstrument);
-        bool clearslot(unsigned int ninstrument);
+        int engines_used(size_t rootID, size_t bankID, unsigned int ninstrument);
+        bool emptyslot(size_t rootID, size_t bankID, unsigned int ninstrument);
+        std::string clearslot(unsigned int ninstrument, size_t rootID, size_t bankID);
         bool savetoslot(size_t rootID, size_t bankID, int ninstrument, int npart);
-        unsigned int swapslot(unsigned int n1, unsigned int n2, size_t bank1 = 0xff, size_t bank2 = 0xff, size_t root1 = 0xff, size_t root2 = 0xff);
-        unsigned int swapbanks(unsigned int firstID, unsigned int secondID, size_t firstRoot = 0xff, size_t secondRoot= 0xff);
+        std::string swapslot(unsigned int n1, unsigned int n2, size_t bank1, size_t bank2, size_t root1, size_t root2);
+        std::string swapbanks(unsigned int firstID, unsigned int secondID, size_t firstRoot, size_t secondRoot);
         string getBankName(int bankID, size_t rootID = 0xff);
         string getBankIDname(int bankID);
         bool isDuplicateBankName(size_t rootID, string name);
         int getBankSize(int bankID);
         bool setbankname(unsigned int BankID, string newname);
         bool loadbank(size_t rootID, size_t banknum);
-        unsigned int exportBank(string exportdir, size_t rootID, unsigned int bankID);
-        unsigned int importBank(string importdir, size_t rootID, unsigned int bankID);
+        std::string exportBank(string exportdir, size_t rootID, unsigned int bankID);
+        std::string importBank(string importdir, size_t rootID, unsigned int bankID);
         bool isDuplicate(size_t rootID, size_t bankID, int pos, const string filename);
         bool newIDbank(string newbankdir, unsigned int bankID, size_t rootID = 0xff);
         bool newbankfile(string newbankdir, size_t rootID);
-        unsigned int removebank(unsigned int bankID, size_t rootID = 0xff);
+        std::string removebank(unsigned int bankID, size_t rootID = 0xff);
         void rescanforbanks(void);
         void clearBankrootDirlist(void);
         void removeRoot(size_t rootID);
@@ -150,10 +147,10 @@ class Bank : private MiscFuncs
 
         const BankEntryMap &getBanks(size_t rootID);
         const RootEntryMap &getRoots();
-        const BankEntry &getBank(size_t bankID);
+        const BankEntry &getBank(size_t bankID, size_t rootID = UNUSED);
 
-        string getBankFileTitle();
-        string getRootFileTitle();
+        string getBankFileTitle(size_t root, size_t bank);
+        string getRootFileTitle(size_t root);
         int InstrumentsInBanks;
         int BanksInRoots;
 
@@ -169,15 +166,12 @@ class Bank : private MiscFuncs
 
         //string dirname;
         const string defaultinsname;
-        const string xizext;
-        const string xiyext;
         const string force_bank_dir_file;
         SynthEngine *synth;
 
         RootEntryMap  roots;
         BankHintsMap hints;
 
-        InstrumentEntry &getInstrumentReference(size_t ninstrument );
         InstrumentEntry &getInstrumentReference(size_t rootID, size_t bankID, size_t ninstrument );
 
         void addDefaultRootDirs();
@@ -186,4 +180,4 @@ class Bank : private MiscFuncs
         size_t getNewBankIndex(size_t rootID);
 };
 
-#endif
+#endif /*BANK_H*/

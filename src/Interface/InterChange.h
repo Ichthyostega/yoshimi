@@ -1,7 +1,7 @@
 /*
     InterChange.h - General communications
 
-    Copyright 2016-2018 Will Godfrey
+    Copyright 2016-2019 Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -17,7 +17,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    Modified July 2018
+    Modified May 2019
 */
 
 #ifndef INTERCH_H
@@ -25,9 +25,9 @@
 
 #include <jack/ringbuffer.h>
 
-using namespace std;
-
-#include "Misc/MiscFuncs.h"
+#include "globals.h"
+#include "Interface/Data2Text.h"
+#include "Interface/RingBuffer.h"
 #include "Params/LFOParams.h"
 #include "Params/FilterParams.h"
 #include "Params/EnvelopeParams.h"
@@ -35,9 +35,17 @@ using namespace std;
 #include "Synth/Resonance.h"
 
 class SynthEngine;
+class DataText;
 
-class InterChange : private MiscFuncs
+// used by main.cpp and SynthEngine.cpp
+extern std::string singlePath;
+extern std::string runGui;
+extern int startInstance;
+
+
+class InterChange : private DataText
 {
+
     private:
         SynthEngine *synth;
 
@@ -47,23 +55,25 @@ class InterChange : private MiscFuncs
         bool Init();
 
         CommandBlock commandData;
-        size_t commandSize = sizeof(commandData);
-
-        jack_ringbuffer_t *fromCLI;
-        jack_ringbuffer_t *decodeLoopback;
-        jack_ringbuffer_t *fromGUI;
-        jack_ringbuffer_t *toGUI;
-        jack_ringbuffer_t *fromMIDI;
-        jack_ringbuffer_t *returnsBuffer;
+#ifndef YOSHIMI_LV2_PLUGIN
+        ringBuff *fromCLI;
+#endif
+        ringBuff *decodeLoopback;
+        ringBuff *fromGUI;
+        ringBuff *toGUI;
+        ringBuff *fromMIDI;
+        ringBuff *returnsBuffer;
 
         void mediate(void);
+        void historyActionCheck(CommandBlock *getData);
         void mutedDecode(unsigned int altData);
         void returns(CommandBlock *getData);
-        void setpadparams(int point);
+        void setpadparams(int npart, int kititem);
         void doClearPart(int npart);
         bool commandSend(CommandBlock *getData);
         float readAllData(CommandBlock *getData);
         void resolveReplies(CommandBlock *getData);
+        std::string resolveText(CommandBlock *getData, bool addValue);
         void testLimits(CommandBlock *getData);
         float returnLimits(CommandBlock *getData);
         unsigned char blockRead;
@@ -78,25 +88,9 @@ class InterChange : private MiscFuncs
         void *sortResultsThread(void);
         static void *_sortResultsThread(void *arg);
         pthread_t  sortResultsThreadHandle;
-        void indirectTransfers(CommandBlock *getData);
-        string formatScales(string text);
-        string resolveVector(CommandBlock *getData);
-        string resolveMicrotonal(CommandBlock *getData);
-        string resolveConfig(CommandBlock *getData);
-        string resolveBank(CommandBlock *getData);
-        string resolveMain(CommandBlock *getData);
-        string resolvePart(CommandBlock *getData);
-        string resolveAdd(CommandBlock *getData);
-        string resolveAddVoice(CommandBlock *getData);
-        string resolveSub(CommandBlock *getData);
-        string resolvePad(CommandBlock *getData);
-        string resolveOscillator(CommandBlock *getData);
-        string resolveResonance(CommandBlock *getData);
-        string resolveLFO(CommandBlock *getData);
-        string resolveFilter(CommandBlock *getData);
-        string resolveEnvelope(CommandBlock *getData);
-        string resolveEffects(CommandBlock *getData);
-        bool showValue;
+        void indirectTransfers(CommandBlock *getData, bool noForward = false);
+        std::string formatScales(std::string text);
+
         unsigned int lockTime;
 
         unsigned int swapRoot1;
@@ -109,6 +103,7 @@ class InterChange : private MiscFuncs
         void commandMicrotonal(CommandBlock *getData);
         void commandConfig(CommandBlock *getData);
         void commandMain(CommandBlock *getData);
+        void commandBank(CommandBlock *getData);
         void commandPart(CommandBlock *getData);
         void commandAdd(CommandBlock *getData);
         void commandAddVoice(CommandBlock *getData);

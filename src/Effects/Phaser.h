@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009, Alan Calvert
-    Copyright 2018, Will Godfrey
+    Copyright 2018-2019, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -22,7 +22,7 @@
 
     This file is a derivative of the ZynAddSubFX original.
 
-    Modified February 2018
+    Modified March 2019
 */
 
 #ifndef PHASER_H
@@ -48,7 +48,8 @@ class Phaser : public Effect
         void setdryonly(void);
 
     private:
-        // Parametrii Phaser
+        // Phaser Parameters
+        bool Pchanged;
         EffectLFO lfo;           // <lfo-ul Phaser
         unsigned char Pvolume;
 //        unsigned char Ppanning;
@@ -64,7 +65,7 @@ class Phaser : public Effect
         unsigned char Phyper;       //lfo^2 -- converts tri into hyper-sine
         unsigned char Panalog;
 
-        // Control Parametrii
+        // Control Parameters
         void setvolume(unsigned char Pvolume_);
         void setdepth(unsigned char Pdepth_);
         void setfb(unsigned char Pfb_);

@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2010, Alan Calvert
-    Copyright 2018 Will Godfrey
+    Copyright 2018-2019 Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -22,9 +22,9 @@
 
     This file is a derivative of a ZynAddSubFX original
 
-    Modified December 2018
 */
 
+#include <sys/types.h>
 #include <cmath>
 #include <iostream>
 
@@ -276,13 +276,12 @@ void Resonance::getfromXML(XMLwrapper *xml)
 
 float ResonanceLimits::getLimits(CommandBlock *getData)
 {
-    float value = getData->data.value;
-    unsigned char type = getData->data.type;
-    int request = type & TOPLEVEL::type::Default;
+    float value = getData->data.value.F;
+    int request = int(getData->data.type & TOPLEVEL::type::Default);
     int control = getData->data.control;
     int insert = getData->data.insert;
 
-    type &= (TOPLEVEL::source::MIDI | TOPLEVEL::source::CLI | TOPLEVEL::source::GUI); // source bits only
+    unsigned char type = 0;
 
     // resonance defaults
     int min = 0;

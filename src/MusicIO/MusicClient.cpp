@@ -2,7 +2,7 @@
     MusicClient.h
 
     Copyright 2009-2011, Alan Calvert
-    Copyright 2016-2018, Will Godfrey & others
+    Copyright 2016-2019, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -17,7 +17,7 @@
     You should have received a copy of the GNU General Public License
     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 
-    Modified September 2018
+    Modified May 2019
 */
 
 #include "MusicIO/MusicClient.h"
@@ -29,12 +29,12 @@
 #include <set>
 #include <unistd.h>
 
-string audio_drivers_str [] = {"no_audio", "jack_audio"
+std::string audio_drivers_str [] = {"no_audio", "jack_audio"
 #if defined(HAVE_ALSA)
                                , "alsa_audio"
 #endif
                               };
-string midi_drivers_str [] = {"no_midi", "jack_midi"
+std::string midi_drivers_str [] = {"no_midi", "jack_midi"
 #if defined(HAVE_ALSA)
                               , "alsa_midi"
 #endif
@@ -42,7 +42,7 @@ string midi_drivers_str [] = {"no_midi", "jack_midi"
 
 MusicClient *MusicClient::newMusicClient(SynthEngine *_synth)
 {
-    set<music_clients> clSet;
+    std::set<music_clients> clSet;
     music_clients c1 = {0, _synth->getRuntime().audioEngine, _synth->getRuntime().midiEngine};
     clSet.insert(c1);
     music_clients c2 = {1, jack_audio, jack_midi};
@@ -58,7 +58,7 @@ MusicClient *MusicClient::newMusicClient(SynthEngine *_synth)
     music_clients c7 = {6, no_audio, no_midi}; //this one always will do the work :)
     clSet.insert(c7);
 
-    for(set<music_clients>::iterator it = clSet.begin(); it != clSet.end(); ++it)
+    for(std::set<music_clients>::iterator it = clSet.begin(); it != clSet.end(); ++it)
     {
         MusicClient *client = new MusicClient(_synth, it->audioDrv, it->midiDrv);
         if(client)
@@ -225,14 +225,13 @@ bool MusicClient::Start()
         {
             return true;
         }
-        bAudio = synth->getRuntime().startThread(&timerThreadId, MusicClient::timerThread_fn, this, false, 0, false, "Timer?");
+        bAudio = synth->getRuntime().startThread(&timerThreadId, MusicClient::timerThread_fn, this, false, 0, "Timer?");
     }
 
     if(midiIO)
     {
         bMidi = midiIO->Start();
     }
-
     return bAudio && bMidi;
 }
 
@@ -281,7 +280,7 @@ int MusicClient::getBuffersize()
 }
 
 
-string MusicClient::audioClientName()
+std::string MusicClient::audioClientName()
 {
     if(audioIO)
     {
@@ -292,7 +291,7 @@ string MusicClient::audioClientName()
 }
 
 
-string MusicClient::midiClientName()
+std::string MusicClient::midiClientName()
 {
     if(midiIO)
     {

@@ -1,7 +1,7 @@
 /*
     MidiDecode.h
 
-    Copyright 2017 Will Godfrey
+    Copyright 2017 - 2019 Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -17,7 +17,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    Modified November 2017
+    Modified May 2019
 */
 
 #ifndef MIDIDECODE_H
@@ -27,14 +27,11 @@
 #include <list>
 #include <string>
 
-using namespace std;
-
-#include "Misc/MiscFuncs.h"
 #include "Interface/InterChange.h"
 
 class SynthEngine;
 
-class MidiDecode : private MiscFuncs
+class MidiDecode
 {
     public:
         MidiDecode(SynthEngine *_synth);
@@ -50,6 +47,7 @@ class MidiDecode : private MiscFuncs
         bool nrpnDecode(unsigned char ch, int ctrl, int param, bool in_place);
         bool nrpnRunVector(unsigned char ch, int ctrl, int param, bool inSync);
         void nrpnProcessData(unsigned char chan, int type, int par, bool in_place);
+        bool nrpnProcessHistory(unsigned char nLow, unsigned char dHigh, unsigned char dLow, bool in_place);
         void nrpnDirectPart(int dHigh, int par);
         void nrpnSetVector(int dHigh, unsigned char chan,  int par);
 

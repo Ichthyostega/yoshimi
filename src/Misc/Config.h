@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2014-2018, Will Godfrey & others
+    Copyright 2014-2019, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -21,8 +21,6 @@
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
     This file is derivative of ZynAddSubFX original code.
-
-    Modified November 2018
 */
 
 #ifndef CONFIG_H
@@ -33,25 +31,21 @@
 #include <deque>
 #include <list>
 
-using namespace std;
-
 #include "MusicIO/MusicClient.h"
-#include "Misc/MiscFuncs.h"
 #include "FL/Fl.H"
 
-class XMLwrapper;
+using std::string;
 
+class XMLwrapper;
 class SynthEngine;
 
-class Config : public MiscFuncs
+class Config
 {
     public:
         Config(SynthEngine *_synth, int argc, char **argv);
         ~Config();
         bool Setup(int argc, char **argv);
-//#ifndef YOSHIMI_LV2_PLUGIN
         void StartupReport(string clientName);
-//#endif
         void Announce(void);
         void Usage(void);
         void Log(const string &msg, char tostderr = 0); // 1 = cli only ored 2 = hideable
@@ -64,7 +58,6 @@ class Config : public MiscFuncs
         string masterCCtest(int cc);
         bool saveConfig(void);
         bool loadConfig(void);
-        //bool saveState() { return saveSessionData(StateFile); }
         bool saveState(const string statefile)  { return saveSessionData(statefile); }
         bool loadState(const string statefile)
             { return restoreSessionData(statefile, false); }
@@ -79,7 +72,7 @@ class Config : public MiscFuncs
         void signalCheck(void);
         void setRtprio(int prio);
         bool startThread(pthread_t *pth, void *(*thread_fn)(void*), void *arg,
-                         bool schedfifo, char lowprio, bool create_detached = true, string name = "");
+                         bool schedfifo, char lowprio, string name = "");
         string programCmd(void) { return programcommand; }
 
         bool isRuntimeSetupCompleted() {return bRuntimeSetupCompleted;}
@@ -90,6 +83,7 @@ class Config : public MiscFuncs
         string        ConfigFile;
         string        paramsLoad;
         string        instrumentLoad;
+        string        midiLearnLoad;
         string        rootDefine;
         bool          restoreState;
         bool          stateChanged;
@@ -112,6 +106,7 @@ class Config : public MiscFuncs
         static int           showCLIcontext;
 
         bool          runSynth;
+        bool          isLittleEndian;
         bool          finishedCLI;
         int           VirKeybLayout;
 
@@ -133,8 +128,10 @@ class Config : public MiscFuncs
         bool          loadDefaultState;
         int           Interpolation;
         string        presetsDirlist[MAX_PRESETS];
-        list<string>  lastfileseen;
-        int           checksynthengines;
+        std::list<string> lastfileseen;
+        bool          sessionSeen[TOPLEVEL::XML::MLearn + 1];
+        bool          historyLock[TOPLEVEL::XML::MLearn + 1];
+        bool          checksynthengines;
         int           xmlType;
         unsigned char instrumentFormat;
         int           EnableProgChange;
@@ -158,6 +155,7 @@ class Config : public MiscFuncs
         int           currentPart;
         unsigned int  currentBank;
         unsigned int  currentRoot;
+        int           currentPreset;
         int           tempBank;
         int           tempRoot;
         int           noteOnSent; // note test
@@ -173,6 +171,7 @@ class Config : public MiscFuncs
         unsigned char dataL;
         unsigned char dataH;
         bool          nrpnActive;
+        int           effectChange; // temporary fix
 
         struct{
             unsigned char Xaxis[NUM_MIDI_CHANNELS];
@@ -191,7 +190,7 @@ class Config : public MiscFuncs
             bool Enabled[NUM_MIDI_CHANNELS];
         }vectordata;
 
-        list<string> LogList;
+        std::list<string> LogList;
 
         /*
          * These replace local memory allocations that

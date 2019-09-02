@@ -1,7 +1,7 @@
 /*
     globals.h - general static definitions
 
-    Copyright 2018, Will Godfrey
+    Copyright 2018-2019, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -16,12 +16,13 @@
     You should have received a copy of the GNU General Public License along with
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
-
-    Created June 2018
 */
 
 #ifndef GLOBALS_H
 #define GLOBALS_H
+
+#include <cstdint>
+#include <cstddef>
 
 /*
  * For test purposes where you want guaranteed identical results, enable the
@@ -37,19 +38,34 @@
 #define HALFPI 1.57079632679f
 #define LOG_2 0.693147181f
 
-// float round to zero to integer
-// the second version is faster but for positive values only
-// and not fully confirmed as correct
+/*
+ * we only use 23 bits as with 24 there is risk of
+ * an overflow when making float/int conversions
+ */
+#define Fmul2I 1073741823
+#define Cshift2I 23
 
-#define FR2Z2I(f, i) (i) = ((f > 0) ? (int(trunc(f))) : (int(trunc(f - 1.0f))));
-//#define FR2Z2I(f, i) (i) = (int (f));
-
+/*
+ * proposed conversions from float to hi res int
+ * multiplier is 1000000
+ *
+ * for LFO freq turns actual value 85.25 into 85250000
+ * current step size 0.06 becomes 6000
+ *
+ * scales A frequency now restricted to +- 0.5 octave
+ * 660Hz becomes 660000000
+ * At 329Hz resolution is still better than 1/10000 cent
+ * Assumed detectable interval is 5 cents
+ *
+ * also use for integers that need higher resolution
+ * such as unspecified 0-127 integers
+*/
 
 // many of the following are for convenience and consistency
 // changing them is likely to have unpredicable consequences
 
 // sizes
-const unsigned char COMMAND_SIZE = 80;
+const unsigned char COMMAND_SIZE = 252;
 const unsigned char MAX_HISTORY = 25;
 const int MAX_PRESETS = 1000;
 const unsigned char MAX_PRESET_DIRS = 128;
@@ -60,6 +76,11 @@ const unsigned char MAX_AD_HARMONICS = 128;
 const unsigned char MAX_SUB_HARMONICS = 64;
 const unsigned char PAD_MAX_SAMPLES = 96;
 const unsigned char NUM_MIDI_PARTS = 64;
+const unsigned char PART_POLY = 0;
+const unsigned char PART_MONO = 1;
+const unsigned char PART_LEGATO = 2;
+const unsigned char MIDI_NOT_LEGATO = 3;
+const unsigned char MIDI_LEGATO = 4;
 const unsigned char NUM_MIDI_CHANNELS = 16;
 const unsigned char MIDI_LEARN_BLOCK = 200;
 const int MAX_ENVELOPE_POINTS = 40;
@@ -67,14 +88,16 @@ const int MIN_ENVELOPE_DB = -60;
 const int MAX_RESONANCE_POINTS = 256;
 const int MAX_KEY_SHIFT = 36;
 const int MIN_KEY_SHIFT = -36;
+const float A_MIN = 329.0f;
+const float A_MAX = 660.0f;
+
 
 const unsigned int MIN_OSCIL_SIZE = 256; // MAX_AD_HARMONICS * 2
 const unsigned int MAX_OSCIL_SIZE = 16384;
 const unsigned int MIN_BUFFER_SIZE = 16;
 const unsigned int MAX_BUFFER_SIZE = 8192;
-const unsigned char NO_MSG = 255; // these three may become different
+const unsigned char NO_MSG = 255; // these two may become different
 const unsigned char UNUSED = 255;
-const unsigned char NO_ACTION = 255;
 
 // GUI colours
 const unsigned int ADD_COLOUR = 0xdfafbf00;
@@ -82,12 +105,14 @@ const unsigned int BASE_COLOUR = 0xbfbfbf00;
 const unsigned int SUB_COLOUR = 0xafcfdf00;
 const unsigned int PAD_COLOUR = 0xcfdfaf00;
 const unsigned int YOSHI_COLOUR = 0x0000e100;
-
-enum {XML_INSTRUMENT = 1, XML_PARAMETERS, XML_MICROTONAL, XML_STATE, XML_VECTOR, XML_MIDILEARN, XML_CONFIG, XML_PRESETS, XML_BANK, XML_HISTORY};
+const unsigned int EXTOSC_COLOUR = 0x8fbfdf00;
+const unsigned int EXTVOICE_COLOUR = 0x9fdf8f00;
+const unsigned int MODOFF_COLOUR = 0x80808000;
 
 // these were previously (pointlessly) user configurable
 const unsigned char NUM_VOICES = 8;
 const unsigned char POLIPHONY = 80;
+const unsigned char PART_POLIPHONY = 60;
 const unsigned char NUM_SYS_EFX = 4;
 const unsigned char NUM_INS_EFX = 8;
 const unsigned char NUM_PART_EFX = 3;
@@ -114,6 +139,16 @@ namespace YOSH
  * and new entries can be added between the group ends
  */
 
+
+namespace ENVMODE
+{
+    const unsigned char amplitudeLin = 1;
+    const unsigned char amplitudeLog = 2;
+    const unsigned char frequency = 3;
+    const unsigned char filter = 4;
+    const unsigned char bandwidth = 5;
+}
+
 namespace TOPLEVEL // usage TOPLEVEL::section::vector
 {
     enum section: unsigned char {
@@ -131,41 +166,39 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         config = 248 // F8
     };
 
-    // this pair critcally cannot be changed as
-    // they rely on 'parameter' being < 64
-    enum route : unsigned char {
-        lowPriority = 128,
-        adjustAndLoopback = 192
-    };
-
-    // bit-wise type and source share the same byte
-    // but will eventually be split up
-    enum type : unsigned char {
+    namespace type {
         // bits 0, 1
-        Adjust = 0,
-        Read = 0,
-        Minimum,
-        Maximum,
-        Default,
-        LearnRequest = 3, // shared value
+        const unsigned char Adjust = 0; // return value adjusted within limits
+        const unsigned char Read = 0; // i.e. !write
+        const unsigned char Minimum = 1; // return this value
+        const unsigned char Maximum = 2; // return this value
+        const unsigned char Default = 3; // return this value
         // remaining used bit-wise
-        Error = 4, // also identifes static limits
-        Limits = 4, // yes we can pair these - who knew?
-        Write = 64, // false = read
-        Learnable = 64, // shared value
-        Integer = 128 // false = float
-    };
+        const unsigned char Limits = 4;
+        const unsigned char Error = 8;
+        const unsigned char LearnRequest = 16;
+        const unsigned char Learnable = 32;
+        const unsigned char Write = 64;
+        const unsigned char Integer = 128; // false = float
+    }
 
-    enum source : unsigned char {
-        // all used bit-wise
-        MIDI = 8,
-        CLI = 16,
-        GUI = 32,
-        UpdateAfterSet = 48 // so gui can update
-    };
+    namespace action {
+        // bits 0 to 3
+        const unsigned char toAll = 0; // except MIDI
+        const unsigned char fromMIDI = 1;
+        const unsigned char fromCLI = 2;
+        const unsigned char fromGUI = 3;
+        const unsigned char noAction = 15; // internal use
+        // remaining used bit-wise
+        const unsigned char forceUpdate = 32;
+        const unsigned char loop = 64; // internal use
+        const unsigned char lowPrio = 128;
+        const unsigned char muteAndLoop = 192;
+    }
 
     enum control : unsigned char {
-        errorMessage = 254 // FE
+        // insert any new entries here
+        textMessage = 254 // FE
     };
 
     enum muted : unsigned char {
@@ -173,7 +206,8 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         masterReset,
         patchsetLoad,
         vectorLoad,
-        stateLoad
+        stateLoad,
+        listLoad
     };
 
     // inserts are here as they are split between many
@@ -200,6 +234,20 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         filter,
         bandwidth
     };
+
+    enum XML : unsigned char { // file and history types
+        Instrument = 0, // individual externally sourced Instruments
+        Patch, //      full instrument Patch Sets
+        Scale, //      complete Microtonal settings
+        State, //      entire system State
+        Vector, //     per channel Vector settings
+        // insert any new lists here
+        MLearn, //     learned MIDI CC lists
+        Config, // only file types from here onwards
+        Presets,
+        Bank,
+        History,
+    };
 }
 
 namespace CONFIG // usage CONFIG::control::oscillatorSize
@@ -212,6 +260,7 @@ namespace CONFIG // usage CONFIG::control::oscillatorSize
         XMLcompressionLevel,
         reportsDestination,
         savedInstrumentFormat,
+        showEnginesTypes,
         defaultStateStart = 16,
         hideNonFatalErrors,
         showSplash,
@@ -221,7 +270,9 @@ namespace CONFIG // usage CONFIG::control::oscillatorSize
         enableGUI,
         enableCLI,
         enableAutoInstance,
-        exposeStatus,
+        enableSinglePath,
+        historyLock,
+        exposeStatus, // CLI only
 
         // start of engine controls
         jackMidiSource = 32,
@@ -235,13 +286,13 @@ namespace CONFIG // usage CONFIG::control::oscillatorSize
         alsaPreferredAudio,
         alsaSampleRate,
         // end of engine controls
-
-        //enableBankRootChange = 64,
+        addPresetRootDir = 60,
+        removePresetRootDir,
+        currentPresetRoot,
         bankRootCC = 65,
         bankCC = 67,
         enableProgramChange,
-        programChangeEnablesPart,
-        //enableExtendedProgramChange,
+        instChangeEnablesPart,
         extendedProgramChangeCC = 71,
         ignoreResetAllCCs,
         logIncomingCCs,
@@ -255,9 +306,10 @@ namespace BANK // usage BANK::control::
 {
     enum control : unsigned char {
         selectInstrument = 0, // not yet
+        findInstrumentName,
         renameInstrument, // not yet
         saveInstrument, // not yet
-        deleteInstrument, // not yet
+        deleteInstrument,
         selectFirstInstrumentToSwap,
         selectSecondInstrumentAndSwap,
 
@@ -322,6 +374,8 @@ namespace MIDILEARN // usage MIDILEARN::control::block
         ignoreMove,
         deleteLine,
         nrpnDetected,
+        showGUI = 14,
+        hideGUI,
         CCorChannel = 16, // should probably split these
         findSize = 20, // not used yet
         sendLearnMessage, // currently GUI only
@@ -335,16 +389,17 @@ namespace MIDILEARN // usage MIDILEARN::control::block
     };
 }
 
-// the following are actual MIDI numbers
-// not to be confused with part controls!
 namespace MIDI // usage MIDI::control::noteOn
 {
     enum control : unsigned char {
         noteOn = 0,
         noteOff,
         controller,
-        programChange = 8// also bank and root - split?
+        instrument = 7,
+        bankChange = 8
     };
+// the following are actual MIDI numbers
+// not to be confused with part controls!
     enum CC : unsigned short int {
         bankSelectMSB = 0,
         modulation,
@@ -417,6 +472,7 @@ namespace MAIN // usage MAIN::control::volume
         availableParts,
         detune = 32,
         keyShift = 35,
+        mono,
         soloType = 48,
         soloCC,
 
@@ -430,10 +486,10 @@ namespace MAIN // usage MAIN::control::volume
         //importInstrument,
         //deleteInstrument,
 
-        setCurrentRootBank = 73,
-        loadInstrument,
+        setCurrentRootBank = 75,
+        loadInstrumentFromBank,
+        loadInstrumentByName,
         saveInstrument,
-        loadNamedInstrument = 78,
         saveNamedInstrument,
         loadNamedPatchset,
         saveNamedPatchset,
@@ -443,6 +499,7 @@ namespace MAIN // usage MAIN::control::volume
         saveNamedScale,
         loadNamedState = 92,
         saveNamedState,
+        loadFileFromList,
         exportPadSynthSamples,
 
         masterReset = 96,
@@ -482,6 +539,7 @@ namespace PART // usage PART::control::volume
         partToSystemEffect3,
         partToSystemEffect4,
         humanise = 48,
+        humanvelocity,
         drumMode = 57,
         kitMode,
         effectNumber = 64,
@@ -641,7 +699,8 @@ namespace ADDVOICE // usage ADDVOICE::control::volume
         modulatorHFdamping,
         enableModulatorAmplitudeEnvelope = 88,
         modulatorDetuneFrequency = 96,
-        modulatorFrequencyAs440Hz = 98,
+        modulatorDetuneFromBaseOsc,
+        modulatorFrequencyAs440Hz,
         modulatorOctave,
         modulatorDetuneType, // Default, L35 cents, L10 cents, E100 cents, E1200 cents
         modulatorCoarseDetune,
@@ -651,9 +710,10 @@ namespace ADDVOICE // usage ADDVOICE::control::volume
 
         delay = 128,
         enableResonance = 130, // for this voice
-        voiceOscillatorPhase = 136,
+        voiceOscillatorPhase = 132,
+        externalOscillator, // -1 local,  'n' voice
         voiceOscillatorSource, // - 1 internal, 'n' external voice
-        soundType // Oscillator, White noise, Pink noise
+        soundType // Oscillator, White noise, Pink noise, Spot noise
     };
 }
 
@@ -805,7 +865,8 @@ namespace RESONANCE // usage RESONANCE::control::maxDb
         interpolatePeaks = 20, // smooth, linear
         protectFundamental,
         clearGraph = 96,
-        smoothGraph
+        smoothGraph,
+        graphPoint
     };
 }
 
@@ -891,29 +952,49 @@ namespace EFFECT // usage EFFECT::type::none
         dynFilter
     };
 
+    enum control : unsigned char {
+        level = 0, // volume, wet/dry, gain for EQ
+        panning, // band for EQ
+        frequency, // time reverb, delay echo, L/R-mix dist, Not EQ
+        preset = 16, // not EQ
+        changed = 129 // not EQ
+    };
+
     enum sysIns : unsigned char {
         toEffect1 = 1, // system only
         toEffect2, // system only
         toEffect3, // system only
         effectNumber,
         effectType,
-        effectDestination // insert only
+        effectDestination, // insert only
+        effectEnable // system only
     };
 }
 
 union CommandBlock{
     struct{
-        float value;
+        union{
+            float F;
+            int32_t I;
+        } value;
         unsigned char type;
+        unsigned char source;
         unsigned char control;
         unsigned char part;
         unsigned char kit;
         unsigned char engine;
         unsigned char insert;
         unsigned char parameter;
-        unsigned char par2;
+        unsigned char offset;
+        unsigned char miscmsg;
+        unsigned char spare1;
+        unsigned char spare0;
     } data;
     char bytes [sizeof(data)];
 };
+/*
+ * it is ESSENTIAL that this is a power of 2
+ */
+const size_t commandBlockSize = sizeof(CommandBlock);
 
 #endif

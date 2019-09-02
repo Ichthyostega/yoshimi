@@ -2,7 +2,7 @@
     MusicIO.cpp
 
     Copyright 2009-2011, Alan Calvert
-    Copyright 2014-2017, Will Godfrey & others
+    Copyright 2014-2019, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -16,25 +16,22 @@
 
     You should have received a copy of the GNU General Public License
     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
-    Modified November 2017
+    Modified May 2019
 */
 
-#include <errno.h>
-#include <cstring>
-#include <fftw3.h>
-
-using namespace std;
 
 #include "Misc/Config.h"
 #include "Misc/SynthEngine.h"
+#include "Misc/FormatFuncs.h"
 #include "MusicIO/MusicIO.h"
 
-#include <unistd.h>
-#include <iostream>
+
+using func::asString;
+
 
 MusicIO::MusicIO(SynthEngine *_synth) :
     interleaved(NULL),
-    synth(_synth)//,
+    synth(_synth)
 {
     memset(zynLeft, 0, sizeof(float *) * (NUM_MIDI_PARTS + 1));
     memset(zynRight, 0, sizeof(float *) * (NUM_MIDI_PARTS + 1));
@@ -68,7 +65,6 @@ void MusicIO::setMidi(unsigned char par0, unsigned char par1, unsigned char par2
     bool inSync = LV2_engine || (synth->getRuntime().audioEngine == jack_audio && synth->getRuntime().midiEngine == jack_midi);
 
     CommandBlock putData;
-    unsigned int putSize = sizeof(putData);
 /*
  * This below is a much simpler (faster) way
  * to do note-on and note-off
@@ -97,13 +93,13 @@ void MusicIO::setMidi(unsigned char par0, unsigned char par1, unsigned char par2
         }
         else
         {
-            putData.data.value = float(par2);
+            putData.data.value.F = float(par2);
             putData.data.type = 8;
             putData.data.control = (event == 0x80);
             putData.data.part = TOPLEVEL::section::midiIn;
             putData.data.kit = channel;
             putData.data.engine = par1;
-            synth->midilearn.writeMidi(&putData, putSize, false);
+            synth->midilearn.writeMidi(&putData, false);
         }
         return;
     }

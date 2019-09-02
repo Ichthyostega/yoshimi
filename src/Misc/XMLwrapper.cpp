@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2014-2018, Will Godfrey
+    Copyright 2014-2019, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -22,23 +22,32 @@
 
     This file is derivative of original ZynAddSubFX code.
 
-    Modified August 2018
 */
 
+#include <sys/types.h>
 #include <zlib.h>
 #include <sstream>
 #include <iostream>
+#include <string>
 
 #include "Misc/Config.h"
 #include "Misc/XMLwrapper.h"
 #include "Misc/SynthEngine.h"
+#include "Misc/FileMgrFuncs.h"
+#include "Misc/FormatFuncs.h"
 
-int xml_k = 0;
-char tabs[STACKSIZE + 2];
+using file::saveText;
+using file::loadGzipped;
+using file::saveGzipped;
+using func::string2int;
+using func::string2float;
+using func::asLongString;
+using func::asString;
+
 
 const char *XMLwrapper_whitespace_callback(mxml_node_t *node, int where)
 {
-    const char *name = node->value.element.name;
+    const char *name = mxmlGetElement(node);
 
     if (where == MXML_WS_BEFORE_OPEN && !strcmp(name, "?xml"))
         return NULL;
@@ -53,6 +62,7 @@ const char *XMLwrapper_whitespace_callback(mxml_node_t *node, int where)
 
 XMLwrapper::XMLwrapper(SynthEngine *_synth, bool _isYoshi, bool includeBase) :
     stackpos(0),
+    xml_k(0),
     isYoshi(_isYoshi),
     synth(_synth)
 {
@@ -69,14 +79,14 @@ XMLwrapper::XMLwrapper(SynthEngine *_synth, bool _isYoshi, bool includeBase) :
 
     if (isYoshi)
     {
-        //cout << "Our doctype" << endl;
+        //std::cout << "Our doctype" << endl;
         mxmlElementSetAttr(doctype, "Yoshimi-data", NULL);
         root = mxmlNewElement(tree, "Yoshimi-data");
         information.yoshiType = 1;
     }
     else
     {
-        //cout << "Zyn doctype" << endl;
+        //std::cout << "Zyn doctype" << endl;
         mxmlElementSetAttr(doctype, "ZynAddSubFX-data", NULL);
         root = mxmlNewElement(tree, "ZynAddSubFX-data");
         mxmlElementSetAttr(root, "version-major", "3");
@@ -87,15 +97,15 @@ XMLwrapper::XMLwrapper(SynthEngine *_synth, bool _isYoshi, bool includeBase) :
 
     node = root;
     mxmlElementSetAttr(root, "Yoshimi-author", "Alan Ernest Calvert");
-    string tmp = YOSHIMI_VERSION;
-    string::size_type pos1 = tmp.find('.'); // != string::npos
-    string::size_type pos2 = tmp.find('.',pos1+1);
+    std::string tmp = YOSHIMI_VERSION;
+    std::string::size_type pos1 = tmp.find('.'); // != string::npos
+    std::string::size_type pos2 = tmp.find('.',pos1+1);
     mxmlElementSetAttr(root, "Yoshimi-major", tmp.substr(0, pos1).c_str());
     mxmlElementSetAttr(root, "Yoshimi-minor", tmp.substr(pos1+1, pos2-pos1-1).c_str());
 
     info = addparams0("INFORMATION"); // specifications
 
-    if (synth->getUniqueId() == 0 && (synth->getRuntime().xmlType == XML_STATE || synth->getRuntime().xmlType == XML_CONFIG))
+    if (synth->getUniqueId() == 0 && (synth->getRuntime().xmlType == TOPLEVEL::XML::State || synth->getRuntime().xmlType == TOPLEVEL::XML::Config))
     {
         beginbranch("BASE_PARAMETERS");
             addpar("sample_rate", synth->getRuntime().Samplerate);
@@ -108,11 +118,22 @@ XMLwrapper::XMLwrapper(SynthEngine *_synth, bool _isYoshi, bool includeBase) :
             addparbool("enable_auto_instance", synth->getRuntime().autoInstance);
             addparU("active_instances", synth->getRuntime().activeInstance);
             addpar("show_CLI_context", synth->getRuntime().showCLIcontext);
+
+            for (int i = 0; i < MAX_PRESET_DIRS; ++i)
+            {
+                if (synth->getRuntime().presetsDirlist[i].size())
+                {
+                    beginbranch("PRESETSROOT",i);
+                    addparstr("presets_root", synth->getRuntime().presetsDirlist[i]);
+                    endbranch();
+                }
+            }
+
         endbranch();
         return;
     }
 
-    if (synth->getRuntime().xmlType <= XML_MICROTONAL || synth->getRuntime().xmlType == XML_PRESETS)
+    if (synth->getRuntime().xmlType <= TOPLEVEL::XML::Scale || synth->getRuntime().xmlType == TOPLEVEL::XML::Presets)
     {
             beginbranch("BASE_PARAMETERS");
                 addpar("max_midi_parts", NUM_MIDI_CHANNELS);
@@ -133,15 +154,19 @@ XMLwrapper::~XMLwrapper()
 }
 
 
-void XMLwrapper::checkfileinformation(const string& filename)
+void XMLwrapper::checkfileinformation(const std::string& filename, unsigned int& names, int& type)
 {
-    stackpos = 0;
+    stackpos = 0; // we don't seem to be using any of this!
     memset(&parentstack, 0, sizeof(parentstack));
-    information.PADsynth_used = 0;
     if (tree)
         mxmlDelete(tree);
     tree = NULL;
-    char *xmldata = doloadfile(filename);
+
+
+    std::string report = "";
+    char *xmldata = loadGzipped(filename, &report);
+    if (report != "")
+        synth->getRuntime().Log(report, 2);
     if (!xmldata)
         return;
 
@@ -149,49 +174,56 @@ void XMLwrapper::checkfileinformation(const string& filename)
     information.yoshiType = (first!= NULL);
     char *start = strstr(xmldata, "<INFORMATION>");
     char *end = strstr(xmldata, "</INFORMATION>");
-    if (!start || !end || start >= end)
-    {
-        slowinfosearch(xmldata);
-        delete [] xmldata;
-        return;
-    }
-
-    // Andrew: just make it simple
-    // Will: but not too simple :)
     char *idx = start;
-    unsigned short names = 0;
+    unsigned int seen = 0;
 
-    /* the following could be in any order. We are checking for
-     * the actual existence of the fields as well as their value.
-     */
-    idx = strstr(start, "name=\"ADDsynth_used\"");
-    if (idx != NULL)
+    if (start && end && start < end)
     {
-        names |= 2;
-        if(strstr(idx, "name=\"ADDsynth_used\" value=\"yes\""))
-            information.ADDsynth_used = 1;
+        // Andrew: just make it simple
+        // Will: but not too simple :)
+        //idx = start;
+
+
+        /*
+         * the following could be in any order. We are checking for
+        * the actual existence of the fields as well as their value.
+        */
+        idx = strstr(start, "name=\"ADDsynth_used\"");
+        if (idx != NULL)
+        {
+            seen |= 2;
+            if(strstr(idx, "name=\"ADDsynth_used\" value=\"yes\""))
+                information.ADDsynth_used = 1;
+        }
+
+        idx = strstr(start, "name=\"SUBsynth_used\"");
+        if (idx != NULL)
+        {
+            seen |= 4;
+            if(strstr(idx, "name=\"SUBsynth_used\" value=\"yes\""))
+                information.SUBsynth_used = 1;
+        }
+
+        idx = strstr(start, "name=\"PADsynth_used\"");
+        if (idx != NULL)
+        {
+            seen |= 1;
+            if(strstr(idx, "name=\"PADsynth_used\" value=\"yes\""))
+                information.PADsynth_used = 1;
+        }
     }
 
-    idx = strstr(start, "name=\"SUBsynth_used\"");
+    idx = strstr(xmldata, "<INFO>");
+    if (idx == NULL)
+        return;
+    idx = strstr(idx, "par name=\"type\" value=\"");
     if (idx != NULL)
-    {
-        names |= 4;
-        if(strstr(idx, "name=\"SUBsynth_used\" value=\"yes\""))
-            information.SUBsynth_used = 1;
-    }
+        type = string2int(idx + 23);
 
-    idx = strstr(start, "name=\"PADsynth_used\"");
-    if (idx != NULL)
-    {
-        names |= 1;
-        if(strstr(idx, "name=\"PADsynth_used\" value=\"yes\""))
-            information.PADsynth_used = 1;
-    }
-
-    if (names != 7)
+    if (seen != 7) // at least one was missing
         slowinfosearch(xmldata);
-
     delete [] xmldata;
+    names = information.ADDsynth_used | (information.SUBsynth_used << 1) | (information.PADsynth_used << 2) | (information.yoshiType << 3);
     return;
 }
 
@@ -202,7 +234,7 @@ void XMLwrapper::slowinfosearch(char *idx)
     if (idx == NULL)
         return;
 
-    string mark;
+    std::string mark;
     int max = NUM_KIT_ITEMS;
     /*
      * The following *must* exist, otherwise the file is corrupted.
@@ -267,8 +299,9 @@ void XMLwrapper::slowinfosearch(char *idx)
 
 // SAVE XML members
 
-bool XMLwrapper::saveXMLfile(const string& filename)
+bool XMLwrapper::saveXMLfile(std::string _filename)
 {
+    std::string filename = _filename;
     char *xmldata = getXMLdata();
 
     if (!xmldata)
@@ -276,34 +309,26 @@ bool XMLwrapper::saveXMLfile(const string& filename)
         synth->getRuntime().Log("XML: Failed to allocate xml data space");
         return false;
     }
+
     unsigned int compression = synth->getRuntime().GzipCompression;
-    if (compression == 0)
+    if (compression <= 0)
     {
-        FILE *xmlfile = fopen(filename.c_str(), "w");
-        if (!xmlfile)
+        if (!saveText(xmldata, filename))
         {
-            synth->getRuntime().Log("XML: Failed to open xml file " + filename + " for save", 2);
+            synth->getRuntime().Log("XML: Failed to save xml file " + filename + " for save", 2);
             return false;
         }
-        fputs(xmldata, xmlfile);
-        fclose(xmlfile);
     }
     else
     {
         if (compression > 9)
             compression = 9;
-        char options[10];
-        snprintf(options, 10, "wb%d", compression);
-
-        gzFile gzfile;
-        gzfile = gzopen(filename.c_str(), options);
-        if (gzfile == NULL)
+        std::string result = saveGzipped(xmldata, filename, compression);
+        if (result > "")
         {
-            synth->getRuntime().Log("XML: gzopen() == NULL");
+            synth->getRuntime().Log(result,2);
             return false;
         }
-        gzputs(gzfile, xmldata);
-        gzclose(gzfile);
     }
     free(xmldata);
     return true;
@@ -319,49 +344,45 @@ char *XMLwrapper::getXMLdata()
 
     switch (synth->getRuntime().xmlType)
     {
-        case 0:
-            addparstr("XMLtype", "Invalid");
+        case TOPLEVEL::XML::Instrument:
+            addparbool("ADDsynth_used", (information.ADDsynth_used != 0));
+            addparbool("SUBsynth_used", (information.SUBsynth_used != 0));
+            addparbool("PADsynth_used", (information.PADsynth_used != 0));
             break;
 
-        case XML_INSTRUMENT:
-            addparbool("ADDsynth_used", information.ADDsynth_used);
-            addparbool("SUBsynth_used", information.SUBsynth_used);
-            addparbool("PADsynth_used", information.PADsynth_used);
-            break;
-
-        case XML_PARAMETERS:
+        case TOPLEVEL::XML::Patch:
             addparstr("XMLtype", "Parameters");
             break;
 
-        case XML_MICROTONAL:
+        case TOPLEVEL::XML::Scale:
             addparstr("XMLtype", "Scales");
             break;
 
-        case XML_STATE:
+        case TOPLEVEL::XML::State:
             addparstr("XMLtype", "Session");
             break;
 
-        case XML_VECTOR:
+        case TOPLEVEL::XML::Vector:
             addparstr("XMLtype", "Vector Control");
             break;
 
-        case XML_MIDILEARN:
+        case TOPLEVEL::XML::MLearn:
             addparstr("XMLtype", "Midi Learn");
             break;
 
-        case XML_CONFIG:
+        case TOPLEVEL::XML::Config:
             addparstr("XMLtype", "Config");
             break;
 
-        case XML_PRESETS:
+        case TOPLEVEL::XML::Presets:
             addparstr("XMLtype", "Presets");
             break;
 
-        case XML_BANK:
+        case TOPLEVEL::XML::Bank:
             addparstr("XMLtype", "Roots and Banks");
             break;
 
-        case XML_HISTORY:
+        case TOPLEVEL::XML::History:
             addparstr("XMLtype", "Recent Files");
             break;
 
@@ -375,19 +396,19 @@ char *XMLwrapper::getXMLdata()
 }
 
 
-void XMLwrapper::addparU(const string& name, unsigned int val)
+void XMLwrapper::addparU(const std::string& name, unsigned int val)
 {
     addparams2("parU", "name", name.c_str(), "value", asString(val));
 }
 
 
-void XMLwrapper::addpar(const string& name, int val)
+void XMLwrapper::addpar(const std::string& name, int val)
 {
     addparams2("par", "name", name.c_str(), "value", asString(val));
 }
 
 
-void XMLwrapper::addparreal(const string& name, float val)
+void XMLwrapper::addparreal(const std::string& name, float val)
 {
     union { float in; uint32_t out; } convert;
     char buf[11];
@@ -397,13 +418,13 @@ void XMLwrapper::addparreal(const string& name, float val)
 }
 
 
-void XMLwrapper::addpardouble(const string& name, double val)
+void XMLwrapper::addpardouble(const std::string& name, double val)
 {
     addparams2("par_real","name", name.c_str(), "value", asLongString(val));
 }
 
 
-void XMLwrapper::addparbool(const string& name, int val)
+void XMLwrapper::addparbool(const std::string& name, int val)
 {
     if (val != 0)
         addparams2("par_bool", "name", name.c_str(), "value", "yes");
@@ -412,7 +433,7 @@ void XMLwrapper::addparbool(const string& name, int val)
 }
 
 
-void XMLwrapper::addparstr(const string& name, const string& val)
+void XMLwrapper::addparstr(const std::string& name, const std::string& val)
 {
     mxml_node_t *element = mxmlNewElement(node, "string");
     mxmlElementSetAttr(element, "name", name.c_str());
@@ -420,14 +441,14 @@ void XMLwrapper::addparstr(const string& name, const string& val)
 }
 
 
-void XMLwrapper::beginbranch(const string& name)
+void XMLwrapper::beginbranch(const std::string& name)
 {
     push(node);
     node = addparams0(name.c_str());
 }
 
 
-void XMLwrapper::beginbranch(const string& name, int id)
+void XMLwrapper::beginbranch(const std::string& name, int id)
 {
     push(node);
     node = addparams1(name.c_str(), "id", asString(id));
@@ -441,7 +462,7 @@ void XMLwrapper::endbranch()
 
 
 // LOAD XML members
-bool XMLwrapper::loadXMLfile(const string& filename)
+bool XMLwrapper::loadXMLfile(const std::string& filename)
 {
     bool zynfile = true;
     bool yoshitoo = false;
@@ -451,7 +472,10 @@ bool XMLwrapper::loadXMLfile(const string& filename)
     tree = NULL;
     memset(&parentstack, 0, sizeof(parentstack));
     stackpos = 0;
-    const char *xmldata = doloadfile(filename);
+    std::string report = "";
+    char *xmldata = loadGzipped(filename, &report);
+    if (report != "")
+        synth->getRuntime().Log(report, 2);
     if (xmldata == NULL)
     {
         synth->getRuntime().Log("XML: Could not load xml file: " + filename, 2);
@@ -513,54 +537,6 @@ bool XMLwrapper::loadXMLfile(const string& filename)
 }
 
 
-char *XMLwrapper::doloadfile(const string& filename)
-{
-    char *xmldata = NULL;
-    gzFile gzf  = gzopen(filename.c_str(), "rb");
-    if (!gzf)
-    {
-        synth->getRuntime().Log("XML: Failed to open xml file " + filename + " for load, errno: "
-                    + asString(errno) + "  " + string(strerror(errno)), 2);
-        return NULL;
-    }
-    const int bufSize = 4096;
-    char fetchBuf[4097];
-    int this_read;
-    int total_bytes = 0;
-    stringstream readStream;
-    for (bool quit = false; !quit;)
-    {
-        memset(fetchBuf, 0, sizeof(fetchBuf) * sizeof(char));
-        this_read = gzread(gzf, fetchBuf, bufSize);
-        if (this_read > 0)
-        {
-            readStream << fetchBuf;
-            total_bytes += this_read;
-        }
-        else if (this_read < 0)
-        {
-            int errnum;
-            synth->getRuntime().Log("XML: Read error in zlib: " + string(gzerror(gzf, &errnum)), 2);
-            if (errnum == Z_ERRNO)
-                synth->getRuntime().Log("XML: Filesystem error: " + string(strerror(errno)), 2);
-            quit = true;
-        }
-        else if (total_bytes > 0)
-        {
-            xmldata = new char[total_bytes + 1];
-            if (xmldata)
-            {
-                memset(xmldata, 0, total_bytes + 1);
-                memcpy(xmldata, readStream.str().c_str(), total_bytes);
-            }
-            quit = true;
-        }
-    }
-    gzclose(gzf);
-    return xmldata;
-}
-
-
 bool XMLwrapper::putXMLdata(const char *xmldata)
 {
     if (tree)
@@ -584,7 +560,7 @@ bool XMLwrapper::putXMLdata(const char *xmldata)
 }
 
 
-bool XMLwrapper::enterbranch(const string& name)
+bool XMLwrapper::enterbranch(const std::string& name)
 {
     node = mxmlFindElement(peek(), peek(), name.c_str(), NULL, NULL,
                            MXML_DESCEND_FIRST);
@@ -600,7 +576,7 @@ bool XMLwrapper::enterbranch(const string& name)
 }
 
 
-bool XMLwrapper::enterbranch(const string& name, int id)
+bool XMLwrapper::enterbranch(const std::string& name, int id)
 {
     node = mxmlFindElement(peek(), peek(), name.c_str(), "id",
                            asString(id).c_str(), MXML_DESCEND_FIRST);
@@ -624,7 +600,7 @@ int XMLwrapper::getbranchid(int min, int max)
 }
 
 
-unsigned int XMLwrapper::getparU(const string& name, unsigned int defaultpar, unsigned int min, unsigned int max)
+unsigned int XMLwrapper::getparU(const std::string& name, unsigned int defaultpar, unsigned int min, unsigned int max)
 {
     node = mxmlFindElement(peek(), peek(), "parU", "name", name.c_str(), MXML_DESCEND_FIRST);
     if (!node)
@@ -641,7 +617,7 @@ unsigned int XMLwrapper::getparU(const string& name, unsigned int defaultpar, un
 }
 
 
-int XMLwrapper::getpar(const string& name, int defaultpar, int min, int max)
+int XMLwrapper::getpar(const std::string& name, int defaultpar, int min, int max)
 {
     node = mxmlFindElement(peek(), peek(), "par", "name", name.c_str(), MXML_DESCEND_FIRST);
     if (!node)
@@ -658,19 +634,19 @@ int XMLwrapper::getpar(const string& name, int defaultpar, int min, int max)
 }
 
 
-int XMLwrapper::getpar127(const string& name, int defaultpar)
+int XMLwrapper::getpar127(const std::string& name, int defaultpar)
 {
     return(getpar(name, defaultpar, 0, 127));
 }
 
 
-int XMLwrapper::getpar255(const string& name, int defaultpar)
+int XMLwrapper::getpar255(const std::string& name, int defaultpar)
 {
     return(getpar(name, defaultpar, 0, 255));
 }
 
 
-int XMLwrapper::getparbool(const string& name, int defaultpar)
+int XMLwrapper::getparbool(const std::string& name, int defaultpar)
 {
     node = mxmlFindElement(peek(), peek(), "par_bool", "name", name.c_str(), MXML_DESCEND_FIRST);
     if (!node)
@@ -684,20 +660,21 @@ int XMLwrapper::getparbool(const string& name, int defaultpar)
 // case insensitive, anything other than '0', 'no', 'false' is treated as 'true'
 
 
-string XMLwrapper::getparstr(const string& name)
+std::string XMLwrapper::getparstr(const std::string& name)
 {
     node = mxmlFindElement(peek(), peek(), "string", "name", name.c_str(), MXML_DESCEND_FIRST);
     if (!node)
-        return string();
-    if (!node->child)
-        return string();
-    if (node->child->type != MXML_OPAQUE)
-        return string();
-    return string(node->child->value.element.name);
+        return std::string();
+    mxml_node_t *child = mxmlGetFirstChild(node);
+    if (!child)
+        return std::string();
+    if (mxmlGetType(child) != MXML_OPAQUE)
+        return std::string();
+    return std::string(mxmlGetOpaque(child));
 }
 
 
-float XMLwrapper::getparreal(const string& name, float defaultpar)
+float XMLwrapper::getparreal(const std::string& name, float defaultpar)
 {
     node = mxmlFindElement(peek(), peek(), "par_real", "name", name.c_str(),
                            MXML_DESCEND_FIRST);
@@ -714,11 +691,11 @@ float XMLwrapper::getparreal(const string& name, float defaultpar)
     strval = mxmlElementGetAttr(node, "value");
     if (!strval)
         return defaultpar;
-    return string2float(string(strval));
+    return string2float(std::string(strval));
 }
 
 
-float XMLwrapper::getparreal(const string& name, float defaultpar, float min, float max)
+float XMLwrapper::getparreal(const std::string& name, float defaultpar, float min, float max)
 {
     float result = getparreal(name, defaultpar);
     if (result < min)
@@ -731,14 +708,14 @@ float XMLwrapper::getparreal(const string& name, float defaultpar, float min, fl
 
 // Private parts
 
-mxml_node_t *XMLwrapper::addparams0(const string& name)
+mxml_node_t *XMLwrapper::addparams0(const std::string& name)
 {
     mxml_node_t *element = mxmlNewElement(node, name.c_str());
     return element;
 }
 
 
-mxml_node_t *XMLwrapper::addparams1(const string& name, const string& par1, const string& val1)
+mxml_node_t *XMLwrapper::addparams1(const std::string& name, const std::string& par1, const std::string& val1)
 {
     mxml_node_t *element = mxmlNewElement(node, name.c_str());
     mxmlElementSetAttr(element, par1.c_str(), val1.c_str());
@@ -746,8 +723,8 @@ mxml_node_t *XMLwrapper::addparams1(const string& name, const string& par1, cons
 }
 
 
-mxml_node_t *XMLwrapper::addparams2(const string& name, const string& par1, const string& val1,
-                                    const string& par2, const string& val2)
+mxml_node_t *XMLwrapper::addparams2(const std::string& name, const std::string& par1, const std::string& val1,
+                                    const std::string& par2, const std::string& val2)
 {
     mxml_node_t *element = mxmlNewElement(node, name.c_str());
     mxmlElementSetAttr(element, par1.c_str(), val1.c_str());
@@ -756,9 +733,9 @@ mxml_node_t *XMLwrapper::addparams2(const string& name, const string& par1, cons
 }
 
 
-mxml_node_t *XMLwrapper::addparams3(const string& name, const string& par1, const string& val1,
-                                    const string& par2, const string& val2,
-                                    const string& par3, const string& val3)
+mxml_node_t *XMLwrapper::addparams3(const std::string& name, const std::string& par1, const std::string& val1,
+                                    const std::string& par2, const std::string& val2,
+                                    const std::string& par3, const std::string& val3)
 {
     mxml_node_t *element = mxmlNewElement(node, name.c_str());
     mxmlElementSetAttr(element, par1.c_str(), val1.c_str());

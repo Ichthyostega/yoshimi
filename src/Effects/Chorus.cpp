@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2009 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2014-2018, Will Godfrey
+    Copyright 2014-2019, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -22,7 +22,6 @@
 
     This file is derivative of ZynAddSubFX original code.
 
-    Modified September 2018
 */
 
 #include "Misc/SynthEngine.h"
@@ -66,10 +65,12 @@ Chorus::Chorus(bool insertion_, float *const efxoutl_, float *efxoutr_, SynthEng
     delayl = new float[maxdelay];
     delayr = new float[maxdelay];
     setpreset(Ppreset);
+
     changepar(1, 64);
     lfo.effectlfoout(&lfol, &lfor);
     dl2 = getdelay(lfol);
     dr2 = getdelay(lfor);
+    Pchanged = false;
     cleanup();
 }
 
@@ -117,7 +118,7 @@ void Chorus::out(float *smpsl, float *smpsr)
         if (++dlk >= maxdelay)
             dlk = 0;
         tmp = dlk - mdel + maxdelay * 2.0f; // where should I get the sample from
-         FR2Z2I(tmp, dlhi);
+        dlhi = int(tmp);
         dlhi %= maxdelay;
 
         dlhi2 = (dlhi - 1 + maxdelay) % maxdelay;
@@ -132,7 +133,7 @@ void Chorus::out(float *smpsl, float *smpsr)
         if (++drk >= maxdelay)
             drk = 0;
         tmp = drk * 1.0f - mdel + maxdelay * 2.0f; // where should I get the sample from
-        FR2Z2I(tmp, dlhi);
+        dlhi = int(tmp);
         dlhi %= maxdelay;
         dlhi2 = (dlhi - 1 + maxdelay) % maxdelay;
         dllo = 1.0f - fmodf(tmp, one);
@@ -215,11 +216,18 @@ void Chorus::setpreset(unsigned char npreset)
         if (insertion && (param == 0))
             changepar(0, presets[preset][0] / 2);
     }
+    Pchanged = false;
 }
 
 
 void Chorus::changepar(int npar, unsigned char value)
 {
+    if (npar == -1)
+    {
+        Pchanged = (value != 0);
+        return;
+    }
+    Pchanged = true;
     switch (npar)
     {
         case 0:
@@ -262,6 +270,8 @@ void Chorus::changepar(int npar, unsigned char value)
         case 11:
             Poutsub = (value > 1) ? 1 : value;
             break;
+        default:
+            Pchanged = false;
     }
 }
 
@@ -270,6 +280,7 @@ unsigned char Chorus::getpar(int npar)
 {
     switch (npar)
     {
+        case -1: return Pchanged;
         case 0:  return Pvolume;
         case 1:  return Ppanning;
         case 2:  return lfo.Pfreq;
@@ -289,7 +300,7 @@ unsigned char Chorus::getpar(int npar)
 
 float Choruslimit::getlimits(CommandBlock *getData)
 {
-    int value = getData->data.value;
+    int value = getData->data.value.F;
     int control = getData->data.control;
     int request = getData->data.type & 3; // clear upper bits
     int npart = getData->data.part;
@@ -298,8 +309,8 @@ float Choruslimit::getlimits(CommandBlock *getData)
     int max = 127;
 
     int def = presets[presetNum][control];
-    bool canLearn = true;
-    bool isInteger = true;
+    unsigned char canLearn = TOPLEVEL::type::Learnable;
+    unsigned char isInteger = TOPLEVEL::type::Integer;
     switch (control)
     {
         case 0:
@@ -314,7 +325,7 @@ float Choruslimit::getlimits(CommandBlock *getData)
             break;
         case 4:
             max = 1;
-            canLearn = false;
+            canLearn = 0;
             break;
         case 5:
             break;
@@ -328,11 +339,11 @@ float Choruslimit::getlimits(CommandBlock *getData)
             break;
         case 11:
             max = 1;
-            canLearn = false;
+            canLearn = 0;
             break;
         case 16:
             max = 9;
-            canLearn = false;
+            canLearn = 0;
             break;
         default:
             getData->data.type |= TOPLEVEL::type::Error;
@@ -358,7 +369,7 @@ float Choruslimit::getlimits(CommandBlock *getData)
             value = def;
             break;
     }
-    getData->data.type |= (canLearn * 64 + isInteger * 128);
+    getData->data.type |= (canLearn + isInteger);
     return float(value);
 }
 

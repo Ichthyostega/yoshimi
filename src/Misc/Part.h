@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011 Alan Calvert
-    Copyright 2014-2018, Will Godfrey
+    Copyright 2014-2019, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -22,18 +22,14 @@
 
     This file is derivative of original ZynAddSubFX code.
 
-    Modified February 2018
 */
 
 #ifndef PART_H
 #define PART_H
 
 #include <list>
-
-using namespace std;
-
-#include "Misc/MiscFuncs.h"
-#include "Misc/SynthHelper.h"
+#include <string>
+#include "globals.h"
 
 class ADnoteParameters;
 class SUBnoteParameters;
@@ -49,7 +45,7 @@ class FFTwrapper;
 
 class SynthEngine;
 
-class Part : private MiscFuncs, SynthHelper
+class Part
 {
     public:
         enum NoteStatus { KEY_OFF, KEY_PLAYING, KEY_RELEASED_AND_SUSTAINED, KEY_RELEASED };
@@ -72,8 +68,8 @@ class Part : private MiscFuncs, SynthHelper
         void ReleaseAllKeys(void);
         void ComputePartSmps(void);
 
-        bool saveXML(string filename, bool yoshiFormat); // result true for load ok, otherwise false
-        int loadXMLinstrument(string filename);
+        bool saveXML(std::string filename, bool yoshiFormat); // result true for load ok, otherwise false
+        int loadXMLinstrument(std::string filename);
         void add2XML(XMLwrapper *xml, bool subset = false);
         void add2XMLinstrument(XMLwrapper *xml);
         void getfromXML(XMLwrapper *xml);
@@ -84,7 +80,7 @@ class Part : private MiscFuncs, SynthHelper
 
         // part's kit
         struct {
-            string        Pname;
+            std::string   Pname;
             unsigned char Penabled;
             unsigned char Pmuted;
             unsigned char Pminkey;
@@ -130,19 +126,23 @@ class Part : private MiscFuncs, SynthHelper
         unsigned char Pkeylimit;   // how many keys can play simultaneously,
                                    // time 0 = off, the older will be released
         float         Pfrand;      // Part random frequency content
+        float         Pvelrand;    // Part random velocity content
         unsigned char PbreathControl;
+        unsigned char Peffnum;
         int           Paudiodest;  // jack output routing
-        string        Pname;
-        struct {
+        std::string   Pname;
+
+        struct Info {
             unsigned char Ptype;
-            string        Pauthor;
-            string        Pcomments;
-        } info;
+            std::string   Pauthor;
+            std::string   Pcomments;
+        };
+        Info info;
 
         float *partoutl;
         float *partoutr;
 
-        float *partfxinputl[NUM_PART_EFX + 1]; // Left and right signal that pass thru part effects
+        float *partfxinputl[NUM_PART_EFX + 1]; // Left and right signal that pass-through part effects
         float *partfxinputr[NUM_PART_EFX + 1]; // [NUM_PART_EFX] is for "no effect" buffer
 
         unsigned char Pefxroute[NUM_PART_EFX]; // how the effect's output is
@@ -171,12 +171,13 @@ class Part : private MiscFuncs, SynthHelper
             NoteStatus status;
             int note;          // if there is no note playing, "note" = -1
             int itemsplaying;
-            struct {
+            struct Kititem {
                 ADnote *adnote;
                 SUBnote *subnote;
                 PADnote *padnote;
                 int sendtoparteffect;
-            } kititem[NUM_KIT_ITEMS];
+            };
+            Kititem kititem[NUM_KIT_ITEMS];
             int time;
         };
 
@@ -193,7 +194,7 @@ class Part : private MiscFuncs, SynthHelper
         bool killallnotes;
 
         // MonoMem stuff
-        list<unsigned char> monomemnotes; // held notes.
+        std::list<unsigned char> monomemnotes; // held notes.
         struct {
             unsigned char velocity;
         } monomem[256];    // 256 is to cover all possible note values. monomem[]
