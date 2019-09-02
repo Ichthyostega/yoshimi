@@ -1,10 +1,10 @@
 /*
-    Distorsion.cpp - Distorsion effect
+    Distorsion.cpp - Distortion effect
 
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2009 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2018, Will Godfrey
+    Copyright 2018 -2019, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -22,15 +22,19 @@
 
     This file is derivative of ZynAddSubFX original code.
 
-    Modified November 2018
 */
 
 #include "Misc/SynthEngine.h"
 #include "Effects/Distorsion.h"
+#include "Misc/NumericFuncs.h"
 
-static const int PRESET_SIZE = 11;
-static const int NUM_PRESETS = 6;
-static int presets[NUM_PRESETS][PRESET_SIZE] = {
+using func::dB2rap;
+
+
+namespace { // Implementation details...
+    const int PRESET_SIZE = 11;
+    const int NUM_PRESETS = 6;
+    int presets[NUM_PRESETS][PRESET_SIZE] = {
         // Overdrive 1
         { 127, 64, 35, 56, 70, 0, 0, 96, 0, 0, 0 },
         // Overdrive 2
@@ -41,9 +45,11 @@ static int presets[NUM_PRESETS][PRESET_SIZE] = {
         { 64, 64, 35, 85, 62, 1, 0, 127, 118, 1, 0 },
         // Guitar Amp
         { 127, 64, 35, 63, 75, 2, 0, 55, 0, 0, 0 },
-        // Quantisize
+        // Quantise
         { 127, 64, 35, 88, 75, 4, 0, 127, 0, 1, 0 }
-};
+    };
+}
+
 
 Distorsion::Distorsion(bool insertion_, float *efxoutl_, float *efxoutr_, SynthEngine *_synth) :
     Effect(insertion_, efxoutl_, efxoutr_, NULL, 0),
@@ -65,6 +71,7 @@ Distorsion::Distorsion(bool insertion_, float *efxoutl_, float *efxoutr_, SynthE
     hpfr = new AnalogFilter(3, 20, 1, 0, synth);
     setpreset(Ppreset);
     changepar(2, 35);
+    Pchanged = false;
     cleanup();
 }
 
@@ -223,11 +230,17 @@ void Distorsion::setpreset(unsigned char npreset)
             changepar(0, presets[preset][0] / 2);
     }
     cleanup();
+    Pchanged = false;
 }
 
 
 void Distorsion::changepar(int npar, unsigned char value)
 {
+    if (npar == -1)
+    {
+        Pchanged = (value != 0);
+        return;
+    }
     switch (npar)
     {
         case 0:
@@ -253,7 +266,7 @@ void Distorsion::changepar(int npar, unsigned char value)
 
         case 5:
             if (value > 13)
-                Ptype = 13; // this must be increased if more distorsion types are added
+                Ptype = 13; // this must be increased if more distortion types are added
             else
                 Ptype = value;
             break;
@@ -281,6 +294,7 @@ void Distorsion::changepar(int npar, unsigned char value)
             Pprefiltering = value;
             break;
     }
+    Pchanged = true;
 }
 
 
@@ -288,6 +302,7 @@ unsigned char Distorsion::getpar(int npar)
 {
     switch (npar)
     {
+        case -1: return Pchanged;
         case 0:  return Pvolume;
         case 1:  return Ppanning;
         case 2:  return Plrcross;
@@ -307,7 +322,7 @@ unsigned char Distorsion::getpar(int npar)
 
 float Distlimit::getlimits(CommandBlock *getData)
 {
-    int value = getData->data.value;
+    int value = getData->data.value.F;
     int control = getData->data.control;
     int request = getData->data.type & 3; // clear upper bits
     int npart = getData->data.part;
@@ -316,7 +331,8 @@ float Distlimit::getlimits(CommandBlock *getData)
     int max = 127;
 
     int def = presets[presetNum][control];
-    bool canLearn = true;
+    unsigned char canLearn = TOPLEVEL::type::Learnable;
+    unsigned char isInteger = TOPLEVEL::type::Integer;
     switch (control)
     {
         case 0:
@@ -333,11 +349,11 @@ float Distlimit::getlimits(CommandBlock *getData)
             break;
         case 5:
             max = 13;
-            canLearn = false;
+            canLearn = 0;
             break;
         case 6:
             max = 1;
-            canLearn = false;
+            canLearn = 0;
             break;
         case 7:
             break;
@@ -346,11 +362,11 @@ float Distlimit::getlimits(CommandBlock *getData)
         case 9:
         case 10:
             max = 1;
-            canLearn = false;
+            canLearn = 0;
             break;
         case 16:
             max = 5;
-            canLearn = false;
+            canLearn = 0;
             break;
         default:
             getData->data.type |= TOPLEVEL::type::Error;
@@ -376,7 +392,6 @@ float Distlimit::getlimits(CommandBlock *getData)
             value = def;
             break;
     }
-    if (canLearn)
-        getData->data.type |= TOPLEVEL::type::Learnable;
+    getData->data.type |= (canLearn + isInteger);
     return float(value);
 }

@@ -5,7 +5,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2009 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2014-2018, Will Godfrey & others
+    Copyright 2014-2019, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -22,7 +22,7 @@
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
     This file is derivative of ZynAddSubFX original code
-    Modified October 2018
+    Modified January 2019
 */
 
 #include <cmath>
@@ -34,7 +34,14 @@
 #include "Synth/Envelope.h"
 #include "DSP/Filter.h"
 #include "Misc/SynthEngine.h"
+#include "Misc/SynthHelper.h"
 #include "Synth/SUBnote.h"
+
+using synth::velF;
+using synth::getDetune;
+using synth::interpolateAmplitude;
+using synth::aboveAmplitudeThreshold;
+
 
 SUBnote::SUBnote(SUBnoteParameters *parameters, Controller *ctl_, float freq,
                  float velocity, int portamento_, int midinote, bool besilent, SynthEngine *_synth) :
@@ -55,8 +62,7 @@ SUBnote::SUBnote(SUBnoteParameters *parameters, Controller *ctl_, float freq,
 
     // Initialise some legato-specific vars
     Legato.msg = LM_Norm;
-    FR2Z2I(synth->samplerate_f * 0.005f, Legato.fade.length); // 0.005 seems ok.
-    //Legato.fade.length = (int)truncf(synth->samplerate_f * 0.005f); // 0.005 seems ok.
+    Legato.fade.length = int(synth->samplerate_f * 0.005f); // 0.005 seems ok.
     if (Legato.fade.length < 1)
         Legato.fade.length = 1;// (if something's fishy)
     Legato.fade.step = (1.0f / Legato.fade.length);
@@ -741,7 +747,6 @@ int SUBnote::noteout(float *outl, float *outr)
                     break;
                 }
                 Legato.fade.m += Legato.fade.step;
-                Legato.fade.m = Legato.fade.m;
                 outl[i] *= Legato.fade.m;
                 outr[i] *= Legato.fade.m;
             }
@@ -773,7 +778,6 @@ int SUBnote::noteout(float *outl, float *outr)
                     break;
                 }
                 Legato.fade.m -= Legato.fade.step;
-                Legato.fade.m = Legato.fade.m;
                 outl[i] *= Legato.fade.m;
                 outr[i] *= Legato.fade.m;
             }

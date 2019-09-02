@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2014-2018, Will Godfrey
+    Copyright 2014-2019, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -22,7 +22,6 @@
 
     This file is derivative of ZynAddSubFX original code.
 
-    Modified April 2018
 */
 
 #ifndef XML_WRAPPER_H
@@ -31,62 +30,58 @@
 #include <mxml.h>
 #include <string>
 
-using namespace std;
-
-#include "Misc/MiscFuncs.h"
-
 // max tree depth
 #define STACKSIZE 128
 
 class SynthEngine;
 
-class XMLwrapper : private MiscFuncs
+class XMLwrapper
 {
     public:
         XMLwrapper(SynthEngine *_synth, bool _isYoshi = false, bool includeBase = true);
         ~XMLwrapper();
 
         // SAVE to XML
-        bool saveXMLfile(const string& filename); // return true if ok, false otherwise
+        bool saveXMLfile(std::string _filename); // return true if ok, false otherwise
 
         // returns the new allocated string that contains the XML data (used for clipboard)
         // the string is NULL terminated
         char *getXMLdata(void);
 
 
-        void addparU(const string& name, unsigned int val); // add unsigned uinteger parameter: name, value
+        void addparU(const std::string& name, unsigned int val); // add unsigned uinteger parameter: name, value
 
-        void addpar(const string& name, int val); // add simple parameter: name, value
-        void addparreal(const string& name, float val);
+        void addpar(const std::string& name, int val); // add simple parameter: name, value
+        void addparreal(const std::string& name, float val);
 
-        void addpardouble(const string& name, double val);
+        void addpardouble(const std::string& name, double val);
 
-        void addparbool(const string& name, int val); // 1 => "yes", else "no"
+        void addparbool(const std::string& name, int val); // 1 => "yes", else "no"
 
 
         // add string parameter (name and string)
-        void addparstr(const string& name, const string& val);
+        void addparstr(const std::string& name, const std::string& val);
 
         // add a branch
-        void beginbranch(const string& name);
-        void beginbranch(const string& name, int id);
+        void beginbranch(const std::string& name);
+        void beginbranch(const std::string& name, int id);
 
         // this must be called after each branch (nodes that contains child nodes)
         void endbranch(void);
 
         // LOAD from XML
-        bool loadXMLfile(const string& filename); // true if loaded ok
+        bool loadXMLfile(const std::string& filename); // true if loaded ok
 
         // used by the clipboard
         bool putXMLdata(const char *xmldata);
 
         // enter into the branch
         // returns 1 if is ok, or 0 otherwise
-        bool enterbranch(const string& name);
+        bool enterbranch(const std::string& name);
 
         // enter into the branch with id
         // returns 1 if is ok, or 0 otherwise
-        bool enterbranch(const string& name, int id);
+        bool enterbranch(const std::string& name, int id);
 
         // exits from a branch
         void exitbranch(void) { pop(); }
@@ -100,27 +95,28 @@ class XMLwrapper : private MiscFuncs
         // it returns the parameter and limits it between min and max
         // if min==max==0, it will not limit it
         // if no parameter will be here, the defaultpar will be returned
-        unsigned int getparU(const string& name, unsigned int defaultpar, unsigned int min = 0, unsigned int max = 0xffffffff);
+        unsigned int getparU(const std::string& name, unsigned int defaultpar, unsigned int min = 0, unsigned int max = 0xffffffff);
 
-        int getpar(const string& name, int defaultpar, int min, int max);
+        int getpar(const std::string& name, int defaultpar, int min, int max);
 
         // the same as getpar, but the limits are 0 and 127
-        int getpar127(const string& name, int defaultpar);
+        int getpar127(const std::string& name, int defaultpar);
 
          // the same as getpar, but the limits are 0 and 255
-        int getpar255(const string& name, int defaultpar);
+        int getpar255(const std::string& name, int defaultpar);
 
-       int getparbool(const string& name, int defaultpar);
+       int getparbool(const std::string& name, int defaultpar);
 
-         string getparstr(const string& name);
+         std::string getparstr(const std::string& name);
 
-        float getparreal(const string& name, float defaultpar);
-        float getparreal(const string& name, float defaultpar,
+        float getparreal(const std::string& name, float defaultpar);
+        float getparreal(const std::string& name, float defaultpar,
                          float min, float max);
 
         bool minimal; // false if all parameters will be stored
 
         struct {
+            int type;
             unsigned char ADDsynth_used;
             unsigned char SUBsynth_used;
             unsigned char PADsynth_used;
@@ -128,13 +124,11 @@ class XMLwrapper : private MiscFuncs
         } information;
 
         // opens a file and parse only the "information" data on it
-        // returns "true" if all went ok or "false" on errors
-        void checkfileinformation(const string& filename);
+
+        void checkfileinformation(const std::string& filename, unsigned int& names, int& type);
         void slowinfosearch(char *idx);
 
     private:
-        char *doloadfile(const string& filename);
-
         mxml_node_t *tree;
         mxml_node_t *root;
         mxml_node_t *node;
@@ -144,22 +138,24 @@ class XMLwrapper : private MiscFuncs
         // <name>
         // returns the node
         //mxml_node_t *addparams0(const char *name);
-        mxml_node_t *addparams0(const string&  name);
+        mxml_node_t *addparams0(const std::string&  name);
 
         // adds params like this: <name par1="val1">, returns the node
-        mxml_node_t *addparams1(const string& name, const string& par1, const string& val1);
+        mxml_node_t *addparams1(const std::string& name, const std::string& par1, const std::string& val1);
 
         // adds params like this: <name par1="val1" par2="val2">, returns the node
-        mxml_node_t *addparams2(const string& name, const string& par1, const string& val1,
-                                const string& par2, const string& val2);
+        mxml_node_t *addparams2(const std::string& name, const std::string& par1, const std::string& val1,
+                                const std::string& par2, const std::string& val2);
 
-        mxml_node_t *addparams3(const string& name, const string& par1, const string& val1,
-                                const string& par2, const string& val2,
-                                const string& par3, const string& val3);
+        mxml_node_t *addparams3(const std::string& name, const std::string& par1, const std::string& val1,
+                                const std::string& par2, const std::string& val2,
+                                const std::string& par3, const std::string& val3);
 
         // this is used to store the parents
         mxml_node_t *parentstack[STACKSIZE];
         int stackpos;
+        int xml_k;
+        char tabs[STACKSIZE + 2];
 
         void push(mxml_node_t *node);
         mxml_node_t *pop(void);

@@ -5,7 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009, James Morris
     Copyright 2009-2011, Alan Calvert
-    Copyright 2014-2018, Will Godfrey
+    Copyright 2014-2019, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -23,14 +23,8 @@
 
     This file is derivative of ZynAddSubFX original code.
 
-    Modified November 2018
 */
 
-#include <cstring>
-#include <cmath>
-#include <iostream>
-
-using namespace std;
 
 #include "Params/ADnoteParameters.h"
 #include "Params/SUBnoteParameters.h"
@@ -44,8 +38,20 @@ using namespace std;
 #include "Misc/Microtonal.h"
 #include "Misc/XMLwrapper.h"
 #include "Misc/SynthEngine.h"
+#include "Misc/SynthHelper.h"
+#include "Misc/FileMgrFuncs.h"
+#include "Misc/NumericFuncs.h"
+#include "Misc/FormatFuncs.h"
 #include "Synth/Resonance.h"
 #include "Misc/Part.h"
+
+using synth::velF;
+using file::isRegularFile;
+using file::setExtension;
+using file::findLeafName;
+using func::dB2rap;
+using func::findSplitPoint;
+
 
 Part::Part(Microtonal *microtonal_, FFTwrapper *fft_, SynthEngine *_synth) :
     microtonal(microtonal_),
@@ -115,7 +121,7 @@ void Part::defaults(void)
     Penabled = 0;
     Pminkey = 0;
     Pmaxkey = 127;
-    Pkeymode = 0; // poly
+    Pkeymode = PART_POLY;
     setVolume(96);
     TransVolume = 128; // ensure it always gets set
     Pkeyshift = 64;
@@ -127,7 +133,9 @@ void Part::defaults(void)
     Pveloffs = 64;
     Pkeylimit = 20;
     Pfrand = 0;
+    Pvelrand = 0;
     PbreathControl = 2;
+    Peffnum = 0;
     legatoFading = 0;
     setDestination(1);
     busy = false;
@@ -158,6 +166,7 @@ void Part::defaultsinstrument(void)
     Pkitfade = false;
     Pdrummode = 0;
     Pfrand = 0;
+    Pvelrand = 0;
 
     for (int n = 0; n < NUM_KIT_ITEMS; ++n)
     {
@@ -251,7 +260,7 @@ void Part::NoteOn(int note, int velocity, bool renote)
      * intemediate ones while going through a
      * legato fade between held and newest note.
      */
-    if (Pkeymode > 1 && legatoFading > 0)
+    if (Pkeymode > PART_MONO && legatoFading > 0)
         return;
     // Legato and MonoMem used vars:
     int posb = POLIPHONY - 1;     // Just a dummy initial value.
@@ -262,7 +271,7 @@ void Part::NoteOn(int note, int velocity, bool renote)
     int lastnotecopy = lastnote;  // Useful after lastnote has been changed.
 
     // MonoMem stuff:
-    if (Pkeymode > 0) // if Poly is off
+    if (Pkeymode > PART_POLY) // if Poly is off
     {
         if (!renote)
             monomemnotes.push_back(note);        // Add note to the list.
@@ -288,7 +297,7 @@ void Part::NoteOn(int note, int velocity, bool renote)
             break;
         }
     }
-    if (Pkeymode > 1 && !Pdrummode)
+    if (Pkeymode > PART_MONO && !Pdrummode)
     {
         // Legato mode is on and applicable.
         legatomodevalid = true;
@@ -324,7 +333,7 @@ void Part::NoteOn(int note, int velocity, bool renote)
     else
     {
         // Legato mode is either off or non-applicable.
-        if ((Pkeymode & 3) == 1)
+        if ((Pkeymode & MIDI_NOT_LEGATO) == PART_MONO)
         {   // if the mode is 'mono' turn off all other notes
             for (int i = 0; i < POLIPHONY; ++i)
             {
@@ -353,7 +362,15 @@ void Part::NoteOn(int note, int velocity, bool renote)
         }
 
         // compute the velocity offset
-        float vel = velF(velocity / 127.0f, Pvelsns) + (Pveloffs - 64.0f) / 64.0f;
+        float newVel = velocity;
+        if (Pvelrand >= 1)
+        {
+            newVel *= (1 - (synth->numRandom() * Pvelrand * 0.0104f));
+            //std::cout << "Vel rand " << Pvelrand << "  result " << newVel << std::endl;
+        }
+
+
+        float vel = velF(newVel / 127.0f, Pvelsns) + (Pveloffs - 64.0f) / 64.0f;
         vel = (vel < 0.0f) ? 0.0f : vel;
         vel = (vel > 1.0f) ? 1.0f : vel;
 
@@ -379,7 +396,7 @@ void Part::NoteOn(int note, int velocity, bool renote)
         // still held down or sustained for the Portamento to activate
         // (that's like Legato).
         int portamento = 0;
-        if (Pkeymode == 0 || !ismonofirstnote)
+        if (Pkeymode == PART_POLY || !ismonofirstnote)
         {
             // I added a third argument to the
             // ctl->initportamento(...) function to be able
@@ -699,7 +716,7 @@ void Part::NoteOff(int note) //release the key
         {
             if (!ctl->sustain.sustain)
             {   //the sustain pedal is not pushed
-                if (Pkeymode > 0  && !Pdrummode && !monomemnotes.empty())
+                if (Pkeymode > PART_POLY  && !Pdrummode && !monomemnotes.empty())
                     MonoMemRenote(); // To play most recent still held note.
                 else
                     ReleaseNotePos(i);
@@ -776,7 +793,7 @@ void Part::SetController(unsigned int type, int par)
             ReleaseSustainedKeys();
             setVolume(Pvolume);
             setPan(Ppanning);
-            Pkeymode &= 3; // clear temporary legato mode
+            Pkeymode &= MIDI_NOT_LEGATO; // clear temporary legato mode
             legatoFading = 0;
 
             for (int item = 0; item < NUM_KIT_ITEMS; ++item)
@@ -817,7 +834,7 @@ void Part::SetController(unsigned int type, int par)
 void Part::ReleaseSustainedKeys(void)
 {
     // Let's call MonoMemRenote() on some conditions:
-    if ((Pkeymode < 1 || Pkeymode > 2)&& (!monomemnotes.empty()))
+    if ((Pkeymode < PART_MONO || Pkeymode > PART_LEGATO) && (!monomemnotes.empty()))
         if (monomemnotes.back() != lastnote)
             // Sustain controller manipulation would cause repeated same note
             // respawn without this check.
@@ -913,7 +930,7 @@ void Part::setkeylimit(unsigned char Pkeylimit_)
     int keylimit = Pkeylimit;
 
     // release old keys if the number of notes>keylimit
-    if (Pkeymode == 0)
+    if (Pkeymode == PART_POLY)
     {
         int notecount = 0;
         for (int i = 0; i < POLIPHONY; ++i)
@@ -1095,6 +1112,8 @@ void Part::checkVolume(float step)
 {
     TransVolume += step;
     volume = dB2rap((TransVolume - 96.0f) / 96.0f * 40.0f);
+    if (volume < 0.01015f) // done to get a smooth cutoff at what was - 40dB
+        volume = 0.0f;
 }
 
 
@@ -1263,18 +1282,20 @@ void Part::add2XML(XMLwrapper *xml, bool subset)
         xml->addpar("velocity_sensing", Pvelsns);
         xml->addpar("velocity_offset", Pveloffs);
     // the following two lines maintain backward compatibility
-        xml->addparbool("poly_mode", (Pkeymode & 3) == 0);
-        xml->addpar("legato_mode", (Pkeymode & 3) == 2);
+        xml->addparbool("poly_mode", (Pkeymode & MIDI_NOT_LEGATO) == PART_POLY);
+        xml->addpar("legato_mode", (Pkeymode & MIDI_NOT_LEGATO) == PART_LEGATO);
         xml->addpar("key_limit", Pkeylimit);
         xml->addpar("random_detune", Pfrand);
+        xml->addpar("random_velocity", Pvelrand);
         xml->addpar("destination", Paudiodest);
     }
     xml->beginbranch("INSTRUMENT");
     add2XMLinstrument(xml);
     if (subset)
     {
-        xml->addpar("key_mode", Pkeymode & 3);
+        xml->addpar("key_mode", Pkeymode & MIDI_NOT_LEGATO);
         xml->addpar("random_detune", Pfrand);
+        xml->addpar("random_velocity", Pvelrand);
         xml->addparbool("breath_disable", PbreathControl != 2);
     }
     xml->endbranch();
@@ -1287,7 +1308,7 @@ void Part::add2XML(XMLwrapper *xml, bool subset)
 
 bool Part::saveXML(string filename, bool yoshiFormat)
 {
-    synth->getRuntime().xmlType = XML_INSTRUMENT;
+    synth->getRuntime().xmlType = TOPLEVEL::XML::Instrument;
     XMLwrapper *xml = new XMLwrapper(synth, yoshiFormat);
     if (!xml)
     {
@@ -1299,12 +1320,12 @@ bool Part::saveXML(string filename, bool yoshiFormat)
 
     if (yoshiFormat)
     {
-        filename = setExtension(filename, "xiy");
+        filename = setExtension(filename, EXTEN::yoshInst);
         add2XML(xml, yoshiFormat);
     }
     else
     {
-        filename = setExtension(filename, "xiz");
+        filename = setExtension(filename, EXTEN::zynInst);
         xml->beginbranch("INSTRUMENT");
         add2XMLinstrument(xml);
         xml->endbranch();
@@ -1318,11 +1339,11 @@ bool Part::saveXML(string filename, bool yoshiFormat)
 int Part::loadXMLinstrument(string filename)
 {
     bool hasYoshi = true;
-    filename = setExtension(filename, "xiy");
-    if (!isRegFile(filename))
+    filename = setExtension(filename, EXTEN::yoshInst);
+    if (!isRegularFile(filename))
     {
         hasYoshi = false;
-        filename = setExtension(filename, "xiz");
+        filename = setExtension(filename, EXTEN::zynInst);
     }
 
     XMLwrapper *xml = new XMLwrapper(synth, hasYoshi);
@@ -1340,21 +1361,25 @@ int Part::loadXMLinstrument(string filename)
     if (xml->enterbranch("INSTRUMENT") == 0)
     {
         synth->getRuntime().Log(filename + " is not an instrument file");
+        delete xml;
         return 0;
     }
     defaultsinstrument();
     PyoshiType = xml->information.yoshiType;
-    Pname = findleafname(filename); // in case there's no internal
+    Pname = findLeafName(filename); // in case there's no internal
     int chk = findSplitPoint(Pname);
     if (chk > 0)
         Pname = Pname.substr(chk + 1, Pname.size() - chk - 1);
     getfromXMLinstrument(xml);
     if (hasYoshi)
     {
-        Pkeymode = xml->getpar("key_mode", Pkeymode, 0, 4);
+        Pkeymode = xml->getpar("key_mode", Pkeymode, PART_POLY, MIDI_LEGATO);
         Pfrand = xml->getpar127("random_detune", Pfrand);
         if (Pfrand > 50)
             Pfrand = 50;
+        Pvelrand = xml->getpar127("random_velocity", Pvelrand);
+        if (Pvelrand > 50)
+            Pvelrand = 50;
         PbreathControl = xml->getparbool("breath_disable", PbreathControl);
         if (PbreathControl)
             PbreathControl = 255; // impossible value
@@ -1485,11 +1510,11 @@ void Part::getfromXML(XMLwrapper *xml)
     if (!Plegatomode)
         Plegatomode = xml->getpar127("legato_mode", Plegatomode);
     if (Plegatomode) // these lines are for backward compatibility
-        Pkeymode = 2;
+        Pkeymode = PART_LEGATO;
     else if (Ppolymode)
-        Pkeymode = 0;
+        Pkeymode = PART_POLY;
     else
-        Pkeymode = 1;
+        Pkeymode = PART_MONO;
 
     Pkeylimit = xml->getpar127("key_limit", Pkeylimit);
     if (Pkeylimit < 1)
@@ -1503,6 +1528,9 @@ void Part::getfromXML(XMLwrapper *xml)
     Pfrand = xml->getpar127("random_detune", Pfrand);
     if (Pfrand > 50)
         Pfrand = 50;
+    Pvelrand = xml->getpar127("random_velocity", Pvelrand);
+    if (Pvelrand > 50)
+        Pvelrand = 50;
     setDestination(xml->getpar127("destination", Paudiodest));
 
     if (xml->enterbranch("INSTRUMENT"))
@@ -1521,13 +1549,12 @@ void Part::getfromXML(XMLwrapper *xml)
 
 float Part::getLimits(CommandBlock *getData)
 {
-    float value = getData->data.value;
-    unsigned char type = getData->data.type;
-    int request = type & TOPLEVEL::type::Default;
+    float value = getData->data.value.F;
+    int request = int(getData->data.type & TOPLEVEL::type::Default);
     int control = getData->data.control;
     int npart = getData->data.part;
 
-    type &= (TOPLEVEL::source::MIDI | TOPLEVEL::source::CLI | TOPLEVEL::source::GUI); // source bits only
+    unsigned char type = 0;
 
     // part defaults
     int min = 0;
@@ -1610,7 +1637,7 @@ float Part::getLimits(CommandBlock *getData)
 
         case PART::control::maxNotes:
             def = 20;
-            max = 60;
+            max = PART_POLIPHONY;
             break;
 
         case PART::control::keyShift:
@@ -1628,6 +1655,12 @@ float Part::getLimits(CommandBlock *getData)
             break;
 
         case PART::control::humanise:
+            type |= learnable;
+            def = 0;
+            max = 50;
+            break;
+
+        case PART::control::humanvelocity:
             type |= learnable;
             def = 0;
             max = 50;

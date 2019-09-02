@@ -1,7 +1,7 @@
 /*
     MidiLearn.h
 
-    Copyright 2016-2017 Will Godfrey
+    Copyright 2016-2019 Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -17,7 +17,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    Modified August 2017
+    Modified April 2019
 */
 
 #ifndef MIDILEARN_H
@@ -27,16 +27,16 @@
 #include <list>
 #include <string>
 
-using namespace std;
-
-#include "Misc/MiscFuncs.h"
 #include "Interface/InterChange.h"
+#include "Interface/Data2Text.h"
 
 class XMLwrapper;
-
 class SynthEngine;
+class DataText;
 
-class MidiLearn : private MiscFuncs
+using std::string;
+
+class MidiLearn : private DataText
 {
     public:
         MidiLearn(SynthEngine *_synth);
@@ -45,7 +45,6 @@ class MidiLearn : private MiscFuncs
         void add2XML(XMLwrapper *xml);
         void getfromXML(XMLwrapper *xml);
         CommandBlock commandData;
-        size_t commandSize = sizeof(commandData);
 
         struct Control{
             unsigned char type;
@@ -55,8 +54,10 @@ class MidiLearn : private MiscFuncs
             unsigned char engine;
             unsigned char insert;
             unsigned char parameter;
-            unsigned char par2;
-        } data;
+            unsigned char miscmsg;
+        };
+
+        Control data;
 
         struct LearnBlock{
             unsigned int CC;
@@ -64,8 +65,8 @@ class MidiLearn : private MiscFuncs
             unsigned char min_in;
             unsigned char max_in;
             unsigned char status; // up to here must be specified on input
-            int min_out; // defined programaticly
-            int max_out; // defined programaticly
+            int min_out; // defined programmatically
+            int max_out; // defined programmatically
             Control data; // controller to learn
             string name; // derived from controller text
         };
@@ -74,13 +75,13 @@ class MidiLearn : private MiscFuncs
         void setTransferBlock(CommandBlock *getData, string name);
 
         bool runMidiLearn(int _value, unsigned int CC, unsigned char chan, unsigned char category);
-        bool writeMidi(CommandBlock *putData, unsigned int writesize, bool in_place);
-        int findEntry(list<LearnBlock> &midi_list, int lastpos, unsigned int CC, unsigned char chan, LearnBlock *block, bool show);
+        bool writeMidi(CommandBlock *putData, bool in_place);
+        int findEntry(std::list<LearnBlock> &midi_list, int lastpos, unsigned int CC, unsigned char chan, LearnBlock *block, bool show);
         int findSize();
         void listLine(int lineNo);
-        void listAll(list<string>& msg_buf);
+        void listAll(std::list<string>& msg_buf);
         bool remove(int itemNumber);
-        void generalOpps(int value, unsigned char type, unsigned char control, unsigned char part, unsigned char kit, unsigned char engine, unsigned char insert, unsigned char parameter, unsigned char par2);
+        void generalOperations(CommandBlock *getData);
         bool saveList(string name);
         bool insertMidiListData(bool full,  XMLwrapper *xml);
         bool loadList(string name);
@@ -89,7 +90,7 @@ class MidiLearn : private MiscFuncs
 
 
     private:
-        list<LearnBlock> midi_list;
+        std::list<LearnBlock> midi_list;
         string learnedName;
         CommandBlock learnTransferBlock;
 

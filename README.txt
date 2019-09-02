@@ -1,18 +1,50 @@
-V 1.5.10 Redwing
+V1.6.0
 
-Unfortunately a bug has been found that seems to affect only official fedora builds. To ensure complete compatibility we now have V 1.5.10.1 as a bugfix release.
+Yoshimi is now 10 years old and (while fully respecting its origins) is forging it's own path into the future. Do come along for the ride.
 
-Command Line access is now virtually complete.
 
-The graphic interface has had a minor makeover. Also, very occasional corruption of this is now resolved.
+Our headline feature is extensions to AddSynth voices and modulators.
 
-All inactive controls are now shown as such - there were a number that previously weren't, thus causing considerable confusion for new users.
+There is a new AddSynth noise type.
 
-There is an improved pseudo-random number system, which does not rely on external libraries anymore.
+There are extra mute options.
 
-Further details can be found in /doc/Yoshimi_1.5.10_features.txt
+There is a global bank search entry in the main window's instrument menu, and a button in the instrument bank window.
 
-By default, Yoshimi is supplied with 710 instruments spread across 23 banks.
+Also in the main window there is a button to temporarily disable an individual system effect.
+
+In the part editor window there is now a 'Humanise Velocity' slider.
+
+We've made an improvement to the way recent histories are managed.
+
+All the above features are, of course, also available to the command line interface.
+
+'Reports' and 'Midi Learn' openers have been swapped.
+
+There is a new group of easy to use NRPNs.
+
+There have been improvements to Copy/Paste.
+
+There is tighter control of startup.
+
+Incidentally, whenever we add new features, the default is always to keep the existing behaviour.
+
+The Advanced User Manual has been considerably Expanded.
+
+
+Under the hood
+
+Ring buffers have now been changed to a bespoke type.
+
+Almost all file system operations have been moved to a single source file.
+
+As well as running headless, Yoshimi can now be built headless.
+
+The command line has additional protection against overlength lines, and corrupted data.
+
+
+More details in /doc/Yoshimi_1.6.0_features.txt
+
 
 Yoshimi source code is available from either:
 https://sourceforge.net/projects/yoshimi

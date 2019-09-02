@@ -26,6 +26,7 @@
 #ifndef RANDOMGEN_H
 #define RANDOMGEN_H
 
+#include <sys/types.h>
 #include <stdint.h>
 #include <cstdlib>
 #include <cstring>
@@ -187,7 +188,7 @@ class JenkinsPRNG
         }
 
     private:
-        uint32_t rot(uint32_t x, uint k) { return (x << k)|(x >> (32-k)); }
+        uint32_t rot(uint32_t x, uint32_t k) { return (x << k)|(x >> (32-k)); }
 };
 
 

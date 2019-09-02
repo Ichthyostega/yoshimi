@@ -4,6 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2010, Alan Calvert
+    Copyright 2018-2019 Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -19,23 +20,26 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is a derivative of a ZynAddSubFX original, modified October 2010
+    This file is a derivative of a ZynAddSubFX original
 */
 
 #ifndef PRESETSSTORE_H
 #define PRESETSSTORE_H
 
 #include "Misc/Config.h"
-#include "Misc/MiscFuncs.h"
+
+#include <string>
+
+using std::string;
 
 #define MAX_PRESETTYPE_SIZE 30
 
 class XMLwrapper;
 class PresetsStore;
-
 class SynthEngine;
 
-class PresetsStore : MiscFuncs
+
+class PresetsStore
 {
     public:
         PresetsStore(SynthEngine *_synth);
@@ -57,7 +61,7 @@ class PresetsStore : MiscFuncs
         };
         presetstruct presets[MAX_PRESETS];
 
-        void rescanforpresets(string type);
+        void rescanforpresets(string type, int root);
 
     private:
         void clearpresets(void);

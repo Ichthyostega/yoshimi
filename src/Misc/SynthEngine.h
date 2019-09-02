@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2014-2018, Will Godfrey & others
+    Copyright 2014-2019, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -22,25 +22,24 @@
 
     This file is derivative of ZynAddSubFX original code.
 
-    Modified November 2018
+    Modified May 2019
 */
 
 #ifndef SYNTHENGINE_H
 #define SYNTHENGINE_H
 
+#include <sys/types.h>
 #include <limits.h>
 #include <cstdlib>
 #include <semaphore.h>
 #include <jack/ringbuffer.h>
+#include <string>
+#include <vector>
+#include <list>
 
-using namespace std;
-
-#include "Misc/MiscFuncs.h"
 #include "Misc/RandomGen.h"
-#include "Misc/SynthHelper.h"
 #include "Misc/Microtonal.h"
 #include "Misc/Bank.h"
-#include "Misc/SynthHelper.h"
 #include "Interface/InterChange.h"
 #include "Interface/MidiLearn.h"
 #include "Interface/MidiDecode.h"
@@ -48,16 +47,20 @@ using namespace std;
 #include "Params/PresetsStore.h"
 #include "Params/UnifiedPresets.h"
 
-typedef enum { init, lockType, unlockType, destroy } lockset;
-
-class EffectMgr;
 class Part;
+class EffectMgr;
 class XMLwrapper;
 class Controller;
+class TextMsgBuffer;
 
+#ifdef GUI_FLTK
 class MasterUI;
+#endif
 
-class SynthEngine : private SynthHelper, MiscFuncs
+using std::string;
+
+
+class SynthEngine
 {
     private:
         unsigned int uniqueId;
@@ -72,11 +75,11 @@ class SynthEngine : private SynthHelper, MiscFuncs
     private:
         Config Runtime;
         PresetsStore presetsstore;
+        TextMsgBuffer& textMsgBuffer;
     public:
         SynthEngine(int argc, char **argv, bool _isLV2Plugin = false, unsigned int forceId = 0);
         ~SynthEngine();
         bool Init(unsigned int audiosrate, int audiobufsize);
-        //bool actionLock(lockset request);
 
         bool savePatchesXML(string filename);
         void add2XML(XMLwrapper *xml);
@@ -93,7 +96,9 @@ class SynthEngine : private SynthHelper, MiscFuncs
         bool saveBanks(void);
         void newHistory(string name, int group);
         void addHistory(string name, int group);
-        vector<string> *getHistory(int group);
+        std::vector<string> *getHistory(int group);
+        void setHistoryLock(int group, bool status);
+        bool getHistoryLock(int group);
         string lastItemSeen(int group);
         void setLastfileAdded(int group, string name);
         string getLastfileAdded(int group);
@@ -115,8 +120,10 @@ class SynthEngine : private SynthHelper, MiscFuncs
         int RunChannelSwitch(int value);
         void SetController(unsigned char chan, int CCtype, short int par);
         void SetZynControls(bool in_place);
-        int RootBank(int rootnum, int banknum);
-        int SetRBP(CommandBlock *getData, bool notinplace = true);
+        int setRootBank(int root, int bank, bool notinplace = true);
+        int setProgramByName(CommandBlock *getData);
+        int setProgramFromBank(CommandBlock *getData, bool notinplace = true);
+        bool setProgram(string fname, int npart);
         int ReadBankRoot(void);
         int ReadBank(void);
         void SetPartChan(unsigned char npart, unsigned char nchan);
@@ -124,14 +131,15 @@ class SynthEngine : private SynthHelper, MiscFuncs
         bool ReadPartPortamento(int npart);
         void SetPartKeyMode(int npart, int mode);
         int  ReadPartKeyMode(int npart);
-        void cliOutput(list<string>& msg_buf, unsigned int lines);
-        void ListPaths(list<string>& msg_buf);
-        void ListBanks(int rootNum, list<string>& msg_buf);
-        void ListInstruments(int bankNum, list<string>& msg_buf);
-        void ListVectors(list<string>& msg_buf);
-        bool SingleVector(list<string>& msg_buf, int chan);
-        void ListSettings(list<string>& msg_buf);
+        void cliOutput(std::list<string>& msg_buf, unsigned int lines);
+        void ListPaths(std::list<string>& msg_buf);
+        void ListBanks(int rootNum, std::list<string>& msg_buf);
+        void ListInstruments(int bankNum, std::list<string>& msg_buf);
+        void ListVectors(std::list<string>& msg_buf);
+        bool SingleVector(std::list<string>& msg_buf, int chan);
+        void ListSettings(std::list<string>& msg_buf);
         int SetSystemValue(int type, int value);
+        int LoadNumbered(unsigned char group, unsigned char entry);
         bool vectorInit(int dHigh, unsigned char chan, int par);
         void vectorSet(int dHigh, unsigned char chan, int par);
         void ClearNRPNs(void);
@@ -153,6 +161,7 @@ class SynthEngine : private SynthHelper, MiscFuncs
         void mutewrite(int what);
         bool isMuted(void);
         sem_t mutelock;
+        bool masterMono;
 
         float getLimits(CommandBlock *getData);
         float getVectorLimits(CommandBlock *getData);
@@ -195,6 +204,9 @@ class SynthEngine : private SynthHelper, MiscFuncs
         void setPaudiodest(int value);
 
         // effects
+        unsigned char  syseffnum;
+        bool syseffEnable[NUM_SYS_EFX];
+        unsigned char  inseffnum;
         EffectMgr *sysefx[NUM_SYS_EFX]; // system
         EffectMgr *insefx[NUM_INS_EFX]; // insertion
 
@@ -214,6 +226,7 @@ class SynthEngine : private SynthHelper, MiscFuncs
                 float vuRmsPeakL;
                 float vuRmsPeakR;
                 float parts[NUM_MIDI_PARTS];
+                float partsR[NUM_MIDI_PARTS];
                 int buffersize;
             } values;
             char bytes [sizeof(values)];
@@ -228,7 +241,6 @@ class SynthEngine : private SynthHelper, MiscFuncs
         inline PresetsStore &getPresetsStore() {return presetsstore;}
         unsigned int getUniqueId() {return uniqueId;}
         SynthEngine *getSynthFromId(unsigned int uniqueId);
-        MasterUI *getGuiMaster(bool createGui = true);
         void guiClosed(bool stopSynth);
         void setGuiClosedCallback(void( *_guiClosedCallback)(void*), void *arg)
         {
@@ -254,11 +266,11 @@ class SynthEngine : private SynthHelper, MiscFuncs
 
         int keyshift;
 
-        pthread_mutex_t  processMutex;
-        pthread_mutex_t *processLock;
-
     public:
+#ifdef GUI_FLTK
         MasterUI *guiMaster; // need to read this in InterChange::returns
+        MasterUI *getGuiMaster(bool createGui = true);
+#endif
     private:
         void( *guiClosedCallback)(void*);
         void *guiCallbackArg;
