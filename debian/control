@@ -6,7 +6,7 @@ Uploaders:
  Jaromír Mikeš <mira.mikes@seznam.cz>
 Build-Depends:
  cmake,
- debhelper-compat (= 11),
+ debhelper-compat (= 12),
  dssi-dev,
  fluid,
  libasound2-dev,
