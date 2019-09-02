@@ -9,9 +9,9 @@ Forwarded: yes
 
 --- yoshimi.orig/src/CMakeLists.txt
 +++ yoshimi/src/CMakeLists.txt
-@@ -130,6 +130,9 @@
- set (BuildOptionsRelease
-     "-O3" CACHE STRING "Compile with optimisation for Release builds")
+@@ -137,6 +137,9 @@
+     add_definitions (-DGUI_FLTK)
+ endif(BuildWithFLTK)
  
 +set (BuildOptionsDebian
 +    "-O3 -ffast-math -fomit-frame-pointer -ldl" CACHE STRING "Debian build flags")
@@ -19,7 +19,7 @@ Forwarded: yes
  find_package (PkgConfig REQUIRED)
  if (PKG_CONFIG_FOUND)
      message(STATUS "Found pkg-config ${PKG_CONFIG_EXECUTABLE}")
-@@ -331,8 +334,8 @@
+@@ -337,8 +340,8 @@
      message (STATUS "DEBUG Build, flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG}")
  else (BuildForDebug)
      set (CMAKE_BUILD_TYPE "Release")
