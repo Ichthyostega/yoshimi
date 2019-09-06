@@ -1,3 +1,25 @@
+yoshimi (1.6.0-1) unstable; urgency=medium
+
+  * New upstream version 1.6.0
+
+  [ Ondřej Nový ]
+  * Use debhelper-compat instead of debian/compat
+  * Bump Standards-Version to 4.4.0
+
+  [ Olivier Humbert ]
+  * Update d/copyright to 2019
+
+  [ IOhannes m zmölnig (Debian/GNU) ]
+  * Refresh patches (and remove those included upstream)
+  * Update dependencies
+  * Install examples
+  * Install all docs
+  * Exclude more false-positives from lintian spelling check
+  * Drop obsolete d/source/local-options
+  * Bump dh compat to 12
+
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Sun, 01 Sep 2019 17:22:18 +0200
+
 yoshimi (1.5.11.4-1ppa1~bionic) bionic; urgency=low
 
   * Build for Ubuntu/Bionic (18.04 LTS)

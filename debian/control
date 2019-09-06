@@ -8,6 +8,7 @@ Changed-By: Hermann Vosseler <deb@ichthyostega.de>
 Build-Depends:
  cmake,
  debhelper (>= 10~),
+ dssi-dev,
  fluid,
  libasound2-dev,
  libboost-dev,
@@ -24,9 +25,10 @@ Build-Depends:
  libx11-dev,
  libxext-dev,
  lv2-dev,
+ pkg-config,
  sharutils,
  zlib1g-dev
-Standards-Version: 4.3.0
+Standards-Version: 4.4.0
 Vcs-Git: https://salsa.debian.org/multimedia-team/yoshimi.git
 Vcs-Browser: https://salsa.debian.org/multimedia-team/yoshimi
 Homepage: https://yoshimi.sourceforge.io
