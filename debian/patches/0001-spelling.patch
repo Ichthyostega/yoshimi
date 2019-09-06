@@ -1,12 +1,24 @@
+From: =?utf-8?q?=22IOhannes_m_zm=C3=B6lnig_=28Debian/GNU=29=22?=
+ <umlaeute@debian.org>
+Date: Mon, 2 Sep 2019 12:03:39 +0200
+Subject: spelling
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+
 Description: Fixed spelling errors
 Author: IOhannes m zmölnig
 Forwarded: https://github.com/Yoshimi/yoshimi/pull/59
 Last-Update: 2019-09-02
 ---
-This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
---- yoshimi.orig/src/Interface/TextLists.h
-+++ yoshimi/src/Interface/TextLists.h
-@@ -560,8 +560,8 @@
+ src/Interface/TextLists.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/Interface/TextLists.h b/src/Interface/TextLists.h
+index 2d2016e..0b92cc4 100644
+--- a/src/Interface/TextLists.h
++++ b/src/Interface/TextLists.h
+@@ -560,8 +560,8 @@ static std::string waveformlist [] = {
      "Base Mod Type <s>",        "basic modulation type (OFF, Rev, Sine Power)",
      "Base Mod Par <n1> <n2>",   "parameter number n1 (1 - 3), n2 value",
      "Base Convert [s]",         "use resultant basic wave as base shape",
