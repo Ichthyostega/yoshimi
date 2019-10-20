@@ -214,15 +214,20 @@ class MasterUI {selected : {private GuiUpdates}
 
       make_window();
       loadWindowData();
+      string starterror = "";
       if(synth->getIsLV2Plugin())
       {
           masterwindow->label(_label);
       }
       else
       {
+          starterror = textMsgBuffer.fetch(0);
           setMasterLabel(synth->getRuntime().paramsLoad);
       }
       masterwindow->show();
+      if (starterror.find("Could not") != std::string::npos)
+          fl_alert("%s", starterror.c_str());
+
       // these don't have access to synth ->
       microtonalui->microtonaluiwindow->copy_label(synth->makeUniqueName("Scales").c_str());
       yoshiLog->logConsole->copy_label(synth->makeUniqueName("Console").c_str());
@@ -373,7 +378,7 @@ class MasterUI {selected : {private GuiUpdates}
         Submenu Instruments {
           label {&Instruments}
           xywh {0 0 100 20} labelsize 12
-          code0 {o = o; // suppress warning}
+          code0 {(void) o; // suppress warning}
           code1 {vector <string> listType = *synth->getHistory(TOPLEVEL::XML::Instrument);}
           code2 {if (listType.size() == 0) RecentInstruments->deactivate(); else RecentInstruments->activate();}
         } {
@@ -399,7 +404,7 @@ class MasterUI {selected : {private GuiUpdates}
           MenuItem {} {
             label {&Save External...}
             callback {//
-                if (synth->part[npart]->Pname == "Simple Sound")
+                if (synth->part[npart]->Pname == DEFAULT_NAME)
                 {
                     fl_alert("Nothing to save!");
                     return;
@@ -454,7 +459,7 @@ class MasterUI {selected : {private GuiUpdates}
         Submenu Parameters {
           label {&Patch Sets}
           xywh {0 0 70 20} labelsize 12
-          code0 {o = o; // suppress warning}
+          code0 {(void) o; // suppress warning}
           code1 {vector <string> listType = *synth->getHistory(TOPLEVEL::XML::Patch);}
           code2 {if (listType.size() == 0) RecentParams->deactivate(); else RecentParams->activate();}
         } {
@@ -475,7 +480,7 @@ class MasterUI {selected : {private GuiUpdates}
             callback {//
             bool valid = false;
             for(int npart = 0; npart < NUM_MIDI_PARTS; npart ++)
-                if (synth->part[npart]->Pname != "Simple Sound")
+                if (synth->part[npart]->Pname != DEFAULT_NAME)
                 {
                     valid = true;
                     npart = NUM_MIDI_PARTS;
@@ -514,7 +519,7 @@ class MasterUI {selected : {private GuiUpdates}
         Submenu Scales {
           label {&Scales}
           tooltip {Clear all parameters to default settings} xywh {0 0 60 20} labelsize 12
-          code0 {o = o; // suppress warning}
+          code0 {(void) o; // suppress warning}
           code1 {vector <string> listType = *synth->getHistory(TOPLEVEL::XML::Scale);}
           code2 {if (listType.size() == 0) RecentScale->deactivate(); else RecentScale->activate();}
         } {
@@ -580,7 +585,7 @@ paramsui->Show(TOPLEVEL::XML::Scale);}
         Submenu {} {
           label {S&tate}
           xywh {0 0 60 20} labelsize 12
-          code0 {o = o; // suppress warning}
+          code0 {(void) o; // suppress warning}
           code1 {vector <string> listType = *synth->getHistory(TOPLEVEL::XML::State);}
           code2 {if (listType.size() == 0) RecentState->deactivate(); else RecentState->activate();}
         } {
@@ -1038,13 +1043,14 @@ Alan Calvert started the project}
           Will Godfrey
           Alexander Hirsch
           Jeremy Jongepier
+          Iain King-Speir
           Tobias Kortkamp
-          Tito Latini
           }
           xywh {25 70 155 200} labelsize 12
         }
         Fl_Box {} {
           label {
+          Tito Latini
           Rainer Liffers
           Jesper Lloyd
           Lars Luthman
@@ -1056,7 +1062,6 @@ Alan Calvert started the project}
           Lorenzo Sutton
           Hermann Voßeler
           Nikita Zlobin
-
 
 
           }
@@ -1666,20 +1671,6 @@ Alan Calvert started the project}
             updatepartprogram(kititem);
             RecentInstruments->activate();
             break;
-
-        case MAIN::control::saveInstrument: // save instrument to bank
-            name = textMsgBuffer.fetch(miscmsg);
-            if (npart == parameter)
-                partui->setinstrumentlabel();
-            if((parameter & 0x30) == panelgroup)
-                panellistitem[parameter % NUM_MIDI_CHANNELS]->setPartLabel(parameter);
-            if (kititem == synth->ReadBankRoot() && engine == synth->ReadBank())
-            {
-                int bk = fetchData(0, BANK::control::selectBank, TOPLEVEL::section::bank);
-                int rt = fetchData(0, BANK::control::selectRoot, TOPLEVEL::section::bank);
-                bankui->refreshbankslot(insert, bk, rt);
-            }
-        break;
 
         case MAIN::control::saveNamedInstrument: // save instrument
             name = textMsgBuffer.fetch(miscmsg);

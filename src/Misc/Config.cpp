@@ -195,7 +195,7 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
      * is no issue with +- zero.
      */
 
-    cerr.precision(4);
+    std::cerr.precision(4);
     bRuntimeSetupCompleted = Setup(argc, argv);
 }
 
@@ -206,7 +206,12 @@ bool Config::Setup(int argc, char **argv)
     AntiDenormals(true);
 
     if (!loadConfig())
-        return false;
+    {
+        string message = "Could not load config. Using default values. Using defaults.";
+        TextMsgBuffer::instance().push(message);
+        Log("\n\n" + message + "\n");
+        //return false;
+    }
 
     /* NOTE: we must not do any further init involving the SynthEngine here,
      * since this code is invoked from within the SynthEngine-ctor.
@@ -300,7 +305,7 @@ void Config::flushLog(void)
     {
         while (LogList.size())
         {
-            cerr << LogList.front() << endl;
+            std::cerr << LogList.front() << std::endl;
             LogList.pop_front();
         }
     }
@@ -693,7 +698,7 @@ bool Config::extractConfigData(XMLwrapper *xml)
     if (tempRoot == 0)
         tempRoot = xml->getpar("root_current_ID", 0, 0, 127);
     //else
-        //cout << "root? " << xml->getpar("root_current_ID", 0, 0, 127) << endl;
+        //cout << "root? " << xml->getpar("root_current_ID", 0, 0, 127) << std::endl;
     if (tempBank == 0)
     tempBank = xml->getpar("bank_current_ID", 0, 0, 127);
     xml->exitbranch(); // CONFIGURATION
@@ -855,11 +860,11 @@ void Config::Log(const string &msg, char tostderr)
         return;
     if (showGui && !(tostderr & 1) && toConsole)
         LogList.push_back(msg);
-    else if (!tostderr & 1)
-        cout << msg << endl; // normal log
+    else if (!(tostderr & 1))
+        std::cout << msg << std::endl; // normal log
 
     else
-        cerr << msg << endl; // error log
+        std::cerr << msg << std::endl; // error log
 }
 
 void Config::LogError(const string &msg)
@@ -874,7 +879,7 @@ void Config::StartupReport(string clientName)
     if (fullInfo)
     {
         Log(argline);
-        Log("Build Number " + to_string(BUILD_NUMBER), 1);
+        Log("Build Number " + std::to_string(BUILD_NUMBER), 1);
     }
     Log("Clientname: " + clientName);
     string report = "Audio: ";
@@ -963,7 +968,7 @@ bool Config::startThread(pthread_t *pth, void *(*thread_fn)(void*), void *arg,
                 int prio = rtprio - priodec;
                 if (prio < 1)
                     prio = 1;
-                Log(name + " priority is " + to_string(prio), 1);
+                Log(name + " priority is " + std::to_string(prio), 1);
                 prio_params.sched_priority = prio;
                 if ((chk = pthread_attr_setschedparam(&attr, &prio_params)))
                 {
@@ -1319,7 +1324,7 @@ void GuiThreadMsg::processGuiMessages()
         {
             // This *defines* guiMaster
             if (!guiMaster)
-                cerr << "Error starting Main UI!" << endl;
+                std::cerr << "Error starting Main UI!" << std::endl;
             else
                 guiMaster->Init(guiMaster->getSynth()->getWindowTitle().c_str());
         }

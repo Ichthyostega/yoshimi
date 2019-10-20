@@ -32,7 +32,9 @@
 #include <list>
 
 #include "MusicIO/MusicClient.h"
+#ifdef GUI_FLTK
 #include "FL/Fl.H"
+#endif
 
 using std::string;
 
@@ -264,7 +266,9 @@ public:
         msg->data = _data;
         msg->type = _type;
         msg->index = _index;
-        Fl::awake((void *)msg);
+#ifdef GUI_FLTK
+        Fl::awake((void *)msg); // we probably need to review all of this :(
+#endif
     }
     static void processGuiMessages();
 };

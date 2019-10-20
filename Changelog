@@ -1,8 +1,146 @@
-yoshimi 1.6.0
+yoshimi 1.6.0.2
+
+2019-10-18 Will
+* BugFix: segfault changing scale name or description.
+* Added instant close of all instances to CLI exit command.
+* Improved CLI description for scale/keymap imports.
+* Set bugfix release 1.6.0.2
+  (includes Kristians oscillator fixes)
+
+2019-10-16 Will
+* Missing include in main.cpp when compiling headless.
+* FLTK ref. in Misc/config.cpp when compiling headless.
+* Changed CliFuncs readPartPeak to allow left/right.
+  Not currently in use.
+
+2019-10-15 Will
+* Revised SubSynth and Oscillator Harmonics GUI.
+  Central numbering and wider subsynth spacing.
+
+2019-10-14 Will
+* Ensure report to stdout when running headless.
+* CLI can now save to banks slot.
+* Revised instrument save to bank.
+* Updated docs.
+* Removed redundant labels in globals.h
+* Corrected docs.
+* Small revision to BankUI instrument control.
+* Replaced all refs to "Simple Sound" and "No Title"
+  with constants.
+
+2019-10-12 Will
+* CLI can now change bank instrument names.
+* Revised GUI bank instrument names.
+  Previously a rename performed a complete
+  bank refetch. Now set the name in place.
+* Corrected accidental variable name change.
+* Revised example presets.
+* Further small refinements to CLI.
+  Also added comments to globals.h
+
+2019-10-11 Will
+* Minor corrections for headless build.
+
+2019-9-26 Will
+* Refined data2text to clarify structure.
+* BugFix: CLI not selecting which kit item effect
+  from the three part effects.
+  It was changing the actual effect instead.
+
+2019-9-25 Will
+* Reverted cmake change from Iain
+  With GCC it breaks on readline :(
+* Reverted change to 'data2Textfrom Iain
+  In the CLI kit items > 1 don't report the
+  waveform as text.
+
+2019-9-24 Will
+* All CLI effects correctly reporting.
+* Corrected anomaly CLI with sys/ins send.
+
+2019-9-22 Will
+* Most CLI effects switches reported as text.
+* Updated docs.
+
+2019-9-21 Will
+* Further refinements to listing / text lists.
+* Rationalised detune type values.
+  No more shuffling between CLI, GUI and engines.
+* Updated docs
+* CLI reports LFO text instead of number.
+* BugFix: CLI alienwah missing random entry.
+  This could cause a segfault.
+
+2019-9-20 Will
+* BugFix: CLI detune type inconsistencies.
+* CLI reports waveform text instead of number.
+* CLI filter category/type also reports text.
+
+2019-9-19 Will
+* Improved CLI bank controls and lists.
+* Removed requirement for CLI 'read' suffix.
+  Some contexts can now give useful information
+  with a simple 'read'.
+
+2019-9-18 Will
+* CLI can now set bank names.
+* Converted GUI bank name controls.
+* Updated docs.
+
+2019-9-17 Will
+* CLI conversion done for select bank & root.
+  Listing not done.
+* Activated CLI bank lisiting for defined entries.
+* Converted GUI entries for bank & root selection.
+* Implemented change root ID for CLI.
+* Converted GUI entry for change root ID.
+
+2019-9-16 Will
+* Started revision of bank controls.
+  Some CLI stuff not yet done properly.
+* Updated docs.
+
+2019-9-11 Will
+* Forgot CLI 'return' for default copyright :(
+
+2019-9-10 Will
+* CLI can now set copyright field.
+* CLI can now load/save default copyright.
+* Corrected config list values.
+  part and channel numbers off by 1.
+* Updated docs.
+
+2019-9-9 Will
+* ALSA can autoconnect to multiple MIDI inputs :)
+  Now uses a comma separated list.
+* Moved Jack MIDI aoutconnect to correct place.
+  It doesn't work (in either location), but nor
+  does V 1.4.1 where it used to, and was first
+  implemented.
+* BugFix: Config.cpp orphaned cout, cerr, endl
+  when 'using' changed in header.
+* BugFix: Config.cpp orphaned to_string
+  when 'using' changed in header.
+* Improved CLI part instrument type controls.
+
+2019-9-8 Will
+* BugFix: Loading files failed with mxml V 3.1 :(
+* Set version as 1.6.0.1
+* CLI can now set instrument comments.
+
+2019-9-7 Will
+* CLI can now set instrument type.
+* Removed outdated 'Yoshimi Control Numbers.txt'
+* Updated 'Yoshimi Control Numbers.ods'
+
+2019-9-6 Will
+* A corrupted config file no longer aborts.
+  A message is given stating defaults are used.
 
 2019-9-1 Will
 * Final doc updates.
 * Set release version as 1.6.0
+* Merged in bugfix for BSD.
 
 2019-8-30 Will
 * Small GUI correction for AddSynth.
