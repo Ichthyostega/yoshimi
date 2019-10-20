@@ -172,6 +172,10 @@ string CmdInterpreter::buildStatus(bool showPartDetails)
 
     if (bitTest(context, LEVEL::Scale))
         result += " Scale ";
+    else if (bitTest(context, LEVEL::Bank))
+    {
+        result += " Bank " + to_string(int(readControl(synth, 0, BANK::control::selectBank, TOPLEVEL::section::bank))) + " (root " + to_string(int(readControl(synth, 0, BANK::control::selectRoot, TOPLEVEL::section::bank))) + ")";
+    }
     else if (bitTest(context, LEVEL::Config))
         result += " Config ";
     else if (bitTest(context, LEVEL::Vector))
@@ -619,6 +623,8 @@ char CmdInterpreter::helpList(Parser& input, unsigned int local)
             listnum = LISTS::list;
         else if (input.matchnMove(1, "config"))
             listnum = LISTS::config;
+        else if (input.matchnMove(1, "bank"))
+            listnum = LISTS::bank;
         else if (input.matchnMove(1, "mlearn"))
             listnum = LISTS::mlearn;
         if (listnum != -1)
@@ -688,6 +694,8 @@ char CmdInterpreter::helpList(Parser& input, unsigned int local)
             listnum = LISTS::vector;
         else if (bitTest(local, LEVEL::Scale))
             listnum = LISTS::scale;
+        else if (bitTest(local, LEVEL::Bank))
+            listnum = LISTS::bank;
         else if (bitTest(local, LEVEL::Config))
             listnum = LISTS::config;
         else if (bitTest(local, LEVEL::Learn))
@@ -710,6 +718,7 @@ char CmdInterpreter::helpList(Parser& input, unsigned int local)
             msg.push_back("  SCale       ...             - scale (microtonal) operations");
             msg.push_back("  MLearn [n1] ...             - MIDI learn operations");
             msg.push_back("  COnfig      ...             - configuration settings");
+            msg.push_back("  BAnk        ...             - root and bank settings");
             msg.push_back("  LIst        ...             - various available parameters");
             msg.push_back("  LOad        ...             - load various files");
             msg.push_back("  SAve        ...             - save various files");
@@ -826,6 +835,10 @@ char CmdInterpreter::helpList(Parser& input, unsigned int local)
         case LISTS::list:
             msg.push_back("List:");
             helpLoop(msg, listlist, 2);
+            break;
+        case LISTS::bank:
+            msg.push_back("Bank:");
+            helpLoop(msg, banklist, 2);
             break;
         case LISTS::config:
             msg.push_back("Config:");
@@ -1104,6 +1117,8 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
          * If it's not valid we don't block, but pass on to
          * other command tests routines.
          */
+        if (controlType == TOPLEVEL::type::Read)
+            value = 1; // dummy value
         switch (nFXtype)
         {
             case 1:
@@ -1111,7 +1126,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
                 selected = stringNumInList(name, effreverb, 3);
                 if (selected != 7) // EQ
                     nFXeqBand = 0;
-                if (selected == 10) // type
+                if (selected == 10 && value == -1) // type
                 {
                     input.skipChars();
                     if (input.matchnMove(1, "random"))
@@ -1131,7 +1146,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
             case 3:
             {
                 selected = stringNumInList(name, effchorus, 3);
-                if (selected == 4) // filtershape
+                if (selected == 4 && value == -1) // filtershape
                 {
                     input.skipChars();
                     if (input.matchnMove(1, "sine"))
@@ -1150,7 +1165,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
             case 4:
             {
                 selected = stringNumInList(name, effphaser, 3);
-                if (selected == 4) // filtershape
+                if (selected == 4 && value == -1) // filtershape
                 {
                     input.skipChars();
                     if (input.matchnMove(1, "sine"))
@@ -1169,7 +1184,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
             case 5:
             {
                 selected = stringNumInList(name, effalienwah, 3);
-                if (selected == 3) // filtershape
+                if (selected == 4 && value == -1) // filtershape
                 {
                     input.skipChars();
                     if (input.matchnMove(1, "sine"))
@@ -1183,7 +1198,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
             case 6:
             {
                 selected = stringNumInList(name, effdistortion, 3);
-                if (selected == 5) // filtershape
+                if (selected == 5 && value == -1) // filtershape
                 {
                     input.skipChars();
                     string name = string{input}.substr(0,3);
@@ -1212,7 +1227,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
                         nFXeqBand = value;
                     }
                 }
-                else if (selected == 2) // type
+                else if (selected == 2 && value == -1) // type
                 {
                     input.skipChars();
                     string name = string{input}.substr(0,3);
@@ -1230,7 +1245,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
             case 8:
             {
                 selected = stringNumInList(name, effdynamicfilter, 3);
-                if (selected == 4) // filtershape
+                if (selected == 4 && value == -1) // filtershape
                 {
                     input.skipChars();
                     if (input.matchnMove(1, "sine"))
@@ -1271,10 +1286,19 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
 
     if (input.matchnMove(2, "send"))
     {
+        bool isWrite = (controlType == TOPLEVEL::type::Write);
         if (input.lineEnd(controlType))
             return REPLY::parameter_msg;
 
-        if (bitTest(context, LEVEL::InsFX))
+        if (!bitTest(context, LEVEL::InsFX))
+        {
+            par = string2int(input) - 1;
+            input.skipChars();
+            if (input.lineEnd(controlType))
+                return REPLY::value_msg;
+            value = string2int127(input);
+        }
+        else if (isWrite) // system effects
         {
             if (input.matchnMove(1, "master"))
                 value = -2;
@@ -1287,15 +1311,9 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
                     return REPLY::range_msg;
             }
         }
-        else
-        {
-            par = string2int(input) - 1;
-            input.skipChars();
-            if (input.lineEnd(controlType))
-                return REPLY::value_msg;
-            value = string2int127(input);
-        }
 
+        if (!isWrite)
+            value = 1; // dummy
         int control;
         int partno;
         int engine = nFX;
@@ -1321,7 +1339,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
             engine = nFX;
             insert = TOPLEVEL::insert::systemEffectSend;
         }
-        return sendNormal( synth, 0, value, TOPLEVEL::type::Write, control, partno, UNUSED, engine, insert);
+        return sendNormal( synth, 0, value, controlType, control, partno, UNUSED, engine, insert);
     }
 
     if (input.matchnMove(3, "preset"))
@@ -1341,7 +1359,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
             partno = TOPLEVEL::section::insertEffects;
         else
             partno = TOPLEVEL::section::systemEffects;
-        return sendNormal( synth, 0, nFXpreset, TOPLEVEL::type::Write, 16, partno,  EFFECT::type::none + nFXtype, nFX);
+        return sendNormal( synth, 0, nFXpreset, controlType, 16, partno,  EFFECT::type::none + nFXtype, nFX);
     }
     return REPLY::op_msg;
 }
@@ -1351,7 +1369,6 @@ int CmdInterpreter::midiControllers(Parser& input, unsigned char controlType)
 {
     int value = -1;
     int cmd = -1;
-    std::cout << "here" << std::endl;
     if (input.matchnMove(2, "volume"))
     {
         value = input.toggle();
@@ -1585,10 +1602,13 @@ int CmdInterpreter::partCommonControls(Parser& input, unsigned char controlType)
             {
                 if (input.lineEnd(controlType))
                     return REPLY::value_msg;
-                string name = string{input}.substr(0,3);
-                value = stringNumInList(name, detuneType, 3);
-                if (value > -1 && engine < PART::engine::addVoice1)
-                    value -= 1;
+                if (controlType == TOPLEVEL::type::Read)
+                    value = 2; // dummy value
+                else
+                {
+                    string name = string{input}.substr(0,3);
+                    value = stringNumInList(name, detuneType, 3);
+                }
                 if (value == -1)
                     return REPLY::range_msg;
                 if (engine >= PART::engine::addMod1)
@@ -1880,22 +1900,28 @@ int CmdInterpreter::LFOselect(Parser& input, unsigned char controlType)
     }
     else if (input.matchnMove(1, "type"))
     {
-        if (input.lineEnd(controlType))
-            return REPLY::what_msg;
-        if (input.matchnMove(2, "sine"))
+        if (controlType == TOPLEVEL::type::Read && input.isAtEnd())
             value = 0;
-        else if (input.matchnMove(1, "triangle"))
-            value = 1;
-        else if (input.matchnMove(2, "square"))
-            value = 2;
-        else if (input.matchnMove(2, "rup"))
-            value = 3;
-        else if (input.matchnMove(2, "rdown"))
-            value = 4;
-        else if (input.matchnMove(1, "e1dn"))
-            value = 5;
-        else if (input.matchnMove(1, "e2dn"))
-            value = 6;
+        else
+        {
+            int idx = 1;
+            while (LFOlist [idx] != "SIne")
+                idx += 2;
+            int start = idx;
+            while (LFOlist [idx] != "E2down")
+                idx += 2;
+            int end = idx;
+            idx = start;
+            while (idx <=end)
+            {
+                if (input.matchnMove(2, LFOlist[idx].c_str()))
+                    break;
+                idx += 2;
+            }
+            if (idx > end)
+                return REPLY::range_msg;
+            value = (idx - start) / 2;
+        }
         cmd = LFOINSERT::control::type;
     }
     else if (input.matchnMove(2, "ar"))
@@ -1975,18 +2001,23 @@ int CmdInterpreter::filterSelect(Parser& input, unsigned char controlType)
     }
     else if (input.matchnMove(2, "category"))
     {
-        if (input.matchnMove(1, "analog"))
-            value = 0;
-        else if(input.matchnMove(1, "formant"))
-        {
-            value = 1;
-            filterVowelNumber = 0;
-            filterFormantNumber = 0;
-        }
-        else if(input.matchnMove(1, "state"))
-            value = 2;
+        if (controlType == TOPLEVEL::type::Read && input.isAtEnd())
+                value = 0; // dummy value
         else
-            return REPLY::range_msg;
+        {
+            if (input.matchnMove(1, "analog"))
+                value = 0;
+            else if(input.matchnMove(1, "formant"))
+            {
+                value = 1;
+                filterVowelNumber = 0;
+                filterFormantNumber = 0;
+            }
+            else if(input.matchnMove(1, "state"))
+                value = 2;
+            else
+                return REPLY::range_msg;
+        }
         cmd = FILTERINSERT::control::baseType;
     }
     else if (input.matchnMove(2, "stages"))
@@ -2078,45 +2109,57 @@ int CmdInterpreter::filterSelect(Parser& input, unsigned char controlType)
         }
         else if (input.matchnMove(2, "type"))
         {
+            if (controlType == TOPLEVEL::type::Read && input.isAtEnd())
+                value = 0;
             switch (baseType)
             {
                 case 0: // analog
                 {
-                    if (input.matchnMove(2, "l1"))
-                        value = 0;
-                    else if (input.matchnMove(2, "h1"))
-                        value = 1;
-                    else if (input.matchnMove(2, "l2"))
-                        value = 2;
-                    else if (input.matchnMove(2, "h2"))
-                        value = 3;
-                    else if (input.matchnMove(2, "bpass"))
-                        value = 4;
-                    else if (input.matchnMove(2, "stop"))
-                        value = 5;
-                    else if (input.matchnMove(2, "peak"))
-                        value = 6;
-                    else if (input.matchnMove(2, "lshelf"))
-                        value = 7;
-                    else if (input.matchnMove(2, "hshelf"))
-                        value = 8;
-                    else
-                        return REPLY::range_msg;
+                    if (value == -1)
+                    {
+                        int idx = 0;
+                        while (filterlist [idx] != "l1")
+                            idx += 2;
+                        int start = idx;
+                        while (filterlist [idx] != "hshelf")
+                            idx += 2;
+                        int end = idx;
+                        idx = start;
+                        while (idx <= end)
+                        {
+                            if (input.matchnMove(2, filterlist[idx].c_str()))
+                                break;
+                            idx += 2;
+                        }
+                        if (idx > end)
+                            return REPLY::range_msg;
+                        value = (idx - start) / 2;
+                    }
                     cmd = FILTERINSERT::control::analogType;
                     break;
                 }
                 case 2: // state variable
                 {
-                    if (input.matchnMove(1, "low"))
-                        value = 0;
-                    else if (input.matchnMove(1, "high"))
-                        value = 1;
-                    else if (input.matchnMove(1, "band"))
-                        value = 2;
-                    else if (input.matchnMove(1, "stop"))
-                        value = 3;
-                    else
-                        return REPLY::range_msg;
+                    if (value == -1)
+                    {
+                        int idx = 0;
+                        while (filterlist [idx] != "low")
+                            idx += 2;
+                        int start = idx;
+                        while (filterlist [idx] != "stop")
+                            idx += 2;
+                        int end = idx;
+                        idx = start;
+                        while (idx <= end)
+                        {
+                            if (input.matchnMove(2, filterlist[idx].c_str()))
+                                break;
+                            idx += 2;
+                        }
+                        if (idx > end)
+                            return REPLY::range_msg;
+                        value = (idx - start) / 2;
+                    }
                     cmd = FILTERINSERT::control::stateVariableType;
                     break;
                 }
@@ -2389,13 +2432,12 @@ int CmdInterpreter::commandGroup(Parser& input)
         }
         return REPLY::done_msg;
     }
-
     string name = string{input};
     value = stringNumInList(name, instrumentGroupType, 2) + 1;
     //std::cout << value << std::endl;
     if (value < 1)
         return REPLY::range_msg;
-
+    synth->getRuntime().Log("\n" + type_list[int(value - 1)] + " Instruments");
     list<string> msg;
     /*
     * Having two lists is messy, but the list routine clears 'msg' and
@@ -2444,20 +2486,21 @@ int CmdInterpreter::commandList(Parser& input)
         return REPLY::done_msg;
     }
 
-    if (input.matchnMove(1, "banks"))
+    if (input.matchnMove(1, "roots")) // must be before bank
     {
-        if (input.isAtEnd())
-            ID = 128;
-        else
-            ID = string2int(input);
-        synth->ListBanks(ID, msg);
+        synth->ListPaths(msg);
         synth->cliOutput(msg, LINES);
         return REPLY::done_msg;
     }
 
-    if (input.matchnMove(1, "roots"))
+    if (input.matchnMove(1, "banks")
+        || (bitFindHigh(context) == LEVEL::Bank && (input.isAtEnd() || input.isdigit())))
     {
-        synth->ListPaths(msg);
+        if (input.isAtEnd() | !input.isdigit())
+            ID = 128;
+        else
+            ID = string2int(input);
+        synth->ListBanks(ID, msg);
         synth->cliOutput(msg, LINES);
         return REPLY::done_msg;
     }
@@ -2651,7 +2694,7 @@ void CmdInterpreter::listCurrentParts(Parser& input, list<string>& msg_buf)
     {
         string text = readControlText(synth, TOPLEVEL::action::lowPrio, PART::control::instrumentName, TOPLEVEL::section::part1 + partno);
         bool enabled = readControl(synth, 0, PART::control::enable, TOPLEVEL::section::part1 + partno);
-        if (text != "Simple Sound" || enabled)
+        if (text != DEFAULT_NAME || enabled)
         {
             if (partno < 9)
                 name = " ";
@@ -3021,6 +3064,87 @@ int CmdInterpreter::commandVector(Parser& input, unsigned char controlType)
             return REPLY::value_msg;
     }*/
 
+    return REPLY::op_msg;
+}
+
+
+int CmdInterpreter::commandBank(Parser& input, unsigned char controlType, bool justEntered)
+{
+    bitSet(context, LEVEL::Bank);
+    int isRoot = false;
+    if  (input.matchnMove(1, "bank"))
+        isRoot = false; // changes nothing as we're already at bank level :)
+    if (input.matchnMove(1, "name"))
+    {
+        string name = string{input};
+        if (controlType != TOPLEVEL::type::Read && name <= "!")
+            return REPLY::value_msg;
+        int miscMsg = textMsgBuffer.push(string(input));
+        int tmp = readControl(synth, 0, BANK::control::selectBank, TOPLEVEL::section::bank);
+        return sendNormal(synth, TOPLEVEL::action::lowPrio, tmp, controlType, BANK::control::renameBank, TOPLEVEL::section::bank, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, miscMsg);
+    }
+
+    if (input.matchnMove(2, "instrument"))
+    {
+        if (input.matchnMove(1, "rename"))
+        {
+            if (controlType != TOPLEVEL::type::Write)
+                return REPLY::available_msg;
+            if (!input.isdigit())
+                return REPLY::value_msg;
+            int tmp = string2int(input) - 1; // could be up to 160
+            if (tmp < 0 || tmp >= MAX_INSTRUMENTS_IN_BANK)
+                return REPLY::range_msg;
+            input.skipChars();
+            string name = string{input};
+            if (name <= "!")
+                return REPLY::value_msg;
+            int miscMsg = textMsgBuffer.push(name);
+            return sendNormal(synth, TOPLEVEL::action::lowPrio, 0, controlType, BANK::control::renameInstrument, TOPLEVEL::section::bank, UNUSED, UNUSED, tmp, UNUSED, UNUSED, miscMsg);
+        }
+        if (input.matchnMove(1, "save"))
+        {
+            if (controlType != TOPLEVEL::type::Write)
+                return REPLY::available_msg;
+            if (!input.isdigit())
+                return REPLY::value_msg;
+            int tmp = string2int(input) - 1; // could be up to 160
+            if (tmp < 0 || tmp >= MAX_INSTRUMENTS_IN_BANK)
+                return REPLY::range_msg;
+            string line = textMsgBuffer.fetch(readControl(synth, 0, BANK::control::readInstrumentName, TOPLEVEL::section::bank, UNUSED, UNUSED, UNUSED, tmp));
+            if (line > "!")
+            {
+                if (!query("Slot " + to_string(tmp + 1) + " contains '" + line + "'. Overwrite", false))
+                    return REPLY::done_msg;
+            }
+            return sendNormal(synth, TOPLEVEL::action::lowPrio, 0, controlType, BANK::control::saveInstrument, TOPLEVEL::section::bank, UNUSED, UNUSED, tmp);
+        }
+        return REPLY::done_msg;
+    }
+    if (input.matchnMove(1, "root"))
+        isRoot = true;
+    if (input.lineEnd(controlType))
+        return REPLY::done_msg;
+    if (input.isdigit() || controlType == TOPLEVEL::type::Read)
+    {
+        int tmp = string2int127(input);
+        input.skipChars();
+        if (isRoot)
+        {
+            return sendNormal(synth, TOPLEVEL::action::lowPrio, tmp, controlType, BANK::control::selectRoot, TOPLEVEL::section::bank);
+        }
+        if (justEntered)
+            return REPLY::done_msg;
+        return sendNormal(synth, TOPLEVEL::action::lowPrio, tmp, controlType, BANK::control::selectBank, TOPLEVEL::section::bank);
+        if (input.lineEnd(controlType))
+            return REPLY::done_msg;
+    }
+    if (input.matchnMove(2, "ID"))
+    {
+        int tmp = string2int127(input);
+        if (isRoot)
+            return sendNormal(synth, TOPLEVEL::action::lowPrio, tmp, controlType, BANK::control::changeRootId, TOPLEVEL::section::bank);
+    }
     return REPLY::op_msg;
 }
 
@@ -4260,8 +4384,14 @@ int CmdInterpreter::waveform(Parser& input, unsigned char controlType)
     int engine = contextToEngines(context);
     unsigned char insert = TOPLEVEL::insert::oscillatorGroup;
 
-    string name = string{input}.substr(0,3);
-    value = stringNumInList(name, wavebase, 3);
+    if (controlType == TOPLEVEL::type::Read && input.isAtEnd())
+        value = 0; // dummy value
+    else
+    {
+        string name = string{input}.substr(0,3);
+        value = stringNumInList(name, wavebase, 3);
+    }
+
     if (value != -1)
         cmd = OSCILLATOR::control::baseFunctionType;
     else if (input.matchnMove(1, "harmonic"))
@@ -4485,12 +4615,16 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
     if (kitMode == PART::kitType::Off)
         kitNumber = UNUSED; // always clear it if not kit mode
 
-    if (input.matchnMove(2, "effects") || input.matchnMove(2, "efx"))
+    // This is for actual effect definition and editing. See below for kit selection.
+    if (!inKitEditor)
     {
-        context = LEVEL::Top;
-        bitSet(context, LEVEL::AllFX);
-        bitSet(context, LEVEL::Part);
-        return effects(input, controlType);
+        if (input.matchnMove(2, "effects") || input.matchnMove(2, "efx"))
+        {
+            context = LEVEL::Top;
+            bitSet(context, LEVEL::AllFX);
+            bitSet(context, LEVEL::Part);
+            return effects(input, controlType);
+        }
     }
 
     if (input.isdigit())
@@ -4692,6 +4826,7 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
             return sendNormal( synth, 0, (input.toggle() != 0), controlType, PART::control::drumMode, npart);
         if (input.matchnMove(2, "quiet"))
             return sendNormal( synth, 0, (input.toggle() != 0), controlType, PART::control::kitItemMute, npart, kitNumber, UNUSED, TOPLEVEL::insert::kitGroup);
+         // This is for selection from 3 part effects. See above for definitions.
         if (input.matchnMove(2,"effect"))
         {
             if (controlType == TOPLEVEL::type::Write && input.isAtEnd())
@@ -4699,7 +4834,7 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
             value = string2int(input);
             if (value < 0 || value > NUM_PART_EFX)
                 return REPLY::range_msg;
-            return sendNormal( synth, 0, value, controlType, PART::control::kitEffectNum, npart, kitNumber, UNUSED, TOPLEVEL::insert::kitGroup);
+            return sendNormal( synth, 0, value, controlType | TOPLEVEL::type::Integer, PART::control::kitEffectNum, npart, kitNumber, UNUSED, TOPLEVEL::insert::kitGroup);
         }
         if (input.matchnMove(2,"name"))
         {
@@ -4817,7 +4952,7 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
                 Runtime.Log("Name too short");
                 return REPLY::done_msg;
             }
-            else if ( name == "Simple Sound")
+            else if ( name == DEFAULT_NAME)
             {
                 Runtime.Log("Cant use name of default sound");
                 return REPLY::done_msg;
@@ -4825,7 +4960,49 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
             else
                 miscmsg = textMsgBuffer.push(name);
         }
-        return sendNormal( synth, TOPLEVEL::action::lowPrio, 0, controlType, PART::control::instrumentName, npart, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, miscmsg);
+        return sendNormal(synth, TOPLEVEL::action::lowPrio, 0, controlType, PART::control::instrumentName, npart, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, miscmsg);
+    }
+    if (input.matchnMove(3,"copyright"))
+    {
+        string name;
+        if (controlType == TOPLEVEL::type::Write)
+        {
+            name = string{input};
+            if (name.size() < 2)
+                return REPLY::value_msg;
+        }
+        unsigned char miscmsg = textMsgBuffer.push(name);
+        return sendNormal(synth, TOPLEVEL::action::lowPrio, 0, controlType, PART::control::instrumentCopyright, npart, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, miscmsg);
+    }
+    if (input.matchnMove(3,"info"))
+    {
+        string name;
+        if (controlType == TOPLEVEL::type::Write)
+        {
+            name = string{input};
+            if (name.size() < 2)
+                return REPLY::value_msg;
+        }
+        unsigned char miscmsg = textMsgBuffer.push(name);
+        return sendNormal(synth, TOPLEVEL::action::lowPrio, 0, controlType, PART::control::instrumentComments, npart, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, miscmsg);
+    }
+    if (input.matchnMove(3,"type"))
+    {
+        if (input.lineEnd(controlType))
+            return REPLY::value_msg;
+        int pos = 0;
+        if (controlType == TOPLEVEL::type::Write)
+        {
+            string name = type_list[pos];
+            while (name != "end" && !input.matchnMove(3, name.c_str()))
+            {
+                ++ pos;
+                name = type_list[pos];
+            }
+            if (name == "end")
+                pos = 0; // undefined
+        }
+        return sendNormal(synth, TOPLEVEL::action::lowPrio, pos, controlType, PART::control::instrumentType, npart);
     }
     return REPLY::op_msg;
 }
@@ -4864,6 +5041,8 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
  // these must all be highest (relevant) bit first
     if (bitTest(context, LEVEL::Config))
         return commandConfig(input, controlType);
+    if (bitTest(context, LEVEL::Bank))
+        return commandBank(input, controlType);
     if (bitTest(context, LEVEL::Scale))
         return commandScale(input, controlType);
     if (bitTest(context, LEVEL::Envelope))
@@ -4905,6 +5084,13 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
         context = LEVEL::Top;
         bitSet(context, LEVEL::Config);
         return commandConfig(input, controlType);
+    }
+
+    if (input.matchnMove(1, "bank"))
+    {
+        context = LEVEL::Top;
+        bitSet(context, LEVEL::Bank);
+        return commandBank(input, controlType, true);
     }
 
     if (input.matchnMove(1, "scale"))
@@ -4966,38 +5152,6 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
     }
     if (bitTest(context, LEVEL::AllFX))
         return effects(input, controlType);
-
-    if (input.matchnMove(1, "root"))
-    {
-        if (controlType != TOPLEVEL::type::Write)
-        {
-            Runtime.Log("Root is ID " + asString(synth->ReadBankRoot()), 1);
-            return REPLY::done_msg;
-        }
-        if (!input.isAtEnd())
-        {
-            sendDirect(synth, TOPLEVEL::action::muteAndLoop, 255, controlType, 8, TOPLEVEL::section::midiIn, 0, UNUSED, string2int(input));
-            return REPLY::done_msg;
-        }
-        else
-            return REPLY::value_msg;
-    }
-
-    if (input.matchnMove(1, "bank"))
-    {
-        if (controlType != TOPLEVEL::type::Write)
-        {
-            Runtime.Log("Bank is ID " + asString(synth->ReadBank()), 1);
-            return REPLY::done_msg;
-        }
-        if (!input.isAtEnd())
-        {
-            sendDirect(synth, TOPLEVEL::action::muteAndLoop, 255, TOPLEVEL::type::Write, 8, TOPLEVEL::section::midiIn, 0, string2int(input));
-            return REPLY::done_msg;
-        }
-        else
-            return REPLY::value_msg;
-    }
 
     if (input.matchnMove(1, "volume"))
     {
@@ -5157,6 +5311,11 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
 #endif
     if (input.matchnMove(2, "exit"))
     {
+        if (input.matchnMove(1, "force"))
+        {
+            firstSynth->getRuntime().runSynth = false;
+            return Reply::DONE;
+        }
         if (currentInstance > 0)
         {
             Runtime.Log("Can only exit from instance 0", 1);
@@ -5268,6 +5427,19 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
             }
             return Reply{commandGroup(input)};
         }
+        else if (input.matchnMove(1, "type"))
+        {
+            synth->getRuntime().Log("Instrument Types:");
+            int idx = 0;
+            string name = type_list[idx];
+            while ( name != "end")
+            {
+                synth->getRuntime().Log(name);
+                ++ idx;
+                name = type_list[idx];
+            }
+            return Reply::DONE;
+        }
         return Reply{commandList(input)};
     }
 
@@ -5286,10 +5458,11 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
 
     if (input.matchnMove(1, "read") || input.matchnMove(1, "get"))
     {
-        if (!input.isAtEnd())
-            return Reply{commandReadnSet(input, TOPLEVEL::type::Read)};
-        else
-            return Reply::what("read");
+        /*
+         * we no longer test for line end as some contexts can return
+         * useful information with a simple read.
+         */
+        return Reply{commandReadnSet(input, TOPLEVEL::type::Read)};
     }
 
     if (input.matchnMove(3, "minimum"))
@@ -5540,9 +5713,10 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
         if (input.matchnMove(2, "instrument") || input.matchnMove(2, "program"))
         {
             int tmp = string2int(input);
-            if (tmp <= 0 || tmp >= MAX_INSTRUMENTS_IN_BANK)
+            if (tmp <= 0 || tmp > MAX_INSTRUMENTS_IN_BANK)
                     return Reply{REPLY::range_msg};
-            sendDirect(synth, TOPLEVEL::action::lowPrio, tmp - 1, TOPLEVEL::type::Write, BANK::control::deleteInstrument, TOPLEVEL::section::bank);
+            if (query("Permanently remove instrument " + to_string(tmp) + " from bank", false))
+                sendDirect(synth, TOPLEVEL::action::lowPrio, tmp - 1, TOPLEVEL::type::Write, BANK::control::deleteInstrument, TOPLEVEL::section::bank);
             return Reply::DONE;
         }
         return Reply::what("remove");
@@ -5713,6 +5887,8 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
             sendDirect(synth, 0, 0, TOPLEVEL::type::Write, MAIN::control::loadInstrumentByName, TOPLEVEL::section::main, npart, UNUSED, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(name));
             return Reply::DONE;
         }
+        if  (input.matchnMove(1, "default"))
+            return sendNormal(synth, TOPLEVEL::action::lowPrio, 0, TOPLEVEL::type::Write, PART::control::defaultInstrumentCopyright, TOPLEVEL::section::part1 + npart, UNUSED, UNUSED, UNUSED, 0);
         return Reply::what("load");
     }
 
@@ -5771,7 +5947,7 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
         }
         if (input.matchnMove(1, "instrument"))
         {
-            if (synth->part[npart]->Pname == "Simple Sound")
+            if (readControlText(synth, TOPLEVEL::action::lowPrio, PART::control::instrumentName, TOPLEVEL::section::part1 + npart) == DEFAULT_NAME)
             {
                 Runtime.Log("Nothing to save!");
                 return Reply::DONE;
@@ -5781,6 +5957,8 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
             sendDirect(synth, TOPLEVEL::action::lowPrio, npart, TOPLEVEL::type::Write, MAIN::control::saveNamedInstrument, TOPLEVEL::section::main, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(string{input}));
             return Reply::DONE;
         }
+        if  (input.matchnMove(1, "default"))
+            return sendNormal(synth, TOPLEVEL::action::lowPrio, 0, TOPLEVEL::type::Write, PART::control::defaultInstrumentCopyright, TOPLEVEL::section::part1 + npart, UNUSED, UNUSED, UNUSED, 1);
         return Reply::what("save");
     }
 

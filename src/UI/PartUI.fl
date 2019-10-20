@@ -55,16 +55,14 @@ decl {\#include "MasterUI.h"} {private global
 }
 
 decl {\#include "Misc/FormatFuncs.h"
-    using func::asString;
-} {private local
+    using func::asString;} {private local
 }
 
 decl {\#include "Misc/TextMsgBuffer.h"
 
-    namespace \{ // Implementation details...
+    namespace { // Implementation details...
         TextMsgBuffer& textMsgBuffer = TextMsgBuffer::instance();
-    \}
-} {private local
+    }} {private local
 }
 
 class PartSysEffSend {: {public Fl_Group}
@@ -532,7 +530,7 @@ class PartUI {: {public Fl_Group, PartUI_}
               {
                   if( !string(tmp).empty() && string(tmp) != oldName )
                   {
-                      if (string(tmp) == "Simple Sound")
+                      if (string(tmp) == DEFAULT_NAME)
                           fl_alert("Can't use name of default sound");
                       else
                       {
@@ -1446,28 +1444,28 @@ Offset}
         }
         Fl_Input copyright {
           callback {//
-          part->info.Pauthor = string(o->value());}
+           send_data(TOPLEVEL::action::lowPrio, PART::control::instrumentCopyright, 0, TOPLEVEL::type::Integer, UNUSED, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(string(o->value())));}
           xywh {5 49 385 55} type Multiline color 26 labelsize 12 align 9
           code0 {o->maximum_size(MAX_INFO_TEXT_SIZE);}
           code1 {o->value(part->info.Pauthor.c_str());}
         }
-        Fl_Input {} {
+        Fl_Input commentField {
           label Comments
           callback {//
-          part->info.Pcomments = string(o->value());}
+          send_data(TOPLEVEL::action::lowPrio, PART::control::instrumentComments, 0, TOPLEVEL::type::Integer, UNUSED, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(string(o->value())));}
           xywh {5 123 385 91} type Multiline color 26 labelsize 12 align 5
           code0 {o->maximum_size(MAX_INFO_TEXT_SIZE);}
-          code1 {o->value(part->info.Pcomments.c_str());}
+          code1 {o->value(func::formatTextLines(part->info.Pcomments, 58).c_str());}
         }
-        Fl_Choice {} {
+        Fl_Choice instrumentType {
           label {Type:}
           callback {//
-          part->info.Ptype=o->value();}
+              send_data(TOPLEVEL::action::lowPrio, PART::control::instrumentType, o->value(), TOPLEVEL::type::Integer);}
           xywh {5 25 155 20} down_box BORDER_BOX labelfont 1 labelsize 11 align 5 textsize 10
           code0 {o->value(part->info.Ptype);}
         } {
           MenuItem {} {
-            label {--------------------------}
+            label undefined
             xywh {20 20 100 20} labelfont 1 labelsize 11
           }
           MenuItem {} {
@@ -2116,11 +2114,20 @@ Offset}
             masterbandwidth->value(value);
             break;
 
+        case PART::control::instrumentCopyright:
+            copyright->value(func::formatTextLines(text, 58).c_str());
+            break;
+        case PART::control::instrumentComments:
+            commentField->value(func::formatTextLines(text, 58).c_str());
+            break;
         case PART::control::instrumentName:
             if (!kitType)
                 checkEngines(text);
             else
                 partkititem[kititem]->labelbutton->copy_label(text.c_str());
+            break;
+        case PART::control::instrumentType:
+            instrumentType->value(value);
             break;
         case PART::control::defaultInstrumentCopyright:
             if(parameter == 0)

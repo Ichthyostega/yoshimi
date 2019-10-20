@@ -29,12 +29,29 @@ using std::string;
 using std::to_string;
 
 using func::string2int;
+using func::stringCaps;
 
 DataText::DataText() :
     synth(nullptr),
     showValue(false),
     textMsgBuffer(TextMsgBuffer::instance())
 {
+}
+
+std::string DataText::withValue(std::string resolved, unsigned char type, bool showValue, bool addValue, float value)
+{
+    std::string actual = "";
+    if (showValue)
+    {
+        actual = " Value ";
+        if (type & TOPLEVEL::type::Integer)
+            actual += to_string(lrint(value));
+        else
+            actual += to_string(value);
+    }
+    if (addValue)
+        resolved += actual;
+    return resolved;
 }
 
 string DataText::resolveAll(SynthEngine *_synth, CommandBlock *getData, bool addValue)
@@ -47,7 +64,6 @@ string DataText::resolveAll(SynthEngine *_synth, CommandBlock *getData, bool add
     unsigned char kititem = getData->data.kit;
     unsigned char engine = getData->data.engine;
     unsigned char insert = getData->data.insert;
-//    unsigned char insertParam = getData->data.parameter;
 
     if (control == TOPLEVEL::control::textMessage) // special case for simple messages
     {
@@ -59,62 +75,74 @@ string DataText::resolveAll(SynthEngine *_synth, CommandBlock *getData, bool add
     showValue = true;
     string commandName;
 
-    Part *part;
-    part = synth->part[npart];
-
-    // this is unique and placed here to avoid Xruns
+   // this is unique and placed here to avoid Xruns
     if (npart == TOPLEVEL::section::scales && (control <= SCALES::control::tuning || control >= SCALES::control::retune))
         synth->setAllPartMaps();
 
     if (npart == TOPLEVEL::section::vector)
+    {
         commandName = resolveVector(getData, addValue);
-    else if (npart == TOPLEVEL::section::scales)
+        return withValue(commandName, type, showValue, addValue, value);
+    }
+    if (npart == TOPLEVEL::section::scales)
+    {
         commandName = resolveMicrotonal(getData, addValue);
-    else if (npart == TOPLEVEL::section::config)
+        return withValue(commandName, type, showValue, addValue, value);
+    }
+    if (npart == TOPLEVEL::section::config)
+    {
         commandName = resolveConfig(getData, addValue);
-    else if (npart == TOPLEVEL::section::bank)
+        return withValue(commandName, type, showValue, addValue, value);
+    }
+    if (npart == TOPLEVEL::section::bank)
+    {
         commandName = resolveBank(getData, addValue);
-    else if (npart == TOPLEVEL::section::midiIn || npart == TOPLEVEL::section::main)
+        return withValue(commandName, type, showValue, addValue, value);
+    }
+    if (npart == TOPLEVEL::section::midiIn || npart == TOPLEVEL::section::main)
+    {
         commandName = resolveMain(getData, addValue);
-
-    else if (npart == TOPLEVEL::section::systemEffects || npart == TOPLEVEL::section::insertEffects)
-        commandName = resolveEffects(getData, addValue);
-
-    else if ((kititem >= EFFECT::type::none && kititem <= EFFECT::type::dynFilter) || (control >= PART::control::effectNumber && control <= PART::control::effectBypass && kititem == UNUSED))
-        commandName = resolveEffects(getData, addValue);
-
-    else if (npart >= NUM_MIDI_PARTS)
-    {
-        showValue = false;
-        commandName = "Invalid part " + to_string(int(npart) + 1);
+        return withValue(commandName, type, showValue, addValue, value);
     }
 
-    else if (kititem >= NUM_KIT_ITEMS && kititem < UNUSED)
+    if (npart == TOPLEVEL::section::systemEffects || npart == TOPLEVEL::section::insertEffects)
     {
-        showValue = false;
-        commandName = "Invalid kit " + to_string(int(kititem) + 1);
+        commandName = resolveEffects(getData, addValue);
+        return withValue(commandName, type, showValue, addValue, value);
     }
 
-    else if (kititem != 0 && engine != UNUSED && control != PART::control::enable && part->kit[kititem].Penabled == false)
-        commandName = "Part " + to_string(int(npart) + 1) + " Kit item " + to_string(int(kititem) + 1) + " not enabled";
+    if ((kititem >= EFFECT::type::none && kititem <= EFFECT::type::dynFilter) || (control >= PART::control::effectNumber && control <= PART::control::effectBypass && kititem == UNUSED))
+    {
+        commandName = resolveEffects(getData, addValue);
+        return withValue(commandName, type, showValue, addValue, value);
+    }
 
-    else if (kititem == UNUSED || insert == TOPLEVEL::insert::kitGroup)
+    if (npart >= NUM_MIDI_PARTS)
+        return "Invalid part " + to_string(int(npart) + 1);
+
+    if (kititem >= NUM_KIT_ITEMS && kititem < UNUSED)
+        return "Invalid kit " + to_string(int(kititem) + 1);
+
+    Part *part;
+    part = synth->part[npart];
+
+    if (kititem > 0 && engine != UNUSED && control != PART::control::enable && part->kit[kititem].Penabled == false)
+        return "Part " + to_string(int(npart) + 1) + " Kit item " + to_string(int(kititem) + 1) + " not enabled";
+
+    if (kititem == UNUSED || insert == TOPLEVEL::insert::kitGroup)
     {
         if (control != PART::control::kitMode && kititem != UNUSED && part->Pkitmode == 0)
-        {
-            showValue = false;
-            commandName = "Part " + to_string(int(npart) + 1) + " Kitmode not enabled";
-        }
+            return  "Part " + to_string(int(npart) + 1) + " Kitmode not enabled";
         else
+        {
             commandName = resolvePart(getData, addValue);
+            return withValue(commandName, type, showValue, addValue, value);
+        }
     }
-    else if (kititem > 0 && part->Pkitmode == 0)
-    {
-        showValue = false;
-        commandName = "Part " + to_string(int(npart) + 1) + " Kitmode not enabled";
-    }
+    if (kititem > 0 && part->Pkitmode == 0)
+        return "Part " + to_string(int(npart) + 1) + " Kitmode not enabled";
 
-    else if (engine == PART::engine::padSynth)
+    if (engine == PART::engine::padSynth)
     {
         switch(insert)
         {
@@ -152,9 +180,10 @@ string DataText::resolveAll(SynthEngine *_synth, CommandBlock *getData, bool add
                 commandName = resolveResonance(getData, addValue);
                 break;
         }
+        return withValue(commandName, type, showValue, addValue, value);
     }
 
-    else if (engine == PART::engine::subSynth)
+    if (engine == PART::engine::subSynth)
     {
         switch (insert)
         {
@@ -180,9 +209,10 @@ string DataText::resolveAll(SynthEngine *_synth, CommandBlock *getData, bool add
                 commandName = resolveEnvelope(getData, addValue);
                 break;
         }
+        return withValue(commandName, type, showValue, addValue, value);
     }
 
-    else if (engine >= PART::engine::addVoice1)
+    if (engine >= PART::engine::addVoice1)
     {
         switch (insert)
         {
@@ -214,9 +244,10 @@ string DataText::resolveAll(SynthEngine *_synth, CommandBlock *getData, bool add
                 commandName = resolveOscillator(getData, addValue);
                 break;
         }
+        return withValue(commandName, type, showValue, addValue, value);
     }
 
-    else if (engine == PART::engine::addSynth)
+    if (engine == PART::engine::addSynth)
     {
         switch (insert)
         {
@@ -246,19 +277,7 @@ string DataText::resolveAll(SynthEngine *_synth, CommandBlock *getData, bool add
                 break;
         }
     }
-
-    string actual = "";
-    if (showValue)
-    {
-        actual = " Value ";
-        if (type & TOPLEVEL::type::Integer)
-            actual += to_string(lrint(value));
-        else
-            actual += to_string(value);
-    }
-    if (addValue)
-        commandName += actual;
-    return commandName;
+    return withValue(commandName, type, showValue, addValue, value);
 }
 
 
@@ -413,13 +432,15 @@ string DataText::resolveMicrotonal(CommandBlock *getData, bool addValue)
         case SCALES::control::name:
             contstr = "Name: ";
             if (addValue)
-                contstr += string(synth->microtonal.Pname);
+                //contstr += string(synth->microtonal.Pname);
+                contstr += textMsgBuffer.fetch(lrint(value));
             showValue = false;
             break;
         case SCALES::control::comment:
             contstr = "Description: ";
             if (addValue)
-                contstr += string(synth->microtonal.Pcomment);
+                //contstr += string(synth->microtonal.Pcomment);
+                contstr += textMsgBuffer.fetch(lrint(value));
             showValue = false;
             break;
         case SCALES::control::retune:
@@ -840,6 +861,16 @@ string DataText::resolveBank(CommandBlock *getData, bool)
     showValue = false;
     switch(control)
     {
+        case BANK::control::renameInstrument:
+        {
+            contstr = "Instrument Rename" + name;
+            break;
+        }
+        case BANK::control::saveInstrument:
+        {
+            contstr = "Instrument Save to slot " + name;
+            break;
+        }
         case BANK::control::deleteInstrument:
             contstr = "Instrument delete" + name;
             break;
@@ -852,6 +883,13 @@ string DataText::resolveBank(CommandBlock *getData, bool)
             contstr = "Swap" + name;
             break;
 
+        case BANK::control::selectBank:
+            contstr = name;
+            break;
+        case BANK::control::renameBank:
+            contstr = name;
+            break;
+
         case BANK::control::selectFirstBankToSwap:
             contstr = "Set Bank ID " + to_string(kititem) + "  Root ID " + to_string(engine) + " for swap";
             break;
@@ -862,6 +900,14 @@ string DataText::resolveBank(CommandBlock *getData, bool)
             break;
         default:
             contstr = "Unrecognised";
+            break;
+
+        case BANK::control::selectRoot:
+            contstr = name;
+            break;
+
+        case BANK::control::changeRootId:
+            contstr = "Root ID changed " + to_string(engine) + " > " + to_string(value_int);
             break;
     }
     return ("Bank " + contstr);
@@ -990,11 +1036,6 @@ string DataText::resolveMain(CommandBlock *getData, bool addValue)
         case MAIN::control::loadInstrumentByName:
             showValue = false;
             contstr = "Part " + to_string (int(kititem + 1)) + " load" + textMsgBuffer.fetch(value_int);
-            break;
-
-        case MAIN::control::saveInstrument:
-            showValue = false;
-            contstr = "Bank Slot Save" + textMsgBuffer.fetch(value_int);
             break;
 
         case MAIN::control::saveNamedInstrument:
@@ -1234,7 +1275,7 @@ string DataText::resolvePart(CommandBlock *getData, bool addValue)
                         break;
                 }
             }
-            contstr+= " Enable";
+            contstr += " Enable";
             yesno = true;
             break;
         case PART::control::kitItemMute:
@@ -1462,14 +1503,20 @@ string DataText::resolvePart(CommandBlock *getData, bool addValue)
             break;
 
         case PART::control::instrumentCopyright:
-            ; // not yet
+            showValue = false;
+            contstr = "Copyright: " + textMsgBuffer.fetch(value_int);
             break;
         case PART::control::instrumentComments:
-            ; // not yet
+            showValue = false;
+            contstr = "Comment: " + textMsgBuffer.fetch(value_int);
             break;
         case PART::control::instrumentName:
             showValue = false;
             contstr = "Name is: " + textMsgBuffer.fetch(value_int);
+            break;
+        case PART::control::instrumentType:
+            showValue = false;
+            contstr = "Type is: " + type_list[value_int];
             break;
         case PART::control::defaultInstrumentCopyright:
             showValue = false;
@@ -1513,8 +1560,9 @@ string DataText::resolvePart(CommandBlock *getData, bool addValue)
 }
 
 
-string DataText::resolveAdd(CommandBlock *getData, bool)
+string DataText::resolveAdd(CommandBlock *getData, bool addValue)
 {
+    float value = getData->data.value.F;
     unsigned char control = getData->data.control;
     unsigned char npart = getData->data.part;
     unsigned char kititem = getData->data.kit;
@@ -1522,7 +1570,7 @@ string DataText::resolveAdd(CommandBlock *getData, bool)
     if (control <= ADDSYNTH::control::panning)
         name = " Amplitude ";
     else if (control >= ADDSYNTH::control::detuneFrequency && control <= ADDSYNTH::control::relativeBandwidth)
-        name = "Frequency";
+        name = "Frequency ";
 
     string contstr = "";
 
@@ -1547,7 +1595,10 @@ string DataText::resolveAdd(CommandBlock *getData, bool)
             contstr = "Octave";
             break;
         case ADDSYNTH::control::detuneType:
-            contstr = "Det type";
+            contstr = "Det type ";
+            showValue = false;
+            if (addValue)
+                contstr += detuneType [int(value)];
             break;
         case ADDSYNTH::control::coarseDetune:
             contstr = "Coarse Det";
@@ -1590,14 +1641,15 @@ string DataText::resolveAdd(CommandBlock *getData, bool)
 
 string DataText::resolveAddVoice(CommandBlock *getData, bool addValue)
 {
+    float value = getData->data.value.F;
     unsigned char control = getData->data.control;
     unsigned char npart = getData->data.part;
     unsigned char kititem = getData->data.kit;
     unsigned char engine = getData->data.engine;
 
     bool yesno = false;
-    bool value_bool = YOSH::F2B(getData->data.value.F);
-    int value_int = lrint(getData->data.value.F);
+    bool value_bool = YOSH::F2B(value);
+    int value_int = lrint(value);
     int nvoice;
     if (engine >= PART::engine::addMod1)
         nvoice = engine - PART::engine::addMod1;
@@ -1697,7 +1749,10 @@ string DataText::resolveAddVoice(CommandBlock *getData, bool addValue)
             contstr = "Octave";
             break;
         case ADDVOICE::control::detuneType:
-            contstr = "Det type";
+            contstr = "Det type ";
+            showValue = false;
+            if (addValue)
+                contstr += stringCaps(detuneType [int(value)], 1);
             break;
         case ADDVOICE::control::coarseDetune:
             contstr = "Coarse Det";
@@ -1778,7 +1833,10 @@ string DataText::resolveAddVoice(CommandBlock *getData, bool addValue)
             contstr = "Octave";
             break;
         case ADDVOICE::control::modulatorDetuneType:
-            contstr = "Det type";
+            contstr = "Det type ";
+            showValue = false;
+            if (addValue)
+                contstr += detuneType [int(value)];
             break;
         case ADDVOICE::control::modulatorCoarseDetune:
             contstr = "Coarse Det";
@@ -1849,13 +1907,14 @@ string DataText::resolveAddVoice(CommandBlock *getData, bool addValue)
 
 string DataText::resolveSub(CommandBlock *getData, bool addValue)
 {
+    float value = getData->data.value.F;
     unsigned char control = getData->data.control;
     unsigned char npart = getData->data.part;
     unsigned char kititem = getData->data.kit;
     unsigned char insert = getData->data.insert;
 
     bool yesno = false;
-    bool value_bool = YOSH::F2B(getData->data.value.F);
+    bool value_bool = YOSH::F2B(value);
     if (insert == TOPLEVEL::insert::harmonicAmplitude || insert == TOPLEVEL::insert::harmonicPhaseBandwidth)
     {
         string Htype;
@@ -1924,7 +1983,10 @@ string DataText::resolveSub(CommandBlock *getData, bool addValue)
             contstr = "Octave";
             break;
         case SUBSYNTH::control::detuneType:
-            contstr = "Det type";
+            contstr = "Det type ";
+            showValue = false;
+            if (addValue)
+                contstr += detuneType [int(value)];
             break;
         case SUBSYNTH::control::coarseDetune:
             contstr = "Coarse Det";
@@ -1997,6 +2059,7 @@ string DataText::resolveSub(CommandBlock *getData, bool addValue)
 
 string DataText::resolvePad(CommandBlock *getData, bool addValue)
 {
+    float value = getData->data.value.F;
     unsigned char type = getData->data.type;
     unsigned char control = getData->data.control;
     unsigned char npart = getData->data.part;
@@ -2004,7 +2067,7 @@ string DataText::resolvePad(CommandBlock *getData, bool addValue)
     bool write = (type & TOPLEVEL::type::Write) > 0;
 
     bool yesno = false;
-    bool value_bool = YOSH::F2B(getData->data.value.F);
+    bool value_bool = YOSH::F2B(value);
     string name = "";
     switch (control & 0x70)
     {
@@ -2065,7 +2128,10 @@ string DataText::resolvePad(CommandBlock *getData, bool addValue)
             contstr = "Octave";
             break;
         case PADSYNTH::control::detuneType:
-            contstr = "Det type";
+            contstr = "Det type ";
+            showValue = false;
+            if (addValue)
+                contstr += detuneType [int(value)];
             break;
         case PADSYNTH::control::coarseDetune:
             contstr = "Coarse Det";
@@ -2189,8 +2255,9 @@ string DataText::resolvePad(CommandBlock *getData, bool addValue)
 }
 
 
-string DataText::resolveOscillator(CommandBlock *getData, bool)
+string DataText::resolveOscillator(CommandBlock *getData, bool addValue)
 {
+    float value = getData->data.value.F;
     unsigned char type = getData->data.type;
     unsigned char control = getData->data.control;
     unsigned char npart = getData->data.part;
@@ -2258,7 +2325,10 @@ string DataText::resolveOscillator(CommandBlock *getData, bool)
             contstr = " Par";
             break;
         case OSCILLATOR::control::baseFunctionType:
-            contstr = " Type";
+            contstr = " Type ";
+            showValue = false;
+            if (addValue)
+                contstr += stringCaps(waveformlist[int(value) * 2], 1);
             break;
         case OSCILLATOR::control::baseModulationParameter1:
             contstr = " Mod Par 1";
@@ -2459,8 +2529,9 @@ string DataText::resolveResonance(CommandBlock *getData, bool addValue)
 }
 
 
-string DataText::resolveLFO(CommandBlock *getData, bool)
+string DataText::resolveLFO(CommandBlock *getData, bool addValue)
 {
+    int value_int = int(getData->data.value.F);
     unsigned char control = getData->data.control;
     unsigned char npart = getData->data.part;
     unsigned char kititem = getData->data.kit;
@@ -2512,8 +2583,18 @@ string DataText::resolveLFO(CommandBlock *getData, bool)
             contstr = "AmpRand";
             break;
         case LFOINSERT::control::type:
-            contstr = "Type";
+        {
+            contstr = "Type ";
+            showValue = false;
+            int idx = 1;
+            if (addValue)
+            {
+                while (LFOlist [idx] != "SIne")
+                    idx += 2;
+                contstr += stringCaps(LFOlist[idx + (value_int * 2)], 1);
+            }
             break;
+        }
         case LFOINSERT::control::continuous:
             contstr = "Cont";
             break;
@@ -2533,7 +2614,7 @@ string DataText::resolveLFO(CommandBlock *getData, bool)
 }
 
 
-string DataText::resolveFilter(CommandBlock *getData, bool)
+string DataText::resolveFilter(CommandBlock *getData, bool addValue)
 {
     int value_int = int(getData->data.value.F);
     unsigned char control = getData->data.control;
@@ -2581,14 +2662,49 @@ string DataText::resolveFilter(CommandBlock *getData, bool)
             contstr = "Stages " + to_string(value_int + 1);
             break;
         case FILTERINSERT::control::baseType:
-            contstr = "Filt Type";
+            contstr = "Filt Cat ";
+            showValue = false;
+            switch (value_int)
+            {
+                case 0:
+                    contstr += "Anlog";
+                    break;
+                case 1:
+                    contstr += "Form";
+                    break;
+                case 2:
+                    contstr += "StVar";
+                    break;
+                default:
+                    contstr += "unrecognised";
+                    break;
+            }
             break;
         case FILTERINSERT::control::analogType:
-            contstr = "An Type";
+        {
+            contstr = "An Type ";
+            showValue = false;
+            int idx = 0;
+            if (addValue)
+            {
+                while (filterlist [idx] != "l1")
+                    idx += 2;
+                contstr += filterlist [idx + (value_int * 2)];
+            }
             break;
+        }
         case FILTERINSERT::control::stateVariableType:
+        {
             contstr = "SV Type";
+            int idx = 0;
+            if (addValue)
+            {
+                while (filterlist [idx] != "low")
+                    idx += 2;
+                contstr += filterlist [idx + (value_int * 2)];
+            }
             break;
+        }
         case FILTERINSERT::control::frequencyTrackingRange:
             contstr = "Fre Trk Offs";
             break;
@@ -2645,7 +2761,7 @@ string DataText::resolveFilter(CommandBlock *getData, bool)
     }
     string extra = "";
     if (control >= FILTERINSERT::control::formantFrequency && control <= FILTERINSERT::control::formantAmplitude)
-        extra ="Vowel " + to_string(nvowel) + " Formant " + to_string(nformant) + " ";
+        extra = "Vowel " + to_string(nvowel) + " Formant " + to_string(nformant) + " ";
     else if (control == FILTERINSERT::control::vowelPositionInSequence)
         extra = "Seq Pos " + to_string(nseqpos) + " ";
 
@@ -2790,6 +2906,7 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
     unsigned char effnum = getData->data.engine;
     unsigned char insert = getData->data.insert;
     unsigned char parameter = getData->data.parameter;
+    unsigned char offset = getData->data.offset;
 
     string name;
     string actual;
@@ -2859,7 +2976,6 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
             }
             if (control == EFFECT::sysIns::effectEnable)
             {
-                contstr += "effect " + to_string(effnum + 1);
                 if (addValue)
                 {
                     showValue = false;
@@ -2878,7 +2994,7 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
             if (value == -2)
                 contstr += "Master out";
             else if (value == -1)
-                contstr = " Off";
+                contstr = " - off";
             else
             {
                 contstr += "Part ";
@@ -2902,8 +3018,9 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
         showValue = false;
     }
     else
-        contstr = " Control " + to_string(control + 1);
-
+        contstr = ""; //" Control " + to_string(control + 1);
+    string controlType = "";
+    int ref = control; // we frequently modify this
     switch (kititem)
     {
         case EFFECT::type::none:
@@ -2911,42 +3028,191 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
             contstr = " ";
             break;
         case EFFECT::type::reverb:
-            effname = " Reverb";
+        {
+            if (ref > 4) // there is no 5 or 6 in the list names
+                ref -= 2;
+            effname = " Reverb ";
+            controlType = reverblist[(ref) * 2];
+            if (control == 10 && addValue == true && offset > 0)
+            {
+                showValue = false;
+                switch (value)
+                {
+                    case 0:
+                        contstr = " Random ";
+                        break;
+                    case 1:
+                        contstr = " Freeverb ";
+                        break;
+                    case 2:
+                        contstr = " Bandwidth ";
+                        break;
+                }
+            }
             break;
+        }
         case EFFECT::type::echo:
-            effname = " Echo";
+            effname = " Echo ";
+            controlType = echolist[control * 2];
             break;
         case EFFECT::type::chorus:
-            effname = " Chorus";
+        {
+            effname = " Chorus ";
+            if (ref > 9) // there is no 10 in the list names
+                ref --;
+            controlType = choruslist[ref * 2];
+            if (addValue == true && offset > 0)
+            {
+                if (control == 4)
+                {
+                    showValue = false;
+                    if (value)
+                        contstr = " Triangle";
+                    else
+                        contstr = " Sine";
+                }
+                else if (control == 11)
+                {
+                    showValue = false;
+                    if (value)
+                        contstr += " - on";
+                    else
+                        contstr+= " - off";
+                }
+            }
             break;
+        }
         case EFFECT::type::phaser:
-            effname = " Phaser";
+            effname = " Phaser ";
+            controlType = phaserlist[control * 2];
+            if (addValue == true && offset > 0)
+            {
+                switch (control)
+                {
+                    case 4:
+                        showValue = false;
+                        if (value)
+                            contstr = " Triangle";
+                        else
+                            contstr = " Sine";
+                        break;
+                    case 10:
+                    case 12:
+                    case 14:
+                        showValue = false;
+                        if (value)
+                            contstr = " - on";
+                        else
+                        contstr = " - off";
+                        break;
+                }
+            }
             break;
         case EFFECT::type::alienWah:
-            effname = " AlienWah";
+            effname = " AlienWah ";
+            controlType = alienwahlist[control * 2];
+            if (control == 4 && addValue == true  && offset > 0)
+            {
+                showValue = false;
+                if (value)
+                    contstr = " Triangle";
+                else
+                    contstr = " Sine";
+            }
             break;
         case EFFECT::type::distortion:
-            effname = " Distortion";
+        {
+            effname = " Distortion ";
+            if (ref > 5) // there is an extra line in the list names
+                ++ ref;
+            if (addValue == true && offset > 0)
+            {
+                switch (ref)
+                {
+                    case 5:
+                        contstr = " " + stringCaps(effdistypes[value], 1);
+                        showValue = false;
+                        break;
+                    case 11:
+                        contstr = " Pre dist.";
+                        // fallthrough intended
+                    case 7:
+                    case 10:
+                    {
+                        if (value)
+                            contstr += " - on";
+                        else
+                            contstr+= " - off";
+                        showValue = false;
+                        break;
+                    }
+                }
+            }
+            controlType = distortionlist[ref * 2];
             break;
+        }
         case EFFECT::type::eq:
-            effname = " EQ";
+        {
+            effname = " EQ ";
             if (control > 1)
-                contstr = " (Band " + to_string(int(parameter)) + ") Control " + to_string(control);
+            {
+                if(offset)
+                    effname += "(Band " + to_string(int(parameter)) + ") ";
+                if (ref > 10)
+                    ref -= 7;
+                else    // there is no 3 to 9 in the list names
+                {       // but there is an extra line after 10
+                    ref -= 8;
+                    if(addValue == true && offset > 0)
+                    {
+                        showValue = false;
+                        contstr = " " + stringCaps(eqtypes[value], 1);
+                    }
+                }
+            }
+            controlType = eqlist[ref * 2];
             break;
+        }
         case EFFECT::type::dynFilter:
-            effname = " DynFilter";
+            effname = " DynFilter ";
+            controlType = dynfilterlist[control * 2];
+            if(addValue == true && offset > 0)
+            {
+                if (control == 4)
+                {
+                    showValue = false;
+                    if (value)
+                        contstr = " Triangle";
+                    else
+                        contstr = " Sine";
+                }
+                else if (control == 8)
+                {
+                    showValue = false;
+                    if (value)
+                        contstr += " - on";
+                    else
+                        contstr+= " - off";
+                }
+            }
             break;
 
         default:
             showValue = false;
             contstr = " Unrecognised";
     }
-
-    if (kititem != EFFECT::type::eq && control == EFFECT::control::preset)
+    //std::cout << "control " << int(control) << std::endl;
+    if (control == 16 && kititem != EFFECT::type::eq)
     {
-        contstr = " Preset " + to_string (lrint(value) + 1);
+        contstr = " Preset " + to_string (value + 1);
         showValue = false;
     }
+    else if (offset)
+    {
+        controlType = controlType.substr(0, controlType.find(' '));
+        effname += stringCaps(controlType , 1);
+    }
+
 
     return (name + effname + contstr);
 }
