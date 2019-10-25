@@ -93,6 +93,7 @@ License: LGPL-2+
 Files: debian/*
 Copyright: 2010-2011, Alessio Treglia <alessio@debian.org>
            2010-2017, Jaromír Mikeš <mira.mikes@seznam.cz>
+           2019, Olivier Humbert <trebmuh@tuxfamily.org>
 License: GPL-2+
 
 Files: src/UI/ParametersUI.fl
@@ -444,7 +445,7 @@ Comment:
  License version 2 can be found in `/usr/share/common-licenses/GPL-2'.
  .
  You should have received a copy of the GNU General Public License
- along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 License: GPL-3
  This program is free software: you can redistribute it and/or modify
@@ -460,7 +461,7 @@ Comment:
  License version 3 can be found in `/usr/share/common-licenses/GPL-3'.
  .
  You should have received a copy of the GNU General Public License
- along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 License: GPL-3+
  This program is free software: you can redistribute it and/or modify
@@ -477,7 +478,7 @@ Comment:
  License version 3 can be found in `/usr/share/common-licenses/GPL-3'.
  .
  You should have received a copy of the GNU General Public License
- along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 License: ISC
  Permission to use, copy, modify, and/or distribute this software for any
@@ -507,5 +508,4 @@ Comment:
  License version 2 can be found in `/usr/share/common-licenses/LGPL-2'.
  .
  You should have received a copy of the GNU Library General Public License
- along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
