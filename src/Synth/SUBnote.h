@@ -27,14 +27,10 @@
 #ifndef SUB_NOTE_H
 #define SUB_NOTE_H
 
-#include "Synth/LegatoTypes.h"
+#include "Synth/Note.h"
 
 class SUBnoteParameters;
-class Controller;
-class Envelope;
-class Filter;
 
-class SynthEngine;
 
 class SUBnote
 {

@@ -27,15 +27,11 @@
 #ifndef AD_NOTE_H
 #define AD_NOTE_H
 
+#include "Synth/Note.h"
 #include "Params/ADnoteParameters.h"
-#include "Synth/LegatoTypes.h"
 #include "Misc/RandomGen.h"
 
 class ADnoteParameters;
-class Controller;
-class Envelope;
-class LFO;
-class Filter;
 
 // Globals
 
@@ -43,7 +39,6 @@ class Filter;
 
 #define OSCIL_SMP_EXTRA_SAMPLES 5
 
-class SynthEngine;
 
 class ADnote
 {
