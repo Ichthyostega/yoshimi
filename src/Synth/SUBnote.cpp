@@ -43,37 +43,32 @@ using synth::interpolateAmplitude;
 using synth::aboveAmplitudeThreshold;
 
 
-SUBnote::SUBnote(SUBnoteParameters *parameters, Controller *ctl_, float freq,
-                 float velocity, int portamento_, int midinote, bool besilent, SynthEngine *_synth) :
+SUBnote::SUBnote(SUBnoteParameters *parameters, Controller *_ctl, float freq,
+                 float velocity, int portamento_, int midinote, bool besilent, SynthEngine *_synth) : Note(_synth, _ctl),
     pars(parameters),
     GlobalFilterL(NULL),
     GlobalFilterR(NULL),
     GlobalFilterEnvelope(NULL),
     portamento(portamento_),
-    ctl(ctl_),
     log_0_01(logf(0.01f)),
     log_0_001(logf(0.001f)),
     log_0_0001(logf(0.0001f)),
     log_0_00001(logf(0.00001f)),
-    synth(_synth),
     filterStep(0)
 {
-    ready = 0;
-
     // Initialise some legato-specific vars
-    Legato.msg = LM_Norm;
-    Legato.fade.length = int(synth->samplerate_f * 0.005f); // 0.005 seems ok.
-    if (Legato.fade.length < 1)
-        Legato.fade.length = 1;// (if something's fishy)
-    Legato.fade.step = (1.0f / Legato.fade.length);
-    Legato.decounter = -10;
-    Legato.param.freq = freq;
-    Legato.param.vel = velocity;
-    Legato.param.portamento = portamento_;
-    Legato.param.midinote = midinote;
-    Legato.silent = besilent;
+    legato.msg = LM_Norm;
+    legato.fade.length = int(synth->samplerate_f * 0.005f); // 0.005 seems ok.
+    if (legato.fade.length < 1)
+        legato.fade.length = 1;// (if something's fishy)
+    legato.fade.step = (1.0f / legato.fade.length);
+    legato.decounter = -10;
+    legato.param.freq = freq;
+    legato.param.vel = velocity;
+    legato.param.portamento = portamento_;
+    legato.param.midinote = midinote;
+    legato.silent = besilent;
 
-    NoteEnabled = true;
     volume = powf(0.1f, 3.0f * (1.0f - pars->PVolume / 96.0f)); // -60 dB .. 0 dB
     volume *= velF(velocity, pars->PAmpVelocityScaleFunction);
     if (pars->randomPan())
@@ -140,7 +135,7 @@ SUBnote::SUBnote(SUBnoteParameters *parameters, Controller *ctl_, float freq,
 
     if (numharmonics == 0)
     {
-        NoteEnabled = false;
+        active_ = false;
         return;
     }
 
@@ -158,7 +153,7 @@ SUBnote::SUBnote(SUBnoteParameters *parameters, Controller *ctl_, float freq,
         initparameters(basefreq / 440.0f * freq);
 
     oldamplitude = newamplitude;
-    ready = 1;
+    ready_ = true;
 }
 
 
@@ -171,30 +166,30 @@ void SUBnote::SUBlegatonote(float freq, float velocity,
 {
     // Manage legato stuff
     if (externcall)
-        Legato.msg = LM_Norm;
-    if (Legato.msg != LM_CatchUp)
+        legato.msg = LM_Norm;
+    if (legato.msg != LM_CatchUp)
     {
-        Legato.lastfreq = Legato.param.freq;
-        Legato.param.freq = freq;
-        Legato.param.vel = velocity;
-        Legato.param.portamento = portamento_;
-        Legato.param.midinote = midinote;
-        if (Legato.msg == LM_Norm)
+        legato.lastfreq = legato.param.freq;
+        legato.param.freq = freq;
+        legato.param.vel = velocity;
+        legato.param.portamento = portamento_;
+        legato.param.midinote = midinote;
+        if (legato.msg == LM_Norm)
         {
-            if (Legato.silent)
+            if (legato.silent)
             {
-                Legato.fade.m = 0.0f;
-                Legato.msg = LM_FadeIn;
+                legato.fade.m = 0.0f;
+                legato.msg = LM_FadeIn;
             }
             else
             {
-                Legato.fade.m = 1.0;
-                Legato.msg = LM_FadeOut;
+                legato.fade.m = 1.0;
+                legato.msg = LM_FadeOut;
                 return;
             }
         }
-        if (Legato.msg == LM_ToNorm)
-            Legato.msg = LM_Norm;
+        if (legato.msg == LM_ToNorm)
+            legato.msg = LM_Norm;
     }
 
     portamento = portamento_;
@@ -252,7 +247,7 @@ void SUBnote::SUBlegatonote(float freq, float velocity,
 
     if (numharmonics == 0)
     {
-        NoteEnabled = false;
+        active_ = false;
         return;
     }
 
@@ -282,7 +277,7 @@ void SUBnote::SUBlegatonote(float freq, float velocity,
 
 SUBnote::~SUBnote()
 {
-    if (NoteEnabled)
+    if (isActive())
         KillNote();
 }
 
@@ -290,7 +285,7 @@ SUBnote::~SUBnote()
 // Kill the note
 void SUBnote::KillNote(void)
 {
-    if (NoteEnabled)
+    if (isActive())
     {
         delete [] lfilter;
         lfilter = NULL;
@@ -302,7 +297,7 @@ void SUBnote::KillNote(void)
             delete FreqEnvelope;
         if (BandWidthEnvelope != NULL)
             delete BandWidthEnvelope;
-        NoteEnabled = false;
+        active_ = false;
     }
 }
 
@@ -617,8 +612,7 @@ int SUBnote::noteout(float *outl, float *outr)
     tmprnd = synth->getRuntime().genTmp2;
     memset(outl, 0, synth->sent_bufferbytes);
     memset(outr, 0, synth->sent_bufferbytes);
-    if (!NoteEnabled)
-        return 0;
+    if (!isActive()) return 0;
 
     // left channel
     for (int i = 0; i < synth->sent_buffersize; ++i)
@@ -702,31 +696,31 @@ int SUBnote::noteout(float *outl, float *outr)
     computecurrentparameters();
 
     // Apply legato-specific sound signal modifications
-    if (Legato.silent)
+    if (legato.silent)
     {   // Silencer
-        if (Legato.msg != LM_FadeIn)
+        if (legato.msg != LM_FadeIn)
         {
             memset(outl, 0, synth->sent_bufferbytes);
             memset(outr, 0, synth->sent_bufferbytes);
         }
     }
-    switch (Legato.msg)
+    switch (legato.msg)
     {
         case LM_CatchUp : // Continue the catch-up...
-            if (Legato.decounter == -10)
-                Legato.decounter = Legato.fade.length;
+            if (legato.decounter == -10)
+                legato.decounter = legato.fade.length;
             for (int i = 0; i < synth->sent_buffersize; ++i)
             {   // Yea, could be done without the loop...
-                Legato.decounter--;
-                if (Legato.decounter < 1)
+                legato.decounter--;
+                if (legato.decounter < 1)
                 {
                     synth->part[synth->legatoPart]->legatoFading &= 5;
                     // Catching-up done, we can finally set
                     // the note to the actual parameters.
-                    Legato.decounter = -10;
-                    Legato.msg = LM_ToNorm;
-                    SUBlegatonote(Legato.param.freq, Legato.param.vel,
-                                  Legato.param.portamento, Legato.param.midinote,
+                    legato.decounter = -10;
+                    legato.msg = LM_ToNorm;
+                    SUBlegatonote(legato.param.freq, legato.param.vel,
+                                  legato.param.portamento, legato.param.midinote,
                                   false);
                     break;
                 }
@@ -734,52 +728,52 @@ int SUBnote::noteout(float *outl, float *outr)
             break;
 
         case LM_FadeIn : // Fade-in
-            if (Legato.decounter == -10)
-                Legato.decounter = Legato.fade.length;
-            Legato.silent = false;
+            if (legato.decounter == -10)
+                legato.decounter = legato.fade.length;
+            legato.silent = false;
             for (int i = 0; i < synth->sent_buffersize; ++i)
             {
-                Legato.decounter--;
-                if (Legato.decounter < 1)
+                legato.decounter--;
+                if (legato.decounter < 1)
                 {
-                    Legato.decounter = -10;
-                    Legato.msg = LM_Norm;
+                    legato.decounter = -10;
+                    legato.msg = LM_Norm;
                     break;
                 }
-                Legato.fade.m += Legato.fade.step;
-                outl[i] *= Legato.fade.m;
-                outr[i] *= Legato.fade.m;
+                legato.fade.m += legato.fade.step;
+                outl[i] *= legato.fade.m;
+                outr[i] *= legato.fade.m;
             }
             break;
 
         case LM_FadeOut : // Fade-out, then set the catch-up
-            if (Legato.decounter == -10)
-                Legato.decounter = Legato.fade.length;
+            if (legato.decounter == -10)
+                legato.decounter = legato.fade.length;
             for (int i = 0; i < synth->sent_buffersize; ++i)
             {
-                Legato.decounter--;
-                if (Legato.decounter < 1)
+                legato.decounter--;
+                if (legato.decounter < 1)
                 {
                     for (int j = i; j < synth->sent_buffersize; ++j)
                         outl[j] = outr[j] = 0.0f;
-                    Legato.decounter = -10;
-                    Legato.silent = true;
+                    legato.decounter = -10;
+                    legato.silent = true;
                     // Fading-out done, now set the catch-up :
-                    Legato.decounter = Legato.fade.length;
-                    Legato.msg = LM_CatchUp;
+                    legato.decounter = legato.fade.length;
+                    legato.msg = LM_CatchUp;
                     // This freq should make this now silent note to catch-up
                     // (or should I say resync ?) with the heard note for the same
                     // length it stayed at the previous freq during the fadeout.
                     float catchupfreq =
-                        Legato.param.freq * (Legato.param.freq / Legato.lastfreq);
-                    SUBlegatonote(catchupfreq, Legato.param.vel,
-                                 Legato.param.portamento, Legato.param.midinote,
+                        legato.param.freq * (legato.param.freq / legato.lastfreq);
+                    SUBlegatonote(catchupfreq, legato.param.vel,
+                                 legato.param.portamento, legato.param.midinote,
                                  false);
                     break;
                 }
-                Legato.fade.m -= Legato.fade.step;
-                outl[i] *= Legato.fade.m;
-                outr[i] *= Legato.fade.m;
+                legato.fade.m -= legato.fade.step;
+                outl[i] *= legato.fade.m;
+                outr[i] *= legato.fade.m;
             }
             break;
 

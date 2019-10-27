@@ -40,23 +40,23 @@ class ADnoteParameters;
 #define OSCIL_SMP_EXTRA_SAMPLES 5
 
 
-class ADnote
+class ADnote : public Note
 {
     public:
         ADnote(ADnoteParameters *adpars_, Controller *ctl_, float freq_, float velocity_,
                int portamento_, int midinote_, bool besilent, SynthEngine *_synth);
         ADnote(ADnote *parent, float freq_, int subVoiceNumber_, float *parentFMmod_,
                bool forFM_);
-        ~ADnote();
 
         void construct();
 
-        int noteout(float *outl, float *outr);
-        void releasekey();
-        int finished() const;
         void ADlegatonote(float freq_, float velocity_, int portamento_,
                           int midinote_, bool externcall);
-        char ready;
+
+        virtual ~ADnote();
+        virtual int noteout(float *outl,float *outr);
+        virtual void releasekey(void);
+
 
     private:
 
@@ -107,9 +107,6 @@ class ADnote
         int   midinote;
         float velocity;
         float basefreq;
-
-        bool NoteEnabled;
-        Controller *ctl;
 
         // Global parameters
         struct ADnoteGlobal {
@@ -266,27 +263,6 @@ class ADnote
 
         float bandwidthDetuneMultiplier; // how the fine detunes are made bigger or smaller
 
-        // Legato vars
-        struct {
-            bool silent;
-            float lastfreq;
-            LegatoMsg msg;
-            int decounter;
-            struct {
-                // Fade In/Out vars
-                int length;
-                float m;
-                float step;
-            } fade;
-            struct {
-                // Note parameters
-                float freq;
-                float vel;
-                int portamento;
-                int midinote;
-            } param;
-        } Legato;
-
         float pangainL;
         float pangainR;
 
@@ -300,14 +276,6 @@ class ADnote
         // For sub voices: Pointer to the closest parent that has
         // phase/frequency modulation.
         float *parentFMmod;
-
-        SynthEngine *synth;
 };
 
-
-inline int ADnote::finished() const // Check if the note is finished
-{
-    return (NoteEnabled) ? 0 : 1;
-}
-
-#endif
+#endif /*AD_NOTE_H*/

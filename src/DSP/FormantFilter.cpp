@@ -112,7 +112,9 @@ void FormantFilter::setpos(float input)
     if ((fabsf(oldinput-input) < 0.001f) && (fabsf(slowinput - input) < 0.001f) &&
             (fabsf(Qfactor - oldQfactor) < 0.001f))
     {
-        //	oldinput=input; daca setez asta, o sa faca probleme la schimbari foarte lente
+        //	oldinput=input;
+        // "daca setez asta, o sa faca probleme la schimbari foarte lente"
+        // (-> romanian, "if I set this, it will cause problems at very slow changes")
         firsttime = 0;
         return;
     } else

@@ -32,26 +32,23 @@
 class PADnoteParameters;
 
 
-class PADnote
+class PADnote : public Note
 {
     public:
         PADnote(PADnoteParameters *parameters, Controller *ctl_, float freq,
                 float velocity, int portamento_, int midinote, bool besilent, SynthEngine *_synth);
-        ~PADnote();
 
         void PADlegatonote(float freq, float velocity,
                            int portamento_, int midinote, bool externcall);
 
-        int noteout(float *outl,float *outr);
-        bool finished(void) { return finished_; };
-        void releasekey(void);
+        virtual ~PADnote();
+        virtual int noteout(float *outl,float *outr);
+        virtual void releasekey(void);
 
-        bool ready;
 
     private:
         void fadein(float *smps);
         void computecurrentparameters();
-        bool finished_;
         PADnoteParameters *pars;
 
         int poshi_l;
@@ -115,7 +112,6 @@ class PADnote
         } NoteGlobalPar;
 
 
-        Controller *ctl;
         float globaloldamplitude;
         float globalnewamplitude;
         float velocity;
@@ -123,30 +119,6 @@ class PADnote
 //        float *tmpwave;
         float randpanL;
         float randpanR;
-
-        // Legato vars
-        struct {
-            bool silent;
-            float lastfreq;
-            LegatoMsg msg;
-            int decounter;
-            struct {
-                // Fade In/Out vars
-                int length;
-                float m;
-                float step;
-            } fade;
-
-            struct {
-                // Note parameters
-                float freq;
-                float vel;
-                int portamento;
-                int midinote;
-            } param;
-        } Legato;
-
-        SynthEngine *synth;
 };
 
-#endif
+#endif /*PAD_NOTE_H*/

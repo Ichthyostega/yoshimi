@@ -989,7 +989,7 @@ void Part::ComputePartSmps(void)
             if (adnote)
             {
                 noteplay++;
-                if (adnote->ready)
+                if (adnote->isReady())
                 {
                     adnote->noteout(tmpoutl, tmpoutr);
                     for (int i = 0; i < synth->sent_buffersize; ++i)
@@ -998,7 +998,7 @@ void Part::ComputePartSmps(void)
                         partfxinputr[sendcurrenttofx][i] += tmpoutr[i];
                     }
                 }
-                if (adnote->finished())
+                if (not adnote->isActive())
                 {
                     delete partnote[k].kititem[item].adnote;
                     partnote[k].kititem[item].adnote = NULL;
@@ -1008,7 +1008,7 @@ void Part::ComputePartSmps(void)
             if (subnote)
             {
                 noteplay++;
-                if (subnote->ready)
+                if (subnote->isReady())
                 {
                     subnote->noteout(tmpoutl, tmpoutr);
                     for (int i = 0; i < synth->sent_buffersize; ++i)
@@ -1017,7 +1017,7 @@ void Part::ComputePartSmps(void)
                         partfxinputr[sendcurrenttofx][i] += tmpoutr[i];
                     }
                 }
-                if (subnote->finished())
+                if (not subnote->isActive())
                 {
                     delete partnote[k].kititem[item].subnote;
                     partnote[k].kititem[item].subnote = NULL;
@@ -1027,7 +1027,7 @@ void Part::ComputePartSmps(void)
             if (padnote)
             {
                 noteplay++;
-                if (padnote->ready)
+                if (padnote->isReady())
                 {
                     padnote->noteout(tmpoutl, tmpoutr);
                     for (int i = 0 ; i < synth->sent_buffersize; ++i)
@@ -1036,7 +1036,7 @@ void Part::ComputePartSmps(void)
                         partfxinputr[sendcurrenttofx][i] += tmpoutr[i];
                     }
                 }
-                if (padnote->finished())
+                if (not padnote->isActive())
                 {
                     delete partnote[k].kititem[item].padnote;
                     partnote[k].kititem[item].padnote = NULL;

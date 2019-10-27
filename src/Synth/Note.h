@@ -78,11 +78,12 @@ class Note
     public:
         virtual ~Note() { } // This is an interface
 
+        // note output; return 0 when note is finished
         virtual int noteout(float *outl,float *outr)  =0;
         virtual void releasekey(void)                 =0;
         
-        bool isReady()  { return ready_; };
-        bool isActive() { return active_; };
+        bool isReady()  { return ready_; };  // Initialisation complete
+        bool isActive() { return active_; }; // Note produces sound
 
 
     private:

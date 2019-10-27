@@ -32,23 +32,20 @@
 class SUBnoteParameters;
 
 
-class SUBnote
+class SUBnote : public Note
 {
     public:
         SUBnote(SUBnoteParameters *parameters, Controller *ctl_,
                 float freq, float velocity, int portamento_,
                 int midinote, bool besilent, SynthEngine *_synth);
-        ~SUBnote();
 
         void SUBlegatonote(float freq, float velocity,
                            int portamento_, int midinote, bool externcall);
 
-        int noteout(float *outl,float *outr); // note output, return 0 if the
-                                              // note is finished
-        void releasekey(void);
-        bool finished(void) { return !NoteEnabled; }
+        virtual ~SUBnote();
+        virtual int noteout(float *outl,float *outr);
+        virtual void releasekey(void);
 
-        bool ready; // if I can get the sampledata
 
     private:
         void computecurrentparameters(void);
@@ -118,39 +115,15 @@ class SUBnote
         float *tmpsmp;
         float *tmprnd; // this is filled with random numbers
 
-        Controller *ctl;
         int oldpitchwheel;
         int oldbandwidth;
         float globalfiltercenterq;
-
-        // Legato vars
-        struct {
-            bool silent;
-            float lastfreq;
-            LegatoMsg msg;
-            int decounter;
-            struct {
-                // Fade In/Out vars
-                int length;
-                float m;
-                float step;
-            } fade;
-
-            struct {
-                // Note parameters
-                float freq;
-                float vel;
-                int portamento;
-                int midinote;
-            } param;
-        } Legato;
 
         const float log_0_01;    // logf(0.01);
         const float log_0_001;   // logf(0.001);
         const float log_0_0001;  // logf(0.0001);
         const float log_0_00001; // logf(0.00001);
 
-        SynthEngine *synth;
         int filterStep;
 };
 

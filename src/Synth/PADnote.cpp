@@ -42,31 +42,26 @@ using synth::interpolateAmplitude;
 using synth::aboveAmplitudeThreshold;
 
 
-PADnote::PADnote(PADnoteParameters *parameters, Controller *ctl_, float freq,
-    float velocity, int portamento_, int midinote, bool besilent, SynthEngine *_synth) :
-    ready(false),
-    finished_(false),
+PADnote::PADnote(PADnoteParameters *parameters, Controller *_ctl, float freq,
+    float velocity, int portamento_, int midinote, bool besilent, SynthEngine *_synth) : Note(_synth, _ctl),
     pars(parameters),
     firsttime(true),
     released(false),
     nsample(0),
-    portamento(portamento_),
-    ctl(ctl_),
-    synth(_synth)
-
+    portamento(portamento_)
 {
     // Initialise some legato-specific vars
-    Legato.msg = LM_Norm;
-    Legato.fade.length = int(synth->samplerate_f * 0.005f); // 0.005 seems ok.
-    if (Legato.fade.length < 1)
-        Legato.fade.length = 1; // (if something's fishy)
-    Legato.fade.step = (1.0 / Legato.fade.length);
-    Legato.decounter = -10;
-    Legato.param.freq = freq;
-    Legato.param.vel = velocity;
-    Legato.param.portamento = portamento_;
-    Legato.param.midinote = midinote;
-    Legato.silent = besilent;
+    legato.msg = LM_Norm;
+    legato.fade.length = int(synth->samplerate_f * 0.005f); // 0.005 seems ok.
+    if (legato.fade.length < 1)
+        legato.fade.length = 1; // (if something's fishy)
+    legato.fade.step = (1.0 / legato.fade.length);
+    legato.decounter = -10;
+    legato.param.freq = freq;
+    legato.param.vel = velocity;
+    legato.param.portamento = portamento_;
+    legato.param.midinote = midinote;
+    legato.silent = besilent;
 
     this->velocity = velocity;
 
@@ -183,11 +178,11 @@ PADnote::PADnote(PADnoteParameters *parameters, Controller *ctl_, float freq,
     NoteGlobalPar.FilterQ = pars->GlobalFilter->getq();
     NoteGlobalPar.FilterFreqTracking=pars->GlobalFilter->getfreqtracking(basefreq);
 
-    ready = true; ///sa il pun pe asta doar cand e chiar gata
+    ready_ = true; // "sa il pun pe asta doar cand e chiar gata" (-> romanian, "to put this on only when it's ready")
 
     if (parameters->sample[nsample].smp == NULL)
     {
-        finished_ = true;
+        active_ = false;
         return;
     }
 }
@@ -205,35 +200,35 @@ void PADnote::PADlegatonote(float freq, float velocity,
 
     // Manage legato stuff
     if (externcall)
-        Legato.msg = LM_Norm;
-    if (Legato.msg != LM_CatchUp)
+        legato.msg = LM_Norm;
+    if (legato.msg != LM_CatchUp)
     {
-        Legato.lastfreq = Legato.param.freq;
-        Legato.param.freq = freq;
-        Legato.param.vel = velocity;
-        Legato.param.portamento = portamento_;
-        Legato.param.midinote = midinote;
-        if (Legato.msg == LM_Norm)
+        legato.lastfreq = legato.param.freq;
+        legato.param.freq = freq;
+        legato.param.vel = velocity;
+        legato.param.portamento = portamento_;
+        legato.param.midinote = midinote;
+        if (legato.msg == LM_Norm)
         {
-            if (Legato.silent)
+            if (legato.silent)
             {
-                Legato.fade.m = 0.0;
-                Legato.msg = LM_FadeIn;
+                legato.fade.m = 0.0;
+                legato.msg = LM_FadeIn;
             }
             else
             {
-                Legato.fade.m = 1.0;
-                Legato.msg = LM_FadeOut;
+                legato.fade.m = 1.0;
+                legato.msg = LM_FadeOut;
                 return;
             }
         }
-        if (Legato.msg == LM_ToNorm)
-            Legato.msg = LM_Norm;
+        if (legato.msg == LM_ToNorm)
+            legato.msg = LM_Norm;
     }
 
     portamento = portamento_;
     this->velocity = velocity;
-    finished_ = false;
+    active_ = true;
 
     if (pars->Pfixedfreq == 0)
         basefreq = freq;
@@ -306,7 +301,7 @@ void PADnote::PADlegatonote(float freq, float velocity,
 
     if (parameters->sample[nsample].smp == NULL)
     {
-        finished_ = true;
+        active_ = false;
         return;
     }
 }
@@ -394,7 +389,7 @@ int PADnote::Compute_Linear(float *outl, float *outr, int freqhi, float freqlo)
     float *smps = pars->sample[nsample].smp;
     if (smps == NULL)
     {
-        finished_ = true;
+        active_ = false;
         return 1;
     }
     int size = pars->sample[nsample].size;
@@ -425,7 +420,7 @@ int PADnote::Compute_Cubic(float *outl, float *outr, int freqhi, float freqlo)
     float *smps = pars->sample[nsample].smp;
     if (smps == NULL)
     {
-        finished_ = true;
+        active_ = false;
         return 1;
     }
     int size = pars->sample[nsample].size;
@@ -548,31 +543,31 @@ int PADnote::noteout(float *outl,float *outr)
     }
 
     // Apply legato-specific sound signal modifications
-    if (Legato.silent)
+    if (legato.silent)
     { // Silencer
-        if (Legato.msg != LM_FadeIn)
+        if (legato.msg != LM_FadeIn)
         {
             memset(outl, 0, synth->sent_bufferbytes);
             memset(outr, 0, synth->sent_bufferbytes);
         }
     }
-    switch (Legato.msg)
+    switch (legato.msg)
     {
         case LM_CatchUp : // Continue the catch-up...
-            if (Legato.decounter == -10)
-                Legato.decounter = Legato.fade.length;
+            if (legato.decounter == -10)
+                legato.decounter = legato.fade.length;
             for (int i = 0; i < synth->sent_buffersize; ++i)
             {   //Yea, could be done without the loop...
-                Legato.decounter--;
-                if (Legato.decounter < 1)
+                legato.decounter--;
+                if (legato.decounter < 1)
                 {
                     synth->part[synth->legatoPart]->legatoFading &= 3;
                     // Catching-up done, we can finally set
                     // the note to the actual parameters.
-                    Legato.decounter = -10;
-                    Legato.msg = LM_ToNorm;
-                    PADlegatonote(Legato.param.freq, Legato.param.vel,
-                                  Legato.param.portamento, Legato.param.midinote,
+                    legato.decounter = -10;
+                    legato.msg = LM_ToNorm;
+                    PADlegatonote(legato.param.freq, legato.param.vel,
+                                  legato.param.portamento, legato.param.midinote,
                                   false);
                     break;
                 }
@@ -580,53 +575,53 @@ int PADnote::noteout(float *outl,float *outr)
             break;
 
         case LM_FadeIn : // Fade-in
-            if (Legato.decounter == -10)
-                Legato.decounter = Legato.fade.length;
-            Legato.silent = false;
+            if (legato.decounter == -10)
+                legato.decounter = legato.fade.length;
+            legato.silent = false;
             for (int i = 0; i < synth->sent_buffersize; ++i)
             {
-                Legato.decounter--;
-                if (Legato.decounter < 1)
+                legato.decounter--;
+                if (legato.decounter < 1)
                 {
-                    Legato.decounter = -10;
-                    Legato.msg = LM_Norm;
+                    legato.decounter = -10;
+                    legato.msg = LM_Norm;
                     break;
                 }
-                Legato.fade.m += Legato.fade.step;
-                outl[i] *= Legato.fade.m;
-                outr[i] *= Legato.fade.m;
+                legato.fade.m += legato.fade.step;
+                outl[i] *= legato.fade.m;
+                outr[i] *= legato.fade.m;
             }
             break;
 
         case LM_FadeOut : // Fade-out, then set the catch-up
-            if (Legato.decounter == -10)
-                Legato.decounter = Legato.fade.length;
+            if (legato.decounter == -10)
+                legato.decounter = legato.fade.length;
             for (int i = 0; i < synth->sent_buffersize; ++i)
             {
-                Legato.decounter--;
-                if (Legato.decounter < 1)
+                legato.decounter--;
+                if (legato.decounter < 1)
                 {
                     for (int j = i; j < synth->sent_buffersize; ++j)
                         outl[j] = outr[j] = 0.0;
-                    Legato.decounter = -10;
-                    Legato.silent = true;
+                    legato.decounter = -10;
+                    legato.silent = true;
                     // Fading-out done, now set the catch-up :
-                    Legato.decounter = Legato.fade.length;
-                    Legato.msg = LM_CatchUp;
+                    legato.decounter = legato.fade.length;
+                    legato.msg = LM_CatchUp;
                     float catchupfreq =
-                        Legato.param.freq * (Legato.param.freq / Legato.lastfreq);
+                        legato.param.freq * (legato.param.freq / legato.lastfreq);
                         // This freq should make this now silent note to catch-up
                         // (or should I say resync ?) with the heard note for
                         // the same length it stayed at the previous freq during
                         // the fadeout.
-                    PADlegatonote(catchupfreq, Legato.param.vel,
-                                  Legato.param.portamento, Legato.param.midinote,
+                    PADlegatonote(catchupfreq, legato.param.vel,
+                                  legato.param.portamento, legato.param.midinote,
                                   false);
                     break;
                 }
-                Legato.fade.m -= Legato.fade.step;
-                outl[i] *= Legato.fade.m;
-                outr[i] *= Legato.fade.m;
+                legato.fade.m -= legato.fade.step;
+                outl[i] *= legato.fade.m;
+                outr[i] *= legato.fade.m;
             }
             break;
 
@@ -644,7 +639,7 @@ int PADnote::noteout(float *outl,float *outr)
             outl[i] *= tmp;
             outr[i] *= tmp;
         }
-        finished_ = 1;
+        active_ = false;
     }
     return 1;
 }
