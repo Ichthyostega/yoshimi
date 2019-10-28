@@ -39,8 +39,8 @@ class SUBnote : public Note
                 float freq, float velocity, int portamento_,
                 int midinote, bool besilent, SynthEngine *_synth);
 
-        void SUBlegatonote(float freq, float velocity,
-                           int portamento_, int midinote, bool externcall);
+        virtual void setupLegatonote(float freq, float velocity,
+                                     int portamento_, int midinote, bool externcall);
 
         virtual ~SUBnote();
         virtual int noteout(float *outl,float *outr);

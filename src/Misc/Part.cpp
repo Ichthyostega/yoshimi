@@ -419,9 +419,9 @@ void Part::NoteOn(int note, int velocity, bool renote)
                     && (partnote[posb].kititem[0].adnote))
                 {
                     partnote[pos].kititem[0].adnote->
-                        ADlegatonote(notebasefreq, vel, portamento, note, true);
+                        setupLegatonote(notebasefreq, vel, portamento, note, true);
                     partnote[posb].kititem[0].adnote->
-                        ADlegatonote(notebasefreq, vel, portamento, note, true);
+                        setupLegatonote(notebasefreq, vel, portamento, note, true);
                             // 'true' is to tell it it's being called from here.
                         legatoFading |= 1;
                 }
@@ -431,9 +431,9 @@ void Part::NoteOn(int note, int velocity, bool renote)
                     && (partnote[posb].kititem[0].subnote))
                 {
                     partnote[pos].kititem[0].subnote->
-                        SUBlegatonote(notebasefreq, vel, portamento, note, true);
+                        setupLegatonote(notebasefreq, vel, portamento, note, true);
                     partnote[posb].kititem[0].subnote->
-                        SUBlegatonote(notebasefreq, vel, portamento, note, true);
+                        setupLegatonote(notebasefreq, vel, portamento, note, true);
                     legatoFading |= 2;
                 }
 
@@ -442,9 +442,9 @@ void Part::NoteOn(int note, int velocity, bool renote)
                     && (partnote[posb].kititem[0].padnote))
                 {
                     partnote[pos].kititem[0].padnote->
-                        PADlegatonote(notebasefreq, vel, portamento, note, true);
+                        setupLegatonote(notebasefreq, vel, portamento, note, true);
                     partnote[posb].kititem[0].padnote->
-                        PADlegatonote(notebasefreq, vel, portamento, note, true);
+                        setupLegatonote(notebasefreq, vel, portamento, note, true);
                     legatoFading |= 4;
                 }
 
@@ -478,9 +478,9 @@ void Part::NoteOn(int note, int velocity, bool renote)
                         && (partnote[posb].kititem[ci].adnote))
                     {
                         partnote[pos].kititem[ci].adnote->
-                            ADlegatonote(notebasefreq, vel, portamento, note, true);
+                            setupLegatonote(notebasefreq, vel, portamento, note, true);
                         partnote[posb].kititem[ci].adnote->
-                            ADlegatonote(notebasefreq, vel, portamento, note, true);
+                            setupLegatonote(notebasefreq, vel, portamento, note, true);
                         legatoFading |= 1;
                     }
                     if ((kit[item].Psubenabled)
@@ -489,9 +489,9 @@ void Part::NoteOn(int note, int velocity, bool renote)
                         && (partnote[posb].kititem[ci].subnote))
                     {
                         partnote[pos].kititem[ci].subnote->
-                            SUBlegatonote(notebasefreq, vel, portamento, note, true);
+                            setupLegatonote(notebasefreq, vel, portamento, note, true);
                         partnote[posb].kititem[ci].subnote->
-                            SUBlegatonote(notebasefreq, vel, portamento, note, true);
+                            setupLegatonote(notebasefreq, vel, portamento, note, true);
                         legatoFading |= 2;
                     }
                     if ((kit[item].Ppadenabled)
@@ -500,9 +500,9 @@ void Part::NoteOn(int note, int velocity, bool renote)
                         && (partnote[posb].kititem[ci].padnote))
                     {
                         partnote[pos].kititem[ci].padnote->
-                            PADlegatonote(notebasefreq, vel, portamento, note, true);
+                            setupLegatonote(notebasefreq, vel, portamento, note, true);
                         partnote[posb].kititem[ci].padnote->
-                            PADlegatonote(notebasefreq, vel, portamento, note, true);
+                            setupLegatonote(notebasefreq, vel, portamento, note, true);
                         legatoFading |= 4;
                     }
 
@@ -982,9 +982,9 @@ void Part::ComputePartSmps(void)
         for (int item = 0; item < partnote[k].itemsplaying; ++item)
         {
             int sendcurrenttofx = partnote[k].kititem[item].sendtoparteffect;
-            ADnote *adnote = partnote[k].kititem[item].adnote;
-            SUBnote *subnote = partnote[k].kititem[item].subnote;
-            PADnote *padnote = partnote[k].kititem[item].padnote;
+            Note *adnote = partnote[k].kititem[item].adnote;
+            Note *subnote = partnote[k].kititem[item].subnote;
+            Note *padnote = partnote[k].kititem[item].padnote;
             // get from the ADnote
             if (adnote)
             {

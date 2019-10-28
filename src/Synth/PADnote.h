@@ -38,8 +38,8 @@ class PADnote : public Note
         PADnote(PADnoteParameters *parameters, Controller *ctl_, float freq,
                 float velocity, int portamento_, int midinote, bool besilent, SynthEngine *_synth);
 
-        void PADlegatonote(float freq, float velocity,
-                           int portamento_, int midinote, bool externcall);
+        virtual void setupLegatonote(float freq, float velocity,
+                                     int portamento_, int midinote, bool externcall);
 
         virtual ~PADnote();
         virtual int noteout(float *outl,float *outr);

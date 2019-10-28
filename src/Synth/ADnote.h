@@ -50,8 +50,8 @@ class ADnote : public Note
 
         void construct();
 
-        void ADlegatonote(float freq_, float velocity_, int portamento_,
-                          int midinote_, bool externcall);
+        virtual void setupLegatonote(float freq_, float velocity_, int portamento_,
+                                     int midinote_, bool externcall);
 
         virtual ~ADnote();
         virtual int noteout(float *outl,float *outr);

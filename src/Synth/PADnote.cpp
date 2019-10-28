@@ -188,12 +188,12 @@ PADnote::PADnote(PADnoteParameters *parameters, Controller *_ctl, float freq,
 }
 
 
-// PADlegatonote: This function is (mostly) a copy of PADnote(...)
+// setupLegatonote: This function is (mostly) a copy of PADnote(...)
 // with some lines removed so that it only alter the already playing
 // note (to perform legato). It is possible I left stuff that is not
 // required for this.
-void PADnote::PADlegatonote(float freq, float velocity,
-                            int portamento_, int midinote, bool externcall)
+void PADnote::setupLegatonote(float freq, float velocity,
+                              int portamento_, int midinote, bool externcall)
 {
     PADnoteParameters *parameters = pars;
     // Controller *ctl_=ctl; (an original comment)
@@ -566,9 +566,11 @@ int PADnote::noteout(float *outl,float *outr)
                     // the note to the actual parameters.
                     legato.decounter = -10;
                     legato.msg = LM_ToNorm;
-                    PADlegatonote(legato.param.freq, legato.param.vel,
-                                  legato.param.portamento, legato.param.midinote,
-                                  false);
+                    setupLegatonote(legato.param.freq,
+                                    legato.param.vel,
+                                    legato.param.portamento,
+                                    legato.param.midinote,
+                                    false);
                     break;
                 }
             }
@@ -614,9 +616,11 @@ int PADnote::noteout(float *outl,float *outr)
                         // (or should I say resync ?) with the heard note for
                         // the same length it stayed at the previous freq during
                         // the fadeout.
-                    PADlegatonote(catchupfreq, legato.param.vel,
-                                  legato.param.portamento, legato.param.midinote,
-                                  false);
+                    setupLegatonote(catchupfreq,
+                                    legato.param.vel,
+                                    legato.param.portamento,
+                                    legato.param.midinote,
+                                    false);
                     break;
                 }
                 legato.fade.m -= legato.fade.step;

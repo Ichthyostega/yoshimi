@@ -81,6 +81,8 @@ class Note
         // note output; return 0 when note is finished
         virtual int noteout(float *outl,float *outr)  =0;
         virtual void releasekey(void)                 =0;
+
+        virtual void setupLegatonote(float freq, float velocity, int portamento_, int midinote, bool externcall) =0;
         
         bool isReady()  { return ready_; };  // Initialisation complete
         bool isActive() { return active_; }; // Note produces sound

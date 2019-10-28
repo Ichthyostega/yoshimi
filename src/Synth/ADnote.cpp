@@ -592,12 +592,12 @@ void ADnote::initSubVoices(void)
 }
 
 
-// ADlegatonote: This function is (mostly) a copy of ADnote(...) and
+// setupLegatonote: This function is (mostly) a copy of ADnote(...) and
 // initParameters() stuck together with some lines removed so that it
 // only alter the already playing note (to perform legato). It is
 // possible I left stuff that is not required for this.
-void ADnote::ADlegatonote(float freq_, float velocity_, int portamento_,
-                          int midinote_, bool externcall)
+void ADnote::setupLegatonote(float freq_, float velocity_, int portamento_,
+                             int midinote_, bool externcall)
 {
     basefreq = freq_;
     velocity = velocity_;
@@ -613,13 +613,13 @@ void ADnote::ADlegatonote(float freq_, float velocity_, int portamento_,
             if (NoteVoicePar[nvoice].Enabled) {
                 if (subVoice[nvoice] != NULL)
                     for (int k = 0; k < unison_size[nvoice]; ++k) {
-                        subVoice[nvoice][k]->ADlegatonote(freq_, velocity_, portamento_,
-                                                        midinote_, externcall);
+                        subVoice[nvoice][k]->setupLegatonote(freq_, velocity_, portamento_,
+                                                             midinote_, externcall);
                     }
                 if (subFMVoice[nvoice] != NULL)
                     for (int k = 0; k < unison_size[nvoice]; ++k) {
-                        subFMVoice[nvoice][k]->ADlegatonote(freq_, velocity_, portamento_,
-                                                          midinote_, externcall);
+                        subFMVoice[nvoice][k]->setupLegatonote(freq_, velocity_, portamento_,
+                                                               midinote_, externcall);
                     }
             }
         }
@@ -2537,11 +2537,11 @@ int ADnote::noteout(float *outl, float *outr)
                         // the note to the actual parameters.
                         legato.decounter = -10;
                         legato.msg = LM_ToNorm;
-                        ADlegatonote(legato.param.freq,
-                                     legato.param.vel,
-                                     legato.param.portamento,
-                                     legato.param.midinote,
-                                     false);
+                        setupLegatonote(legato.param.freq,
+                                        legato.param.vel,
+                                        legato.param.portamento,
+                                        legato.param.midinote,
+                                        false);
                         break;
                     }
                 }
@@ -2586,8 +2586,8 @@ int ADnote::noteout(float *outl, float *outr)
                         // This freq should make this now silent note to catch-up
                         //  (or should I say resync ?) with the heard note for the
                         // same length it stayed at the previous freq during the fadeout.
-                        ADlegatonote(catchupfreq, legato.param.vel, legato.param.portamento,
-                                     legato.param.midinote, false);
+                        setupLegatonote(catchupfreq, legato.param.vel, legato.param.portamento,
+                                        legato.param.midinote, false);
                         break;
                     }
                     legato.fade.m -= legato.fade.step;

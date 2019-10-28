@@ -34,9 +34,7 @@
 class ADnoteParameters;
 class SUBnoteParameters;
 class PADnoteParameters;
-class ADnote;
-class SUBnote;
-class PADnote;
+class Note;
 class Controller;
 class XMLwrapper;
 class Microtonal;
@@ -172,9 +170,9 @@ class Part
             int note;          // if there is no note playing, "note" = -1
             int itemsplaying;
             struct Kititem {
-                ADnote *adnote;
-                SUBnote *subnote;
-                PADnote *padnote;
+                Note *adnote;
+                Note *subnote;
+                Note *padnote;
                 int sendtoparteffect;
             };
             Kititem kititem[NUM_KIT_ITEMS];
