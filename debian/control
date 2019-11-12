@@ -5,8 +5,8 @@ Maintainer: Debian Multimedia Maintainers <debian-multimedia@lists.debian.org>
 Uploaders:
  Jaromír Mikeš <mira.mikes@seznam.cz>
 Build-Depends:
- cmake,
  debhelper-compat (= 12),
+ cmake,
  dssi-dev,
  fluid,
  libasound2-dev,
