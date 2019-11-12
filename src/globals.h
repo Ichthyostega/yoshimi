@@ -23,12 +23,13 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <string>
 
 /*
  * For test purposes where you want guaranteed identical results, enable the
  * #define below.
  * Be aware this does strange things to both subSynth and padSynth as they
- * require randomness to produce normal sounds.
+ * actually *require* randomness to produce normal sounds.
  */
 //#define NORANDOM ON
 
@@ -127,9 +128,13 @@ const unsigned char FF_MAX_SEQUENCE = 8;
 const unsigned char MAX_PHASER_STAGES = 12;
 const unsigned char MAX_ALIENWAH_DELAY = 100;
 
+const std::string DEFAULT_NAME = "Simple Sound";
+const std::string UNTITLED = "No Title";
+
 namespace YOSH
 {
     // float to bool done this way to ensure consistency
+    // we are always using positive values
     inline bool F2B(float value) {return value > 0.5f;}
 }
 
@@ -305,26 +310,27 @@ namespace CONFIG // usage CONFIG::control::oscillatorSize
 namespace BANK // usage BANK::control::
 {
     enum control : unsigned char {
-        selectInstrument = 0, // not yet
-        findInstrumentName,
-        renameInstrument, // not yet
-        saveInstrument, // not yet
+        readInstrumentName = 0,
+        findInstrumentName, // next in list or '*' if at end
+        renameInstrument,
+        saveInstrument,
         deleteInstrument,
         selectFirstInstrumentToSwap,
         selectSecondInstrumentAndSwap,
 
-        selectBank = 16, // not yet
-        renameBank, // not yet
-        saveBank, // not yet
+        selectBank = 16,
+        renameBank,
         createBank, // not yet
         deleteBank, // not yet
         selectFirstBankToSwap,
         selectSecondBankAndSwap,
-        importBank, // not yet
-        exportBank, // not yet
+        importBank, // not yet (currently done in main)
+        exportBank, // not yet (currently done in main)
 
-        selectRoot = 32, // not yet
-        changeRootId // not yet
+        selectRoot = 32,
+        changeRootId,
+        addNamedRoot, // not yet
+        deselectRoot // not yet (currently done in main)
     };
 }
 
@@ -476,20 +482,13 @@ namespace MAIN // usage MAIN::control::volume
         soloType = 48,
         soloCC,
 
-        addNamedRoot = 56, // some of these should be in 'bank'
-        delistRootId,
-        changeRootId,
-        exportBank,
+        exportBank = 60, // some of these should be in 'bank'
         importBank,
         deleteBank,
-        //addEmptyBank,
-        //importInstrument,
-        //deleteInstrument,
 
         setCurrentRootBank = 75,
         loadInstrumentFromBank,
         loadInstrumentByName,
-        saveInstrument,
         saveNamedInstrument,
         loadNamedPatchset,
         saveNamedPatchset,
@@ -508,7 +507,7 @@ namespace MAIN // usage MAIN::control::volume
         startInstance = 104,
         stopInstance,
         stopSound = 128,
-        readPartPeak = 200,
+        readPartPeak = 200, // now does L/R
         readMainLRpeak,
         readMainLRrms
     };
@@ -591,6 +590,7 @@ namespace PART // usage PART::control::volume
         instrumentCopyright = 220,
         instrumentComments,
         instrumentName,
+        instrumentType,
         defaultInstrumentCopyright, // this needs to be split into two for load/save
         resetAllControllers, // this needs to bump up 1 to make space
         partBusy = 252 // internally generated - read only
@@ -949,7 +949,8 @@ namespace EFFECT // usage EFFECT::type::none
         alienWah,
         distortion,
         eq,
-        dynFilter
+        dynFilter,
+        count // this must be the last item!
     };
 
     enum control : unsigned char {

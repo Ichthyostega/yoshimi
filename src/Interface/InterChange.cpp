@@ -282,7 +282,7 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
     if (write)
         __sync_or_and_fetch(&blockRead, 2);
     bool guiTo = false;
-    guiTo = guiTo; // suppress warning when headless build
+    (void) guiTo; // suppress warning when headless build
     unsigned char newMsg = false;//NO_MSG;
 
     if (npart == TOPLEVEL::section::main && control == MAIN::control::loadFileFromList)
@@ -462,9 +462,11 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
 
                 case SCALES::control::name:
                     synth->microtonal.Pname = text;
+                    newMsg = true;
                     break;
                 case SCALES::control::comment:
                     synth->microtonal.Pcomment = text;
+                    newMsg = true;
                     break;
             }
             getData->data.source &= ~TOPLEVEL::action::lowPrio;
@@ -547,36 +549,6 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
                     break;
                 }
 
-                case MAIN::control::saveInstrument:
-                {
-                    if (kititem == UNUSED)
-                    {
-                        kititem = synth->ReadBankRoot();
-                        getData->data.kit = kititem;
-                    }
-
-                    if (engine == UNUSED)
-                    {
-                        engine = synth->ReadBank();
-                        getData->data.engine = engine;
-                    }
-                    if (value >= 64)
-                    {
-                        value = synth->getRuntime().currentPart;
-                    }
-                    //std::cout << "\n\nRoot " << int(kititem) << "  Bank " << int(engine) << "  Part " << int(value) << "  Slot " << int(insert) << "  miscmsg " << int(miscmsg) << " \n\n" << std::endl;
-                    text = synth->part[value]->Pname + " to " + std::to_string(int(insert));
-                    if (synth->getBankRef().savetoslot(kititem, engine, insert, value))
-                    {
-                        text = "d " + text;
-                        synth->part[value]->PyoshiType = (synth->getRuntime().instrumentFormat > 1);
-                    }
-                    else
-                        text = " FAILED " + text;
-                    getData->data.parameter = value; // TODO find out what this does!
-                    newMsg = true;
-                    break;
-                }
                 case MAIN::control::saveNamedInstrument:
                 {
                     bool ok = true;
@@ -812,24 +784,74 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
                 guiTo = true;
             break;
         }
+
         case TOPLEVEL::section::bank: // instrument / bank
         {
             switch (control)
             {
+                case BANK::control::renameInstrument:
+                {
+                    if (kititem == UNUSED)
+                    {
+                        kititem = synth->getRuntime().currentBank;
+                        getData->data.kit = kititem;
+                    }
+                    if (engine == UNUSED)
+                    {
+                        engine = synth->getRuntime().currentRoot;
+                        getData->data.engine = engine;
+                    }
+                    int msgID = synth->bank.setInstrumentName(text, insert, kititem, engine);
+                    if (msgID > NO_MSG)
+                        text = " FAILED ";
+                    else
+                        text = " ";
+                    text += textMsgBuffer.fetch(msgID & NO_MSG);
+                    newMsg = true;
+                    break;
+                }
+                case BANK::control::saveInstrument:
+                {
+                    if (kititem == UNUSED)
+                    {
+                        kititem = synth->getRuntime().currentBank;
+                        getData->data.kit = kititem;
+                    }
+                    if (engine == UNUSED)
+                    {
+                        engine = synth->getRuntime().currentRoot;
+                        getData->data.engine = engine;
+                    }
+                    if (parameter == UNUSED)
+                    {
+                        parameter = synth->getRuntime().currentPart;
+                        getData->data.parameter = parameter;
+                    }
+                    text = synth->part[parameter]->Pname;
+                    if (text == DEFAULT_NAME)
+                        text = "FAILED Can't save default instrument type";
+                    else if (!synth->bank.savetoslot(engine, kititem, insert, parameter))
+                        text = "FAILED Could not save " + text + " to " + to_string(insert + 1);
+                    else
+                        text = "" + to_string(insert + 1) +". " + text;
+                    newMsg = true;
+                    break;
+                }
                 case BANK::control::deleteInstrument:
                 {
                     text  = synth->bank.clearslot(value, synth->getRuntime().currentRoot,  synth->getRuntime().currentBank);
                     newMsg = true;
                     break;
                 }
+
                 case BANK::control::selectFirstInstrumentToSwap:
                 {
-                    if(kititem == UNUSED)
+                    if (kititem == UNUSED)
                     {
                         kititem = synth->getRuntime().currentBank;
                         getData->data.kit = kititem;
                     }
-                    if(engine == UNUSED)
+                    if (engine == UNUSED)
                     {
                         engine = synth->getRuntime().currentRoot;
                         getData->data.engine = engine;
@@ -842,12 +864,12 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
                 }
                 case BANK::control::selectSecondInstrumentAndSwap:
                 {
-                    if(kititem == UNUSED)
+                    if (kititem == UNUSED)
                     {
                         kititem = synth->getRuntime().currentBank;
                         getData->data.kit = kititem;
                     }
-                    if(engine == UNUSED)
+                    if (engine == UNUSED)
                     {
                         engine = synth->getRuntime().currentRoot;
                         getData->data.engine = engine;
@@ -862,8 +884,42 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
                     break;
                 }
 
+                case BANK::control::selectBank:
+                    if (engine == UNUSED)
+                        engine = getData->data.engine = synth->getRuntime().currentRoot;
+                    if (write)
+                    {
+                        text = textMsgBuffer.fetch(synth->setRootBank(engine, value) & NO_MSG);
+
+                    }
+                    else
+                    {
+                        int tmp = synth->getRuntime().currentBank;
+                        text = "Current: " +(to_string(tmp)) + " " + synth->bank.getBankName(tmp, getData->data.engine);
+                    }
+                    newMsg = true;
+                    break;
+                case BANK::control::renameBank:
+                    if (engine == UNUSED)
+                        engine = getData->data.engine = synth->getRuntime().currentRoot;
+                    if (write)
+                    {
+                        int tmp = synth->bank.changeBankName(getData->data.engine, value, text);
+                        text = textMsgBuffer.fetch(tmp & NO_MSG);
+                        if (tmp > NO_MSG)
+                            text = "FAILED: " + text;
+                        //std::cout << text << std::endl;
+                        guiTo = true;
+                    }
+                    else
+                    {
+                        text = " Name: " + synth->bank.getBankName(value, getData->data.engine);
+                    }
+                    newMsg = true;
+                    break;
+
                 case BANK::control::selectFirstBankToSwap:
-                    if(engine == UNUSED)
+                    if (engine == UNUSED)
                     {
                         engine = synth->getRuntime().currentRoot;
                         getData->data.engine = engine;
@@ -872,7 +928,7 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
                     swapRoot1 = engine;
                     break;
                 case BANK::control::selectSecondBankAndSwap:
-                    if(engine == UNUSED)
+                    if (engine == UNUSED)
                     {
                         engine = synth->getRuntime().currentRoot;
                         getData->data.engine = engine;
@@ -883,10 +939,34 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
                     newMsg = true;
                     guiTo = true;
                     break;
+
+                case BANK::control::selectRoot:
+                    if (write)
+                    {
+                        int msgID = synth->setRootBank(value, UNUSED);
+                        if (msgID < NO_MSG)
+                            synth->saveBanks(); // do we need this when only selecting?
+                        text = textMsgBuffer.fetch(msgID & NO_MSG);
+                    }
+                    else
+                    {
+                        int tmp = synth->getRuntime().currentRoot;
+                        text = "Current Root: " +(to_string(tmp)) + " " + synth->bank.getRootPath(tmp);
+                    }
+                    newMsg = true;
+                    break;
+                case BANK::control::changeRootId:
+                {
+                    if (engine == UNUSED)
+                        getData->data.engine = synth->getRuntime().currentRoot;
+                    synth->bank.changeRootID(getData->data.engine, value);
+                    synth->saveBanks();
+                }
             }
             getData->data.source &= ~TOPLEVEL::action::lowPrio;
             break;
         }
+
         case TOPLEVEL::section::config:
         {
             switch (control)
@@ -1072,6 +1152,28 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
                             getData->data.source &= ~TOPLEVEL::action::lowPrio;
                         }
                         break;
+                    case PART::control::instrumentCopyright:
+                        if (write)
+                        {
+                            synth->part[npart]->info.Pauthor = text;
+                            guiTo = true;
+                        }
+                        else
+                            text = synth->part[npart]->info.Pauthor;
+                        getData->data.source &= ~TOPLEVEL::action::lowPrio;
+                        newMsg = true;
+                        break;
+                    case PART::control::instrumentComments:
+                        if (write)
+                        {
+                            synth->part[npart]->info.Pcomments = text;
+                            guiTo = true;
+                        }
+                        else
+                            text = synth->part[npart]->info.Pcomments;
+                        getData->data.source &= ~TOPLEVEL::action::lowPrio;
+                        newMsg = true;
+                        break;
                     case PART::control::instrumentName: // part or kit item names
                         if (kititem == UNUSED)
                         {
@@ -1106,6 +1208,16 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
                             text = " FAILED Not in kit mode";
                         getData->data.source &= ~TOPLEVEL::action::lowPrio;
                         newMsg = true;
+                        break;
+                    case PART::control::instrumentType:
+                        if (write)
+                        {
+                            synth->part[npart]->info.Ptype = value;
+                            guiTo = true;
+                        }
+                        else
+                            value = synth->part[npart]->info.Ptype;
+                        getData->data.source &= ~TOPLEVEL::action::lowPrio;
                         break;
                     case PART::control::defaultInstrumentCopyright:
                         std::string name = synth->getRuntime().ConfigDir + "/copyright.txt";
@@ -1453,7 +1565,7 @@ void InterChange::mutedDecode(unsigned int altData)
     {
         case TOPLEVEL::muted::stopSound:
             putData.data.control = MAIN::control::stopSound;
-            putData.data.type = TOPLEVEL::type::Write || TOPLEVEL::type::Integer;
+            putData.data.type = TOPLEVEL::type::Write | TOPLEVEL::type::Integer;
             break;
         case TOPLEVEL::muted::masterReset:
             textMsgBuffer.clear(); // make sure there are no hanging messages
@@ -1497,7 +1609,6 @@ void InterChange::mutedDecode(unsigned int altData)
 
 void InterChange::returns(CommandBlock *getData)
 {
-    unsigned char type = getData->data.type; // back from synth
     synth->getRuntime().finishedCLI = true; // belt and braces :)
     if ((getData->data.source & TOPLEVEL::action::noAction) == TOPLEVEL::action::noAction)
     {
@@ -1508,6 +1619,7 @@ void InterChange::returns(CommandBlock *getData)
     if (getData->data.source < TOPLEVEL::action::lowPrio)
     { // currently only used by gui. this may change!
 #ifdef GUI_FLTK
+        unsigned char type = getData->data.type; // back from synth
         int tmp = (getData->data.source & TOPLEVEL::action::noAction);
         if (getData->data.source & TOPLEVEL::action::forceUpdate)
             tmp = TOPLEVEL::action::toAll;
@@ -1555,9 +1667,9 @@ bool InterChange::commandSend(CommandBlock *getData)
         unsigned char insert = getData->data.insert;
         if (npart < NUM_MIDI_PARTS && (insert != UNUSED || (control != PART::control::enable && control != PART::control::instrumentName)))
         {
-            if (synth->part[npart]->Pname == "Simple Sound")
+            if (synth->part[npart]->Pname == DEFAULT_NAME)
             {
-                synth->part[npart]->Pname ="No Title";
+                synth->part[npart]->Pname = UNTITLED;
                 getData->data.source |= TOPLEVEL::action::forceUpdate;
             }
         }
@@ -1716,13 +1828,13 @@ bool InterChange::commandSendReal(CommandBlock *getData)
                 commandEnvelope(getData);
                 break;
             case TOPLEVEL::insert::oscillatorGroup:
-                commandOscillator(getData,  part->kit[kititem].padpars->oscilgen);
+                commandOscillator(getData,  part->kit[kititem].padpars->POscil);
                 break;
             case TOPLEVEL::insert::harmonicAmplitude:
-                commandOscillator(getData,  part->kit[kititem].padpars->oscilgen);
+                commandOscillator(getData,  part->kit[kititem].padpars->POscil);
                 break;
             case TOPLEVEL::insert::harmonicPhaseBandwidth:
-                commandOscillator(getData,  part->kit[kititem].padpars->oscilgen);
+                commandOscillator(getData,  part->kit[kititem].padpars->POscil);
                 break;
             case TOPLEVEL::insert::resonanceGroup:
                 commandResonance(getData, part->kit[kititem].padpars->resonance);
@@ -1808,7 +1920,7 @@ bool InterChange::commandSendReal(CommandBlock *getData)
                         }   // force it to external mod
                     }
 
-                    commandOscillator(getData,  part->kit[kititem].adpars->VoicePar[engine].FMSmp);
+                    commandOscillator(getData,  part->kit[kititem].adpars->VoicePar[engine].POscilFM);
                 }
                 else
                 {
@@ -1824,7 +1936,7 @@ bool InterChange::commandSendReal(CommandBlock *getData)
                         }   // force it to external voice
                     }
 
-                    commandOscillator(getData,  part->kit[kititem].adpars->VoicePar[engine].OscilSmp);
+                    commandOscillator(getData,  part->kit[kititem].adpars->VoicePar[engine].POscil);
                 }
                 break;
         }
@@ -2858,6 +2970,21 @@ void InterChange::commandBank(CommandBlock *getData)
 
     switch (control)
     {
+        case BANK::control::readInstrumentName:
+        {
+            if (kititem == UNUSED)
+            {
+                kititem = synth->getRuntime().currentBank;
+                getData->data.kit = kititem;
+            }
+            if (engine == UNUSED)
+            {
+                engine = synth->getRuntime().currentRoot;
+                getData->data.engine = engine;
+            }
+            textMsgBuffer.push(synth->getBankRef().getname(parameter, kititem, engine));
+            break;
+        }
         case BANK::control::findInstrumentName:
         {
             if (parameter == UNUSED) // return the name of a specific instrument.
@@ -2898,8 +3025,8 @@ void InterChange::commandBank(CommandBlock *getData)
             }
             break;
         }
-        case BANK::control::selectBank:
-            value_int = synth->getRuntime().currentBank; // currently read only
+        case BANK::control::selectBank: // done elsewhere for write
+            value_int = synth->ReadBank();
             break;
         case BANK::control::selectRoot:
             value_int = synth->getRuntime().currentRoot; // currently read only
@@ -3302,6 +3429,7 @@ void InterChange::commandPart(CommandBlock *getData)
             else
                 value = part->partefx[effNum]->geteffect();
             getData->data.parameter = (part->partefx[effNum]->geteffectpar(-1) != 0);
+            getData->data.offset = 0;
             break;
         case PART::control::effectDestination:
             if (write)
@@ -3547,13 +3675,13 @@ void InterChange::commandPart(CommandBlock *getData)
                 value = part->ctl->bandwidth.data;
             break;
 
-        case PART::control::instrumentCopyright:
-            ; // not yet
+        case PART::control::instrumentCopyright: // done elsewhere
             break;
-        case PART::control::instrumentComments:
-            ; // not yet
+        case PART::control::instrumentComments: // done elsewhere
             break;
         case PART::control::instrumentName: // done elsewhere
+            break;
+        case PART::control::instrumentType:// done elsewhere
             break;
         case PART::control::defaultInstrumentCopyright: // done elsewhere
             ;
@@ -3637,9 +3765,20 @@ void InterChange::commandAdd(CommandBlock *getData)
         }
         case ADDSYNTH::control::detuneType:
             if (write)
-                pars->GlobalPar.PDetuneType = value_int;
+            {
+                if (value_int < 1) // can't be default for addsynth
+                {
+                    getData->data.value.F = 1;
+                    value_int = 1;
+                }
+                pars->GlobalPar.PDetuneType = value_int +1;
+            }
             else
-                value = pars->GlobalPar.PDetuneType;
+            {
+                value = pars->GlobalPar.PDetuneType -1;
+                if (value < 1)
+                    value = 1;
+            }
             break;
         case ADDSYNTH::control::coarseDetune:
         {
@@ -4250,7 +4389,14 @@ void InterChange::commandSub(CommandBlock *getData)
         }
         case SUBSYNTH::control::detuneType:
             if (write)
-                pars->PDetuneType = value_int + 1;
+            {
+                if (value_int < 1) // can't be default for subsynth
+                {
+                    getData->data.value.F = 1;
+                    value_int = 1;
+                }
+                pars->PDetuneType = value_int;
+            }
             else
                 value = pars->PDetuneType;
             break;
@@ -4475,9 +4621,16 @@ void InterChange::commandPad(CommandBlock *getData)
             break;
         case PADSYNTH::control::detuneType:
             if (write)
-                 pars->PDetuneType = value_int + 1;
+            {
+                if (value_int < 1) // can't be default for padsynth
+                {
+                    getData->data.value.F = 1;
+                    value_int = 1;
+                }
+                 pars->PDetuneType = value_int;
+            }
             else
-                value =  pars->PDetuneType - 1;
+                value =  pars->PDetuneType;
             break;
         case PADSYNTH::control::coarseDetune:
             if (write)
@@ -4686,7 +4839,7 @@ void InterChange::commandPad(CommandBlock *getData)
 }
 
 
-void InterChange::commandOscillator(CommandBlock *getData, OscilGen *oscil)
+void InterChange::commandOscillator(CommandBlock *getData, OscilParameters *oscil)
 {
     float value = getData->data.value.F;
     unsigned char type = getData->data.type;
@@ -4706,7 +4859,7 @@ void InterChange::commandOscillator(CommandBlock *getData, OscilGen *oscil)
             oscil->Phmag[control] = value_int;
             if (value_int == 64)
                 oscil->Phphase[control] = 64;
-            oscil->prepare();
+            oscil->presetsUpdated();
         }
         else
             getData->data.value.F = oscil->Phmag[control];
@@ -4717,7 +4870,7 @@ void InterChange::commandOscillator(CommandBlock *getData, OscilGen *oscil)
         if (write)
         {
             oscil->Phphase[control] = value_int;
-            oscil->prepare();
+            oscil->presetsUpdated();
         }
         else
             getData->data.value.F = oscil->Phphase[control];
@@ -4793,7 +4946,9 @@ void InterChange::commandOscillator(CommandBlock *getData, OscilGen *oscil)
         case OSCILLATOR::control::useAsBaseFunction:
             if (write)
             {
-                oscil->useasbase();
+                FFTwrapper fft(synth->oscilsize);
+                OscilGen gen(&fft, NULL, synth, oscil);
+                gen.useasbase();
                 if (value_bool)
                 {
                     for (int i = 0; i < MAX_AD_HARMONICS; ++ i)
@@ -4807,7 +4962,7 @@ void InterChange::commandOscillator(CommandBlock *getData, OscilGen *oscil)
                     oscil->Pfiltertype = 0;
                     oscil->Psatype = 0;
                 }
-                oscil->prepare();
+                oscil->presetsUpdated();
             }
             break;
 
@@ -4935,12 +5090,17 @@ void InterChange::commandOscillator(CommandBlock *getData, OscilGen *oscil)
                     oscil->Phphase[i]=64;
                 }
                 oscil->Phmag[0]=127;
-                oscil->prepare();
+                oscil->presetsUpdated();
             }
             break;
         case OSCILLATOR::control::convertToSine:
             if (write)
-                oscil->convert2sine();
+            {
+                FFTwrapper fft(synth->oscilsize);
+                OscilGen gen(&fft, NULL, synth, oscil);
+                gen.convert2sine();
+                oscil->presetsUpdated();
+            }
             break;
     }
     if (!write)
@@ -5796,6 +5956,7 @@ void InterChange::commandSysIns(CommandBlock *getData)
                         synth->insefx[effnum]->changeeffect(value_int);
                         getData->data.parameter = (synth->insefx[effnum]->geteffectpar(-1) != 0);
                     }
+                    getData->data.offset = 0;
                 }
                 else
                 {
@@ -6013,6 +6174,9 @@ float InterChange::returnLimits(CommandBlock *getData)
     if (npart == TOPLEVEL::section::config)
         return synth->getConfigLimits(getData);
 
+    if (npart == TOPLEVEL::section::bank)
+        return value;
+
     if (npart == TOPLEVEL::section::main)
         return synth->getLimits(getData);
 
@@ -6103,7 +6267,7 @@ float InterChange::returnLimits(CommandBlock *getData)
         }
         if (insert >= TOPLEVEL::insert::oscillatorGroup && insert <= TOPLEVEL::insert::harmonicPhaseBandwidth)
         {
-            return part->kit[0].adpars->VoicePar[0].OscilSmp->getLimits(getData);
+            return part->kit[0].adpars->VoicePar[0].POscil->getLimits(getData);
             // we also use this for pad limits
             // as oscillator values identical
         }
@@ -6240,7 +6404,7 @@ float InterChange::returnLimits(CommandBlock *getData)
     min = 0;
     max = 127;
     def = 0;
-    std::cout << "Using unknown part number defaults" << std::endl;
+    std::cout << "Using unknown defaults" << std::endl;
 
     switch (request)
     {

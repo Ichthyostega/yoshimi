@@ -38,7 +38,6 @@ using std::map;
 #define ROOT_SIZE 128
 #define BANK_SIZE 160
 
-
 typedef struct _InstrumentEntry
 {
     string name;
@@ -102,13 +101,15 @@ class SynthEngine;
 class Bank
 {
     friend class SynthEngine;
+
     public:
         Bank(SynthEngine *_synth);
         ~Bank();
         int getType(unsigned int ninstrument, size_t bank, size_t root);
         string getname(unsigned int ninstrument, size_t bank, size_t root);
         string getnamenumbered(unsigned int ninstrument, size_t bank, size_t root);
-        bool setname(unsigned int ninstrument, string newname, int newslot, size_t oldBank, size_t newBank, size_t oldRoot, size_t newRoot);
+        int setInstrumentName(string name, int slot, size_t bank, size_t root);
+        bool moveInstrument(unsigned int ninstrument, string newname, int newslot, size_t oldBank, size_t newBank, size_t oldRoot, size_t newRoot);
              // if newslot==-1 then this is ignored, else it will be put on that slot
 
         int engines_used(size_t rootID, size_t bankID, unsigned int ninstrument);
@@ -118,10 +119,9 @@ class Bank
         std::string swapslot(unsigned int n1, unsigned int n2, size_t bank1, size_t bank2, size_t root1, size_t root2);
         std::string swapbanks(unsigned int firstID, unsigned int secondID, size_t firstRoot, size_t secondRoot);
         string getBankName(int bankID, size_t rootID = 0xff);
-        string getBankIDname(int bankID);
         bool isDuplicateBankName(size_t rootID, string name);
         int getBankSize(int bankID);
-        bool setbankname(unsigned int BankID, string newname);
+        int changeBankName(size_t rootID, size_t bankID, string newName);
         bool loadbank(size_t rootID, size_t banknum);
         std::string exportBank(string exportdir, size_t rootID, unsigned int bankID);
         std::string importBank(string importdir, size_t rootID, unsigned int bankID);

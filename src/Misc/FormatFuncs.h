@@ -17,7 +17,6 @@
     You should have received a copy of the GNU General Public License
     along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 
-    Modified August 2019
 */
 
 #ifndef FORMATFUNCS_H
@@ -188,6 +187,23 @@ inline unsigned int string2uint(std::string str)
 }
 
 
+inline string stringCaps(std::string str, int count)
+{
+    int idx = 0;
+    char c;
+    while (str[idx])
+    {
+        c = str[idx];
+        if (idx < count)
+            str.replace(idx, 1, 1, toupper(c));
+        else
+            str.replace(idx, 1, 1, tolower(c));
+        idx ++;
+    }
+    return str;
+}
+
+
 /* this is not actually a file operation so we keep it here */
 inline int findSplitPoint(std::string name)
 {
@@ -206,6 +222,36 @@ inline int findSplitPoint(std::string name)
     return chk;
 }
 
+/*
+ * This is principally used to format strings for the GUI
+ * where they are fitted into windows with limited width.
+ * However, it may be useful elsewhere.
+ */
+inline std::string formatTextLines(std::string text, size_t maxLen)
+{
+    size_t lineLen = text.length();
+    if (lineLen < maxLen)
+        return text;
+    const char lineEnd = char(10);
+    size_t pos = maxLen;
+    size_t oldPos = 0;
+
+    while (pos < lineLen && pos > oldPos)
+    {
+        pos = text.rfind(' ', pos);
+        if(pos < oldPos)
+        {
+            pos = oldPos + maxLen + 1; // inserted char
+            text.insert(pos, 1, lineEnd);
+        }
+        else
+            text.replace(pos, 1, 1, lineEnd);
+        oldPos = pos;
+        pos += maxLen + 1; // replaced char
+        lineLen += 1;
+    }
+    return text;
+}
 
 }//(End)namespace func
 #endif /*FORMATFUNCS_H*/

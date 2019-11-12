@@ -155,6 +155,7 @@ void ADnote::construct()
         NoteVoicePar[nvoice].FMSmp = NULL;
         NoteVoicePar[nvoice].VoiceOut = NULL;
 
+        NoteVoicePar[nvoice].FMEnabled = NONE;
         NoteVoicePar[nvoice].FMVoice = -1;
         unison_size[nvoice] = 1;
 
@@ -573,32 +574,7 @@ void ADnote::initSubVoices(void)
         if (!NoteVoicePar[nvoice].Enabled)
             continue;
 
-        // We need sub voices for every case where we are using an external
-        // voice and we need to do any kind of frequency modulations, whether
-        // via oscillator frequency modulation, frequency envelopes, frequency
-        // LFO, or detuned unison voices. Else, we optimize by using the
-        // original output from that voice (VoiceOut).
-
-        bool oscHasFreqAdj =
-            unison_size[nvoice] > 1
-            || adpars->VoicePar[nvoice].PFreqEnvelopeEnabled
-            || adpars->VoicePar[nvoice].PFreqLfoEnabled
-            || adpars->VoicePar[nvoice].PCoarseDetune != 0
-            || adpars->VoicePar[nvoice].PDetune != 8192 // 8192 is center.
-            || adpars->VoicePar[nvoice].POffsetHz != 64
-            || adpars->VoicePar[nvoice].PfixedfreqET != 0;
-
-        bool oscFreqSettingsDiffer =
-               (adpars->VoicePar[nvoice].PBendAdjust
-                != adpars->VoicePar[NoteVoicePar[nvoice].Voice].PBendAdjust)
-            || (adpars->VoicePar[nvoice].Pfixedfreq
-                != adpars->VoicePar[NoteVoicePar[nvoice].Voice].Pfixedfreq);
-
-        if (NoteVoicePar[nvoice].Voice != -1
-            && (subVoiceNumber != -1
-                || oscHasFreqAdj
-                || oscFreqSettingsDiffer
-                || freqbasedmod[nvoice]))
+        if (NoteVoicePar[nvoice].Voice != -1)
         {
             subVoice[nvoice] = new ADnote*[unison_size[nvoice]];
             for (int k = 0; k < unison_size[nvoice]; ++k) {
@@ -610,27 +586,7 @@ void ADnote::initSubVoices(void)
             }
         }
 
-        // Similar conditions, just adapted to the modulator.
-
-        bool modHasFreqAdj =
-            adpars->VoicePar[nvoice].PFMFreqEnvelopeEnabled
-            || adpars->VoicePar[nvoice].PFMCoarseDetune != 0
-            || adpars->VoicePar[nvoice].PFMDetune != 8192;
-
-        bool modFreqSettingsDiffer =
-               (adpars->VoicePar[nvoice].PBendAdjust
-                != adpars->VoicePar[NoteVoicePar[nvoice].FMVoice].PBendAdjust)
-            || (adpars->VoicePar[nvoice].PFMFixedFreq
-                != adpars->VoicePar[NoteVoicePar[nvoice].FMVoice].Pfixedfreq)
-            || (NoteVoicePar[nvoice].FMDetuneFromBaseOsc
-                && (adpars->VoicePar[nvoice].Pfixedfreq
-                    != adpars->VoicePar[NoteVoicePar[nvoice].FMVoice].Pfixedfreq));
-
-        if (NoteVoicePar[nvoice].FMVoice != -1
-            && (subVoiceNumber != -1
-                || (NoteVoicePar[nvoice].FMDetuneFromBaseOsc && oscHasFreqAdj)
-                || modHasFreqAdj
-                || modFreqSettingsDiffer))
+        if (NoteVoicePar[nvoice].FMVoice != -1)
         {
             bool voiceForFM = NoteVoicePar[nvoice].FMEnabled == FREQ_MOD;
             subFMVoice[nvoice] = new ADnote*[unison_size[nvoice]];
@@ -946,14 +902,14 @@ void ADnote::killVoice(int nvoice)
     if (subVoice[nvoice] != NULL) {
         for (int k = 0; k < unison_size[nvoice]; ++k)
             delete subVoice[nvoice][k];
-        delete subVoice[nvoice];
+        delete [] subVoice[nvoice];
     }
     subVoice[nvoice] = NULL;
 
     if (subFMVoice[nvoice] != NULL) {
         for (int k = 0; k < unison_size[nvoice]; ++k)
             delete subFMVoice[nvoice][k];
-        delete subFMVoice[nvoice];
+        delete [] subFMVoice[nvoice];
     }
     subFMVoice[nvoice] = NULL;
 
@@ -1187,7 +1143,7 @@ void ADnote::initParameters(void)
                 vc = adpars->VoicePar[nvoice].PextFMoscil;
 
             float freqtmp = 1.0f;
-            if (adpars->VoicePar[vc].FMSmp->Padaptiveharmonics != 0
+            if (adpars->VoicePar[vc].POscilFM->Padaptiveharmonics != 0
                || (NoteVoicePar[nvoice].FMEnabled == MORPH)
                || (NoteVoicePar[nvoice].FMEnabled == RING_MOD))
                freqtmp = getFMVoiceBaseFreq(nvoice);
@@ -1244,30 +1200,10 @@ void ADnote::initParameters(void)
         }
     }
 
-    for (nvoice = 0; nvoice < NUM_VOICES; ++nvoice)
+    if (subVoiceNumber != -1)
     {
-        for (i = nvoice + 1; i < NUM_VOICES; ++i)
-        {
-            bool needVoiceOut = false;
-            if (subVoiceNumber != -1) {
-                needVoiceOut = true;
-            } else if (NoteVoicePar[i].Enabled) {
-                if (NoteVoicePar[i].Voice == nvoice && subVoice[i] == NULL) {
-                    needVoiceOut = true;
-                } else if (NoteVoicePar[i].FMEnabled != NONE
-                           && NoteVoicePar[i].FMVoice == nvoice
-                           && subFMVoice[i] == NULL) {
-                    needVoiceOut = true;
-                }
-            }
-
-            if (needVoiceOut)
-            {
-                NoteVoicePar[nvoice].VoiceOut = (float*)fftwf_malloc(synth->bufferbytes);
-                memset(NoteVoicePar[nvoice].VoiceOut, 0, synth->bufferbytes);
-                break;
-            }
-        }
+        NoteVoicePar[subVoiceNumber].VoiceOut = (float*)fftwf_malloc(synth->bufferbytes);
+        memset(NoteVoicePar[subVoiceNumber].VoiceOut, 0, synth->bufferbytes);
     }
 }
 
@@ -2059,7 +1995,7 @@ void ADnote::computeVoiceOscillatorForFMFrequencyModulation(int nvoice)
     for (int k = 0; k < unison_size[nvoice]; ++k)
     {
         float *tw = tmpwave_unison[k];
-        float *mod = freqbasedmod ? tmpmod_unison[k] : parentFMmod;
+        float *mod = freqbasedmod[nvoice] ? tmpmod_unison[k] : parentFMmod;
         int poshi = oscposhi[nvoice][k];
         float poslo = oscposlo[nvoice][k];
         int freqhi = oscfreqhi[nvoice][k];
@@ -2317,7 +2253,6 @@ int ADnote::noteout(float *outl, float *outr)
             continue;
 
         if (NoteVoicePar[nvoice].Volume == 0.0f
-            && subVoiceNumber == -1
             && NoteVoicePar[nvoice].VoiceOut == NULL) {
 
             // If the voice is muted and we are not producing sound for any sub
