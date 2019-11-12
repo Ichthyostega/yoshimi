@@ -27,6 +27,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <termios.h>
 #include <time.h>
 
@@ -159,12 +160,11 @@ void do_start(void)
 
 static void *mainGuiThread(void *arg)
 {
-    static bool first = true;
     sem_post((sem_t *)arg);
-
     map<SynthEngine *, MusicClient *>::iterator it;
 
 #ifdef GUI_FLTK
+    static bool first = true;
     if (first)
     {
         first = false;
@@ -369,6 +369,10 @@ int mainCreateNewInstance(unsigned int forceId, bool loadState)
         if (synth->getRuntime().midiEngine < 1)
             fl_alert("Yoshimi can't find an input system. Running with no MIDI");
     }
+    else
+        synth->getRuntime().toConsole = false;
+#else
+    synth->getRuntime().toConsole = false;
 #endif
     synth->getRuntime().StartupReport(musicClient->midiClientName());
     synth->Unmute();

@@ -30,7 +30,10 @@
 
 extern SynthEngine *firstSynth;
 
-Presets::Presets(SynthEngine *_synth) : nelement(-1), synth(_synth)
+Presets::Presets(SynthEngine *_synth) :
+    nelement(-1),
+    synth(_synth),
+    updatedAt(0)
 {
     type[0] = 0;
 }
@@ -45,7 +48,6 @@ void Presets::setpresettype(const char *type_)
 void Presets::copy(const char *name)
 {
     XMLwrapper *xml = new XMLwrapper(synth);
-    bool oldMinimal = xml->minimal;
     // used only for the clipboard
     if (name == NULL)
         xml->minimal = false;
@@ -74,7 +76,6 @@ void Presets::copy(const char *name)
 
     delete(xml);
     nelement = -1;
-    xml->minimal = oldMinimal;
 }
 
 
