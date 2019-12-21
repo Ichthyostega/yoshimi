@@ -516,7 +516,10 @@ bool CmdInterpreter::query(string text, bool priority)
     }
     result = test;
     text += suffix;
-    line = readline(text.c_str());
+    synth->getRuntime().Log(text);
+    // changed this so that all messages go to same destination.
+    //line = readline(text.c_str());
+    line = readline("");
     if (line)
     {
         if (line[0] != 0)
@@ -817,7 +820,7 @@ char CmdInterpreter::helpList(Parser& input, unsigned int local)
             break;
 
         case LISTS::vector:
-            msg.push_back("Vector: [n1] = base channel:");
+            msg.push_back("Vector:");
             helpLoop(msg, vectlist, 2);
             break;
         case LISTS::scale:
@@ -846,7 +849,7 @@ char CmdInterpreter::helpList(Parser& input, unsigned int local)
             msg.push_back("'*' entries need to be saved and Yoshimi restarted to activate");
             break;
         case LISTS::mlearn:
-            msg.push_back("Mlearn: [n1] = line number");
+            msg.push_back("Mlearn:");
             helpLoop(msg, learnlist, 2);
             break;
     }
@@ -3476,8 +3479,6 @@ int CmdInterpreter::commandScale(Parser& input, unsigned char controlType)
     unsigned char command = UNUSED;
     unsigned char action = 0;
     unsigned char miscmsg = UNUSED;
-    if (controlType != TOPLEVEL::type::Write)
-        return REPLY::done_msg;
 
     string name;
 
@@ -3494,7 +3495,7 @@ int CmdInterpreter::commandScale(Parser& input, unsigned char controlType)
     {
         if (controlType != TOPLEVEL::type::Write && command <= SCALES::control::importKbm)
         {
-            Runtime.Log("Write only - use list");
+            Runtime.Log("Write only - use 'list'");
             return REPLY::done_msg;
         }
         if (command <= SCALES::control::keyboardMap)
@@ -3503,7 +3504,7 @@ int CmdInterpreter::commandScale(Parser& input, unsigned char controlType)
                 command += (SCALES::control::importKbm - SCALES::control::keyboardMap);
         }
         name = string{input};
-        if (name == "")
+        if (name == "" && controlType == TOPLEVEL::type::Write)
             return REPLY::value_msg;
         action = TOPLEVEL::action::lowPrio;
         miscmsg = textMsgBuffer.push(name);
@@ -5311,9 +5312,9 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
 #endif
     if (input.matchnMove(2, "exit"))
     {
-        if (input.matchnMove(1, "force"))
+        if (input.matchnMove(2, "force"))
         {
-            firstSynth->getRuntime().runSynth = false;
+            sendDirect(synth, 0, 0, TOPLEVEL::type::Write, TOPLEVEL::control::forceExit, UNUSED);
             return Reply::DONE;
         }
         if (currentInstance > 0)
@@ -5527,14 +5528,25 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
         if (input.matchnMove(1, "bank"))
         {
             int slot;
+            int root = readControl(synth, 0, BANK::control::selectRoot, TOPLEVEL::section::bank);
+            bool found = false;
             for (slot = 0; slot < MAX_BANKS_IN_ROOT; ++slot)
             {
-                if (synth->getBankRef().getBankName(slot).empty())
+                if (synth->getBankRef().getBankName(slot, root).empty())
+                {
+                    found = true;
                     break;
+                }
+            }
+            if (!found)
+            {
+                Runtime.Log("Current root has no space!");
+                return Reply::DONE;
             }
             if (!synth->getBankRef().newIDbank(string{input}, (unsigned int)slot))
             {
                 Runtime.Log("Could not create bank " + string{input} + " for ID " + asString(slot));
+                return Reply::DONE;
             }
 
             Runtime.Log("Created  new bank " + string{input} + " with ID " + asString(slot));
@@ -5630,47 +5642,47 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
         }
         if (input.matchnMove(1, "bank"))
         {
-            int rootID = UNUSED;
-            if (input.matchnMove(1, "root"))
-            {
-                if (input.isdigit())
-                    rootID = string2int(input);
-                if (rootID >= MAX_BANK_ROOT_DIRS)
-                    return Reply{REPLY::range_msg};
-            }
-            if (input.isdigit())
-            {
-                input.skipChars();
-                int bankID = string2int(input);
-                if (bankID >= MAX_BANKS_IN_ROOT)
-                    return Reply{REPLY::range_msg};
-                else
-                {
-                    string filename = synth->getBankRef().getBankName(bankID);
-                    if (filename.empty())
-                        Runtime.Log("No bank at this location");
-                    else
-                    {
-                        int tmp = synth->getBankRef().getBankSize(bankID);
-                        if (tmp)
-                        {
-                            Runtime.Log("Bank " + filename + " has " + asString(tmp) + " Instruments");
-                            if (query("Delete bank and all of these", false))
-                                tmp = 0;
-                            else
-                                Runtime.Log("Aborted");
-                        }
-                        if (tmp == 0)
-                        {
-                            sendDirect(synth, TOPLEVEL::action::lowPrio, bankID, TOPLEVEL::type::Write, MAIN::control::deleteBank, TOPLEVEL::section::main, rootID);
-                        }
-                    }
+            if (!input.isdigit())
+                return Reply{REPLY::value_msg};
 
+            int bankID = string2int(input);
+            if (bankID >= MAX_BANKS_IN_ROOT)
+                return Reply{REPLY::range_msg};
+
+            int rootID = readControl(synth, 0, BANK::control::selectRoot, TOPLEVEL::section::bank);
+            input.skipChars();
+            if (!input.isAtEnd())
+            {
+                if (input.matchnMove(1, "root"))
+                {
+                    if (!input.isdigit())
+                        return Reply{REPLY::value_msg};
+                    rootID = string2int(input);
+                    if (rootID >= MAX_BANK_ROOT_DIRS)
+                        return Reply{REPLY::range_msg};
                 }
+            }
+
+            string filename = synth->getBankRef().getBankName(bankID, rootID);
+            if (filename.empty())
+            {
+                Runtime.Log("No bank at this location");
                 return Reply::DONE;
             }
-            else
-                return Reply{REPLY::value_msg};
+
+            int tmp = synth->getBankRef().getBankSize(bankID, readControl(synth, 0, BANK::control::selectRoot, TOPLEVEL::section::bank));
+            std::cout << "ID " << bankID << "  name " << filename << std::endl;
+            if (tmp)
+            {
+                Runtime.Log("Bank " + filename + " has " + asString(tmp) + " Instruments");
+                if (!query("Delete bank and all of these", false))
+                {
+                    Runtime.Log("Aborted");
+                    return Reply::DONE;
+                }
+            }
+            sendDirect(synth, TOPLEVEL::action::lowPrio, bankID, TOPLEVEL::type::Write, MAIN::control::deleteBank, TOPLEVEL::section::main, rootID);
+            return Reply::DONE;
         }
         if(input.matchnMove(2, "yoshimi"))
         {
