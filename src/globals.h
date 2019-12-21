@@ -89,8 +89,9 @@ const int MIN_ENVELOPE_DB = -60;
 const int MAX_RESONANCE_POINTS = 256;
 const int MAX_KEY_SHIFT = 36;
 const int MIN_KEY_SHIFT = -36;
-const float A_MIN = 329.0f;
-const float A_MAX = 660.0f;
+const float A_MIN = 30.0f;
+const float A_DEF = 440.0f;
+const float A_MAX = 1100.0f;
 
 
 const unsigned int MIN_OSCIL_SIZE = 256; // MAX_AD_HARMONICS * 2
@@ -130,6 +131,8 @@ const unsigned char MAX_ALIENWAH_DELAY = 100;
 
 const std::string DEFAULT_NAME = "Simple Sound";
 const std::string UNTITLED = "No Title";
+
+const unsigned char FORCED_EXIT = 16;
 
 namespace YOSH
 {
@@ -203,7 +206,8 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
 
     enum control : unsigned char {
         // insert any new entries here
-        textMessage = 254 // FE
+        textMessage = 254, // FE
+        forceExit // this is effective from *any* section!
     };
 
     enum muted : unsigned char {
@@ -310,16 +314,19 @@ namespace CONFIG // usage CONFIG::control::oscillatorSize
 namespace BANK // usage BANK::control::
 {
     enum control : unsigned char {
-        readInstrumentName = 0,
+        // instrument selection done in 'part'
+        // actual control should probably be here
+        readInstrumentName = 0, // in bank, by ID
         findInstrumentName, // next in list or '*' if at end
-        renameInstrument,
-        saveInstrument,
-        deleteInstrument,
+        renameInstrument, // not yet
+        saveInstrument, // to bank
+        deleteInstrument, // from bank
         selectFirstInstrumentToSwap,
         selectSecondInstrumentAndSwap,
 
-        selectBank = 16,
-        renameBank,
+        selectBank = 16, // in root, by ID
+        readBankName, // not yet
+        renameBank, // not yet
         createBank, // not yet
         deleteBank, // not yet
         selectFirstBankToSwap,
@@ -327,10 +334,11 @@ namespace BANK // usage BANK::control::
         importBank, // not yet (currently done in main)
         exportBank, // not yet (currently done in main)
 
-        selectRoot = 32,
-        changeRootId,
+        selectRoot = 32, // by ID
+        readRootPath, // not yet
+        changeRootId, // not yet
         addNamedRoot, // not yet
-        deselectRoot // not yet (currently done in main)
+        deselectRoot // not yet
     };
 }
 
@@ -391,7 +399,7 @@ namespace MIDILEARN // usage MIDILEARN::control::block
         loadList = 241,
         loadFromRecent,
         saveList = 245,
-        cancelLearn = 255
+        cancelLearn = 250
     };
 }
 
@@ -486,7 +494,7 @@ namespace MAIN // usage MAIN::control::volume
         importBank,
         deleteBank,
 
-        setCurrentRootBank = 75,
+        setCurrentRootBank = 75,  // only used in gui
         loadInstrumentFromBank,
         loadInstrumentByName,
         saveNamedInstrument,
