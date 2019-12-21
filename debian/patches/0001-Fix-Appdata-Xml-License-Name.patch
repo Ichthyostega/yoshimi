@@ -1,0 +1,15 @@
+From: Dennis Braun <d_braun@kabelmail.de>
+Date: Sat, 21 Dec 2019 10:51:20 +0100
+Subject: Fix license name of yoshimi.appdata.xml
+
+--- a/desktop/metainfo/yoshimi.appdata.xml
++++ b/desktop/metainfo/yoshimi.appdata.xml
+@@ -2,7 +2,7 @@
+ <!-- Copyright 2016-2019 Yoshimi project <willgodfrey@musically.me.uk> -->
+ <component type="desktop">
+   <id>yoshimi.desktop</id>
+-  <metadata_license>CC-4.0</metadata_license>
++  <metadata_license>CC-BY-4.0</metadata_license>
+   <project_license>GPL-2.0+</project_license>
+   <name>Yoshimi</name>
+   <summary>A Software Synthesizer for Linux</summary>
