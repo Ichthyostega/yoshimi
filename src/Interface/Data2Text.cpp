@@ -34,23 +34,35 @@ using func::stringCaps;
 DataText::DataText() :
     synth(nullptr),
     showValue(false),
+    yesno(false),
     textMsgBuffer(TextMsgBuffer::instance())
 {
 }
 
 std::string DataText::withValue(std::string resolved, unsigned char type, bool showValue, bool addValue, float value)
 {
-    std::string actual = "";
+    if (!addValue)
+        return resolved;
+
+    if (yesno)
+    {
+        if (value)
+            resolved += " - on";
+        else
+            resolved += " - off";
+        return resolved;
+    }
+
     if (showValue)
     {
-        actual = " Value ";
+        resolved += " Value ";
         if (type & TOPLEVEL::type::Integer)
-            actual += to_string(lrint(value));
+            resolved += to_string(lrint(value));
         else
-            actual += to_string(value);
+            resolved += to_string(value);
+        return resolved;
     }
-    if (addValue)
-        resolved += actual;
+
     return resolved;
 }
 
@@ -73,6 +85,7 @@ string DataText::resolveAll(SynthEngine *_synth, CommandBlock *getData, bool add
     }
 
     showValue = true;
+    yesno = false;
     string commandName;
 
    // this is unique and placed here to avoid Xruns
@@ -287,6 +300,7 @@ string DataText::resolveVector(CommandBlock *getData, bool addValue)
     unsigned char control = getData->data.control;
     unsigned int chan = getData->data.insert;
 
+    bool isFeature = false;
     string contstr = "";
     switch (control)
     {
@@ -312,19 +326,23 @@ string DataText::resolveVector(CommandBlock *getData, bool addValue)
             break;
         case VECTOR::control::Xfeature0:
         case VECTOR::control::Yfeature0:
-            contstr = "Feature 0";
+            contstr = "Volume";
+            isFeature = true;
             break;
         case VECTOR::control::Xfeature1:
         case VECTOR::control::Yfeature1:
-            contstr = "Feature 1";
+            contstr = "Panning";
+            isFeature = true;
             break;
         case VECTOR::control::Xfeature2:
         case VECTOR::control::Yfeature2:
-            contstr = "Feature 2 ";
+            contstr = "Filter";
+            isFeature = true;
             break;
         case VECTOR::control::Xfeature3:
         case VECTOR::control::Yfeature3:
-            contstr = "Feature 3";
+            contstr = "Modulation";
+            isFeature = true;
             break;
 
         case VECTOR::control::Ycontroller:
@@ -368,6 +386,23 @@ string DataText::resolveVector(CommandBlock *getData, bool addValue)
     else if(control >= VECTOR::control::Xcontroller)
         name += "X ";
 
+    if (isFeature)
+    {
+        showValue = false;
+        switch (value_int)
+        {
+            case 0:
+                contstr += " off";
+                break;
+            case 1:
+                contstr += " on";
+                break;
+            case 2:
+                contstr += " reverse";
+                break;
+        }
+    }
+
     return (name + contstr);
 }
 
@@ -377,12 +412,11 @@ string DataText::resolveMicrotonal(CommandBlock *getData, bool addValue)
     int value = getData->data.value.F;
     unsigned char control = getData->data.control;
     unsigned char parameter = getData->data.parameter;
-    bool yesno = false;
 
     string contstr = "";
     switch (control)
     {
-        case SCALES::control::Afrequency:
+        case SCALES::control::refFrequency:
             if (addValue)
             {
                 if (parameter >= 21 && parameter <= 84)
@@ -392,7 +426,7 @@ string DataText::resolveMicrotonal(CommandBlock *getData, bool addValue)
             }
             contstr += " Frequency";
             break;
-        case SCALES::control::Anote:
+        case SCALES::control::refNote:
             showValue = false;
             contstr = "Ref note ";
             if (addValue)
@@ -513,18 +547,6 @@ string DataText::resolveMicrotonal(CommandBlock *getData, bool addValue)
         }
     }
 
-    if(addValue)
-    {
-        if (yesno)
-        {
-            if (value)
-                contstr += " - on";
-            else
-                contstr += " - off";
-            showValue = false;
-        }
-    }
-
     return ("Scales " + contstr);
 }
 
@@ -536,7 +558,7 @@ string DataText::resolveConfig(CommandBlock *getData, bool addValue)
     bool write = getData->data.type & TOPLEVEL::type::Write;
     int value_int = lrint(value);
     bool value_bool = YOSH::F2B(value);
-    bool yesno = false;
+
     string contstr = "";
     switch (control)
     {
@@ -721,6 +743,22 @@ string DataText::resolveConfig(CommandBlock *getData, bool addValue)
             contstr += "Start with ALSA MIDI";
             yesno = true;
             break;
+        case CONFIG::control::alsaMidiType:
+            contstr += "ALSA MIDI connection type ";
+            switch (value_int)
+            {
+                case 0:
+                    contstr += "Fixed";
+                    break;
+                case 1:
+                    contstr += "Search";
+                    break;
+                default:
+                    contstr += "External";
+                    break;
+            }
+            showValue = false;
+            break;
         case CONFIG::control::alsaAudioDevice:
             contstr += "ALSA audio device: ";
             if (addValue)
@@ -864,17 +902,6 @@ string DataText::resolveConfig(CommandBlock *getData, bool addValue)
             break;
     }
 
-    if(addValue)
-    {
-        if (yesno)
-        {
-            if (value_bool)
-                contstr += " - on";
-            else
-                contstr += " - off";
-            showValue = false;
-        }
-    }
     return ("Config " + contstr);
 }
 
@@ -928,16 +955,16 @@ string DataText::resolveBank(CommandBlock *getData, bool)
                 name = "ped with Bank ID " + to_string(kititem) + "  Root ID " + to_string(engine);
             contstr = "Swap" + name;
             break;
-        default:
-            contstr = "Unrecognised";
-            break;
-
         case BANK::control::selectRoot:
             contstr = name;
             break;
 
         case BANK::control::changeRootId:
             contstr = "Root ID changed " + to_string(engine) + " > " + to_string(value_int);
+            break;
+
+        default:
+            contstr = "Unrecognised";
             break;
     }
     return ("Bank " + contstr);
@@ -1209,7 +1236,6 @@ string DataText::resolvePart(CommandBlock *getData, bool addValue)
     bool kitType = (insert == TOPLEVEL::insert::kitGroup);
     int value_int = lrint(value);
     bool value_bool = YOSH::F2B(value);
-    bool yesno = false;
 
     if (control == UNUSED)
         return "Number of parts";
@@ -1367,6 +1393,7 @@ string DataText::resolvePart(CommandBlock *getData, bool addValue)
 
         case PART::control::drumMode:
             contstr = "Drum Mode";
+            yesno = true;
             break;
         case PART::control::kitMode:
             contstr = "Kit Mode ";
@@ -1436,66 +1463,79 @@ string DataText::resolvePart(CommandBlock *getData, bool addValue)
             break;
         case PART::control::volumeEnable:
             contstr = "Vol Enable";
+            yesno = true;
             break;
         case PART::control::panningWidth:
             contstr = "Pan Width";
             break;
         case PART::control::modWheelDepth:
-            contstr = "Mod Wheel Depth";
+            contstr = "Mod Wheel Range";
             break;
         case PART::control::exponentialModWheel:
-            contstr = "Exp Mod Wheel";
+            contstr = "Exponent Mod Wheel";
+            yesno = true;
             break;
         case PART::control::bandwidthDepth:
-            contstr = "Bandwidth depth";
+            contstr = "Bandwidth range";
             break;
         case PART::control::exponentialBandwidth:
-            contstr = "Exp Bandwidth";
+            contstr = "Exponent Bandwidth";
+            yesno = true;
             break;
         case PART::control::expressionEnable:
             contstr = "Expression Enable";
+            yesno = true;
             break;
         case PART::control::FMamplitudeEnable:
             contstr = "FM Amp Enable";
+            yesno = true;
             break;
         case PART::control::sustainPedalEnable:
             contstr = "Sustain Ped Enable";
+            yesno = true;
             break;
         case PART::control::pitchWheelRange:
             contstr = "Pitch Wheel Range";
             break;
         case PART::control::filterQdepth:
-            contstr = "Filter Q Depth";
+            contstr = "Filter Q Range";
             break;
         case PART::control::filterCutoffDepth:
-            contstr = "Filter Cutoff Depth";
+            contstr = "Filter Cutoff Range";
             break;
         case PART::control::breathControlEnable:
             yesno = true;
             contstr = "Breath Control";
+            yesno = true;
             break;
 
         case PART::control::resonanceCenterFrequencyDepth:
-            contstr = "Res Cent Freq Depth";
+            contstr = "Res Cent Freq Range";
             break;
         case PART::control::resonanceBandwidthDepth:
-            contstr = "Res Band Depth";
+            contstr = "Res Band Range";
             break;
 
         case PART::control::portamentoTime:
             contstr = "Time";
             break;
         case PART::control::portamentoTimeStretch:
-            contstr = "Tme Stretch";
+            contstr = "Time Stretch";
             break;
         case PART::control::portamentoThreshold:
-            contstr = "Threshold";
+            contstr = "Threshold Gate";
             break;
         case PART::control::portamentoThresholdType:
-            contstr = "Threshold Type";
+            contstr = "Threshold Gate Type ";
+            showValue = false;
+            if (value_int == 0)
+                contstr += ">= start";
+            else
+                contstr += "< end";
             break;
         case PART::control::enableProportionalPortamento:
             contstr = "Prop Enable";
+            yesno = true;
             break;
         case PART::control::proportionalPortamentoRate:
             contstr = "Prop Rate";
@@ -1505,6 +1545,7 @@ string DataText::resolvePart(CommandBlock *getData, bool addValue)
             break;
         case PART::control::receivePortamento:
             contstr = "Receive";
+            yesno = true;
             break;
 
         case PART::control::midiModWheel:
@@ -1558,7 +1599,8 @@ string DataText::resolvePart(CommandBlock *getData, bool addValue)
             contstr += textMsgBuffer.fetch(value_int);
             break;
         case PART::control::resetAllControllers:
-            contstr = "Clear controllers";
+            showValue = false;
+            contstr = "Cleared controllers";
             break;
 
         case PART::control::partBusy:
@@ -1575,17 +1617,6 @@ string DataText::resolvePart(CommandBlock *getData, bool addValue)
 
     }
 
-    if(addValue)
-    {
-        if (yesno)
-        {
-            if (value_bool)
-                contstr += " - on";
-            else
-                contstr += " - off";
-            showValue = false;
-        }
-    }
     return ("Part " + to_string(npart + 1) + kitnum + name + contstr);
 }
 
@@ -1639,9 +1670,11 @@ string DataText::resolveAdd(CommandBlock *getData, bool addValue)
 
         case ADDSYNTH::control::stereo:
             contstr = "Stereo";
+            yesno = true;
             break;
         case ADDSYNTH::control::randomGroup:
             contstr = "Rnd Grp";
+            yesno = true;
             break;
 
         case ADDSYNTH::control::dePop:
@@ -1677,8 +1710,6 @@ string DataText::resolveAddVoice(CommandBlock *getData, bool addValue)
     unsigned char kititem = getData->data.kit;
     unsigned char engine = getData->data.engine;
 
-    bool yesno = false;
-    bool value_bool = YOSH::F2B(value);
     int value_int = lrint(value);
     int nvoice;
     if (engine >= PART::engine::addMod1)
@@ -1700,6 +1731,7 @@ string DataText::resolveAddVoice(CommandBlock *getData, bool addValue)
             break;
         case ADDVOICE::control::bypassGlobalFilter:
             name = " Filter ";
+            yesno = true;
             break;
         case ADDVOICE::control::modulatorAmplitude:
             name = " Modulator Amp ";
@@ -1727,12 +1759,15 @@ string DataText::resolveAddVoice(CommandBlock *getData, bool addValue)
             break;
         case ADDVOICE::control::invertPhase:
             contstr = " Minus";
+            yesno = true;
             break;
         case ADDVOICE::control::enableAmplitudeEnvelope:
             contstr = " Amplitude Enable Env";
+            yesno = true;
             break;
         case ADDVOICE::control::enableAmplitudeLFO:
             contstr = " Amplitude Enable LFO";
+            yesno = true;
             break;
 
         case ADDVOICE::control::modulatorType:
@@ -1770,10 +1805,10 @@ string DataText::resolveAddVoice(CommandBlock *getData, bool addValue)
             break;
         case ADDVOICE::control::equalTemperVariation:
             contstr = "Eq T";
-            yesno = true;
             break;
         case ADDVOICE::control::baseFrequencyAs440Hz:
             contstr = "440Hz";
+            yesno = true;
             break;
         case ADDVOICE::control::octave:
             contstr = "Octave";
@@ -1795,9 +1830,11 @@ string DataText::resolveAddVoice(CommandBlock *getData, bool addValue)
             break;
         case ADDVOICE::control::enableFrequencyEnvelope:
             contstr = "Enable Env";
+            yesno = true;
             break;
         case ADDVOICE::control::enableFrequencyLFO:
             contstr = "Enable LFO";
+            yesno = true;
             break;
 
         case ADDVOICE::control::unisonFrequencySpread:
@@ -1819,23 +1856,29 @@ string DataText::resolveAddVoice(CommandBlock *getData, bool addValue)
             contstr = "Size";
             break;
         case ADDVOICE::control::unisonPhaseInvert:
-            contstr = "Invert";
+            showValue = false;
+            contstr = "Invert " + unisonPhase[value_int];
             break;
         case ADDVOICE::control::enableUnison:
             contstr = "Enable";
+            yesno = true;
             break;
 
         case ADDVOICE::control::bypassGlobalFilter:
             contstr = "Bypass Global";
+            yesno = true;
             break;
         case ADDVOICE::control::enableFilter:
             contstr = "Enable";
+            yesno = true;
             break;
         case ADDVOICE::control::enableFilterEnvelope:
             contstr = "Enable Env";
+            yesno = true;
             break;
         case ADDVOICE::control::enableFilterLFO:
             contstr = "Enable LFO";
+            yesno = true;
             break;
 
         case ADDVOICE::control::modulatorAmplitude:
@@ -1849,15 +1892,18 @@ string DataText::resolveAddVoice(CommandBlock *getData, bool addValue)
             break;
         case ADDVOICE::control::enableModulatorAmplitudeEnvelope:
             contstr = "Enable Env";
+            yesno = true;
             break;
 
         case ADDVOICE::control::modulatorDetuneFrequency:
             break;
         case ADDVOICE::control::modulatorFrequencyAs440Hz:
             contstr = "440Hz";
+            yesno = true;
             break;
         case ADDVOICE::control::modulatorDetuneFromBaseOsc:
             contstr = "Follow voice";
+            yesno = true;
             break;
         case ADDVOICE::control::modulatorOctave:
             contstr = "Octave";
@@ -1873,6 +1919,7 @@ string DataText::resolveAddVoice(CommandBlock *getData, bool addValue)
             break;
         case ADDVOICE::control::enableModulatorFrequencyEnvelope: // local, external
             contstr = "Enable Env";
+            yesno = true;
             break;
 
         case ADDVOICE::control::modulatorOscillatorPhase:
@@ -1894,9 +1941,11 @@ string DataText::resolveAddVoice(CommandBlock *getData, bool addValue)
             break;
         case ADDVOICE::control::enableVoice:
             contstr = " Enable";
+            yesno = true;
             break;
         case ADDVOICE::control::enableResonance:
             contstr = " Resonance Enable";
+            yesno = true;
             break;
         case ADDVOICE::control::voiceOscillatorPhase:
             contstr = " Osc Phase";
@@ -1920,17 +1969,6 @@ string DataText::resolveAddVoice(CommandBlock *getData, bool addValue)
             contstr = "Unrecognised";
     }
 
-    if(addValue)
-    {
-        if (yesno)
-        {
-            if (value_bool)
-                contstr += " - on";
-            else
-                contstr += " - off";
-            showValue = false;
-        }
-    }
     return ("Part " + to_string(npart + 1) + " Kit " + to_string(kititem + 1) + " Add Voice " + to_string(nvoice + 1) + name + contstr);
 }
 
@@ -1943,8 +1981,8 @@ string DataText::resolveSub(CommandBlock *getData, bool addValue)
     unsigned char kititem = getData->data.kit;
     unsigned char insert = getData->data.insert;
 
-    bool yesno = false;
-    bool value_bool = YOSH::F2B(value);
+    int value_int = int(value);
+
     if (insert == TOPLEVEL::insert::harmonicAmplitude || insert == TOPLEVEL::insert::harmonicPhaseBandwidth)
     {
         string Htype;
@@ -2004,10 +2042,10 @@ string DataText::resolveSub(CommandBlock *getData, bool addValue)
             break;
         case SUBSYNTH::control::equalTemperVariation:
             contstr = "Eq T";
-            yesno = true;
             break;
         case SUBSYNTH::control::baseFrequencyAs440Hz:
             contstr = "440Hz";
+            yesno = true;
             break;
         case SUBSYNTH::control::octave:
             contstr = "Octave";
@@ -2016,7 +2054,7 @@ string DataText::resolveSub(CommandBlock *getData, bool addValue)
             contstr = "Det type ";
             showValue = false;
             if (addValue)
-                contstr += detuneType [int(value)];
+                contstr += detuneType [value_int];
             break;
         case SUBSYNTH::control::coarseDetune:
             contstr = "Coarse Det";
@@ -2041,21 +2079,37 @@ string DataText::resolveSub(CommandBlock *getData, bool addValue)
             contstr = "Force H";
             break;
         case SUBSYNTH::control::overtonePosition:
-            contstr = "Position";
+            contstr = "Position " + subPadPosition[value_int];
+            showValue = false;
             break;
 
         case SUBSYNTH::control::enableFilter:
             contstr = "Enable";
+            yesno = true;
             break;
 
         case SUBSYNTH::control::filterStages:
             contstr = "Filt Stages";
             break;
         case SUBSYNTH::control::magType:
-            contstr = "Mag Type";
+            contstr = "Mag Type " + subMagType [value_int];
+            showValue = false;
             break;
         case SUBSYNTH::control::startPosition:
-            contstr = "Start";
+            contstr = "Start ";
+            showValue = false;
+            switch (value_int)
+            {
+                case 0:
+                    contstr += "Zero";
+                    break;
+                case 1:
+                    contstr += "Random";
+                    break;
+                case 2:
+                    contstr += "Maximum";
+                    break;
+            }
             break;
 
         case SUBSYNTH::control::clearHarmonics:
@@ -2065,6 +2119,7 @@ string DataText::resolveSub(CommandBlock *getData, bool addValue)
 
         case SUBSYNTH::control::stereo:
             contstr = "Stereo";
+            yesno = true;
             break;
 
         default:
@@ -2072,17 +2127,6 @@ string DataText::resolveSub(CommandBlock *getData, bool addValue)
             contstr = "Unrecognised";
     }
 
-    if(addValue)
-    {
-        if (yesno)
-        {
-            if (value_bool)
-                contstr += " - on";
-            else
-                contstr += " - off";
-            showValue = false;
-        }
-    }
     return ("Part " + to_string(npart + 1) + " Kit " + to_string(kititem + 1) + " SubSynth " + name + contstr);
 }
 
@@ -2096,8 +2140,7 @@ string DataText::resolvePad(CommandBlock *getData, bool addValue)
     unsigned char kititem = getData->data.kit;
     bool write = (type & TOPLEVEL::type::Write) > 0;
 
-    bool yesno = false;
-    bool value_bool = YOSH::F2B(value);
+    int value_int = int(value);
     string name = "";
     switch (control & 0x70)
     {
@@ -2149,10 +2192,10 @@ string DataText::resolvePad(CommandBlock *getData, bool addValue)
             break;
         case PADSYNTH::control::equalTemperVariation:
             contstr = "Eq T";
-            yesno = true;
             break;
         case PADSYNTH::control::baseFrequencyAs440Hz:
             contstr = "440Hz";
+            yesno = true;
             break;
         case PADSYNTH::control::octave:
             contstr = "Octave";
@@ -2184,7 +2227,8 @@ string DataText::resolvePad(CommandBlock *getData, bool addValue)
             contstr = "Force H";
             break;
         case PADSYNTH::control::overtonePosition:
-            contstr = "Position";
+            contstr = "Position " + subPadPosition[value_int];
+            showValue = false;
             break;
 
         case PADSYNTH::control::baseWidth:
@@ -2222,6 +2266,7 @@ string DataText::resolvePad(CommandBlock *getData, bool addValue)
             break;
         case PADSYNTH::control::autoscale:
             contstr = "Autoscale";
+            yesno = true;
             break;
 
         case PADSYNTH::control::harmonicBase:
@@ -2243,6 +2288,7 @@ string DataText::resolvePad(CommandBlock *getData, bool addValue)
 
         case PADSYNTH::control::stereo:
             contstr = "Stereo";
+            yesno = true;
             break;
 
         case PADSYNTH::control::dePop:
@@ -2266,17 +2312,6 @@ string DataText::resolvePad(CommandBlock *getData, bool addValue)
             contstr = "Unrecognised";
     }
 
-    if(addValue)
-    {
-        if (yesno)
-        {
-            if (value_bool)
-                contstr += " - on";
-            else
-                contstr += " - off";
-            showValue = false;
-        }
-    }
     string isPad = "";
 
     if (write && ((control >= PADSYNTH::control::bandwidth && control <= PADSYNTH::control::spectrumMode) || (control >= PADSYNTH::control::overtoneParameter1 && control <= PADSYNTH::control::sampleSize)))
@@ -2465,7 +2500,6 @@ string DataText::resolveResonance(CommandBlock *getData, bool addValue)
     unsigned char parameter = getData->data.parameter;
     bool write = (type & TOPLEVEL::type::Write) > 0;
 
-    bool yesno = false;
     string name;
     string isPad = "";
     if (engine == PART::engine::padSynth)
@@ -2544,17 +2578,7 @@ string DataText::resolveResonance(CommandBlock *getData, bool addValue)
             showValue = false;
             contstr = "Unrecognised";
     }
-    if(addValue)
-    {
-        if (yesno)
-        {
-            if (value > 0)
-                contstr += " - on";
-            else
-                contstr += " - off";
-            showValue = false;
-        }
-    }
+
     return ("Part " + to_string(npart + 1) + " Kit " + to_string(kititem + 1) + name + " Resonance " + contstr + isPad);
 }
 

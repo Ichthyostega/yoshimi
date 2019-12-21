@@ -1,6 +1,106 @@
-yoshimi 1.6.0.3
+yoshimi 1.6.1
 
-2019-11-12 Will.
+2019-12-15 Will
+* Minor text/info corrections and updates
+* Changed Anote, Afreq to refNote, refFreq
+  saved XML label NOT changed!
+* Set release version as 1.6.1
+
+2019-12-10 Will
+* Updated documentation.
+* Reinstated undocumented "zread" CLI time test.
+
+2019-12-02 Will
+* yoshimi.state auto-moved to yoshimi-0.state.
+* Updated local copy of user manual.
+* Set version as 1.6.1 rc1
+
+2019-12-01 Will
+* Found way to defer UUid message after setup.
+* Some final? cleanups to session management.
+
+2019-11-29 Will
+* State fully integrated in session management.
+* Jack session almost completly done.
+  Seem to have broken saving :(
+* Temporary fix for Jack session save.
+
+2019-11-28 Will
+* Began state machine for all session managment.
+* Default state done with lockin prevention.
+
+2019-11-27 Will
+* Added version numbering to the banks file.
+  This will be relevant with coming changes.
+* Reinstated instance control of Sample Rate.
+* Reinstated instance control of Buffer Size.
+* Reinstated instance control of Osc. Size.
+  These are actually needed for Jack session
+  control and startup state.
+* Rationalised state/session files.
+  Still not correct though :(
+  Placed too late in the startup sequence but
+  segfaults if put in the 'logical' place.
+
+2019-11-26 Will
+* Updated local copy of User Guide.
+* Removed test messages from ALSAEngine.cpp
+
+2019-11-25 Will
+* Performed major reoganisation of config files.
+  yoshimi.config only has base parameters
+  there is a new yoshimi-o.instance file
+  no instance files include base parameters
+  no state files include base paramters
+* Removed extra redundant config code.
+* Further refinements to startup config.
+* Fixed potential memory leak.
+* Small code cleanups.
+* Doc updates.
+
+2019-11-23 Will
+* ALSA search connects to all ports, not just 0.
+
+2019-11-23 Will
+* Implemented search feature for ALSA MIDI input.
+* Updated docs.
+* Updated local copy of User Guide.
+
+2019-11-21 Will
+* Removed redundant code.
+* Improved CLI bank info.
+
+2019-11-20 Will
+* CLI code refinements.
+
+2019-11-19 Will
+* Revised text reporting of on/off values.
+* Revised text reporting of integer/float values.
+* Further reporting improvements.
+* More CLI named entries (not PadSynth yet).
+* Updated local copy of user guide.
+
+2019-11-18 Will
+* Corrected some minor errors in CLI lists.
+* Updated local copy of user guide.
+* Removed redundtant CLI command.
+* Further updates to user guide.
+
+2019-11-15 Will
+* Applied experimental optinisations to OscilGenUI.
+* Minor correction to CLI info lists.
+* Further small adustment to OscilGenUI.
+  Confirmed OK on Raspberry Pi.
+* Revised CMakeLists.txt NEON changed to RasPi4.
+  (it never worked before anyway!)
+* Disabled all references to fl_line_style.
+  Now always solid lines, can't see dots and dashes
+  anyway, and they slowed down the raspberry pi.
+
+2019-11-13 Will
+* Revised CLI part controllers code and messages.
+
+2019-11-12 Will
 * Confirmed mxml fix for LV2.
 * Set bugfix version 1.6.0.3
 
