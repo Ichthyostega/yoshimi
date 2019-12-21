@@ -61,7 +61,7 @@ extern SynthEngine *firstSynth;
 
 
 void mainRegisterAudioPort(SynthEngine *s, int portnum);
-int mainCreateNewInstance(unsigned int forceId, bool loadState);
+int mainCreateNewInstance(unsigned int forceId);
 Config *firstRuntime = NULL;
 static int globalArgc = 0;
 static char **globalArgv = NULL;
@@ -89,7 +89,7 @@ void newBlock()
                 usleep(1000);
             // in case there is still an instance starting from elsewhere
             configuring = true;
-            mainCreateNewInstance(i, true);
+            mainCreateNewInstance(i);
             configuring = false;
         }
     }
@@ -235,12 +235,7 @@ static void *mainGuiThread(void *arg)
             if (!_synth->getRuntime().runSynth && _synth->getUniqueId() > 0)
             {
                 if (_synth->getRuntime().configChanged)
-                {
-                    size_t tmpRoot = _synth->ReadBankRoot();
-                    size_t tmpBank = _synth->ReadBank();
-                    _synth->getRuntime().loadConfig(); // restore old settings
-                    _synth->setRootBank(tmpRoot, tmpBank); // but keep current root and bank
-                }
+                    _synth->getRuntime().restoreConfig(_synth);
                 _synth->getRuntime().saveConfig();
                 unsigned int instanceID =  _synth->getUniqueId();
                 if (_client)
@@ -283,7 +278,7 @@ static void *mainGuiThread(void *arg)
         {
             int testInstance = startInstance &= 0x7f;
             configuring = true;
-            mainCreateNewInstance(testInstance, true);
+            mainCreateNewInstance(testInstance);
             configuring = false;
             startInstance = testInstance; // to prevent repeats!
         }
@@ -302,20 +297,15 @@ static void *mainGuiThread(void *arg)
     }
 
     if (firstRuntime->configChanged && (bShowGui | bShowCmdLine)) // don't want this if no cli or gui
-    {
-        size_t tmpRoot = firstSynth->ReadBankRoot();
-        size_t tmpBank = firstSynth->ReadBank();
-        firstRuntime->loadConfig(); // restore old settings
-        firstSynth->setRootBank(tmpRoot, tmpBank); // but keep current root and bank
-    }
+        firstSynth->getRuntime().restoreConfig(firstSynth);
 
-    firstRuntime->saveConfig();
+    firstRuntime->saveConfig(true);
     firstSynth->saveHistory();
     firstSynth->saveBanks();
     return NULL;
 }
 
-int mainCreateNewInstance(unsigned int forceId, bool loadState)
+int mainCreateNewInstance(unsigned int forceId)
 {
     MusicClient *musicClient = NULL;
     unsigned int instanceID;
@@ -345,16 +335,6 @@ int mainCreateNewInstance(unsigned int forceId, bool loadState)
     {
         synth->getRuntime().Log("Failed to start MusicIO");
         goto bail_out;
-    }
-     // TODO sort this out properly!
-     // it works, but is clunky :(
-    loadState = synth->getRuntime().loadDefaultState;
-    if (loadState)
-    {
-        std::string name = synth->getRuntime().defaultStateName;
-        if (instanceID > 0)
-            name = name + "-" + std::to_string(forceId);
-        synth->loadStateAndUpdate(name);
     }
 #ifdef GUI_FLTK
     if (synth->getRuntime().showGui)
@@ -508,7 +488,7 @@ int main(int argc, char *argv[])
     pthread_attr_t attr;
     sem_t semGui;
 
-    if (mainCreateNewInstance(0, false) == -1)
+    if (mainCreateNewInstance(0) == -1)
     {
         goto bail_out;
     }

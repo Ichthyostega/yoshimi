@@ -35,6 +35,7 @@
 #ifdef GUI_FLTK
 #include "FL/Fl.H"
 #endif
+#include "globals.h"
 
 using std::string;
 
@@ -56,17 +57,16 @@ class Config
 
         void clearPresetsDirlist(void);
 
+        bool saveConfig(bool master = false);
+        bool loadConfig(void);
+        void restoreConfig(SynthEngine *_synth);
+        bool saveSessionData(string savefile);
+        bool restoreSessionData(string sessionfile);
+        bool restoreJsession();
+        void setJackSessionSave(int event_type, string session_file);
+
         string testCCvalue(int cc);
         string masterCCtest(int cc);
-        bool saveConfig(void);
-        bool loadConfig(void);
-        bool saveState(const string statefile)  { return saveSessionData(statefile); }
-        bool loadState(const string statefile)
-            { return restoreSessionData(statefile, false); }
-        bool stateRestore(void)
-            { return restoreSessionData(StateFile, false); }
-        bool restoreJsession(void);
-        void setJackSessionSave(int event_type, string session_file);
 
         static void sigHandler(int sig);
         void setInterruptActive(void);
@@ -82,12 +82,12 @@ class Config
         string        userHome;
         string        ConfigDir;
         string        defaultStateName;
+        string        defaultSession;
         string        ConfigFile;
         string        paramsLoad;
         string        instrumentLoad;
         string        midiLearnLoad;
         string        rootDefine;
-        bool          restoreState;
         bool          stateChanged;
         string        StateFile;
         bool          restoreJackSession;
@@ -114,6 +114,7 @@ class Config
 
         audio_drivers audioEngine;
         midi_drivers  midiEngine;
+        int           alsaMidiType;
         string        audioDevice;
         string        midiDevice;
 
@@ -128,6 +129,7 @@ class Config
         string        nameTag;
 
         bool          loadDefaultState;
+        int           sessionStage;
         int           Interpolation;
         string        presetsDirlist[MAX_PRESETS];
         std::list<string> lastfileseen;
@@ -214,8 +216,6 @@ class Config
         bool extractBaseParameters(XMLwrapper *xml);
         bool extractConfigData(XMLwrapper *xml);
         void addConfigXML(XMLwrapper *xml);
-        bool saveSessionData(string savefile);
-        bool restoreSessionData(string sessionfile, bool startup);
         int SSEcapability(void);
         void AntiDenormals(bool set_daz_ftz);
         void saveJackSession(void);
@@ -226,6 +226,7 @@ class Config
         int jsessionSave;
         const string programcommand;
         string jackSessionDir;
+        string baseConfig;
 
         SynthEngine *synth;
         bool bRuntimeSetupCompleted;
