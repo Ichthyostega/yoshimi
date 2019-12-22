@@ -1,5 +1,6 @@
-yoshimi (1.6.1-1) UNRELEASED; urgency=medium
+yoshimi (1.6.1-1) unstable; urgency=medium
 
+  * Team upload
   * New upstream version 1.6.1
   * d/copyright:
     + Change license for desktop/metainfo/* and Util/YoshimiSplash.svg to CC-BY-4.0
