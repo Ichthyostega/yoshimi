@@ -1,6 +1,7 @@
 From: Dennis Braun <d_braun@kabelmail.de>
 Date: Sat, 21 Dec 2019 10:51:20 +0100
 Subject: Fix license name of yoshimi.appdata.xml
+Forwarded: https://github.com/Yoshimi/yoshimi/pull/75
 
 --- a/desktop/metainfo/yoshimi.appdata.xml
 +++ b/desktop/metainfo/yoshimi.appdata.xml
