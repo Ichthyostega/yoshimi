@@ -2,7 +2,7 @@
 #   CMakeLists.txt
 #
 #   Copyright 2009-2011, Alan Calvert
-#   Copyright 2014-2019, Will Godfrey & others
+#   Copyright 2014-2020, Will Godfrey & others
 #
 #   This file is part of yoshimi, which is free software: you can
 #   redistribute it and/or modify it under the terms of the GNU General
@@ -41,7 +41,7 @@ add_definitions(-Wextra)
 add_definitions(-Wno-vla) # Nothing wrong with variable length arrays
 # ^^^ comment these out on release pushes
 
-set (YOSHIMI_VERSION "1.6.0.3")
+set (YOSHIMI_VERSION "1.7.0 rc7")
 
 add_definitions (-DMIN_CONFIG_MAJOR=1)
 add_definitions (-DMIN_CONFIG_MINOR=6)
@@ -84,7 +84,7 @@ option (BuildFor0ld_X86 "Build for legacy x86 system" OFF)
 
 option (BuildForAMD_X86_64 "Build for AMD x86_64 system" OFF)
 option (BuildForCore2_X86_64 "Build for Intel Core2 x86_64 system" OFF)
-option (BuildForNEON "Build for ARM Cortex A9 system" OFF)
+option (BuildForRasPi4 "Build for ARM Cortex A9 system" OFF)
 option (BuildForThisCPU "Build for presently running system" OFF)
 option (BuildForDebug "Debug build without optimisation. Enable gdb debugging support" OFF)
 
@@ -113,9 +113,9 @@ set (BuildOptions_X86_64Core2
     CACHE STRING "X86_64 compiler options"
 )
 
-set (BuildOptions_NEON
-    "-march=armv7-a -mfloat-abi=hard -mfpu=neon -mcpu=cortex-a9 -mtune=cortex-a9 -pipe -mvectorize-with-neon-quad -funsafe-loop-optimizations"
-    CACHE STRING "Cortex_a9 compiler options"
+set (BuildOptions_RasPi4
+    "-march=native -mfloat-abi=hard -mfpu=vfp -mcpu=cortex-a72 -mtune=cortex-a72 -pipe -mvectorize-with-neon-quad -funsafe-loop-optimizations"
+    CACHE STRING "Raspberry Pi V4 compiler options"
 )
 
 set (BuildOptionsThisCPU

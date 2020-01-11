@@ -637,8 +637,7 @@ paramsui->Show(TOPLEVEL::XML::Scale);}
             label {Save as &Default}
             callback {//
                 string name = synth->getRuntime().defaultStateName;
-                if (instance > 0)
-                    name += ("-" + to_string(instance));
+                name += ("-" + to_string(instance));
                 send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate, MAIN::control::saveNamedState, 0, TOPLEVEL::type::Integer, TOPLEVEL::section::main, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(name + ".state"));}
             tooltip {Save as default state (if load default checked)} xywh {0 0 34 21} labelsize 12
           }
@@ -1005,7 +1004,7 @@ ZynAddSubFX}
           label {Copyright 2002-2009, Nasca O. Paul and others
 Copyright 2009-2011, Alan Calvert
 Copyright 2012-2013, Jeremy Jongepier and others
-Copyright 2014-2018, Will Godfrey and others
+Copyright 2014-2019, Will Godfrey and others
 LV2 plugin Copyright 2014, Andrew Deryabin
 Splash Image Copyright 2017, Jesper Lloyd}
           xywh {25 90 315 91} color 51 selection_color 30 labelfont 13 labelsize 11

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Copyright 2016-2019 Yoshimi project <willgodfrey@musically.me.uk> -->
+<!-- Copyright 2016-2020 Yoshimi project <willgodfrey@musically.me.uk> -->
 <component type="desktop">
   <id>yoshimi.desktop</id>
-  <metadata_license>CC-4.0</metadata_license>
+  <metadata_license>CC-BY-4.0</metadata_license>
   <project_license>GPL-2.0+</project_license>
   <name>Yoshimi</name>
   <summary>A Software Synthesizer for Linux</summary>
@@ -15,7 +15,7 @@
     </p>
   </description>
   <releases>
-​    <release version="1.6.0" date="2019-09-01" />
+​    <release version="1.7.0" date="2020-01-10" />
 ​  </releases>
   <provides>
     <binary>yoshimi</binary>
@@ -23,7 +23,7 @@
 
   <screenshots>
     <screenshot type="default">
-       <image>https://a.fsdn.com/con/app/proj/yoshimi/screenshots/Main.png</image>
+       <image>https://a.fsdn.com/con/app/proj/yoshimi/screenshots/Front.png</image>
        <caption>The main window showing Yoshimi running</caption>
     </screenshot>
     <screenshot>
@@ -36,5 +36,4 @@
     </screenshot>
   </screenshots>
   <url type="homepage">https://sourceforge.net/projects/yoshimi/</url>
-  <updatecontact>willgodfrey@musically.me.uk</updatecontact>
 </component>

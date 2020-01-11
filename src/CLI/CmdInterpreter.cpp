@@ -1370,18 +1370,21 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
 
 int CmdInterpreter::midiControllers(Parser& input, unsigned char controlType)
 {
+    if (input.isAtEnd())
+        return REPLY::done_msg;
     int value = -1;
     int cmd = -1;
+    bool isWrite = (controlType == TOPLEVEL::type::Write);
+
     if (input.matchnMove(2, "volume"))
     {
-        value = input.toggle();
+        value = !(input.toggle() == 0);
         cmd = PART::control::volumeEnable;
-
-        if (value == -1)
-        {
-            value = string2int127(input);
-            cmd = PART::control::volumeRange;
-        }
+    }
+    if ((cmd == -1) && input.matchnMove(2, "VRange"))
+    {
+        value = string2int127(input);
+        cmd = PART::control::volumeRange;
     }
     if ((cmd == -1) && input.matchnMove(2, "pan"))
     {
@@ -1390,27 +1393,22 @@ int CmdInterpreter::midiControllers(Parser& input, unsigned char controlType)
     }
     if ((cmd == -1) && input.matchnMove(2, "modwheel"))
     {
-        value = input.toggle();
+        value = (input.toggle() == 1);
         cmd = PART::control::exponentialModWheel;
-
-        if (value == -1)
-        {
-            value = string2int127(input);
-            cmd = PART::control::modWheelDepth;
-        }
+    }
+    if ((cmd == -1) && input.matchnMove(2, "mrange"))
+    {
+        value = string2int127(input);
+        cmd = PART::control::modWheelDepth;
     }
     if ((cmd == -1) && input.matchnMove(2, "expression"))
     {
-        value = input.toggle();
-        if (value == -1)
-            return REPLY::value_msg;
+        value = !(input.toggle() == 0);
         cmd = PART::control::expressionEnable;
     }
     if ((cmd == -1) && input.matchnMove(2, "sustain"))
     {
-        value = input.toggle();
-        if (value == -1)
-            return REPLY::value_msg;
+        value = !(input.toggle() == 0);
         cmd = PART::control::sustainPedalEnable;
     }
     if ((cmd == -1) && input.matchnMove(2, "pwheel"))
@@ -1420,37 +1418,32 @@ int CmdInterpreter::midiControllers(Parser& input, unsigned char controlType)
     }
     if ((cmd == -1) && input.matchnMove(2, "breath"))
     {
-        value = input.toggle();
-        if (value == -1)
-            return REPLY::value_msg;
+        value = !(input.toggle() == 0);
         cmd = PART::control::breathControlEnable;
     }
-    if ((cmd == -1) && input.matchnMove(2, "fcutoff"))
+    if ((cmd == -1) && input.matchnMove(2, "cutoff"))
     {
         value = string2int127(input);
         cmd = PART::control::filterCutoffDepth;
     }
-    if ((cmd == -1) && input.matchnMove(2, "fq"))
+    if ((cmd == -1) && input.matchnMove(2, "q"))
     {
         value = string2int127(input);
         cmd = PART::control::filterQdepth;
     }
-    if ((cmd == -1) && input.matchnMove(2, "bandwidth"))
+    if ((cmd == -1) && input.matchnMove(3, "bandwidth"))
     {
-        value = input.toggle();
+        value = (input.toggle() == 1);
         cmd = PART::control::exponentialBandwidth;
-
-        if (value == -1)
-        {
-            value = string2int127(input);
-            cmd = PART::control::bandwidthDepth;
-        }
+    }
+    if ((cmd == -1) && input.matchnMove(3, "barange"))
+    {
+        value = string2int127(input);
+        cmd = PART::control::bandwidthDepth;
     }
     if ((cmd == -1) && input.matchnMove(2, "fmamplitude"))
     {
-        value = input.toggle();
-        if (value == -1)
-            return REPLY::value_msg;
+        value = !(input.toggle() == 0);
         cmd = PART::control::FMamplitudeEnable;
     }
     if ((cmd == -1) && input.matchnMove(2, "rcenter"))
@@ -1467,40 +1460,37 @@ int CmdInterpreter::midiControllers(Parser& input, unsigned char controlType)
     // portamento controls
     if (cmd == -1)
     {
-        if (input.matchnMove(2, "proportional"))
+        if (input.matchnMove(2, "portamento"))
         {
-            value = input.toggle();
-            if (value == -1)
-                return REPLY::value_msg;
+            value = !(input.toggle() == 0);
             cmd = PART::control::receivePortamento;
         }
-        else if(input.matchnMove(2, "psweep"))
+        else if(input.matchnMove(2, "ptime"))
         {
             value = string2int127(input);
             cmd = PART::control::portamentoTime;
         }
-        else if (input.matchnMove(2, "pratio"))
+        else if (input.matchnMove(2, "pdownup"))
         {
             value = string2int127(input);
             cmd = PART::control::portamentoTimeStretch;
         }
-        else if (input.matchnMove(2, "pdifference"))
+        else if (input.matchnMove(2, "pgate"))
         {
             value = string2int127(input);
             cmd = PART::control::portamentoThreshold;
         }
-        else if (input.matchnMove(2, "pinvert"))
+        else if (input.matchnMove(2, "pform"))
         {
-            value = input.toggle();
-            if (value == -1)
-                return REPLY::value_msg;
+            if (input.matchnMove(1, "start"))
+                value = 0;
+            else if (input.matchnMove(1, "end"))
+                value = 1;
             cmd = PART::control::portamentoThresholdType;
         }
         else if (input.matchnMove(2, "pproportional"))
         {
-            value = input.toggle();
-            if (value == -1)
-                return REPLY::value_msg;
+            value = (input.toggle() == 1);
             cmd = PART::control::enableProportionalPortamento;
         }
         else if (input.matchnMove(2, "pextent"))
@@ -1508,7 +1498,7 @@ int CmdInterpreter::midiControllers(Parser& input, unsigned char controlType)
             value = string2int127(input);
             cmd = PART::control::proportionalPortamentoRate;
         }
-        else if (input.matchnMove(2, "poffset"))
+        else if (input.matchnMove(2, "prange"))
         {
             value = string2int127(input);
             cmd = PART::control::proportionalPortamentoDepth;
@@ -1517,47 +1507,51 @@ int CmdInterpreter::midiControllers(Parser& input, unsigned char controlType)
 
     if ((cmd == -1) && input.matchnMove(2, "clear"))
     {
+        if (isWrite)
+            return REPLY::writeOnly_msg;
         value = 0;
         cmd = PART::control::resetAllControllers;
     }
 
     // midi controllers
-    if (cmd == -1)
+    if (cmd == -1 && input.matchnMove(1, "e"))
     {
-        if (input.matchnMove(3, "moemulate"))
+        if (input.matchnMove(1, "modulation"))
         {
             value = string2int127(input);
             cmd = PART::control::midiModWheel;
         }
-        else if (input.matchnMove(3, "exemulate"))
+        else if (input.matchnMove(1, "expression"))
         {
             value = string2int127(input);
             cmd = PART::control::midiExpression;
         }
-        else if (input.matchnMove(3, "bremulate"))
+        else if (input.matchnMove(2, "breath"))
         {
             value = string2int127(input);
             cmd = PART::control::midiBreath;
         }
-        else if (input.matchnMove(3, "fcemulate"))
+        else if (input.matchnMove(1, "cutoff"))
         {
             value = string2int127(input);
             cmd = PART::control::midiFilterCutoff;
         }
-        else if (input.matchnMove(3, "fqemulate"))
+        else if (input.matchnMove(1, "q"))
         {
             value = string2int127(input);
             cmd = PART::control::midiFilterQ;
         }
-        else if (input.matchnMove(3, "baemulate"))
+        else if (input.matchnMove(2, "bandwidth"))
         {
             value = string2int127(input);
             cmd = PART::control::midiBandwidth;
         }
     }
 
+    if ( value == -1 && controlType != TOPLEVEL::type::Write)
+        value = 0;
     if (cmd > -1)
-        return sendNormal( synth, 0, value, controlType, cmd, npart);
+        return sendNormal(synth, 0, value, controlType, cmd, npart);
     return REPLY::available_msg;
 }
 
@@ -1714,24 +1708,14 @@ int CmdInterpreter::partCommonControls(Parser& input, unsigned char controlType)
             {
                 if (input.matchnMove(1, "Position"))
                 {
-                    if (input.matchnMove(2, "harmonic"))
-                        value = 0;
-                    else if(input.matchnMove(2, "usine"))
-                        value = 1;
-                    else if(input.matchnMove(2, "lsine"))
-                        value = 2;
-                    else if(input.matchnMove(2, "upower"))
-                        value = 3;
-                    else if(input.matchnMove(2, "lpower"))
-                        value = 4;
-                    else if(input.matchnMove(2, "sine"))
-                        value = 5;
-                    else if(input.matchnMove(2, "power"))
-                        value = 6;
-                    else if(input.matchnMove(2, "shift"))
-                        value = 7;
+                    if (controlType == TOPLEVEL::type::Read)
+                        value = 1; // dummy value
                     else
-                        return REPLY::range_msg;
+                    {
+                        value = stringNumInList(string{input}.substr(0, 2), subPadPosition, 2);
+                        if (value == -1)
+                            return REPLY::range_msg;
+                    }
                     cmd = SUBSYNTH::control::overtonePosition;
                 }
                 else
@@ -3159,6 +3143,8 @@ int CmdInterpreter::commandConfig(Parser& input, unsigned char controlType)
     unsigned char action = 0;
     unsigned char miscmsg = UNUSED;
 
+    if (input.isAtEnd())
+        return REPLY::done_msg; // someone just came in for a look :)
     if (input.matchnMove(1, "oscillator"))
     {
         command = CONFIG::control::oscillatorSize;
@@ -3312,7 +3298,19 @@ int CmdInterpreter::commandConfig(Parser& input, unsigned char controlType)
 
     else if (input.matchnMove(2, "alsa"))
     {
-        if (input.matchnMove(1, "midi"))
+        if (input.matchnMove(1, "type"))
+        {
+            command = CONFIG::control::alsaMidiType;
+            if (input.matchnMove(1, "fixed"))
+                value = 0;
+            else if (input.matchnMove(1, "search"))
+                value = 1;
+            else if (input.matchnMove(1, "external"))
+                value = 2;
+            else
+                return REPLY::value_msg;
+        }
+        else if (input.matchnMove(1, "midi"))
         {
             command = CONFIG::control::alsaMidiSource;
             action = TOPLEVEL::action::lowPrio;
@@ -3424,7 +3422,11 @@ int CmdInterpreter::commandConfig(Parser& input, unsigned char controlType)
         else if (input.lineEnd(controlType))
             return REPLY::value_msg;
         else
+        {
             value = string2int(input);
+            if (value > 128)
+                value = 128;
+        }
     }
     else if (input.matchnMove(1, "quiet"))
     {
@@ -3515,13 +3517,13 @@ int CmdInterpreter::commandScale(Parser& input, unsigned char controlType)
         int max = 127;
         if (input.matchnMove(2, "frequency"))
         {
-            command = SCALES::control::Afrequency;
+            command = SCALES::control::refFrequency;
             min = 1;
             max = 20000;
             controlType &= ~TOPLEVEL::type::Integer; // float
         }
         else if(input.matchnMove(2, "note"))
-            command = SCALES::control::Anote;
+            command = SCALES::control::refNote;
         else if(input.matchnMove(1, "invert"))
         {
             command = SCALES::control::invertScale;
@@ -3838,21 +3840,15 @@ int CmdInterpreter::addVoice(Parser& input, unsigned char controlType)
                     cmd = ADDVOICE::control::unisonVibratoSpeed;
                 else if(input.matchnMove(1, "invert"))
                 {
-                    if (input.matchnMove(1, "none"))
-                        value = 0;
-                    else if (input.matchnMove(1, "random"))
-                        value = 1;
-                    else if (input.matchnMove(1, "half"))
-                        value = 2;
-                    else if (input.matchnMove(1, "third"))
-                        value = 3;
-                    else if (input.matchnMove(1, "quarter"))
-                        value = 4;
-                    else if (input.matchnMove(1, "fifth"))
-                        value = 5;
+                    if (controlType == TOPLEVEL::type::Read)
+                        value = 1; // dummy value
                     else
-                        return REPLY::value_msg;
-                    cmd = ADDVOICE::control::unisonPhaseInvert;
+                    {
+                        value = stringNumInList(string{input}.substr(0, 1), unisonPhase, 1);
+                        if (value == -1)
+                            return REPLY::range_msg;
+                    }
+                     cmd = ADDVOICE::control::unisonPhaseInvert;
                 }
             }
             if (cmd == -1)
@@ -3956,17 +3952,36 @@ int CmdInterpreter::subSynth(Parser& input, unsigned char controlType)
     int cmd = -1;
     if (input.matchnMove(2, "harmonic"))
     {
+        int value = -1;
         if (input.matchnMove(1, "stages"))
+        {
             cmd = SUBSYNTH::control::filterStages;
+            value = string2int(input);
+        }
         else if (input.matchnMove(1, "mag"))
+        {
             cmd = SUBSYNTH::control::magType;
+            if (controlType == TOPLEVEL::type::Write)
+            {
+                string name = string{input}.substr(0, 2);
+                value = stringNumInList(name, subMagType, 2);
+            }
+        }
         else if (input.matchnMove(1, "position"))
+        {
             cmd = SUBSYNTH::control::startPosition;
+            if (input.matchnMove(1, "Zero"))
+                value = 0;
+            else if (input.matchnMove(1, "Random"))
+                value = 1;
+            else if (input.matchnMove(1, "Maximum"))
+                value = 2;
+        }
         if (cmd != -1)
         {
-            if (input.lineEnd(controlType))
+            if (value < 0 && controlType == TOPLEVEL::type::Write)
                 return REPLY::value_msg;
-            return sendNormal( synth, 0, string2int(input), controlType, cmd, npart, kitNumber, PART::engine::subSynth);
+            return sendNormal( synth, 0, value, controlType, cmd, npart, kitNumber, PART::engine::subSynth);
         }
 
         int control = -1;
@@ -4703,7 +4718,7 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
             {
                 if (!readControl(synth, 0, CONFIG::control::showEnginesTypes, TOPLEVEL::section::config))
                 {
-                    synth->getRuntime().Log("Instrument engine aand type info must be enabled");
+                    synth->getRuntime().Log("Instrument engine and type info must be enabled");
                     return REPLY::done_msg;
                 }
                 if(instrumentGroup.empty())
@@ -5039,41 +5054,60 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
         return REPLY::done_msg;
     }
 
- // these must all be highest (relevant) bit first
-    if (bitTest(context, LEVEL::Config))
-        return commandConfig(input, controlType);
-    if (bitTest(context, LEVEL::Bank))
-        return commandBank(input, controlType);
-    if (bitTest(context, LEVEL::Scale))
-        return commandScale(input, controlType);
-    if (bitTest(context, LEVEL::Envelope))
-        return envelopeSelect(input, controlType);
-    if (bitTest(context, LEVEL::Filter))
-        return filterSelect(input, controlType);
-    if (bitTest(context, LEVEL::LFO))
-        return LFOselect(input, controlType);
-    if (bitTest(context, LEVEL::Resonance))
-        return resonance(input, controlType);
-    if (bitTest(context, LEVEL::Oscillator))
-        return waveform(input, controlType);
-    if (bitTest(context, LEVEL::AddMod))
-        return modulator(input, controlType);
-    if (bitTest(context, LEVEL::AddVoice))
-        return addVoice(input, controlType);
-    if (bitTest(context, LEVEL::AddSynth))
-        return addSynth(input, controlType);
-    if (bitTest(context, LEVEL::SubSynth))
-        return subSynth(input, controlType);
-    if (bitTest(context, LEVEL::PadSynth))
-        return padSynth(input, controlType);
-    if (bitTest(context, LEVEL::MControl))
-        return midiControllers(input, controlType);
-    if (bitTest(context, LEVEL::Part))
-        return commandPart(input, controlType);
-    if (bitTest(context, LEVEL::Vector))
-        return commandVector(input, controlType);
-    if (bitTest(context, LEVEL::Learn))
-        return commandMlearn(input, controlType);
+    switch (bitFindHigh(context))
+    {
+        case LEVEL::Config:
+            return commandConfig(input, controlType);
+            break;
+        case LEVEL::Bank:
+            return commandBank(input, controlType);
+            break;
+        case LEVEL::Scale:
+            return commandScale(input, controlType);
+            break;
+        case LEVEL::Envelope:
+            return envelopeSelect(input, controlType);
+            break;
+        case LEVEL::Filter:
+            return filterSelect(input, controlType);
+            break;
+        case LEVEL::LFO:
+            return LFOselect(input, controlType);
+            break;
+        case LEVEL::Resonance:
+            return resonance(input, controlType);
+            break;
+        case LEVEL::Oscillator:
+            return waveform(input, controlType);
+            break;
+        case LEVEL::AddMod:
+            return modulator(input, controlType);
+            break;
+        case LEVEL::AddVoice:
+            return addVoice(input, controlType);
+            break;
+        case LEVEL::AddSynth:
+            return addSynth(input, controlType);
+            break;
+        case LEVEL::SubSynth:
+            return subSynth(input, controlType);
+            break;
+        case LEVEL::PadSynth:
+            return padSynth(input, controlType);
+            break;
+        case LEVEL::MControl:
+            return midiControllers(input, controlType);
+            break;
+        case LEVEL::Part:
+            return commandPart(input, controlType);
+            break;
+        case LEVEL::Vector:
+            return commandVector(input, controlType);
+            break;
+        case LEVEL::Learn:
+            return commandMlearn(input, controlType);
+            break;
+    }
 
     if (input.matchnMove(3, "mono"))
     {
@@ -5427,19 +5461,6 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
                 return REPLY::done_msg;
             }
             return Reply{commandGroup(input)};
-        }
-        else if (input.matchnMove(1, "type"))
-        {
-            synth->getRuntime().Log("Instrument Types:");
-            int idx = 0;
-            string name = type_list[idx];
-            while ( name != "end")
-            {
-                synth->getRuntime().Log(name);
-                ++ idx;
-                name = type_list[idx];
-            }
-            return Reply::DONE;
         }
         return Reply{commandList(input)};
     }
@@ -5972,6 +5993,96 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
         if  (input.matchnMove(1, "default"))
             return sendNormal(synth, TOPLEVEL::action::lowPrio, 0, TOPLEVEL::type::Write, PART::control::defaultInstrumentCopyright, TOPLEVEL::section::part1 + npart, UNUSED, UNUSED, UNUSED, 1);
         return Reply::what("save");
+    }
+
+    if (input.matchnMove(2, "zread"))
+    {
+        /*
+         * This is a very specific test for reading values and is intended to measure
+         * the time these calls take. For that reason the return echos to the CLI and
+         * GUI are suppressed, and all results are sent to the CLI only.
+         *
+         * It is only the selection time we are measuring, and that the correct
+         * value is returned.
+         *
+         * The limit to the number of repeats is INT max. Using high repeat numbers
+         * reduces the effect of the processing overhead outside the call loop itself.
+         */
+
+        std::cout << "here" << std::endl;
+
+        // repeats, control, part, kit, engine, insert, parameter, miscmsg
+        float result;
+        unsigned char control, part;
+        unsigned char kit = UNUSED;
+        unsigned char engine = UNUSED;
+        unsigned char insert = UNUSED;
+        unsigned char parameter = UNUSED;
+        unsigned char miscmsg = UNUSED;
+        int repeats;
+        if (input.isAtEnd())
+            return REPLY::value_msg;
+        repeats = string2int(input);
+        if (repeats < 1)
+            repeats = 1;
+        input.skipChars();
+        if (input.isAtEnd())
+            return REPLY::value_msg;
+        control = string2int(input);
+        input.skipChars();
+        if (input.isAtEnd())
+            return REPLY::value_msg;
+        part = string2int(input);
+        input.skipChars();
+        if (!input.isAtEnd())
+        {
+            kit = string2int(input);
+            input.skipChars();
+            if (!input.isAtEnd())
+            {
+                engine = string2int(input);
+                input.skipChars();
+                if (!input.isAtEnd())
+                {
+                    insert = string2int(input);
+                    input.skipChars();
+                    if (!input.isAtEnd())
+                    {
+                        parameter = string2int(input);
+                        input.skipChars();
+                        if (!input.isAtEnd())
+                            miscmsg = string2int(input);
+                    }
+                }
+            }
+        }
+
+        CommandBlock putData;
+        putData.data.value.F = 0;
+        putData.data.control = control;
+        putData.data.part = part;
+        putData.data.kit = kit;
+        putData.data.engine = engine;
+        putData.data.insert = insert;
+        putData.data.parameter = parameter;
+        putData.data.miscmsg = miscmsg;
+        putData.data.type = 0;
+        putData.data.source = 0;
+        struct timeval tv1, tv2;
+        gettimeofday(&tv1, NULL);
+        for (int i = 0; i < repeats; ++ i)
+            result = synth->interchange.readAllData(&putData);
+        gettimeofday(&tv2, NULL);
+
+        if (tv1.tv_usec > tv2.tv_usec)
+        {
+            tv2.tv_sec--;
+            tv2.tv_usec += 1000000;
+            }
+        float actual = (tv2.tv_sec - tv1.tv_sec) *1000000 + (tv2.tv_usec - tv1.tv_usec);
+        std::cout << "result " << result << std::endl;
+        std::cout << "Loops " << repeats << "  Total time " << actual << "uS" << "  average call time " << actual/repeats * 1000.0f << "nS" << std::endl;
+        return REPLY::done_msg;
     }
 
     // legacyCLIaccess goes here

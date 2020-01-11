@@ -4,6 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2009 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
+    Copyright 2020 Kristian Amlie
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -19,7 +20,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is derivative of ZynAddSubFX original code, modified April 2011
+    This file is derivative of ZynAddSubFX original code
 */
 
 #include <cstring>
@@ -38,7 +39,6 @@ SVFilter::SVFilter(unsigned char Ftype, float Ffreq, float Fq,
     stages(Fstages),
     freq(Ffreq),
     q(Fq),
-    gain(1.0f),
     needsinterpolation(0),
     firsttime(1),
     synth(_synth)
@@ -122,13 +122,6 @@ void SVFilter::setq(float q_)
 void SVFilter::settype(int type_)
 {
     type = type_;
-    computefiltercoefs();
-}
-
-
-void SVFilter::setgain(float dBgain)
-{
-    gain = dB2rap(dBgain);
     computefiltercoefs();
 }
 

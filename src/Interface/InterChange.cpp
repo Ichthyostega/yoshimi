@@ -2,6 +2,7 @@
     InterChange.cpp - General communications
 
     Copyright 2016-2019, Will Godfrey & others
+    Copyright 2020 Kristian Amlie
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -353,6 +354,7 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
     getData->data.miscmsg = NO_MSG; // this may be reset later
     unsigned int tmp;
     std::string name;
+    bool learnUpdate = false;
 
     int switchNum = npart;
     if (control == TOPLEVEL::control::textMessage)
@@ -458,7 +460,7 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
                             else
                                 text += std::to_string(map);
                         }
-                        getData->data.kit = synth->microtonal.PAnote;
+                        getData->data.kit = synth->microtonal.PrefNote;
                         getData->data.engine = synth->microtonal.Pfirstkey;
                         getData->data.insert = synth->microtonal.Pmiddlenote;
                         getData->data.parameter |= synth->microtonal.Plastkey; // need to keep top bit
@@ -666,12 +668,16 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
                     if (synth->loadStateAndUpdate(text))
                     {
                         string name = synth->getRuntime().ConfigDir + "/yoshimi";
-                        if (synth != firstSynth)
-                            name += ("-" + to_string(synth->getUniqueId()));
+                        name += ("-" + to_string(synth->getUniqueId()));
                         name += ".state";
                         if ((text != name)) // never include default state
                             synth->addHistory(text, TOPLEVEL::XML::State);
                         text = "ed " + text;
+                        learnUpdate = true;
+                        /*
+                         * This needs improving. We should only set it
+                         * when the state file contains a learn list.
+                         */
                     }
                     else
                         text = " FAILED " + text;
@@ -683,8 +689,7 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
                     if (synth->saveState(filename))
                     {
                         string name = synth->getRuntime().ConfigDir + "/yoshimi";
-                        if (synth != firstSynth)
-                            name += ("-" + to_string(synth->getUniqueId()));
+                        name += ("-" + to_string(synth->getUniqueId()));
                         name += ".state";
                         if ((text != name)) // never include default state
                             synth->addHistory(filename, TOPLEVEL::XML::State);
@@ -696,7 +701,7 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
                     break;
                 }
                 case MAIN::control::loadFileFromList:
-                    break; // do nothimng here
+                    break; // do nothing here
                 case MAIN::control::exportPadSynthSamples:
                 {
                     unsigned char partnum = insert;
@@ -1286,6 +1291,8 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
             getData->data.miscmsg = textMsgBuffer.push(synth->microtonal.Pcomment);
             ok &= returnsBuffer->write(getData->bytes);
         }
+        if (synth->getRuntime().showGui && learnUpdate)
+            synth->midilearn.updateGui();
 #endif
         if (!ok)
             synth->getRuntime().Log("Unable to  write to returnsBuffer buffer");
@@ -1422,23 +1429,16 @@ void InterChange::resolveReplies(CommandBlock *getData)
         synth->getRuntime().finishedCLI = true;
         return; // no further action
     }
-    bool addValue = !(getData->data.type & TOPLEVEL::type::LearnRequest);
-    std::string commandName = resolveAll(synth, getData, addValue);
 
-    if (!addValue)
+    if (getData->data.type & TOPLEVEL::type::LearnRequest)
     {
-        std::string toSend;
-        size_t pos = commandName.find(" - ");
-        if (pos < 1 || pos >= commandName.length())
-            toSend = commandName;
-        else
-            toSend = commandName.substr(0, pos);
-        synth->midilearn.setTransferBlock(getData, toSend);
+        synth->midilearn.setTransferBlock(getData);
         return;
     }
 
     if (source != TOPLEVEL::action::fromMIDI)
-        synth->getRuntime().Log(commandName);
+        synth->getRuntime().Log(resolveAll(synth, getData, true));
+
     if (source == TOPLEVEL::action::fromCLI)
         synth->getRuntime().finishedCLI = true;
 }
@@ -1851,6 +1851,7 @@ bool InterChange::commandSendReal(CommandBlock *getData)
                 commandResonance(getData, part->kit[kititem].padpars->resonance);
                 break;
         }
+        part->kit[kititem].padpars->presetsUpdated();
         return true;
     }
 
@@ -1880,6 +1881,7 @@ bool InterChange::commandSendReal(CommandBlock *getData)
                 commandEnvelope(getData);
                 break;
         }
+        part->kit[kititem].subpars->presetsUpdated();
         return true;
     }
 
@@ -1945,6 +1947,7 @@ bool InterChange::commandSendReal(CommandBlock *getData)
                 }
                 break;
         }
+        part->kit[kititem].adpars->presetsUpdated();
         return true;
     }
 
@@ -1971,6 +1974,7 @@ bool InterChange::commandSendReal(CommandBlock *getData)
                 commandResonance(getData, part->kit[kititem].adpars->GlobalPar.Reson);
                 break;
         }
+        part->kit[kititem].adpars->presetsUpdated();
         return true;
     }
     getData->data.source = TOPLEVEL::action::noAction;
@@ -2264,25 +2268,25 @@ void InterChange::commandMicrotonal(CommandBlock *getData)
 
     switch (control)
     {
-        case SCALES::control::Afrequency:
+        case SCALES::control::refFrequency:
             if (write)
             {
                 if (value > 2000)
                     value = 2000;
                 else if (value < 1)
                     value = 1;
-                synth->microtonal.PAfreq = value;
+                synth->microtonal.PrefFreq = value;
             }
             else
-                value = synth->microtonal.PAfreq;
-            getData->data.parameter = synth->microtonal.PAnote;
+                value = synth->microtonal.PrefFreq;
+            getData->data.parameter = synth->microtonal.PrefNote;
             break;
 
-        case SCALES::control::Anote:
+        case SCALES::control::refNote:
             if (write)
-                synth->microtonal.PAnote = value_int;
+                synth->microtonal.PrefNote = value_int;
             else
-                value = synth->microtonal.PAnote;
+                value = synth->microtonal.PrefNote;
             break;
         case SCALES::control::invertScale:
             if (write)
@@ -2527,9 +2531,9 @@ void InterChange::commandConfig(CommandBlock *getData)
             break;
         case CONFIG::control::enableCLI:
             if (write)
-                synth->getRuntime().showCLI = value_bool;
+                synth->getRuntime().showCli = value_bool;
             else
-                value = synth->getRuntime().showCLI;
+                value = synth->getRuntime().showCli;
             break;
         case CONFIG::control::enableAutoInstance:
             if (write)
@@ -2604,6 +2608,13 @@ void InterChange::commandConfig(CommandBlock *getData)
             else
                 value = (synth->getRuntime().midiEngine == alsa_midi);
             break;
+        case CONFIG::control::alsaMidiType:
+            if (write)
+                synth->getRuntime().alsaMidiType = value_int;
+            else
+                value = synth->getRuntime().alsaMidiType;
+            break;
+
         case CONFIG::control::alsaAudioDevice: // done elsewhere
             break;
         case CONFIG::control::alsaPreferredAudio:
@@ -4477,6 +4488,8 @@ void InterChange::commandSub(CommandBlock *getData)
         case SUBSYNTH::control::magType:
             if (write)
                 pars->Phmagtype = value_int;
+            else
+                value = pars->Phmagtype;
             break;
         case SUBSYNTH::control::startPosition:
             if (write)
@@ -5289,7 +5302,9 @@ void InterChange::lfoReadWrite(CommandBlock *getData, LFOParams *pars)
             break;
     }
 
-    if (!write)
+    if (write)
+        pars->presetsUpdated();
+    else
         getData->data.value.F = val;
 }
 
@@ -5560,7 +5575,9 @@ void InterChange::filterReadWrite(CommandBlock *getData, FilterParams *pars, uns
             break;
     }
 
-    if (!write)
+    if (write)
+        pars->presetsUpdated();
+    else
         getData->data.value.F = val;
 }
 
@@ -5858,6 +5875,8 @@ void InterChange::envelopeReadWrite(CommandBlock *getData, EnvelopeParams *pars)
                 val = pars->Penvsustain;
             break;
     }
+    if (write)
+        pars->presetsUpdated();
     getData->data.value.F = val;
     getData->data.offset = Xincrement;
     return;
