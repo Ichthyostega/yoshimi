@@ -1,3 +1,19 @@
+yoshimi (1.6.1-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream version 1.6.1
+  * d/copyright:
+    + Change license for Util/YoshimiSplash.svg to CC-BY-4.0
+
+  [ IOhannes m zmölnig (Debian/GNU) ]
+  * All patches applied upstream -- patch queue empty
+  * Declare that building this package does not require "root" powers
+
+  [ Olivier Humbert ]
+  * Update copyright (http -> https and add myself)
+
+ -- Dennis Braun <d_braun@kabelmail.de>  Sun, 22 Dec 2019 00:41:11 +0100
+
 yoshimi (1.6.0.2-1ppa1~bionic) bionic; urgency=low
 
   * Build for Ubuntu/Bionic (18.04 LTS)
