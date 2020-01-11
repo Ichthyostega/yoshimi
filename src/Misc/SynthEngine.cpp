@@ -5,7 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
     Copyright 2009, James Morris
-    Copyright 2014-2019, Will Godfrey & others
+    Copyright 2014-2020, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -55,6 +55,7 @@ using file::make_legit_pathname;
 using func::dB2rap;
 using func::bitTest;
 using func::asString;
+using func::string2int;
 
 using std::set;
 
@@ -220,6 +221,14 @@ SynthEngine::~SynthEngine()
 
 bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
 {
+    int found = 0;
+
+    if (!interchange.Init())
+    {
+        Runtime.LogError("interChange init failed");
+        goto bail_out;
+    }
+
     samplerate_f = samplerate = audiosrate;
     halfsamplerate_f = samplerate_f / 2;
 
@@ -234,13 +243,6 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
     halfoscilsize_f = halfoscilsize = oscilsize / 2;
     fadeStep = 10.0f / samplerate; // 100mS fade
     ControlStep = (127.0f / samplerate) * 5.0f; // 200mS for 0 to 127
-    int found = 0;
-
-    if (!interchange.Init())
-    {
-        Runtime.LogError("interChange init failed");
-        goto bail_out;
-    }
 
     if (oscilsize < (buffersize / 2))
     {
@@ -305,22 +307,9 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
 
     defaults();
     ClearNRPNs();
-    if (Runtime.restoreJackSession) // the following are not fatal if failed
-    {
-        if (!Runtime.restoreJsession())
-        {
-            Runtime.Log("Restore jack session failed. Using defaults");
-            defaults();
-        }
-    }
-    else if (Runtime.restoreState)
-    {
-        if (!Runtime.stateRestore())
-         {
-             Runtime.Log("Restore state failed. Using defaults");
-             defaults();
-         }
-    }
+
+    if (Runtime.sessionStage == Session::Default || Runtime.sessionStage == Session::StartupSecond || Runtime.sessionStage == Session::JackSecond)
+        Runtime.restoreSessionData(Runtime.StateFile);
 
     if (Runtime.paramsLoad.size())
     {
@@ -1795,7 +1784,7 @@ void SynthEngine::resetAll(bool andML)
         if(isRegularFile(filename + ".state"))
         {
             Runtime.StateFile = filename;
-            Runtime.stateRestore();
+            Runtime.restoreSessionData(Runtime.StateFile);
         }
     }
     if (andML)
@@ -2389,7 +2378,9 @@ void SynthEngine::allStop(unsigned int stopType)
 bool SynthEngine::loadStateAndUpdate(string filename)
 {
     defaults();
-    bool result = Runtime.loadState(filename);
+    Runtime.sessionStage = Session::InProgram;
+    Runtime.stateChanged = true;
+    bool result = Runtime.restoreSessionData(filename);
     ShutUp();
     Unmute();
     return result;
@@ -2398,7 +2389,7 @@ bool SynthEngine::loadStateAndUpdate(string filename)
 
 bool SynthEngine::saveState(string filename)
 {
-    return Runtime.saveState(filename);
+    return Runtime.saveSessionData(filename);
 }
 
 
@@ -2458,6 +2449,14 @@ bool SynthEngine::installBanks()
         return false;
     }
     xml->loadXMLfile(bankname);
+    if (branch == "BANKLIST")
+    {
+        if (xml->enterbranch("INFORMATION"))
+        {
+            bank.writeVersion(xml->getpar("Banks_Version", 1, 1, 9));
+            xml->exitbranch();
+        }
+    }
     if (!xml->enterbranch(branch))
     {
         Runtime.Log("extractConfigData, no " + branch + " branch");
@@ -3094,7 +3093,7 @@ int SynthEngine::getalldata(char **data)
 {
     XMLwrapper *xml = new XMLwrapper(this, true);
     add2XML(xml);
-    midilearn.insertMidiListData(false, xml);
+    midilearn.insertMidiListData(xml);
     *data = xml->getXMLdata();
     delete xml;
     return strlen(*data) + 1;

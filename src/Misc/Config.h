@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2014-2019, Will Godfrey & others
+    Copyright 2014-2020, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -35,6 +35,7 @@
 #ifdef GUI_FLTK
 #include "FL/Fl.H"
 #endif
+#include "globals.h"
 
 using std::string;
 
@@ -56,17 +57,16 @@ class Config
 
         void clearPresetsDirlist(void);
 
+        bool saveConfig(bool master = false);
+        bool loadConfig(void);
+        void restoreConfig(SynthEngine *_synth);
+        bool saveSessionData(string savefile);
+        bool restoreSessionData(string sessionfile);
+        bool restoreJsession();
+        void setJackSessionSave(int event_type, string session_file);
+
         string testCCvalue(int cc);
         string masterCCtest(int cc);
-        bool saveConfig(void);
-        bool loadConfig(void);
-        bool saveState(const string statefile)  { return saveSessionData(statefile); }
-        bool loadState(const string statefile)
-            { return restoreSessionData(statefile, false); }
-        bool stateRestore(void)
-            { return restoreSessionData(StateFile, false); }
-        bool restoreJsession(void);
-        void setJackSessionSave(int event_type, string session_file);
 
         static void sigHandler(int sig);
         void setInterruptActive(void);
@@ -82,12 +82,12 @@ class Config
         string        userHome;
         string        ConfigDir;
         string        defaultStateName;
+        string        defaultSession;
         string        ConfigFile;
         string        paramsLoad;
         string        instrumentLoad;
         string        midiLearnLoad;
         string        rootDefine;
-        bool          restoreState;
         bool          stateChanged;
         string        StateFile;
         bool          restoreJackSession;
@@ -96,13 +96,7 @@ class Config
         int           lastXMLminor;
         bool          oldConfig;
 
-        static unsigned int  Samplerate;
-        static unsigned int  Buffersize;
-        static unsigned int  Oscilsize;
-        static unsigned int  GzipCompression;
-        static bool          showGui;
         static bool          showSplash;
-        static bool          showCLI;
         static bool          autoInstance;
         static unsigned int  activeInstance;
         static int           showCLIcontext;
@@ -113,14 +107,18 @@ class Config
         int           VirKeybLayout;
 
         audio_drivers audioEngine;
+        bool          engineChanged;
         midi_drivers  midiEngine;
+        bool          midiChanged;
+        int           alsaMidiType;
         string        audioDevice;
         string        midiDevice;
 
         string        jackServer;
         string        jackMidiDevice;
-        bool          startJack;        // false
+        bool          startJack;
         bool          connectJackaudio;
+        bool          connectJackChanged;
         string        jackSessionUuid;
 
         string        alsaAudioDevice;
@@ -128,6 +126,7 @@ class Config
         string        nameTag;
 
         bool          loadDefaultState;
+        int           sessionStage;
         int           Interpolation;
         string        presetsDirlist[MAX_PRESETS];
         std::list<string> lastfileseen;
@@ -142,7 +141,20 @@ class Config
         bool          showTimes;
         bool          logXMLheaders;
         bool          xmlmax;
+        unsigned int  GzipCompression;
+
+        unsigned int  Samplerate;
+        bool          rateChanged;
+        unsigned int  Buffersize;
+        bool          bufferChanged;
+        unsigned int  Oscilsize;
+        bool          oscilChanged;
+        bool          showGui;
+        bool          guiChanged;
+        bool          showCli;
+        bool          cliChanged;
         bool          configChanged;
+
         int           rtprio;
         int           midi_bank_root;
         int           midi_bank_C;
@@ -214,8 +226,6 @@ class Config
         bool extractBaseParameters(XMLwrapper *xml);
         bool extractConfigData(XMLwrapper *xml);
         void addConfigXML(XMLwrapper *xml);
-        bool saveSessionData(string savefile);
-        bool restoreSessionData(string sessionfile, bool startup);
         int SSEcapability(void);
         void AntiDenormals(bool set_daz_ftz);
         void saveJackSession(void);
@@ -226,6 +236,7 @@ class Config
         int jsessionSave;
         const string programcommand;
         string jackSessionDir;
+        string baseConfig;
 
         SynthEngine *synth;
         bool bRuntimeSetupCompleted;

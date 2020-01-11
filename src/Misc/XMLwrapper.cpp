@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2014-2019, Will Godfrey
+    Copyright 2014-2020, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -79,14 +79,14 @@ XMLwrapper::XMLwrapper(SynthEngine *_synth, bool _isYoshi, bool includeBase) :
 
     if (isYoshi)
     {
-        //std::cout << "Our doctype" << endl;
+        //std::cout << "Our doctype" << std::endl;
         mxmlElementSetAttr(doctype, "Yoshimi-data", NULL);
         root = mxmlNewElement(tree, "Yoshimi-data");
         information.yoshiType = 1;
     }
     else
     {
-        //std::cout << "Zyn doctype" << endl;
+        //std::cout << "Zyn doctype" << std::endl;
         mxmlElementSetAttr(doctype, "ZynAddSubFX-data", NULL);
         root = mxmlNewElement(tree, "ZynAddSubFX-data");
         mxmlElementSetAttr(root, "version-major", "3");
@@ -105,16 +105,13 @@ XMLwrapper::XMLwrapper(SynthEngine *_synth, bool _isYoshi, bool includeBase) :
 
     info = addparams0("INFORMATION"); // specifications
 
-    if (synth->getUniqueId() == 0 && (synth->getRuntime().xmlType == TOPLEVEL::XML::State || synth->getRuntime().xmlType == TOPLEVEL::XML::Config))
+    if (synth->getRuntime().xmlType == TOPLEVEL::XML::MasterConfig)
     {
         beginbranch("BASE_PARAMETERS");
-            addpar("sample_rate", synth->getRuntime().Samplerate);
-            addpar("sound_buffer_size", synth->getRuntime().Buffersize);
-            addpar("oscil_size", synth->getRuntime().Oscilsize);
             addpar("gzip_compression", synth->getRuntime().GzipCompression);
             addparbool("enable_gui", synth->getRuntime().showGui);
             addparbool("enable_splash", synth->getRuntime().showSplash);
-            addparbool("enable_CLI", synth->getRuntime().showCLI);
+            addparbool("enable_CLI", synth->getRuntime().showCli);
             addparbool("enable_auto_instance", synth->getRuntime().autoInstance);
             addparU("active_instances", synth->getRuntime().activeInstance);
             addpar("show_CLI_context", synth->getRuntime().showCLIcontext);
@@ -181,8 +178,6 @@ void XMLwrapper::checkfileinformation(const std::string& filename, unsigned int&
     {
         // Andrew: just make it simple
         // Will: but not too simple :)
-        //idx = start;
-
 
         /*
          * the following could be in any order. We are checking for
@@ -370,8 +365,12 @@ char *XMLwrapper::getXMLdata()
             addparstr("XMLtype", "Midi Learn");
             break;
 
+        case TOPLEVEL::XML::MasterConfig:
+            addparstr("XMLtype", "Config Base");
+            break;
+
         case TOPLEVEL::XML::Config:
-            addparstr("XMLtype", "Config");
+            addparstr("XMLtype", "Config Instance");
             break;
 
         case TOPLEVEL::XML::Presets:
@@ -379,8 +378,11 @@ char *XMLwrapper::getXMLdata()
             break;
 
         case TOPLEVEL::XML::Bank:
+        {
             addparstr("XMLtype", "Roots and Banks");
+            addpar("Banks_Version", synth->bank.readVersion());
             break;
+        }
 
         case TOPLEVEL::XML::History:
             addparstr("XMLtype", "Recent Files");

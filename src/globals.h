@@ -53,9 +53,8 @@
  * for LFO freq turns actual value 85.25 into 85250000
  * current step size 0.06 becomes 6000
  *
- * scales A frequency now restricted to +- 0.5 octave
- * 660Hz becomes 660000000
- * At 329Hz resolution is still better than 1/10000 cent
+ * scales reference frequency 440Hz becomes 440000000
+ * At 20Hz resolution is still better than 1/1000 cent
  * Assumed detectable interval is 5 cents
  *
  * also use for integers that need higher resolution
@@ -134,6 +133,18 @@ const std::string UNTITLED = "No Title";
 
 const unsigned char FORCED_EXIT = 16;
 
+
+enum Session : unsigned char {
+    Normal = 0,
+    Default,
+    JackFirst,
+    JackSecond,
+    StartupFirst,
+    StartupSecond,
+    InProgram,
+    RestoreConf
+};
+
 namespace YOSH
 {
     // float to bool done this way to ensure consistency
@@ -159,7 +170,7 @@ namespace ENVMODE
 
 namespace TOPLEVEL // usage TOPLEVEL::section::vector
 {
-    enum section: unsigned char {
+    enum section : unsigned char {
         part1 = 0,
         part64 = 63,
         copyPaste = 72, // 48 (not yet!)
@@ -182,7 +193,7 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         const unsigned char Maximum = 2; // return this value
         const unsigned char Default = 3; // return this value
         // remaining used bit-wise
-        const unsigned char Limits = 4;
+        const unsigned char Limits = 4; // read above limits
         const unsigned char Error = 8;
         const unsigned char LearnRequest = 16;
         const unsigned char Learnable = 32;
@@ -196,6 +207,7 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         const unsigned char fromMIDI = 1;
         const unsigned char fromCLI = 2;
         const unsigned char fromGUI = 3;
+        // space for any other sources
         const unsigned char noAction = 15; // internal use
         // remaining used bit-wise
         const unsigned char forceUpdate = 32;
@@ -253,6 +265,7 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         // insert any new lists here
         MLearn, //     learned MIDI CC lists
         Config, // only file types from here onwards
+        MasterConfig,
         Presets,
         Bank,
         History,
@@ -291,6 +304,7 @@ namespace CONFIG // usage CONFIG::control::oscillatorSize
         jackAutoConnectAudio,
         alsaMidiSource = 48,
         alsaPreferredMidi,
+        alsaMidiType,
         alsaAudioDevice,
         alsaPreferredAudio,
         alsaSampleRate,
@@ -318,27 +332,25 @@ namespace BANK // usage BANK::control::
         // actual control should probably be here
         readInstrumentName = 0, // in bank, by ID
         findInstrumentName, // next in list or '*' if at end
-        renameInstrument, // not yet
+        renameInstrument, // in bank
         saveInstrument, // to bank
         deleteInstrument, // from bank
         selectFirstInstrumentToSwap,
         selectSecondInstrumentAndSwap,
 
-        selectBank = 16, // in root, by ID
-        readBankName, // not yet
-        renameBank, // not yet
-        createBank, // not yet
-        deleteBank, // not yet
+        selectBank = 16, // in root, by ID or read ID + name
+        renameBank, // or read just the name
+        createBank, // not yet - currently 'add' at top level
+        deleteBank, // not yet - currently 'remove' at top level
         selectFirstBankToSwap,
         selectSecondBankAndSwap,
         importBank, // not yet (currently done in main)
         exportBank, // not yet (currently done in main)
 
-        selectRoot = 32, // by ID
-        readRootPath, // not yet
-        changeRootId, // not yet
-        addNamedRoot, // not yet
-        deselectRoot // not yet
+        selectRoot = 32, // by ID - also reads the current one
+        changeRootId, // change ID of current root
+        addNamedRoot, // not yet - currently add at top level
+        deselectRoot // not yet - currently remove at top level
     };
 }
 
@@ -450,15 +462,18 @@ namespace MIDI // usage MIDI::control::noteOn
         keyPressure,
 
         programchange = 999,
+
+        maxNRPN = 0x7fff,
+        identNRPN = 0x8000,
         null
     };
 }
 
-namespace SCALES // usage SCALES::control::Afrequency
+namespace SCALES // usage SCALES::control::refFrequency
 {
     enum control : unsigned char {
-        Afrequency = 0,
-        Anote,
+        refFrequency = 0,
+        refNote,
         invertScale,
         invertedScaleCenter,
         scaleShift,

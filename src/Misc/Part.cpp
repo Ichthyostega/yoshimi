@@ -6,6 +6,7 @@
     Copyright 2009, James Morris
     Copyright 2009-2011, Alan Calvert
     Copyright 2014-2019, Will Godfrey
+    Copyright 2020 Kristian Amlie
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -1048,15 +1049,6 @@ void Part::ComputePartSmps(void)
             KillNotePos(k);
     }
 
-    for (int item = 0; item < NUM_KIT_ITEMS; ++item)
-    {
-        if (kit[item].adpars)
-            kit[item].adpars->postrender();
-        if (kit[item].subpars)
-            kit[item].subpars->postrender();
-        if (kit[item].padpars)
-            kit[item].padpars->postrender();
-    }
     // Apply part's effects and mix them
     for (int nefx = 0; nefx < NUM_PART_EFX; ++nefx)
     {
