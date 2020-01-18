@@ -5,6 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
     Copyright 2017-2018, Will Godfrey
+    Copyright 2020 Kristian Amlie
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -21,7 +22,7 @@
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
     This file is a derivative of a ZynAddSubFX original.
-    Modified March 2018
+
 */
 
 #ifndef PAD_NOTE_PARAMETERS_H
@@ -53,7 +54,6 @@ class PADnoteParameters : public Presets
         void add2XML(XMLwrapper *xml);
         void getfromXML(XMLwrapper *xml);
         float getLimits(CommandBlock *getData);
-        void postrender(void);
 
         //returns a value between 0.0-1.0 that represents the estimation
         // perceived bandwidth

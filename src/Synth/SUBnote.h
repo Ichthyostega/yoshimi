@@ -5,6 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2010 Alan Calvert
     Copyright 2014-2017 Will Godfrey & others
+    Copyright 2020 Kristian Amlie
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -21,7 +22,7 @@
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
     This file is a derivative of a ZynAddSubFX original
-    Modified September 2017
+
 */
 
 #ifndef SUB_NOTE_H
@@ -58,7 +59,7 @@ class SUBnote
         void computecurrentparameters(void);
         void initparameters(float freq);
         void KillNote(void);
-        void initfilterbank(void);
+        void updatefilterbank(void);
 
         SUBnoteParameters *pars;
 
@@ -66,7 +67,6 @@ class SUBnote
         int pos[MAX_SUB_HARMONICS]; // chart of non-zero harmonic locations
         int numstages; // number of stages of filters
         int numharmonics; // number of harmonics (after the too higher hamonics are removed)
-        int firstnumharmonics; // To keep track of the first note's numharmonics value, useful in legato mode.
         int start; // how the harmonics start
         float basefreq;
         float BendAdjust;
@@ -107,11 +107,19 @@ class SUBnote
             float yn2;   // filter internal values
         };
 
-        void initfilter(bpfilter &filter, float freq, float bw, float amp, float mag);
+        // Returns the number of new filters created
+        int createNewFilters();
+
+        void initfilters(int startIndex);
+        void initfilter(bpfilter &filter, float mag);
         float computerolloff(float freq);
+        void computeallfiltercoefs();
         void computefiltercoefs(bpfilter &filter, float freq, float bw, float gain);
+        void computeNoteParameters();
+        void setBaseFreq();
         void filter(bpfilter &filter, float *smps);
         void filterVarRun(bpfilter &filter, float *smps);
+        float getHgain(int harmonic);
 
         bpfilter *lfilter;
         bpfilter *rfilter;
@@ -153,6 +161,8 @@ class SUBnote
         const float log_0_001;   // logf(0.001);
         const float log_0_0001;  // logf(0.0001);
         const float log_0_00001; // logf(0.00001);
+
+        Presets::PresetsUpdate subNoteChange;
 
         SynthEngine *synth;
         int filterStep;

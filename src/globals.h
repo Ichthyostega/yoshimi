@@ -462,6 +462,9 @@ namespace MIDI // usage MIDI::control::noteOn
         keyPressure,
 
         programchange = 999,
+
+        maxNRPN = 0x7fff,
+        identNRPN = 0x8000,
         null
     };
 }
@@ -506,8 +509,7 @@ namespace MAIN // usage MAIN::control::volume
         importBank,
         deleteBank,
 
-        setCurrentRootBank = 75,  // only used in gui
-        loadInstrumentFromBank,
+        loadInstrumentFromBank = 76,
         loadInstrumentByName,
         saveNamedInstrument,
         loadNamedPatchset,

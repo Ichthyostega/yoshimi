@@ -5,6 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
     Copyright 2017-2019 Will Godfrey
+    Copyright 2020 Kristian Amlie
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -22,7 +23,6 @@
 
     This file is a derivative of a ZynAddSubFX original.
 
-    Modified May 2019
 */
 
 #include "Misc/XMLwrapper.h"
@@ -728,9 +728,11 @@ bool PADnoteParameters::export2wav(std::string basefilename)
         memcpy(buffer + 22, &sBlock, 2);
         block = synth->samplerate;
         memcpy(buffer + 24, &block, 4);
-        block = synth->samplerate * 2; // ByteRate (SampleRate * NumChannels * BitsPerSample) / 8
+        block = synth->samplerate * 2; // ByteRate
+                // (SampleRate * NumChannels * BitsPerSample) / 8
         memcpy(buffer + 28, &block, 4);
-        sBlock = 2; // BlockAlign (bitsPerSample * channels) / 8
+        sBlock = 2; // BlockAlign
+                // (bitsPerSample * channels) / 8
         memcpy(buffer + 32, &sBlock, 2);
         sBlock = 16; // BitsPerSample
         memcpy(buffer + 34, &sBlock, 2);
@@ -744,7 +746,13 @@ bool PADnoteParameters::export2wav(std::string basefilename)
             buffer [44 + i * 2] = sBlock & 0xff;
             buffer [45 + i * 2] = (sBlock >> 8) & 0xff;
         }
-        isOK = (saveData(buffer, buffSize, filename) == buffSize);
+        /*
+         * The file manager can return a negative number on error,
+         * so the comparison in the line below must be as integers.
+         * This is safe here as the maximum possible buffer size
+         * is well below the size of an integer.
+         */
+        isOK = (saveData(buffer, buffSize, filename) == int(buffSize));
         free (buffer);
 
     }
@@ -1232,14 +1240,4 @@ float PADnoteParameters::getLimits(CommandBlock *getData)
             break;
     }
     return value;
-}
-
-void PADnoteParameters::postrender(void)
-{
-    // loop over our gathered dirty flags and unset them for the next period
-      AmpLfo->updated
-    = FilterLfo->updated
-    = FreqLfo->updated
-    = false;
-
 }

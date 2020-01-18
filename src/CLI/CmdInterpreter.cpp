@@ -1,7 +1,7 @@
 /*
     CmdInterpreter.cpp
 
-    Copyright 2019, Will Godfrey.
+    Copyright 2019 - 2020, Will Godfrey and others.
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -243,6 +243,8 @@ string CmdInterpreter::buildPartStatus(bool showPartDetails)
     int insert = UNUSED;
     bool justPart = false;
     string result = " p";
+
+    npart = readControl(synth, 0, MAIN::control::partNumber, TOPLEVEL::section::main);
 
     kitMode = readControl(synth, 0, PART::control::kitMode, npart);
     if (bitFindHigh(context) == LEVEL::Part)

@@ -5,6 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
     Copyright 2017-2019 Will Godfrey
+    Copyright 2020 Kristian Amlie, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -21,7 +22,6 @@
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
     This file is derivative of ZynAddSubFX original code.
-    Modified May 2019
 */
 
 #include <iostream>
@@ -1244,22 +1244,4 @@ float ADnoteParameters::getLimits(CommandBlock *getData)
             break;
     }
     return value;
-}
-
-void ADnoteParameters::postrender(void)
-{
-    // loop over our gathered dirty flags and unset them for the next period
-      GlobalPar.AmpLfo->updated
-    = GlobalPar.FilterLfo->updated
-    = GlobalPar.FreqLfo->updated
-    = false;
-    for (int i = 0; i < NUM_VOICES; ++i)
-    {
-        if (VoicePar[i].Enabled)
-              VoicePar[i].AmpLfo->updated
-            = VoicePar[i].FilterLfo->updated
-            = VoicePar[i].FreqLfo->updated
-            = false;
-
-    }
 }

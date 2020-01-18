@@ -4,6 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2009 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
+    Copyright 2020 Kristian Amlie
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -19,7 +20,7 @@
     yoshimi; if not, write to the Free Software Foundation, Inc., 51 Franklin
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-    This file is derivative of ZynAddSubFX original code, modified January 2011
+    This file is derivative of ZynAddSubFX original code
 */
 
 #include "DSP/Filter.h"
@@ -28,7 +29,9 @@
 using func::dB2rap;
 
 
-Filter::Filter(FilterParams *pars, SynthEngine *_synth):
+Filter::Filter(FilterParams *pars_, SynthEngine *_synth):
+    pars(pars_),
+    parsUpdate(pars_),
     synth(_synth)
 {
     unsigned char Ftype = pars->Ptype;
@@ -44,19 +47,14 @@ Filter::Filter(FilterParams *pars, SynthEngine *_synth):
 
         case 2:
             filter = new SVFilter(Ftype, 1000.0f, pars->getq(), Fstages, synth);
-            filter->outgain = dB2rap(pars->getgain());
-            if (filter->outgain > 1.0f)
-                filter->outgain = sqrtf(filter->outgain);
             break;
 
         default:
             filter = new AnalogFilter(Ftype, 1000.0f, pars->getq(), Fstages, synth);
-            if (Ftype >= 6 && Ftype <= 8)
-                filter->setgain(pars->getgain());
-            else
-                filter->outgain = dB2rap(pars->getgain());
             break;
     }
+
+    updateCurrentParameters();
 }
 
 
@@ -65,9 +63,35 @@ Filter::~Filter()
     delete filter;
 }
 
+void Filter::updateCurrentParameters()
+{
+    switch (category)
+    {
+        case 1:
+            // Handled inside filter.
+            break;
+
+        case 2:
+            filter->outgain = dB2rap(pars->getgain());
+            if (filter->outgain > 1.0f)
+                filter->outgain = sqrtf(filter->outgain);
+            break;
+
+        default:
+            unsigned char Ftype = pars->Ptype;
+            if (Ftype >= 6 && Ftype <= 8)
+                filter->setgain(pars->getgain());
+            else
+                filter->outgain = dB2rap(pars->getgain());
+            break;
+    }
+}
 
 void Filter::filterout(float *smp)
 {
+    if (parsUpdate.checkUpdated())
+        updateCurrentParameters();
+
     filter->filterout(smp);
 }
 
