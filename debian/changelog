@@ -1,10 +1,19 @@
+yoshimi (1.7.0-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream version 1.7.0
+    * Drop patches applied upstream
+  * Remove trailing whitespace from d/changelog
+
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Sat, 18 Jan 2020 22:29:27 +0100
+
 yoshimi (1.6.1-1) unstable; urgency=medium
 
   * Team upload
   * New upstream version 1.6.1
   * d/copyright:
     + Change license for desktop/metainfo/* and Util/YoshimiSplash.svg to CC-BY-4.0
-  * Fix license name of yoshimi.appdata.xml to make lintian happy 
+  * Fix license name of yoshimi.appdata.xml to make lintian happy
 
  -- Dennis Braun <d_braun@kabelmail.de>  Sun, 22 Dec 2019 00:41:11 +0100
 
