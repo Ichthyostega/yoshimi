@@ -5,7 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
     Copyright 2017-2019 Will Godfrey & others.
-    Copyright 2019 Kristian Amlie
+    Copyright 2019-2020 Kristian Amlie
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -240,9 +240,6 @@ void OscilParameters::getfromXML(XMLwrapper *xml)
         xml->exitbranch();
     }
 
-    if (Pcurrentbasefunc != 0)
-        presetsUpdated();
-
     if (xml->enterbranch("BASE_FUNCTION"))
     {
         for (int i = 1; i < synth->halfoscilsize; ++i)
@@ -278,6 +275,8 @@ void OscilParameters::getfromXML(XMLwrapper *xml)
                 basefuncFFTfreqs.s[i] /= max;
         }
     }
+
+    presetsUpdated();
 }
 
 float OscilParameters::getLimits(CommandBlock *getData)

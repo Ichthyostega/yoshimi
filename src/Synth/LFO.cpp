@@ -5,6 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
     Copyright 2017-2019, Will Godfrey & others
+    Copyright 2020 Kristian Amlie
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -21,7 +22,7 @@
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
     This file is derivative of ZynAddSubFX original code
-    Modified March 2019
+
 */
 
 #include <cmath>
@@ -32,6 +33,7 @@
 
 LFO::LFO(LFOParams *_lfopars, float _basefreq, SynthEngine *_synth):
     lfopars(_lfopars),
+    lfoUpdate(lfopars),
     basefreq(_basefreq),
     synth(_synth)
 {
@@ -53,7 +55,7 @@ LFO::LFO(LFOParams *_lfopars, float _basefreq, SynthEngine *_synth):
         x = fmodf((((int)lfopars->Pstartphase - 64) / 127.0f + 1.0f + tmp), 1.0f);
     }
 
-    lfodelay = lfopars->Pdelay / 127.0f * 4.0f; // 0..4 sec
+    lfoelapsed = 0.0f;
     incrnd = nextincrnd = 1.0f;
 
     Recompute();
@@ -114,7 +116,7 @@ inline void LFO::RecomputeFreq(void)
 // LFO out
 float LFO::lfoout(void)
 {
-    if (lfopars->updated)
+    if (lfoUpdate.checkUpdated())
         Recompute();
 
     float out;
@@ -160,7 +162,8 @@ float LFO::lfoout(void)
         out *= lfointensity * (amp1 + x * (amp2 - amp1));
     else
         out *= lfointensity * amp2;
-    if (lfodelay < 0.00001f)
+    float lfodelay = lfopars->Pdelay / 127.0f * 4.0f; // 0..4 sec
+    if (lfoelapsed >= lfodelay)
     {
         if (!freqrndenabled)
             x += incx;
@@ -178,7 +181,7 @@ float LFO::lfoout(void)
             computenextincrnd();
         }
     } else
-        lfodelay -= synth->sent_all_buffersize_f / synth->samplerate_f;
+        lfoelapsed += synth->sent_all_buffersize_f / synth->samplerate_f;
 
     return out;
 }

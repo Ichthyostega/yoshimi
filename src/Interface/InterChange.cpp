@@ -2,6 +2,7 @@
     InterChange.cpp - General communications
 
     Copyright 2016-2019, Will Godfrey & others
+    Copyright 2020 Kristian Amlie
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -353,6 +354,7 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
     getData->data.miscmsg = NO_MSG; // this may be reset later
     unsigned int tmp;
     std::string name;
+    bool learnUpdate = false;
 
     int switchNum = npart;
     if (control == TOPLEVEL::control::textMessage)
@@ -671,6 +673,11 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
                         if ((text != name)) // never include default state
                             synth->addHistory(text, TOPLEVEL::XML::State);
                         text = "ed " + text;
+                        learnUpdate = true;
+                        /*
+                         * This needs improving. We should only set it
+                         * when the state file contains a learn list.
+                         */
                     }
                     else
                         text = " FAILED " + text;
@@ -694,7 +701,7 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
                     break;
                 }
                 case MAIN::control::loadFileFromList:
-                    break; // do nothimng here
+                    break; // do nothing here
                 case MAIN::control::exportPadSynthSamples:
                 {
                     unsigned char partnum = insert;
@@ -1284,6 +1291,8 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
             getData->data.miscmsg = textMsgBuffer.push(synth->microtonal.Pcomment);
             ok &= returnsBuffer->write(getData->bytes);
         }
+        if (synth->getRuntime().showGui && learnUpdate)
+            synth->midilearn.updateGui();
 #endif
         if (!ok)
             synth->getRuntime().Log("Unable to  write to returnsBuffer buffer");
@@ -1420,23 +1429,16 @@ void InterChange::resolveReplies(CommandBlock *getData)
         synth->getRuntime().finishedCLI = true;
         return; // no further action
     }
-    bool addValue = !(getData->data.type & TOPLEVEL::type::LearnRequest);
-    std::string commandName = resolveAll(synth, getData, addValue);
 
-    if (!addValue)
+    if (getData->data.type & TOPLEVEL::type::LearnRequest)
     {
-        std::string toSend;
-        size_t pos = commandName.find(" - ");
-        if (pos < 1 || pos >= commandName.length())
-            toSend = commandName;
-        else
-            toSend = commandName.substr(0, pos);
-        synth->midilearn.setTransferBlock(getData, toSend);
+        synth->midilearn.setTransferBlock(getData);
         return;
     }
 
     if (source != TOPLEVEL::action::fromMIDI)
-        synth->getRuntime().Log(commandName);
+        synth->getRuntime().Log(resolveAll(synth, getData, true));
+
     if (source == TOPLEVEL::action::fromCLI)
         synth->getRuntime().finishedCLI = true;
 }
@@ -1849,6 +1851,7 @@ bool InterChange::commandSendReal(CommandBlock *getData)
                 commandResonance(getData, part->kit[kititem].padpars->resonance);
                 break;
         }
+        part->kit[kititem].padpars->presetsUpdated();
         return true;
     }
 
@@ -1878,6 +1881,7 @@ bool InterChange::commandSendReal(CommandBlock *getData)
                 commandEnvelope(getData);
                 break;
         }
+        part->kit[kititem].subpars->presetsUpdated();
         return true;
     }
 
@@ -1943,6 +1947,7 @@ bool InterChange::commandSendReal(CommandBlock *getData)
                 }
                 break;
         }
+        part->kit[kititem].adpars->presetsUpdated();
         return true;
     }
 
@@ -1969,6 +1974,7 @@ bool InterChange::commandSendReal(CommandBlock *getData)
                 commandResonance(getData, part->kit[kititem].adpars->GlobalPar.Reson);
                 break;
         }
+        part->kit[kititem].adpars->presetsUpdated();
         return true;
     }
     getData->data.source = TOPLEVEL::action::noAction;
@@ -2525,9 +2531,9 @@ void InterChange::commandConfig(CommandBlock *getData)
             break;
         case CONFIG::control::enableCLI:
             if (write)
-                synth->getRuntime().showCLI = value_bool;
+                synth->getRuntime().showCli = value_bool;
             else
-                value = synth->getRuntime().showCLI;
+                value = synth->getRuntime().showCli;
             break;
         case CONFIG::control::enableAutoInstance:
             if (write)
@@ -2841,15 +2847,6 @@ void InterChange::commandMain(CommandBlock *getData)
             }
             break;
 
-        case MAIN::control::setCurrentRootBank: // set current root and bank
-            if (write)
-            {
-                if (kititem < 0x80) // should test for success
-                    synth->getBankRef().setCurrentRootID(kititem);
-                if (engine < 0x80) // should test for success
-                    synth->getBankRef().setCurrentBankID(engine, true);
-            }
-            break;
 
         case MAIN::control::loadInstrumentFromBank:
             synth->partonoffLock(kititem, -1);
@@ -5296,7 +5293,9 @@ void InterChange::lfoReadWrite(CommandBlock *getData, LFOParams *pars)
             break;
     }
 
-    if (!write)
+    if (write)
+        pars->presetsUpdated();
+    else
         getData->data.value.F = val;
 }
 
@@ -5567,7 +5566,9 @@ void InterChange::filterReadWrite(CommandBlock *getData, FilterParams *pars, uns
             break;
     }
 
-    if (!write)
+    if (write)
+        pars->presetsUpdated();
+    else
         getData->data.value.F = val;
 }
 
@@ -5865,6 +5866,8 @@ void InterChange::envelopeReadWrite(CommandBlock *getData, EnvelopeParams *pars)
                 val = pars->Penvsustain;
             break;
     }
+    if (write)
+        pars->presetsUpdated();
     getData->data.value.F = val;
     getData->data.offset = Xincrement;
     return;
