@@ -2,7 +2,7 @@
     InterChange.cpp - General communications
 
     Copyright 2016-2019, Will Godfrey & others
-    Copyright 2020 Kristian Amlie
+    Copyright 2020 Kristian Amlie, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -71,9 +71,6 @@ using func::asString;
 extern void mainRegisterAudioPort(SynthEngine *s, int portnum);
 extern SynthEngine *firstSynth;
 
-// used by main.cpp and SynthEngine.cpp
-std::string singlePath;
-std::string runGui;
 int startInstance = 0;
 
 
@@ -96,8 +93,7 @@ InterChange::InterChange(SynthEngine *_synth) :
     swapRoot1(UNUSED),
     swapBank1(UNUSED),
     swapInstrument1(UNUSED)
-{   // this is repeated here as it might somehow get called from LV2
-    singlePath = std::string(getenv("HOME")) + "/.yoshimiSingle";
+{
 }
 
 
@@ -115,6 +111,8 @@ bool InterChange::Init()
     fromMIDI = new ringBuff(1024, commandBlockSize);
 
     returnsBuffer = new ringBuff(1024, commandBlockSize);
+
+    muteQueue = new ringBuff(16, commandBlockSize);
 
     if (!synth->getRuntime().startThread(&sortResultsThreadHandle, _sortResultsThread, this, false, 0, "CLI"))
     {
@@ -159,6 +157,11 @@ bail_out:
         delete(returnsBuffer);
         returnsBuffer = NULL;
     }
+    if (muteQueue)
+    {
+        delete(muteQueue);
+        muteQueue = NULL;
+    }
     return false;
 }
 
@@ -174,7 +177,7 @@ void *InterChange::sortResultsThread(void)
     while(synth->getRuntime().runSynth)
     {
         /*
-         * To maitain portability we synthesise a very simple low accuracy
+         * To maintain portability we synthesise a very simple low accuracy
          * timer based on the loop time of this function. As it makes no system
          * calls apart from usleep() it is lightweight and should have no thread
          * safety issues. It is used mostly for timeouts.
@@ -211,6 +214,16 @@ void *InterChange::sortResultsThread(void)
         }
 
         CommandBlock getData;
+
+        while (synth->audioOut.load() == muteState::Active)
+        {
+            //std::cout << "here fetching" << std:: endl;
+            if (muteQueue->read(getData.bytes))
+                indirectTransfers(&getData);
+            else
+                synth->audioOut.store(muteState::Complete);
+        }
+
         while (decodeLoopback->read(getData.bytes))
         {
             if(getData.data.part == TOPLEVEL::section::midiLearn)
@@ -221,15 +234,6 @@ void *InterChange::sortResultsThread(void)
                 resolveReplies(&getData);
         }
         usleep(80); // actually gives around 120 uS
-
-        /*
-         * The following are low priority actions initiated by,
-         * but isolated from the main audio thread.
-         */
-
-        unsigned int flag = flagsReadClear();
-        if (flag < 0xffffffff)
-            mutedDecode(flag);
     }
     return NULL;
 }
@@ -251,6 +255,11 @@ InterChange::~InterChange()
         delete(decodeLoopback);
         decodeLoopback = NULL;
     }
+    if (muteQueue)
+    {
+        delete(muteQueue);
+        muteQueue = NULL;
+    }
 #ifdef GUI_FLTK
     if (fromGUI)
     {
@@ -267,6 +276,21 @@ InterChange::~InterChange()
     {
         delete(fromMIDI);
         fromMIDI = NULL;
+    }
+}
+
+
+void InterChange::muteQueueWrite(CommandBlock *getData)
+{
+    if (!muteQueue->write(getData->bytes))
+    {
+        std::cout << "failed to write to muteQueue" << std::endl;
+        return;
+    }
+    if (synth->audioOut.load() == muteState::Idle)
+    {
+        //std::cout << "here pending" << std:: endl;
+        synth->audioOut.store(muteState::Pending);
     }
 }
 
@@ -297,10 +321,7 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
         //std::cout << "kit " << int(kititem) << "  engine " << int(engine) << "  insert " << int(insert) << std::endl;
         int result = synth->LoadNumbered(kititem, engine);
         if (result > NO_MSG)
-        {
-            synth->Unmute();
             getData->data.miscmsg = result & NO_MSG;
-        }
         else
         {
             getData->data.miscmsg = result;
@@ -336,7 +357,6 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
                 { // this is a bit messy MIDI learn is an edge case
                     getData->data.control = MIDILEARN::control::loadList;
                     synth->midilearn.generalOperations(getData);
-                    synth->Unmute();
                     lowPrioWrite = false;
                     return;
                     break;
@@ -348,17 +368,20 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
 
     std::string text;
     if (getData->data.miscmsg != NO_MSG)
+    {
         text = textMsgBuffer.fetch(getData->data.miscmsg);
+        getData->data.miscmsg = NO_MSG; // this may be reset later
+    }
     else
         text = "";
-    getData->data.miscmsg = NO_MSG; // this may be reset later
+
     unsigned int tmp;
     std::string name;
     bool learnUpdate = false;
 
     int switchNum = npart;
     if (control == TOPLEVEL::control::textMessage)
-        switchNum = 256; // this is a bit hacky :(
+        switchNum = TOPLEVEL::section::message; // this is a bit hacky :(
 
     switch(switchNum)
     {
@@ -795,7 +818,6 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
                     synth->getRuntime().Log("notes hanging seen " + std::to_string(synth->getRuntime().noteOnSeen - synth->getRuntime().noteOffSeen));
 #endif
                     synth->ShutUp();
-                    synth->Unmute();
                     break;
             }
             getData->data.source &= ~TOPLEVEL::action::lowPrio;
@@ -1117,7 +1139,7 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
             getData->data.source &= ~TOPLEVEL::action::lowPrio;
             break;
         }
-        case 256:
+        case TOPLEVEL::section::message:
         {
             newMsg = true;
             getData->data.source &= ~TOPLEVEL::action::lowPrio;
@@ -1569,58 +1591,6 @@ void InterChange::historyActionCheck(CommandBlock *getData)
     }
 }
 
-
-void InterChange::mutedDecode(unsigned int altData)
-{ // these have all gone through a master fade down and mute
-    CommandBlock putData;
-    memset(&putData, 0xff, sizeof(putData));
-    putData.data.part = TOPLEVEL::section::main;
-
-    switch (altData & 0xff)
-    {
-        case TOPLEVEL::muted::stopSound:
-            putData.data.control = MAIN::control::stopSound;
-            putData.data.type = TOPLEVEL::type::Write | TOPLEVEL::type::Integer;
-            break;
-        case TOPLEVEL::muted::masterReset:
-            textMsgBuffer.clear(); // make sure there are no hanging messages
-            putData.data.control = (altData >> 8) & 0xff;
-            putData.data.type = altData >> 24;
-            //std::cout << "ID " << int(synth->getUniqueId()) << std::endl;
-            break;
-        case TOPLEVEL::muted::patchsetLoad:
-            putData.data.control = MAIN::control::loadNamedPatchset;
-            putData.data.type = altData >> 24;
-            putData.data.miscmsg = (altData >> 8) & 0xff;
-            break;
-        case TOPLEVEL::muted::vectorLoad:
-            putData.data.control = MAIN::control::loadNamedVector;
-            putData.data.type = altData >> 24;
-            putData.data.insert = (altData >> 16) & 0xff;
-            putData.data.miscmsg = (altData >> 8) & 0xff;
-            break;
-        case TOPLEVEL::muted::stateLoad:
-            putData.data.control = MAIN::control::loadNamedState;
-            putData.data.type = altData >> 24;
-            putData.data.miscmsg = (altData >> 8) & 0xff;
-            break;
-        case TOPLEVEL::muted::listLoad:
-        {
-            putData.data.control = MAIN::control::loadFileFromList;
-            putData.data.type = TOPLEVEL::type::Write | TOPLEVEL::type::Integer;
-            putData.data.insert = (altData >> 24) & 0xff;
-            putData.data.engine  = (altData >> 16) & 0xff;
-            putData.data.kit = (altData >> 8) & 0xff;
-            break;
-        }
-        default:
-            return;
-            break;
-    }
-    putData.data.source = TOPLEVEL::action::toAll;
-    // we want everyone to know about these!
-    indirectTransfers(&putData);
-}
 
 void InterChange::returns(CommandBlock *getData)
 {
@@ -2519,13 +2489,7 @@ void InterChange::commandConfig(CommandBlock *getData)
             break;
         case CONFIG::control::enableGUI:
             if (write)
-            {
                 synth->getRuntime().showGui = value_bool;
-                if (value_bool)
-                    createEmptyFile(runGui);
-                else
-                    deleteFile(runGui);
-            }
             else
                 value = synth->getRuntime().showGui;
             break;
@@ -2543,14 +2507,9 @@ void InterChange::commandConfig(CommandBlock *getData)
             break;
         case CONFIG::control::enableSinglePath:
             if (write)
-            {
-                if (value_bool)
-                    createEmptyFile(singlePath);
-                else
-                    deleteFile(singlePath);
-            }
+                synth->getRuntime().singlePath = value;
             else
-                value = isRegularFile(singlePath);
+                value = synth->getRuntime().singlePath;
             break;
         case CONFIG::control::exposeStatus:
             if (write)
@@ -2771,8 +2730,6 @@ void InterChange::commandMain(CommandBlock *getData)
     unsigned char control = getData->data.control;
     unsigned char kititem = getData->data.kit;
     unsigned char engine = getData->data.engine;
-    unsigned char insert = getData->data.insert;
-    unsigned char miscmsg = getData->data.miscmsg;
 
     bool write = (type & TOPLEVEL::type::Write) > 0;
     int value_int = lrint(value);
@@ -2861,7 +2818,7 @@ void InterChange::commandMain(CommandBlock *getData)
         case MAIN::control::loadNamedPatchset:
             if (write && ((action & TOPLEVEL::action::muteAndLoop) == TOPLEVEL::action::muteAndLoop))
             {
-                synth->allStop(TOPLEVEL::muted::patchsetLoad | (miscmsg << 8) | (type << 24));
+                muteQueueWrite(getData);
                 getData->data.source = TOPLEVEL::action::noAction;
             }
             break;
@@ -2869,7 +2826,7 @@ void InterChange::commandMain(CommandBlock *getData)
         case MAIN::control::loadNamedVector:
             if (write && ((action & TOPLEVEL::action::muteAndLoop) == TOPLEVEL::action::muteAndLoop))
             {
-                synth->allStop(TOPLEVEL::muted::vectorLoad | (miscmsg << 8) | (insert << 16) | (type << 24));
+                muteQueueWrite(getData);
                 getData->data.source = TOPLEVEL::action::noAction;
             }
             break;
@@ -2882,14 +2839,14 @@ void InterChange::commandMain(CommandBlock *getData)
         case MAIN::control::loadNamedState:
             if (write && ((action & TOPLEVEL::action::muteAndLoop) == TOPLEVEL::action::muteAndLoop))
             {
-                synth->allStop(TOPLEVEL::muted::stateLoad | (miscmsg << 8) | (type << 24));
+                muteQueueWrite(getData);
                 getData->data.source = TOPLEVEL::action::noAction;
             }
             break;
         case MAIN::control::saveNamedState: // done elsewhere
             break;
         case MAIN::control::loadFileFromList:
-            synth->allStop(TOPLEVEL::muted::listLoad | (kititem << 8) | (engine << 16) | (insert << 24));
+            muteQueueWrite(getData);
             getData->data.source = TOPLEVEL::action::noAction;
             break;
 
@@ -2897,7 +2854,7 @@ void InterChange::commandMain(CommandBlock *getData)
         case MAIN::control::masterResetAndMlearn:
             if (write && ((action & TOPLEVEL::action::muteAndLoop) == TOPLEVEL::action::muteAndLoop))
             {
-                synth->allStop(TOPLEVEL::muted::masterReset | (control << 8) | (type << 24));
+                muteQueueWrite(getData);
                 getData->data.source = TOPLEVEL::action::noAction;
             }
             break;
@@ -2907,7 +2864,7 @@ void InterChange::commandMain(CommandBlock *getData)
             break;
         case MAIN::control::stopSound: // just stop
             if (write)
-                synth->allStop(TOPLEVEL::muted::stopSound);
+                muteQueueWrite(getData);
             getData->data.source = TOPLEVEL::action::noAction;
             break;
 
@@ -2940,7 +2897,6 @@ void InterChange::commandMain(CommandBlock *getData)
             break;
 
         case TOPLEVEL::control::textMessage:
-            synth->Mute();
             getData->data.source = TOPLEVEL::action::noAction;
             break;
     }

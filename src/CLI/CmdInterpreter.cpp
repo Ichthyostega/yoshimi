@@ -1893,23 +1893,18 @@ int CmdInterpreter::LFOselect(Parser& input, unsigned char controlType)
             value = 0;
         else
         {
-            int idx = 1;
-            while (LFOlist [idx] != "SIne")
-                idx += 2;
-            int start = idx;
-            while (LFOlist [idx] != "E2down")
-                idx += 2;
-            int end = idx;
-            idx = start;
-            while (idx <=end)
+            int idx = 0;
+            while (LFOtype [idx] != "end")
             {
-                if (input.matchnMove(2, LFOlist[idx].c_str()))
+                if (input.matchnMove(2, LFOtype[idx].c_str()))
+                {
+                    value = idx;
                     break;
-                idx += 2;
+                }
+                ++idx;
             }
-            if (idx > end)
+            if (value == -1)
                 return REPLY::range_msg;
-            value = (idx - start) / 2;
         }
         cmd = LFOINSERT::control::type;
     }
@@ -5346,6 +5341,29 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
         return Reply::DONE;
     }
 #endif
+
+    if (input.matchnMove(4, "test"))
+    {
+        list<string>testlist;
+        int count = file::listDir(&testlist, "/home/will/yoshimi-code/banks");
+        testlist.sort();
+
+        // safe removal
+        std::list<string>::iterator r_it = testlist.end();
+        while (r_it != testlist.begin())
+        {
+            string name = *--r_it;
+            if (name.substr(0, 2) == ("Re"))
+                r_it = testlist.erase(r_it);
+        }
+
+        for(list<string>::iterator it = testlist.begin(); it != testlist.end(); ++ it)
+            std::cout << *it << std::endl;
+        std::cout << "total found " << count << std::endl;
+        testlist.clear();
+        return Reply::DONE;
+    }
+
     if (input.matchnMove(2, "exit"))
     {
         if (input.matchnMove(2, "force"))
