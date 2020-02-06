@@ -81,6 +81,7 @@ class Config
 
         string        userHome;
         string        ConfigDir;
+        string        localDir;
         string        defaultStateName;
         string        defaultSession;
         string        ConfigFile;
@@ -153,6 +154,7 @@ class Config
         bool          guiChanged;
         bool          showCli;
         bool          cliChanged;
+        bool          singlePath;
         bool          configChanged;
 
         int           rtprio;
