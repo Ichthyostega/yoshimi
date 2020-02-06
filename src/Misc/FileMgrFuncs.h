@@ -1,7 +1,7 @@
 /*
     FileMgr.h - all file operations
 
-    Copyright 2019 Will Godfrey
+    Copyright 2020 Will Godfrey and others.
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -29,6 +29,7 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <dirent.h>
 #include <unistd.h>
 #include <zlib.h>
 
@@ -40,7 +41,7 @@ using std::string;
 
 const string config =        ".config";
 const string instance =      ".instance";
-const string bank =          ".banks";
+const string validBank =     ".bankdir";
 const string history =       ".history";
 const string zynInst =       ".xiz";
 const string yoshInst =      ".xiy";
@@ -233,6 +234,46 @@ inline bool copyFile(string source, string destination)
 }
 
 
+inline uint32_t copyDir(string source, string destination)
+{
+    //std::cout << "source file " << source << "  to " << destination << std::endl;
+    DIR *dir = opendir(source.c_str());
+    struct dirent *fn;
+    int count = 0;
+    int missing = 0;
+    while ((fn = readdir(dir)))
+    {
+        string nextfile = string(fn->d_name);
+        if (nextfile == "." || nextfile == "..")
+            continue;
+        if (copyFile(source + "/" + nextfile, destination + "/" + nextfile))
+            ++missing;
+        else
+            ++count;
+    }
+
+    return count | (missing << 16);
+}
+
+
+inline int listDir(std::list<string>* dirList, string dirName)
+{
+    DIR *dir = opendir(dirName.c_str());
+    struct dirent *fn;
+    int count = 0;
+    while ((fn = readdir(dir)))
+    {
+        string name = fn->d_name;
+        if (!name.empty() && name != "." && name != "..")
+        {
+            dirList->push_back(name);
+            ++count;
+        }
+    }
+    return count;
+}
+
+
 inline string saveGzipped(char *data, string filename, int compression)
 {
     char options[10];
@@ -324,7 +365,11 @@ inline char * loadGzipped(string _filename, string * report)
     return data;
 }
 
-
+/*
+ * This is used for text files, preseving individual lines. These can
+ * then be split up by the receiving functions without needing a file
+ * handle, or any knowledge of the file system.
+ */
 inline string loadText(string filename)
 {
     FILE *readfile = fopen(filename.c_str(), "r");
@@ -354,7 +399,7 @@ inline bool createEmptyFile(string filename)
 
 inline bool createDir(string filename)
 {
-    return mkdir(filename.c_str(), 0755);
+    return mkdir(filename.c_str(), 0755);//, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 }
 
 

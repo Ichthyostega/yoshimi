@@ -1,4 +1,61 @@
-yoshimi 1.7.0 rc7
+yoshimi 1.7.0.1
+
+2020-1-31 Will
+* Changed .bankdir references in Bank( to validBank label.
+* Added 1st version .bankdir file to all default banks.
+* importbank, loadbank use new listDir(
+* BugFix: Segfault changing LFO type.
+* Set bugfix version as 1.7.0.1
+
+2020-1-30 Will
+* Added std::list for directories in file manager.
+  This will mostly be used by Bank(
+
+2020-1-29 Will
+* Started pulling direct file access out of Bank(
+
+2020-1-28 Will
+* Created new presets dir in .local/yoshimi
+  This will be populated from non-writable
+  default directories, and new build ones.
+* Doc updates.
+
+2020-1-25 Will
+* BugFix: GUI 'Save External' using wrong name.
+
+2020-1-23 Will
+* Revised essential config parameters.
+  Main no longer needs complex saved hidden files.
+
+2020-1-21 Will
+* Unified xml pointer names.
+  Makes code a bit easier to follow.
+
+2020-1-20 Will
+* BugFix: AddVoice GUI update not right from CLI/MIDI.
+* Combined definition of sizes in Bank.h with globals.h
+
+2020-1-19 Will
+* New master mute system now in place.
+* Moved location of Fl::Lock() in LV2
+  As suggested by Rob to resolve odd CLI output.
+* Some minor adjustments in indirectTransfers.
+  Gets rid of magic number.
+
+2020-1-18 Will
+* Added explanatary comments to code.
+* Doc updates.
+* Set release version 1.7.0
+
+2020-1-15 Will
+* GUI no longer changes part when changing bank.
+* Removed redundant bank code.
+* CLI now tracks part number when set elsewhere.
+* Set version as 1.7.0 rc8
+
+2020-1-13 Will
+* Mod. oscillator warning number out of field.
+* Fixed compiler warning from PadSynth.
 
 2020-1-10 Will
 * Final doc updates ready for release.

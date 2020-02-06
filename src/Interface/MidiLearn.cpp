@@ -165,7 +165,7 @@ bool MidiLearn::runMidiLearn(int _value, unsigned short int CC, unsigned char ch
         putData.data.miscmsg = foundEntry.data.miscmsg;
         if (writeMidi(&putData, in_place))
         {
-            if (firstLine && !(in_place)) // not in_place
+            if (firstLine && !in_place) // not in_place
             // we only want to send an activity once
             // and it's not relevant to jack freewheeling
             {
@@ -865,7 +865,7 @@ bool MidiLearn::saveList(string name)
     XMLwrapper *xml = new XMLwrapper(synth, true);
     if (!xml)
     {
-        synth->getRuntime().Log("Save Midi Learn failed xmltree allocation");
+        synth->getRuntime().Log("Save Midi Learn failed xml allocation");
         return false;
     }
     bool ok = insertMidiListData(xml);
