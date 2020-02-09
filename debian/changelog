@@ -1,11 +1,11 @@
-yoshimi (1.7.0.1-1) UNRELEASED; urgency=medium
+yoshimi (1.7.0.1-1) unstable; urgency=medium
 
   * New upstream version 1.7.0.1
   * d/control:
     + Bump Standards-Version to 4.5.0
     + Add me as uploader
 
- -- Dennis Braun <d_braun@kabelmail.de>  Thu, 06 Feb 2020 17:14:41 +0100
+ -- Dennis Braun <d_braun@kabelmail.de>  Sun, 09 Feb 2020 11:15:53 +0100
 
 yoshimi (1.7.0-1) unstable; urgency=medium
 
