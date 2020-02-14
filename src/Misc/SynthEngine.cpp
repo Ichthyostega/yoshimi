@@ -62,9 +62,6 @@ using std::set;
 
 extern void mainRegisterAudioPort(SynthEngine *s, int portnum);
 
-// defined in InterChange.cpp and also used in main.cpp
-extern std::string runGui;
-
 map<SynthEngine *, MusicClient *> synthInstances;
 SynthEngine *firstSynth = NULL;
 
@@ -135,8 +132,6 @@ SynthEngine::SynthEngine(int argc, char **argv, bool _isLV2Plugin, unsigned int 
     ctl(NULL),
     microtonal(this),
     fft(NULL),
-    muted(0),
-    //stateXMLtree(NULL),
 #ifdef GUI_FLTK
     guiMaster(NULL),
     guiClosedCallback(NULL),
@@ -152,6 +147,7 @@ SynthEngine::SynthEngine(int argc, char **argv, bool _isLV2Plugin, unsigned int 
     //std::cout << "byte " << int(x.arr[0]) << std::endl;
     Runtime.isLittleEndian = (x.arr[0] == 0x44);
 
+    audioOut.store(muteState::Active);
     if (bank.roots.empty())
         bank.addDefaultRootDirs();
 
@@ -212,7 +208,6 @@ SynthEngine::~SynthEngine()
         delete fft;
 
     sem_destroy(&partlock);
-    sem_destroy(&mutelock);
     if (ctl)
         delete ctl;
     getRemoveSynthId(true, uniqueId);
@@ -259,7 +254,6 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
     }
 
     sem_init(&partlock, 0, 1);
-    sem_init(&mutelock, 0, 1);
 
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
     {
@@ -363,13 +357,13 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
     }
 
     // just to make sure we're in sync
-    if (uniqueId == 0)
+    /*if (uniqueId == 0)
     {
         if (Runtime.showGui)
             createEmptyFile(runGui);
         else
             deleteFile(runGui);
-    }
+    }*/
 
     // we seem to need this here only for first time startup :(
     bank.setCurrentBankID(Runtime.tempBank);
@@ -1149,7 +1143,7 @@ void SynthEngine::ListInstruments(int bankNum, list<string>& msg_buf)
                             + ", Bank ID " + asString(bankNum));
             msg_buf.push_back("    " + label
                             + "/" + bank.roots [root].banks [bankNum].dirname);
-            for (int idx = 0; idx < BANK_SIZE; ++ idx)
+            for (int idx = 0; idx < MAX_INSTRUMENTS_IN_BANK; ++ idx)
             {
                 if (!bank.emptyslot(root, bankNum, idx))
                 {
@@ -1797,8 +1791,6 @@ void SynthEngine::resetAll(bool andML)
         putData.data.part = TOPLEVEL::section::midiLearn;
         midilearn.generalOperations(&putData);
     }
-    while(isMuted())
-        Unmute(); // unwind all mute settings
 }
 
 
@@ -1865,74 +1857,6 @@ char SynthEngine::partonoffRead(int npart)
 }
 
 
-void SynthEngine::SetMuteAndWait(void)
-{
-    CommandBlock putData;
-    memset(&putData, 0xff, sizeof(putData));
-    putData.data.value.F = 0;
-    putData.data.type = TOPLEVEL::type::Write | TOPLEVEL::type::Integer;
-    putData.data.control = TOPLEVEL::control::textMessage;
-    putData.data.part = TOPLEVEL::section::main;
-#ifdef GUI_FLTK
-    if (interchange.fromGUI ->write(putData.bytes))
-    {
-        while(!isMuted()) // TODO this seems screwy :(
-            usleep (1000);
-    }
-#endif
-}
-
-
-bool SynthEngine::isMuted(void)
-{
-    return (muted < 1);
-}
-
-
-void SynthEngine::Unmute()
-{
-    sem_wait(&mutelock);
-    mutewrite(2);
-    sem_post(&mutelock);
-}
-
-void SynthEngine::Mute()
-{
-    sem_wait(&mutelock);
-    mutewrite(-1);
-    sem_post(&mutelock);
-}
-
-/*
- * Intelligent switch for unknown mute status that always
- * mutes and later returns original unknown state
- */
-void SynthEngine::mutewrite(int what)
-{
-    //unsigned char original = muted;
-    unsigned char tmp = muted;
-    switch (what)
-    {
-        case 0: // always muted
-            tmp = 0;
-            break;
-        case 1: // always unmuted
-            tmp = 1;
-            break;
-        case -1: // further from unmute
-            tmp -= 1;
-            break;
-        case 2:
-            if (tmp != 1) // nearer to unmute
-                tmp += 1;
-            break;
-        default:
-            return;
-    }
-    muted = tmp;
-}
-
-
 // Master audio out (the final sound)
 int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_MIDI_PARTS + 1], int to_process)
 {
@@ -1956,18 +1880,64 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
     {
         sent_buffersize = to_process;
         sent_bufferbytes = sent_buffersize * sizeof(float);
-        sent_buffersize_f = sent_buffersize;;
+        sent_buffersize_f = sent_buffersize;
     }
 
     memset(mainL, 0, sent_bufferbytes);
     memset(mainR, 0, sent_bufferbytes);
 
+    unsigned char sound = audioOut.load();
+    switch (sound)
+    {
+        case muteState::Pending:
+            // set by resolver
+            fadeLevel = 1.0f;
+            audioOut.store(muteState::Fading);
+            sound = muteState::Fading;
+            //std::cout << "here fading" << std:: endl;
+            break;
+        case muteState::Fading:
+            if (fadeLevel < 0.001f)
+            {
+                audioOut.store(muteState::Active);
+                sound = muteState::Active;
+                fadeLevel = 0;
+            }
+            break;
+        case muteState::Active:
+            // cleared by resolver
+            break;
+        case muteState::Complete:
+            // set by resolver and paste
+            audioOut.store(muteState::Idle);
+            //std::cout << "here complete" << std:: endl;
+            break;
+        case muteState::Request:
+            // set by paste routine
+            audioOut.store(muteState::Immediate);
+            sound = muteState::Active;
+            //std::cout << "here requesting" << std:: endl;
+            break;
+        case muteState::Immediate:
+            // cleared by paste routine
+            sound = muteState::Active;
+            break;
+        default:
+            break;
+    }
+
+
     interchange.mediate();
-    char partLocal[NUM_MIDI_PARTS]; // isolates loop from possible change
+    char partLocal[NUM_MIDI_PARTS];
+    /*
+     * This isolates the loop from part changes so that when a low
+     * prio thread completes and re-enables the part, it will not
+     * actually be seen until the start of the next period.
+     */
     for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
             partLocal[npart] = partonoffRead(npart);
 
-    if (isMuted())
+    if (sound == muteState::Active)
     {
         for (int npart = 0; npart < (Runtime.NumAvailableParts); ++npart)
         {
@@ -2128,7 +2098,7 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
             }
             mainL[idx] *= volume; // apply Master Volume
             mainR[idx] *= volume;
-            if (fadeAll) // fadeLevel must also have been set
+            if (sound == muteState::Fading) // fadeLevel must also have been set
             {
                 for (int npart = 0; npart < (Runtime.NumAvailableParts); ++npart)
                 {
@@ -2206,17 +2176,6 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
                 }
 
             }
-        }
-/*
- * This has to be at the end of the audio loop to
- * ensure no contention with VU updates etc.
- */
-        if (fadeAll && fadeLevel <= 0.001f)
-        {
-            Mute();
-            fadeLevel = 0; // just to be sure
-            interchange.flagsWrite(fadeAll);
-            fadeAll = 0;
         }
     }
     return sent_buffersize;
@@ -2360,21 +2319,6 @@ void SynthEngine::ShutUp(void)
 }
 
 
-void SynthEngine::allStop(unsigned int stopType)
-{
-    if(isMuted()) // there's a hanging mute :(
-    {
-        fadeLevel = 0;
-        interchange.flagsWrite(stopType);
-        return;
-    }
-    fadeAll = stopType;
-    if (fadeLevel < 0.001)
-        fadeLevel = 1.0f;
-    // don't reset if it's already fading.
-}
-
-
 bool SynthEngine::loadStateAndUpdate(string filename)
 {
     defaults();
@@ -2382,7 +2326,6 @@ bool SynthEngine::loadStateAndUpdate(string filename)
     Runtime.stateChanged = true;
     bool result = Runtime.restoreSessionData(filename);
     ShutUp();
-    Unmute();
     return result;
 }
 
@@ -2398,7 +2341,6 @@ bool SynthEngine::loadPatchSetAndUpdate(string fname)
     bool result;
     fname = setExtension(fname, EXTEN::patchset);
     result = loadXML(fname); // load the data
-    Unmute();
     if (result)
         setAllPartMaps();
     return result;
@@ -2480,20 +2422,20 @@ bool SynthEngine::saveBanks()
     string bankname = name + ".banks";
     Runtime.xmlType = TOPLEVEL::XML::Bank;
 
-    XMLwrapper *xmltree = new XMLwrapper(this, true);
-    if (!xmltree)
+    XMLwrapper *xml = new XMLwrapper(this, true);
+    if (!xml)
     {
-        Runtime.Log("saveBanks failed xmltree allocation");
+        Runtime.Log("saveBanks failed xml allocation");
         return false;
     }
-    xmltree->beginbranch("BANKLIST");
-    bank.saveToConfigFile(xmltree);
-    xmltree->endbranch();
+    xml->beginbranch("BANKLIST");
+    bank.saveToConfigFile(xml);
+    xml->endbranch();
 
-    if (!xmltree->saveXMLfile(bankname))
+    if (!xml->saveXMLfile(bankname))
         Runtime.Log("Failed to save config to " + bankname);
 
-    delete xmltree;
+    delete xml;
 
     return true;
 }
@@ -2706,13 +2648,13 @@ bool SynthEngine::saveHistory()
     string historyname = name + ".history";
     Runtime.xmlType = TOPLEVEL::XML::History;
 
-    XMLwrapper *xmltree = new XMLwrapper(this, true);
-    if (!xmltree)
+    XMLwrapper *xml = new XMLwrapper(this, true);
+    if (!xml)
     {
-        Runtime.Log("saveHistory failed xmltree allocation");
+        Runtime.Log("saveHistory failed xml allocation");
         return false;
     }
-    xmltree->beginbranch("HISTORY");
+    xml->beginbranch("HISTORY");
     {
         int count;
         string type;
@@ -2751,26 +2693,26 @@ bool SynthEngine::saveHistory()
             {
                 unsigned int offset = 0;
                 int x = 0;
-                xmltree->beginbranch(type);
-                    xmltree->addparbool("lock_status", Runtime.historyLock[count]);
-                    xmltree->addpar("history_size", listType.size());
+                xml->beginbranch(type);
+                    xml->addparbool("lock_status", Runtime.historyLock[count]);
+                    xml->addpar("history_size", listType.size());
                     if (listType.size() > MAX_HISTORY)
                         offset = listType.size() - MAX_HISTORY;
                     for (vector<string>::iterator it = listType.begin(); it != listType.end() - offset; ++it)
                     {
-                        xmltree->beginbranch("XMZ_FILE", x);
-                            xmltree->addparstr(extension, *it);
-                        xmltree->endbranch();
+                        xml->beginbranch("XMZ_FILE", x);
+                            xml->addparstr(extension, *it);
+                        xml->endbranch();
                         ++x;
                     }
-                xmltree->endbranch();
+                xml->endbranch();
             }
         }
     }
-    xmltree->endbranch();
-    if (!xmltree->saveXMLfile(historyname))
+    xml->endbranch();
+    if (!xml->saveXMLfile(historyname))
         Runtime.Log("Failed to save data to " + historyname);
-    delete xmltree;
+    delete xml;
     return true;
 }
 
@@ -2779,7 +2721,6 @@ unsigned char SynthEngine::loadVectorAndUpdate(unsigned char baseChan, string na
 {
     unsigned char result = loadVector(baseChan, name, true);
     ShutUp();
-    Unmute();
     return result;
 }
 
@@ -2947,7 +2888,7 @@ unsigned char SynthEngine::saveVector(unsigned char baseChan, string name, bool 
     XMLwrapper *xml = new XMLwrapper(this, true);
     if (!xml)
     {
-        Runtime.Log("Save Vector failed xmltree allocation", 2);
+        Runtime.Log("Save Vector failed xml allocation", 2);
         return textMsgBuffer.push("FAIL");
     }
     xml->beginbranch("VECTOR");

@@ -55,6 +55,8 @@
 #include "ConfBuild.h"
 
 using file::isRegularFile;
+using file::createDir;
+using file::copyDir;
 using file::isDirectory;
 using file::extendLocalPath;
 using file::setExtension;
@@ -156,6 +158,7 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
     guiChanged(false),
     showCli(true),
     cliChanged(false),
+    singlePath(false),
     configChanged(false),
     rtprio(40),
     midi_bank_root(0), // 128 is used as 'disabled'
@@ -305,20 +308,30 @@ bool Config::loadConfig(void)
 {
     //std::cout << "here load config" << std::endl;
     string cmd;
-    int chk;
     string homedir = string(getenv("HOME"));
     if (homedir.empty() || !isDirectory(homedir))
+    {
         homedir = string("/tmp");
+        Log ("Failed to find 'Home' directory - using tmp.\nSettings will be lost on computer shutdown.");
+    }
     userHome = homedir + '/';
-    ConfigDir = homedir + "/" + string(EXTEN::config) + "/" + YOSHIMI;
+    localDir = userHome + ".local/yoshimi";
+    if (!isDirectory(localDir))
+    {
+        if (createDir(localDir))
+        {
+            Log("Failed to create local yoshimi directory.");
+            return false;
+        }
+    }
+    ConfigDir = userHome + string(EXTEN::config) + "/" + YOSHIMI;
     defaultStateName = ConfigDir + "/yoshimi";
 
     if (!isDirectory(ConfigDir))
     {
-        cmd = string("mkdir -p ") + ConfigDir;
-        if ((chk = system(cmd.c_str())) < 0)
+        if (createDir(ConfigDir))
         {
-            Log("Create config directory " + ConfigDir + " failed, status " + asString(chk));
+            Log("Failed to create config directory '" + ConfigDir + "'");
             return false;
         }
     }
@@ -331,12 +344,23 @@ bool Config::loadConfig(void)
     if (thisInstance == 0 && sessionStage != Session::RestoreConf)
     {
         TextMsgBuffer::instance().init(); // sneaked it in here so it's early
-        string presetDir = ConfigDir + "/presets";
+        string presetDir = localDir + "/presets";
         if (!isDirectory(presetDir))
         {
-            cmd = string("mkdir -p ") + presetDir;
-            if ((chk = system(cmd.c_str())) < 0)
-                Log("Create preset directory " + presetDir + " failed, status " + asString(chk));
+            if (createDir(presetDir))
+            {
+                Log("Failed to create presets directory '" + presetDir + "'");
+            }
+            else
+            {
+                defaultPresets();
+                int i = 1;
+                while (!presetsDirlist[i].empty())
+                {
+                    copyDir(presetsDirlist[i], presetDir);
+                    ++i;
+                }
+            }
         }
     }
 
@@ -364,7 +388,6 @@ bool Config::loadConfig(void)
     if (!isRegularFile(baseConfig))
     {
         Log("Basic configuration " + baseConfig + " not found, will use default settings");
-        if (thisInstance == 0)
             defaultPresets();
     }
 
@@ -464,12 +487,17 @@ void Config::restoreConfig(SynthEngine *_synth)
 void Config::defaultPresets(void)
 {
     string presetdirs[]  = {
+        string(getenv("HOME")) + "/.local/yoshimi/presets",
+        extendLocalPath("/presets"),
+        // The following is not a default one.
+        //string(getenv("HOME")) + "/" + string(EXTEN::config) + "/yoshimi/presets",
         "/usr/share/yoshimi/presets",
         "/usr/local/share/yoshimi/presets",
+        /*
+         * We no longer include zyn presets as they changed the filenames.
         "/usr/share/zynaddsubfx/presets",
         "/usr/local/share/zynaddsubfx/presets",
-        string(getenv("HOME")) + "/" + string(EXTEN::config) + "/yoshimi/presets",
-        extendLocalPath("/presets"),
+        */
         "end"
     };
     int i = 0;
@@ -504,26 +532,19 @@ bool Config::extractBaseParameters(XMLwrapper *xml)
         return false;
     }
 
-    // the following three retained here for compatibility with old config type
-    if(!rateChanged)
-        Samplerate = xml->getpar("sample_rate", Samplerate, 44100, 192000);
-    if (!bufferChanged)
-        Buffersize = xml->getpar("sound_buffer_size", Buffersize, MIN_BUFFER_SIZE, MAX_BUFFER_SIZE);
-    if (!oscilChanged)
-        Oscilsize = xml->getpar("oscil_size", Oscilsize, MIN_OSCIL_SIZE, MAX_OSCIL_SIZE);
-
-    GzipCompression = xml->getpar("gzip_compression", GzipCompression, 0, 9);
     if (!guiChanged)
         showGui = xml->getparbool("enable_gui", showGui);
     showSplash = xml->getparbool("enable_splash", showSplash);
     if (!cliChanged)
         showCli = xml->getparbool("enable_CLI", showCli);
+    singlePath = xml->getparbool("enable_single_master", singlePath);
     autoInstance = xml->getparbool("enable_auto_instance", autoInstance);
     if (autoInstance)
         activeInstance = xml->getparU("active_instances", 0);
     else
         activeInstance = 1;
     showCLIcontext = xml->getpar("show_CLI_context", 1, 0, 2);
+    GzipCompression = xml->getpar("gzip_compression", GzipCompression, 0, 9);
 
     // get preset dirs
     int count = 0;
@@ -548,6 +569,15 @@ bool Config::extractBaseParameters(XMLwrapper *xml)
         currentPreset = 0;
         configChanged = true; // give the user the choice
     }
+
+    // the following three retained here for compatibility with old config type
+    if(!rateChanged)
+        Samplerate = xml->getpar("sample_rate", Samplerate, 44100, 192000);
+    if (!bufferChanged)
+        Buffersize = xml->getpar("sound_buffer_size", Buffersize, MIN_BUFFER_SIZE, MAX_BUFFER_SIZE);
+    if (!oscilChanged)
+        Oscilsize = xml->getpar("oscil_size", Oscilsize, MIN_OSCIL_SIZE, MAX_OSCIL_SIZE);
+
 
     xml->exitbranch(); // BaseParameters
     return true;
@@ -671,15 +701,15 @@ bool Config::saveConfig(bool master)
     {
         //std::cout << "saving master" << std::endl;
         xmlType = TOPLEVEL::XML::MasterConfig;
-        XMLwrapper *xmltree = new XMLwrapper(synth, true);
-        if (!xmltree)
+        XMLwrapper *xml = new XMLwrapper(synth, true);
+        if (!xml)
         {
-            Log("saveConfig failed xmltree allocation", 2);
+            Log("saveConfig failed xml allocation", 2);
             return result;
         }
         string resConfigFile = baseConfig;
 
-        if (xmltree->saveXMLfile(resConfigFile))
+        if (xml->saveXMLfile(resConfigFile, false))
         {
             configChanged = false;
             result = true;
@@ -687,19 +717,19 @@ bool Config::saveConfig(bool master)
         else
             Log("Failed to save master config to " + resConfigFile, 2);
 
-        delete xmltree;
+        delete xml;
     }
     xmlType = TOPLEVEL::XML::Config;
-    XMLwrapper *xmltree = new XMLwrapper(synth, true);
-    if (!xmltree)
+    XMLwrapper *xml = new XMLwrapper(synth, true);
+    if (!xml)
     {
-        Log("saveConfig failed xmltree allocation", 2);
+        Log("saveConfig failed xml allocation", 2);
         return result;
     }
-    addConfigXML(xmltree);
+    addConfigXML(xml);
     string resConfigFile = ConfigFile;
 
-    if (xmltree->saveXMLfile(resConfigFile))
+    if (xml->saveXMLfile(resConfigFile))
     {
         configChanged = false;
         result = true;
@@ -707,57 +737,57 @@ bool Config::saveConfig(bool master)
     else
         Log("Failed to save instance to " + resConfigFile, 2);
 
-    delete xmltree;
+    delete xml;
     return result;
 }
 
 
-void Config::addConfigXML(XMLwrapper *xmltree)
+void Config::addConfigXML(XMLwrapper *xml)
 {
-    xmltree->beginbranch("CONFIGURATION");
-    xmltree->addpar("defaultState", loadDefaultState);
+    xml->beginbranch("CONFIGURATION");
+    xml->addpar("defaultState", loadDefaultState);
 
-    xmltree->addpar("sample_rate", synth->getRuntime().Samplerate);
-    xmltree->addpar("sound_buffer_size", synth->getRuntime().Buffersize);
-    xmltree->addpar("oscil_size", synth->getRuntime().Oscilsize);
+    xml->addpar("sample_rate", synth->getRuntime().Samplerate);
+    xml->addpar("sound_buffer_size", synth->getRuntime().Buffersize);
+    xml->addpar("oscil_size", synth->getRuntime().Oscilsize);
 
-    xmltree->addpar("single_row_panel", single_row_panel);
-    xmltree->addpar("reports_destination", toConsole);
-    xmltree->addpar("hide_system_errors", hideErrors);
-    xmltree->addpar("report_load_times", showTimes);
-    xmltree->addpar("report_XMLheaders", logXMLheaders);
-    xmltree->addpar("virtual_keyboard_layout", VirKeybLayout + 1);
-    xmltree->addpar("full_parameters", xmlmax);
+    xml->addpar("single_row_panel", single_row_panel);
+    xml->addpar("reports_destination", toConsole);
+    xml->addpar("hide_system_errors", hideErrors);
+    xml->addpar("report_load_times", showTimes);
+    xml->addpar("report_XMLheaders", logXMLheaders);
+    xml->addpar("virtual_keyboard_layout", VirKeybLayout + 1);
+    xml->addpar("full_parameters", xmlmax);
 
-    xmltree->addpar("presetsCurrentRootID", currentPreset);
+    xml->addpar("presetsCurrentRootID", currentPreset);
 
-    xmltree->addpar("interpolation", Interpolation);
+    xml->addpar("interpolation", Interpolation);
 
-    xmltree->addpar("audio_engine", synth->getRuntime().audioEngine);
-    xmltree->addpar("midi_engine", synth->getRuntime().midiEngine);
-    xmltree->addpar("alsa_midi_type", synth->getRuntime().alsaMidiType);
+    xml->addpar("audio_engine", synth->getRuntime().audioEngine);
+    xml->addpar("midi_engine", synth->getRuntime().midiEngine);
+    xml->addpar("alsa_midi_type", synth->getRuntime().alsaMidiType);
 
-    xmltree->addparstr("linux_alsa_audio_dev", alsaAudioDevice);
-    xmltree->addparstr("linux_alsa_midi_dev", alsaMidiDevice);
+    xml->addparstr("linux_alsa_audio_dev", alsaAudioDevice);
+    xml->addparstr("linux_alsa_midi_dev", alsaMidiDevice);
 
-    xmltree->addparstr("linux_jack_server", jackServer);
-    xmltree->addparstr("linux_jack_midi_dev", jackMidiDevice);
-    xmltree->addpar("connect_jack_audio", connectJackaudio);
+    xml->addparstr("linux_jack_server", jackServer);
+    xml->addparstr("linux_jack_midi_dev", jackMidiDevice);
+    xml->addpar("connect_jack_audio", connectJackaudio);
 
-    xmltree->addpar("midi_bank_root", midi_bank_root);
-    xmltree->addpar("midi_bank_C", midi_bank_C);
-    xmltree->addpar("midi_upper_voice_C", midi_upper_voice_C);
-    xmltree->addpar("ignore_program_change", (1 - EnableProgChange));
-    xmltree->addpar("enable_part_on_voice_load", enable_part_on_voice_load);
-    xmltree->addpar("saved_instrument_format", instrumentFormat);
-    xmltree->addparbool("enable_incoming_NRPNs", enable_NRPN);
-    xmltree->addpar("ignore_reset_all_CCs",ignoreResetCCs);
-    xmltree->addparbool("monitor-incoming_CCs", monitorCCin);
-    xmltree->addparbool("open_editor_on_learned_CC",showLearnedCC);
-    xmltree->addpar("check_pad_synth", checksynthengines);
-    xmltree->addpar(string("root_current_ID"), synth->ReadBankRoot());
-    xmltree->addpar(string("bank_current_ID"), synth->ReadBank());
-    xmltree->endbranch(); // CONFIGURATION
+    xml->addpar("midi_bank_root", midi_bank_root);
+    xml->addpar("midi_bank_C", midi_bank_C);
+    xml->addpar("midi_upper_voice_C", midi_upper_voice_C);
+    xml->addpar("ignore_program_change", (1 - EnableProgChange));
+    xml->addpar("enable_part_on_voice_load", enable_part_on_voice_load);
+    xml->addpar("saved_instrument_format", instrumentFormat);
+    xml->addparbool("enable_incoming_NRPNs", enable_NRPN);
+    xml->addpar("ignore_reset_all_CCs",ignoreResetCCs);
+    xml->addparbool("monitor-incoming_CCs", monitorCCin);
+    xml->addparbool("open_editor_on_learned_CC",showLearnedCC);
+    xml->addpar("check_pad_synth", checksynthengines);
+    xml->addpar(string("root_current_ID"), synth->ReadBankRoot());
+    xml->addpar(string("bank_current_ID"), synth->ReadBank());
+    xml->endbranch(); // CONFIGURATION
 }
 
 
@@ -765,25 +795,25 @@ bool Config::saveSessionData(string savefile)
 {
     savefile = setExtension(savefile, EXTEN::state);
     synth->getRuntime().xmlType = TOPLEVEL::XML::State;
-    XMLwrapper *xmltree = new XMLwrapper(synth, true);
-    if (!xmltree)
+    XMLwrapper *xml = new XMLwrapper(synth, true);
+    if (!xml)
     {
-        Log("saveSessionData failed xmltree allocation", 3);
+        Log("saveSessionData failed xml allocation", 3);
         return false;
     }
     bool ok = true;
-    addConfigXML(xmltree);
-    synth->add2XML(xmltree);
-    synth->midilearn.insertMidiListData(xmltree);
-    if (xmltree->saveXMLfile(savefile))
+    addConfigXML(xml);
+    synth->add2XML(xml);
+    synth->midilearn.insertMidiListData(xml);
+    if (xml->saveXMLfile(savefile))
         Log("Session data saved to " + savefile, 2);
     else
     {
         ok = false;
         Log("Failed to save session data to " + savefile, 2);
     }
-    if (xmltree)
-        delete xmltree;
+    if (xml)
+        delete xml;
     return ok;
 }
 
@@ -802,7 +832,7 @@ bool Config::restoreSessionData(string sessionfile)
     }
     if (!(xml = new XMLwrapper(synth, true)))
     {
-        Log("Failed to init xmltree for restoreState", 3);
+        Log("Failed to init xml for restoreState", 3);
         goto end_game;
     }
     if (!xml->loadXMLfile(sessionfile))

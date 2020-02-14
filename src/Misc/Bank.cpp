@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2010, Alan Calvert
-    Copyright 2014-2019, Will Godfrey & others
+    Copyright 2014-2020, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -52,7 +52,10 @@ using file::make_legit_filename;
 using file::isRegularFile;
 using file::isDirectory;
 using file::renameDir;
+using file::createDir;
 using file::deleteDir;
+using file::listDir;
+using file::copyDir;
 using file::copyFile;
 using file::renameFile;
 using file::deleteFile;
@@ -73,7 +76,7 @@ using std::endl;
 
 Bank::Bank(SynthEngine *_synth) :
     defaultinsname(string(" ")),
-    force_bank_dir_file(".bankdir"), // if this file exists in a directory, the
+    force_bank_dir_file(EXTEN::validBank), // if this file exists in a directory, the
                                     // directory is considered a bank, even if
                                     // it doesn't contain an instrument file
     synth(_synth)
@@ -330,7 +333,7 @@ int Bank::getBankSize(int bankID, size_t rootID)
 {
     int found = 0;
 
-    for (int i = 0; i < BANK_SIZE; ++ i)
+    for (int i = 0; i < MAX_INSTRUMENTS_IN_BANK; ++ i)
         if (!roots [rootID].banks [bankID].instruments [i].name.empty())
             found += 1;
     return found;
@@ -372,24 +375,23 @@ bool Bank::loadbank(size_t rootID, size_t banknum)
     {
         return false;
     }
-    DIR *dir = opendir(bankdirname.c_str());
-    if (dir == NULL)
+
+    roots [rootID].banks [banknum].instruments.clear();
+
+    string chkpath;
+    string candidate;
+    size_t xizpos;
+    std::list<string> thisBank;
+    int found = listDir(&thisBank, bankdirname);
+    if (found == 0)
     {
         synth->getRuntime().Log("Failed to open bank directory " + bankdirname);
         return false;
     }
-    roots [rootID].banks [banknum].instruments.clear();
-
-    struct dirent *fn;
-    string chkpath;
-    string candidate;
-    size_t xizpos;
-    while ((fn = readdir(dir)))
+    for(list<string>::iterator it = thisBank.begin(); it != thisBank.end(); ++ it)
     {
-        candidate = string(fn->d_name);
-        if (candidate == "."
-            || candidate == ".."
-            || candidate.size() <= (EXTEN::zynInst.size() + 2)) // actually a 3 char filename!
+        candidate = *it;
+        if (candidate.size() <= (EXTEN::zynInst.size() + 2)) // actually a 3 char filename!
             continue;
         chkpath = bankdirname;
         if (chkpath.at(chkpath.size() - 1) != '/')
@@ -430,7 +432,7 @@ bool Bank::loadbank(size_t rootID, size_t banknum)
             }
         }
     }
-    closedir(dir);
+    thisBank.clear();
     return true;
 }
 
@@ -461,7 +463,7 @@ string Bank::exportBank(string exportdir, size_t rootID, unsigned int bankID)
     }
     if (ok)
     {
-        int result = mkdir(exportdir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        int result = createDir(exportdir);
         if (result < 0)
         {
             name = "Can't create external bank " + findLeafName(exportdir);
@@ -469,23 +471,15 @@ string Bank::exportBank(string exportdir, size_t rootID, unsigned int bankID)
         }
         else
         {
-            DIR *dir = opendir(sourcedir.c_str());
-            struct dirent *fn;
-            int count = 0;
-            int missing = 0;
-            while ((fn = readdir(dir)))
+            uint32_t result = copyDir(sourcedir, exportdir);
+
+            if (result > 0)
             {
-                string nextfile = string(fn->d_name);
-                if (copyFile(sourcedir + "/" + nextfile, exportdir + "/" + nextfile))
-                    ++missing;
-                else
-                    ++count;
-            }
-            if (count > 0)
-            {
-                name = "Copied out " + to_string(count) + " files to " + exportdir + " ";
-                if (missing > 2) // seem to get 2 phantoms :(
-                    name +=( "but failed to transfer" + to_string(missing));
+                name = "Copied out " + to_string(result & 0xffff) + " files to " + exportdir + " ";
+                result = result >> 16;
+                if (result > 0)
+                    name +=( "but failed to transfer" + to_string(result));
+                //std::cout << "missing " << result << std::endl;
             }
             else
             {
@@ -523,10 +517,11 @@ string Bank::importBank(string importdir, size_t rootID, unsigned int bankID)
 
     if (ok)
     {
-        DIR *dir = opendir(importdir.c_str());
-        if (dir == NULL)
+        std::list<string> thisBank;
+        int found = listDir(&thisBank, importdir);
+        if (found == 0)
         {
-            name = "Can't find " + importdir;
+            synth->getRuntime().Log("Can't find " + importdir);
             ok = false;
         }
         else
@@ -548,13 +543,13 @@ string Bank::importBank(string importdir, size_t rootID, unsigned int bankID)
             else
             {
                 int count = 0;
-                int total = -2; // seem to get 2 phantoms :(
+                int total = 0;
                 bool missing = false;
-                struct dirent *fn;
                 string exportfile = getRootPath(rootID) + "/" + getBankName(bankID, rootID);
-                while ((fn = readdir(dir)))
+                for(list<string>::iterator it = thisBank.begin(); it != thisBank.end(); ++ it)
                 {
-                    string nextfile = string(fn->d_name);                    if (nextfile.rfind(".bankdir") != string::npos)
+                    string nextfile = *it;
+                    if (nextfile.rfind(EXTEN::validBank) != string::npos)
                         continue; // new version will be generated
                     ++total;
                     if (nextfile.rfind(EXTEN::yoshInst) != string::npos || nextfile.rfind(EXTEN::zynInst) != string::npos)
@@ -598,6 +593,7 @@ string Bank::importBank(string importdir, size_t rootID, unsigned int bankID)
                 }
             }
         }
+        thisBank.clear();
     }
 
     if (!ok)
@@ -650,14 +646,14 @@ bool Bank::newbankfile(string newbankdir, size_t rootID)
     if (newbankpath.at(newbankpath.size() - 1) != '/')
         newbankpath += "/";
     newbankpath += newbankdir;
-    int result = mkdir(newbankpath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    int result = createDir(newbankpath);
     if (result < 0)
     {
-        synth->getRuntime().Log("Failed to mkdir " + newbankpath);
+        synth->getRuntime().Log("Failed to create " + newbankpath);
         return false;
     }
     else
-        synth->getRuntime().Log("mkdir " + newbankpath + " succeeded");
+        synth->getRuntime().Log("create " + newbankpath + " succeeded");
     string forcefile = newbankpath;
     if (forcefile.at(forcefile.size() - 1) != '/')
         forcefile += "/";
@@ -676,7 +672,7 @@ string Bank::removebank(unsigned int bankID, size_t rootID)
 
     string bankName = getBankPath(rootID, bankID);
     // ID bank and test for writeable
-    string IDfile = bankName + "/.bankdir";
+    string IDfile = bankName + "/" + EXTEN::validBank;
     if (!saveText(string(YOSHIMI_VERSION), IDfile))
         return (" FAILED Can't delete from this location.");
 
@@ -685,7 +681,7 @@ string Bank::removebank(unsigned int bankID, size_t rootID)
     int chk = 0;
     string name;
     string failed;
-    for (int inst = 0; inst < BANK_SIZE; ++ inst)
+    for (int inst = 0; inst < MAX_INSTRUMENTS_IN_BANK; ++ inst)
     {
         if (!roots [rootID].banks [bankID].instruments [inst].name.empty())
         {
@@ -920,7 +916,7 @@ string Bank::swapbanks(unsigned int firstID, unsigned int secondID, size_t first
         hints [secondRoot] [secondname] = firstID; // why do we need these?
         hints [firstRoot] [firstname] = secondID;
 
-        for(int pos = 0; pos < BANK_SIZE; ++ pos)
+        for(int pos = 0; pos < MAX_INSTRUMENTS_IN_BANK; ++ pos)
         {
             InstrumentEntry &instrRef_1 = getInstrumentReference(firstRoot, firstID, pos);
             InstrumentEntry &instrRef_2 = getInstrumentReference(secondRoot, secondID, pos);
@@ -1020,7 +1016,7 @@ void Bank::scanrootdir(int root_idx)
         lstat(chkdir.c_str(), &st);
         if (!S_ISDIR(st.st_mode))
             continue;
-        // check if directory contains an instrument or .bankdir
+        // check if directory contains an instrument or EXTEN::validBank
         DIR *d = opendir(chkdir.c_str());
         if (d == NULL)
         {
@@ -1034,7 +1030,7 @@ void Bank::scanrootdir(int root_idx)
             if (possible == "." || possible == "..")
                 continue;
             if (possible == force_bank_dir_file)
-            {   // .bankdir file exists, so add the bank
+            {   // EXTEN::validBank file exists, so add the bank
                 bankDirsMap [candidate] = chkdir;
                 break;
             }
@@ -1076,26 +1072,26 @@ bool Bank::addtobank(size_t rootID, size_t bankID, int pos, const string filenam
 {
     BankEntry &bank = roots [rootID].banks [bankID];
 
-    if (pos >= 0 && pos < BANK_SIZE)
+    if (pos >= 0 && pos < MAX_INSTRUMENTS_IN_BANK)
     {
         if (bank.instruments [pos].used)
         {
             pos = -1; // force it to find a new free position
         }
     }
-    else if (pos >= BANK_SIZE)
+    else if (pos >= MAX_INSTRUMENTS_IN_BANK)
         pos = -1;
 
     if (pos < 0)
     {
 
-        if(!bank.instruments.empty() && bank.instruments.size() > BANK_SIZE)
+        if(!bank.instruments.empty() && bank.instruments.size() > MAX_INSTRUMENTS_IN_BANK)
         {
             pos = bank.instruments.rbegin()->first + 1;
         }
         else
         {
-            pos = BANK_SIZE-1;
+            pos = MAX_INSTRUMENTS_IN_BANK-1;
             while (!emptyslot(rootID, bankID, pos))
             {
                 pos -= 1;
@@ -1144,10 +1140,10 @@ bool Bank::addtobank(size_t rootID, size_t bankID, int pos, const string filenam
 
 void Bank::deletefrombank(size_t rootID, size_t bankID, unsigned int pos)
 {
-    if (pos >= BANK_SIZE)
+    if (pos >= MAX_INSTRUMENTS_IN_BANK)
     {
-        synth->getRuntime().Log("Error, deletefrombank pos " + asString(pos) + " > BANK_SIZE"
-                    + asString(BANK_SIZE));
+        synth->getRuntime().Log("Error, deletefrombank pos " + asString(pos) + " > MAX_INSTRUMENTS_IN_BANK"
+                    + asString(MAX_INSTRUMENTS_IN_BANK));
         return;
     }
     getInstrumentReference(rootID, bankID, pos).clear();
@@ -1470,7 +1466,7 @@ void Bank::parseConfigFile(XMLwrapper *xml)
                 {
                     changeRootID(newIndex, i);
                 }
-                for(size_t k = 0; k < BANK_SIZE; k++)
+                for(size_t k = 0; k < MAX_INSTRUMENTS_IN_BANK; k++)
                 {
                     if(xml->enterbranch("bank_id", k))
                     {
