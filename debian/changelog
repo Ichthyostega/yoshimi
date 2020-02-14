@@ -1,13 +1,13 @@
-yoshimi (1.6.pre1.7.0+RC7-1+buster) Lumiera-buster-tools; urgency=low
+yoshimi (1.7.0.1-1~buster) Lumiera-buster-tool; urgency=low
 
-  * New upstream version 1.7.0 == PREVIEW RC7
-  * retain dh compat level 11 for now
+  * New upstream version 1.7.0.1
+  * bump standrads, but retain dh compat level 11 for now
     (since this package is backported to various LTS releases)
 
   * Rebuild/Backport for Debian/Buster(stable).
   * unofficial DEB package by Ichthyostega
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Sat, 11 Jan 2020 03:11:33 +0100
+ -- Hermann Vosseler <deb@ichthyostega.de>  Fri, 14 Feb 2020 02:08:44 +0100
 
 yoshimi (1.6.1-1) unstable; urgency=medium
 
