@@ -155,6 +155,8 @@ class Config
         bool          showCli;
         bool          cliChanged;
         bool          singlePath;
+        bool          banksChecked;
+        unsigned char panLaw;
         bool          configChanged;
 
         int           rtprio;
@@ -239,6 +241,7 @@ class Config
         const string programcommand;
         string jackSessionDir;
         string baseConfig;
+        string presetDir;
 
         SynthEngine *synth;
         bool bRuntimeSetupCompleted;
@@ -246,6 +249,7 @@ class Config
         friend class YoshimiLV2Plugin;
 
     public:
+        string definedBankRoot;
         int exitType;
 };
 

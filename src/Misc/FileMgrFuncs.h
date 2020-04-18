@@ -1,7 +1,7 @@
 /*
     FileMgr.h - all file operations
 
-    Copyright 2020 Will Godfrey and others.
+    Copyright 2019-2020 Will Godfrey and others.
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -24,6 +24,7 @@
 #include <cerrno>
 #include <fcntl.h> // this affects error reporting
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <cstring>
 #include <string>
 #include <iostream>
@@ -63,13 +64,6 @@ namespace file {
 
 using std::string;
 using std::stringstream;
-
-
-inline bool TestFunc(int result)
-{
-    std::cout << "***\nTest Function " << result << "\n***" << std::endl;
-    return (result > 0);
-}
 
 
 // make a filename legal
@@ -120,8 +114,10 @@ inline bool isDirectory(string chkpath)
 {
     struct stat st;
     if (!stat(chkpath.c_str(), &st))
+    {
         if (S_ISDIR(st.st_mode))
             return true;
+    }
     return false;
 }
 
@@ -164,6 +160,14 @@ inline string findLeafName(string name)
     name_start = name.rfind("/");
     name_end = name.rfind(".");
     return name.substr(name_start + 1, name_end - name_start - 1);
+}
+
+inline string findExtension(string name)
+{
+    size_t point = name.rfind('.');
+    if (point == string::npos)
+        return "";
+    return name.substr(point);
 }
 
 
@@ -213,8 +217,39 @@ inline string setExtension(string fname, string ext)
 }
 
 
-inline bool copyFile(string source, string destination)
+inline bool copyFile(string source, string destination, char option)
 {
+    // options
+    // 0 = always write / overwrite
+    // 1 = only write if not already present
+    // 2 = only write if newer
+
+    if (option == 0 && isRegularFile(destination))
+    {
+        //std::cout << "Writing " << destination << std::endl;
+        return 0; // counts as a successful write
+    }
+
+    //if (option == 1 && isRegularFile(destination))
+        //std::cout << "Exists " << destination << std::endl;
+
+
+    struct stat sourceInfo;
+    stat(source.c_str(), &sourceInfo);
+    if (option == 2)
+    {
+        if (isRegularFile(destination))
+        {
+            struct stat destInfo;
+            stat(destination.c_str(), &destInfo);
+            if (sourceInfo.st_mtime <= destInfo.st_mtime)
+            {
+                //std::cout << source << " Not newer" << std::endl;
+                return 0; // it's already the newest
+            }
+        }
+    }
+
     std::ifstream infile (source, std::ios::in|std::ios::binary|std::ios::ate);
     if (!infile.is_open())
         return 1;
@@ -230,28 +265,41 @@ inline bool copyFile(string source, string destination)
     outfile.write(memblock, size);
     outfile.close();
     delete[] memblock;
+
+    if(option == 2)
+    {
+        struct timespec ts[2];
+        ts[1].tv_sec = (sourceInfo.st_mtime % 10000000000);
+        ts[1].tv_nsec = (sourceInfo.st_mtime / 10000000000);
+        utimensat(0, destination.c_str(), ts, 0);
+    }
     return 0;
 }
 
 
-inline uint32_t copyDir(string source, string destination)
+inline uint32_t copyDir(string source, string destination, char option)
 {
-    //std::cout << "source file " << source << "  to " << destination << std::endl;
+    //std::cout << "source dir " << source << "  to " << destination << std::endl;
     DIR *dir = opendir(source.c_str());
+    if (dir == NULL)
+        return 0xffffffff;
     struct dirent *fn;
     int count = 0;
     int missing = 0;
     while ((fn = readdir(dir)))
     {
         string nextfile = string(fn->d_name);
+        //std::cout << "next file " << nextfile << std::endl;
+        if (!isRegularFile(source + "/" + nextfile))
+            continue;
         if (nextfile == "." || nextfile == "..")
             continue;
-        if (copyFile(source + "/" + nextfile, destination + "/" + nextfile))
+        if (copyFile(source + "/" + nextfile, destination + "/" + nextfile, option))
             ++missing;
         else
             ++count;
     }
-
+    closedir(dir);
     return count | (missing << 16);
 }
 
@@ -259,6 +307,8 @@ inline uint32_t copyDir(string source, string destination)
 inline int listDir(std::list<string>* dirList, string dirName)
 {
     DIR *dir = opendir(dirName.c_str());
+    if (dir == NULL)
+        return 0xffffffff;
     struct dirent *fn;
     int count = 0;
     while ((fn = readdir(dir)))
@@ -270,6 +320,7 @@ inline int listDir(std::list<string>* dirList, string dirName)
             ++count;
         }
     }
+    closedir(dir);
     return count;
 }
 
@@ -391,15 +442,39 @@ inline string loadText(string filename)
 
 
 inline bool createEmptyFile(string filename)
-{
-    std::ofstream file {filename};
-    return 0; // TODO need a test for success
+{ // not currently used now
+    std::fstream file;
+    file.open(filename, std::ios::out);
+    if (!file)
+        return false;
+    file.close();
+    return true;
 }
 
 
-inline bool createDir(string filename)
+inline bool createDir(string dirname)
 {
-    return mkdir(filename.c_str(), 0755);//, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    if (isDirectory(dirname))
+        return false; // don't waste time. it's already here!
+    size_t pos = 1;
+    size_t oldPos = pos;
+    string nextDir;
+    bool failed = false;
+    while (pos != string::npos && failed == false)
+    {
+
+        pos = dirname.find("/", oldPos);
+        if (pos == string::npos)
+            nextDir = dirname;
+        else
+        {
+            nextDir = dirname.substr(0, pos).c_str();
+            oldPos = pos + 1;
+        }
+        if (!isDirectory(nextDir))
+            failed = mkdir(nextDir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    }
+    return failed;
 }
 
 

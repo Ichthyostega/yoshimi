@@ -5,7 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009, Alan Calvert
     Copyright 2017-2019, Will Godfrey
-    Copyright 2020 Kristian Amlie
+    Copyright 2020 Kristian Amlie & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -25,7 +25,11 @@
 
 */
 
+#include "Misc/SynthEngine.h"
 #include "Params/SUBnoteParameters.h"
+#include "Misc/NumericFuncs.h"
+
+using func::setAllPan;
 
 SUBnoteParameters::SUBnoteParameters(SynthEngine *_synth) : Presets(_synth)
 {
@@ -47,7 +51,7 @@ SUBnoteParameters::SUBnoteParameters(SynthEngine *_synth) : Presets(_synth)
 void SUBnoteParameters::defaults(void)
 {
     PVolume = 96;
-    setPan(PPanning = 64);
+    setPan(PPanning = 64, synth->getRuntime().panLaw);
     PAmpVelocityScaleFunction = 90;
     Pfixedfreq = 0;
     PfixedfreqET = 0;
@@ -102,14 +106,15 @@ SUBnoteParameters::~SUBnoteParameters()
 }
 
 
-void SUBnoteParameters::setPan(char pan)
+void SUBnoteParameters::setPan(char pan, unsigned char panLaw)
 {
     PPanning = pan;
     if (!randomPan())
     {
-        float t = (float)(PPanning - 1) / 126.0f;
-        pangainL = cosf(t * HALFPI);
-        pangainR = cosf((1.0f - t) * HALFPI);
+        //float t = (float)(PPanning - 1) / 126.0f;
+        //pangainL = cosf(t * HALFPI);
+        //pangainR = cosf((1.0f - t) * HALFPI);
+        setAllPan(PPanning, pangainL, pangainR, panLaw);
     }
     else
         pangainL = pangainR = 0.7f;
@@ -290,7 +295,7 @@ void SUBnoteParameters::getfromXML(XMLwrapper *xml)
         int xpar = xml->getparbool("stereo", (Pstereo) ? 1 : 0);
         Pstereo = (xpar != 0) ? true : false;
         PVolume=xml->getpar127("volume",PVolume);
-        setPan(xml->getpar127("panning",PPanning));
+        setPan(xml->getpar127("panning",PPanning), synth->getRuntime().panLaw);
         PAmpVelocityScaleFunction=xml->getpar127("velocity_sensing",PAmpVelocityScaleFunction);
         if (xml->enterbranch("AMPLITUDE_ENVELOPE"))
         {

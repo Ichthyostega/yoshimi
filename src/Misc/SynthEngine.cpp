@@ -29,6 +29,8 @@
 #include <set>
 #include <iostream>
 #include <string>
+#include <algorithm>
+#include <iterator>
 
 #ifdef GUI_FLTK
     #include "MasterUI.h"
@@ -148,8 +150,8 @@ SynthEngine::SynthEngine(int argc, char **argv, bool _isLV2Plugin, unsigned int 
     Runtime.isLittleEndian = (x.arr[0] == 0x44);
 
     audioOut.store(muteState::Active);
-    if (bank.roots.empty())
-        bank.addDefaultRootDirs();
+    //if (bank.roots.empty())
+        //bank.addDefaultRootDirs();
 
     ctl = new Controller(this);
     for (int i = 0; i < NUM_MIDI_CHANNELS; ++ i)
@@ -167,8 +169,6 @@ SynthEngine::SynthEngine(int argc, char **argv, bool _isLV2Plugin, unsigned int 
 
     // seed the shared master random number generator
     prng.init(time(NULL));
-
-    //TestFunc(123); // just for testing
 }
 
 
@@ -216,8 +216,6 @@ SynthEngine::~SynthEngine()
 
 bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
 {
-    int found = 0;
-
     if (!interchange.Init())
     {
         Runtime.LogError("interChange init failed");
@@ -231,13 +229,36 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
     if (buffersize > audiobufsize)
         buffersize = audiobufsize;
     buffersize_f = buffersize;
-    sent_all_buffersize_f = buffersize_f;
+    fixed_sample_step_f = buffersize_f / samplerate_f;
     bufferbytes = buffersize * sizeof(float);
 
     oscilsize_f = oscilsize = Runtime.Oscilsize;
     halfoscilsize_f = halfoscilsize = oscilsize / 2;
-    fadeStep = 10.0f / samplerate; // 100mS fade
-    ControlStep = (127.0f / samplerate) * 5.0f; // 200mS for 0 to 127
+    oscil_sample_step_f = oscilsize_f / samplerate_f;
+
+    // Phase and frequency modulation are calculated in terms of samples, not
+    // angle/frequency, so modulation must be normalized to reference values of
+    // angle/sample and time/sample.
+
+    // oscilsize is one wavelength worth of samples, so
+    // phase modulation should scale proportionally
+    oscil_norm_factor_pm = oscilsize_f / oscilsize_ref_f;
+    // FM also depends on samples/wavelength as well as samples/time,
+    // so scale FM inversely with the sample rate.
+    oscil_norm_factor_fm =
+        oscil_norm_factor_pm * (samplerate_ref_f / samplerate_f);
+
+    // distance / duration / second = distance / (duration * second)
+    // While some might prefer to write this as the latter, when distance and
+    // duration are constants the latter incurs two roundings while the former
+    // brings the constants together, allowing constant-folding. -ffast-math
+    // produces the same assembly in both cases, and we normally compile with it
+    // enabled, but it's probably a bad habit to rely on non-IEEE float math too
+    // much. If we were doing integer division, even -ffast-math wouldn't save
+    // us, and the rounding behaviour would actually be important.
+    fadeStep = 1.0f / 0.1f / samplerate_f; // 100ms for 0 to 1
+    fadeStepShort = 1.0f / 0.005f / samplerate_f; // 5ms for 0 to 1
+    ControlStep = 127.0f / 0.2f / samplerate_f; // 200ms for 0 to 127
 
     if (oscilsize < (buffersize / 2))
     {
@@ -344,18 +365,6 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
         }
     }
 
-    if (Runtime.rootDefine.size())
-    {
-        found = bank.addRootDir(Runtime.rootDefine);
-        if (found)
-        {
-            cout << "Defined new root ID " << asString(found) << " as " << Runtime.rootDefine << endl;
-            bank.scanrootdir(found);
-        }
-        else
-            cout << "Can't find path " << Runtime.rootDefine << endl;
-    }
-
     // just to make sure we're in sync
     /*if (uniqueId == 0)
     {
@@ -366,7 +375,7 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
     }*/
 
     // we seem to need this here only for first time startup :(
-    bank.setCurrentBankID(Runtime.tempBank);
+    bank.setCurrentBankID(Runtime.tempBank, false);
     return true;
 
 
@@ -470,11 +479,12 @@ void SynthEngine::defaults(void)
     VUready = false;
     Runtime.currentPart = 0;
     Runtime.VUcount = 0;
-    Runtime.channelSwitchType = 0;
+    Runtime.channelSwitchType = MIDI::SoloType::Disabled;
     Runtime.channelSwitchCC = 128;
     Runtime.channelSwitchValue = 0;
     //CmdInterface.defaults(); // **** need to work out how to call this
     Runtime.NumAvailableParts = NUM_MIDI_CHANNELS;
+    Runtime.panLaw = MAIN::panningType::normal;
     ShutUp();
     Runtime.lastfileseen.clear();
     for (int i = 0; i <= TOPLEVEL::XML::MLearn; ++i)
@@ -566,21 +576,46 @@ void SynthEngine::NoteOff(unsigned char chan, unsigned char note)
 }
 
 
-int SynthEngine::RunChannelSwitch(int value)
+int SynthEngine::RunChannelSwitch(unsigned char chan, int value)
 {
     static unsigned int timer = 0;
-    if ((interchange.tick - timer) > 511) // approx 60mS
-        timer = interchange.tick;
-    else if (Runtime.channelSwitchType > 2)
-        return 0; // de-bounced
 
-    switch (Runtime.channelSwitchType)
+    int switchtype = Runtime.channelSwitchType;
+    if (switchtype > MIDI::SoloType::Channel)
+        return 2; // unknown
+
+    if (switchtype >= MIDI::SoloType::Loop)
     {
-        case 1: // single row
+        if (switchtype != MIDI::SoloType::Channel)
+        {
+            if (value == 0)
+                return 0; // we ignore switch off for these
+    /*
+     * loop and twoway are increment counters
+     * we assume nobody can repeat a switch press within 60mS!
+     */
+            if ((interchange.tick - timer) > 511) // approx 60mS
+                timer = interchange.tick;
+            else
+                return 0; // de-bounced
+        }
+        if (value >= 64)
+            value = 1;
+        else if (switchtype == MIDI::SoloType::TwoWay)
+            value = -1;
+        else
+            value = 0;
+    }
+    if ((switchtype <= MIDI::SoloType::Column || switchtype == MIDI::SoloType::Channel) && value == Runtime.channelSwitchValue)
+        return 0; // nothing changed
+
+    switch (switchtype)
+    {
+        case MIDI::SoloType::Row:
             if (value >= NUM_MIDI_CHANNELS)
                 return 1; // out of range
             break;
-        case 2: // columns
+        case MIDI::SoloType::Column:
         {
             if (value >= NUM_MIDI_PARTS)
                 return 1; // out of range
@@ -596,27 +631,43 @@ int SynthEngine::RunChannelSwitch(int value)
             return 0; // all OK
             break;
         }
-        case 3: // loop
-            if (value == 0)
-                return 0; // do nothing - it's a switch off
+        case MIDI::SoloType::Loop:
             value = (Runtime.channelSwitchValue + 1) % NUM_MIDI_CHANNELS;
             break;
-        case 4: // twoway
-            if (value == 0)
-                return 0; // do nothing - it's a switch off
-            if (value >= 64)
-                value = (Runtime.channelSwitchValue + 1) % NUM_MIDI_CHANNELS;
-            else
-                value = (Runtime.channelSwitchValue + NUM_MIDI_CHANNELS - 1) % NUM_MIDI_CHANNELS;
-            // add in NUM_MIDI_CHANNELS so always positive
+
+        case MIDI::SoloType::TwoWay:
+            value = (Runtime.channelSwitchValue + NUM_MIDI_CHANNELS + value) % NUM_MIDI_CHANNELS;
+            // we add in NUM_MIDI_CHANNELS so it's always positive
             break;
-        default:
-            return 2; // unknown
+
+        case MIDI::SoloType::Channel:
+            // if the CC value is 64-127 Solo Parts on the Channel of the CC
+            if (value)
+            {
+                for (int p = 0; p < NUM_MIDI_PARTS; ++p)
+                {
+                    if ((part[p]->Prcvchn & (NUM_MIDI_CHANNELS - 1)) == chan)
+                        part[p]->Prcvchn &= (NUM_MIDI_CHANNELS - 1);
+                    else
+                        part[p]->Prcvchn = part[p]->Prcvchn | NUM_MIDI_CHANNELS;
+                }
+            }
+            else // if the CC value is 0-63 un-Solo Parts on all Channels
+            {
+                for (int p = 0; p < NUM_MIDI_PARTS; ++p)
+                {
+                    if (part[p]->Prcvchn >= NUM_MIDI_CHANNELS)
+                        part[p]->Prcvchn &= (NUM_MIDI_CHANNELS - 1);
+                }
+            }
+            Runtime.channelSwitchValue = value;
+            return 0; // all ok
+            break;
     }
-    // vvv column mode never gets here vvv
-    Runtime.channelSwitchValue = value;
+    // vvv column and channel modes never get here vvv
     for (int ch = 0; ch < NUM_MIDI_CHANNELS; ++ch)
     {
+        Runtime.channelSwitchValue = value;
         bool isVector = Runtime.vectordata.Enabled[ch];
         if (ch != value)
         {
@@ -653,7 +704,7 @@ void SynthEngine::SetController(unsigned char chan, int CCtype, short int par)
     }
     if (CCtype <= 119 && CCtype == Runtime.channelSwitchCC)
     {
-        RunChannelSwitch(par);
+        RunChannelSwitch(chan, par);
         return;
     }
     if (CCtype == MIDI::CC::allSoundOff)
@@ -684,19 +735,19 @@ void SynthEngine::SetController(unsigned char chan, int CCtype, short int par)
             chan &= 0xf;
     }
 
-    int npart;
-    //std::cout << "  min " << minPart<< "  max " << maxPart << "  Rec " << int(part[npart]->Prcvchn) << "  Chan " << int(chan) <<std::endl;
-    for (npart = minPart; npart < maxPart; ++ npart)
+
+    for (int npart = minPart; npart < maxPart; ++ npart)
     {   // Send the controller to all part assigned to the channel
-        part[npart]->legatoFading = 0;
-        if (chan == part[npart]->Prcvchn)
+
+        //std::cout << "  min " << minPart<< "  max " << maxPart << "  Rec " << int(part[npart]->Prcvchn) << "  Chan " << int(chan) <<std::endl;
+        if (part[npart]->Prcvchn == chan)
         {
             if (CCtype == part[npart]->PbreathControl) // breath
             {
                 part[npart]->SetController(MIDI::CC::volume, 64 + par / 2);
                 part[npart]->SetController(MIDI::CC::filterCutoff, par);
             }
-            else if (CCtype == 0x44) // legato switch
+            else if (CCtype == MIDI::CC::legato)
             {
                 int mode = (ReadPartKeyMode(npart) & 3);
                 if (par < 64)
@@ -822,7 +873,7 @@ int SynthEngine::setRootBank(int root, int banknum, bool notinplace)
 
     if (ok && (banknum < 0x80))
     {
-        if (bank.setCurrentBankID(banknum, true))
+        if (bank.setCurrentBankID(banknum))
         {
             if (notinplace)
             {
@@ -965,7 +1016,6 @@ int SynthEngine::setProgramFromBank(CommandBlock *getData, bool notinplace)
 bool SynthEngine::setProgram(string fname, int npart)
 {
     bool ok = true;
-    part[npart]->legatoFading = 0;
     if (!part[npart]->loadXMLinstrument(fname))
         ok = false;
     return ok;
@@ -1977,6 +2027,7 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
         }
 
         // Apply the part volumes and pannings (after insertion effects)
+        unsigned char panLaw = Runtime.panLaw;
         for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
         {
             if (!partLocal[npart])
@@ -1986,9 +2037,9 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
             for (int i = 0; i < sent_buffersize; ++i)
             {
                 if (part[npart]->Ppanning - part[npart]->TransPanning > Step)
-                    part[npart]->checkPanning(Step);
+                    part[npart]->checkPanning(Step, panLaw);
                 else if (part[npart]->TransPanning - part[npart]->Ppanning > Step)
-                    part[npart]->checkPanning(-Step);
+                    part[npart]->checkPanning(-Step, panLaw);
                 if (part[npart]->Pvolume - part[npart]->TransVolume > Step)
                     part[npart]->checkVolume(Step);
                 else if (part[npart]->TransVolume - part[npart]->Pvolume > Step)
@@ -2307,7 +2358,6 @@ void SynthEngine::ShutUp(void)
 
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
     {
-        part[npart]->legatoFading = 0;
         part[npart]->cleanup();
         VUpeak.values.parts[npart] = -1.0f;
         VUpeak.values.partsR[npart] = -1.0f;
@@ -2357,58 +2407,35 @@ bool SynthEngine::saveMicrotonal(string fname)
     return microtonal.saveXML(setExtension(fname, EXTEN::scale));
 }
 
-
 bool SynthEngine::installBanks()
 {
-    bool banksFound = true;
-    string branch;
     string name = Runtime.ConfigDir + '/' + YOSHIMI;
-
     string bankname = name + ".banks";
 //    Runtime.Log(bankname);
-    if (!isRegularFile(bankname))
+    bool banksGood = false;
+    bool newBanks = false;
+    if (isRegularFile(bankname))
     {
-        banksFound = false;
-        Runtime.Log("Missing bank file");
-        bankname = name + ".config";
-        if (isRegularFile(bankname))
-            Runtime.Log("Copying data from config");
-        else
+        XMLwrapper *xml = new XMLwrapper(this);
+        if (xml)
         {
-            Runtime.Log("Scanning for banks");
-            bank.rescanforbanks();
-            return false;
+            banksGood = true;
+            xml->loadXMLfile(bankname);
+            newBanks = bank.parseBanksFile(xml);
+            delete xml;
         }
     }
-    if (banksFound)
-        branch = "BANKLIST";
-    else
-        branch = "CONFIGURATION";
-    XMLwrapper *xml = new XMLwrapper(this);
-    if (!xml)
-    {
-        Runtime.Log("loadConfig failed XMLwrapper allocation");
-        return false;
+    if (!banksGood){
+       newBanks = bank.parseBanksFile(NULL);
+       Runtime.currentRoot = 5;
     }
-    xml->loadXMLfile(bankname);
-    if (branch == "BANKLIST")
-    {
-        if (xml->enterbranch("INFORMATION"))
-        {
-            bank.writeVersion(xml->getpar("Banks_Version", 1, 1, 9));
-            xml->exitbranch();
-        }
-    }
-    if (!xml->enterbranch(branch))
-    {
-        Runtime.Log("extractConfigData, no " + branch + " branch");
-        return false;
-    }
-    bank.parseConfigFile(xml);
-    xml->exitbranch();
-    delete xml;
+
     Runtime.Log("\nFound " + asString(bank.InstrumentsInBanks) + " instruments in " + asString(bank.BanksInRoots) + " banks");
-    Runtime.Log(textMsgBuffer.fetch(setRootBank(Runtime.tempRoot, Runtime.tempBank)& 0xff));
+    if (newBanks)
+        Runtime.Log(textMsgBuffer.fetch(setRootBank(5, 5) & 0xff));
+        //bank.setCurrentRootID(0);
+    else
+        Runtime.Log(textMsgBuffer.fetch(setRootBank(Runtime.tempRoot, Runtime.tempBank) & 0xff));
 #ifdef GUI_FLTK
     GuiThreadMsg::sendMessage((this), GuiThreadMsg::RefreshCurBank, 1);
 #endif
@@ -2461,14 +2488,10 @@ void SynthEngine::addHistory(string name, int group)
     vector<string> &listType = *getHistory(group);
     vector<string>::iterator itn = listType.begin();
     listType.insert(itn, name);
-
-    for (vector<string>::iterator it = listType.begin() + 1; it < listType.end(); ++ it)
-    {
-        if (*it == name)
-            listType.erase(it);
-    }
+    itn = listType.begin(); // reinitialize after insertion
+    std::advance(itn, 1); // skip first entry
+    listType.erase(std::remove(itn, listType.end(), name), listType.end()); // remove all matches
     setLastfileAdded(group, name);
-    return;
 }
 
 
@@ -2751,7 +2774,6 @@ unsigned char SynthEngine::loadVector(unsigned char baseChan, string name, bool 
     if (!xml->enterbranch("VECTOR"))
     {
             Runtime. Log("Extract Data, no VECTOR branch", 2);
-            delete xml;
     }
     else
     {
@@ -2964,6 +2986,7 @@ void SynthEngine::add2XML(XMLwrapper *xml)
 {
     xml->beginbranch("MASTER");
     xml->addpar("current_midi_parts", Runtime.NumAvailableParts);
+    xml->addpar("panning_law", Runtime.panLaw);
     xml->addpar("volume", Pvolume);
     xml->addpar("key_shift", Pkeyshift);
     xml->addpar("channel_switch_type", Runtime.channelSwitchType);
@@ -3102,9 +3125,10 @@ bool SynthEngine::getfromXML(XMLwrapper *xml)
         return false;
     }
     Runtime.NumAvailableParts = xml->getpar("current_midi_parts", NUM_MIDI_CHANNELS, NUM_MIDI_CHANNELS, NUM_MIDI_PARTS);
+    Runtime.panLaw = xml->getpar("panning_law", Runtime.panLaw, MAIN::panningType::cut, MAIN::panningType::boost);
     setPvolume(xml->getpar127("volume", Pvolume));
     setPkeyshift(xml->getpar("key_shift", Pkeyshift, MIN_KEY_SHIFT + 64, MAX_KEY_SHIFT + 64));
-    Runtime.channelSwitchType = xml->getpar("channel_switch_type", Runtime.channelSwitchType, 0, 4);
+    Runtime.channelSwitchType = xml->getpar("channel_switch_type", Runtime.channelSwitchType, 0, 5);
     Runtime.channelSwitchCC = xml->getpar("channel_switch_CC", Runtime.channelSwitchCC, 0, 128);
     Runtime.channelSwitchValue = 0;
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
@@ -3278,6 +3302,11 @@ float SynthEngine::getLimits(CommandBlock *getData)
             def = 16;
             max = 64;
             break;
+        case MAIN::control::panLawType:
+            min = MAIN::panningType::cut;
+            def = MAIN::panningType::normal;
+            max = MAIN::panningType::boost;
+            break;
 
         case MAIN::control::detune:
             break;
@@ -3295,7 +3324,7 @@ float SynthEngine::getLimits(CommandBlock *getData)
 
         case MAIN::control::soloType:
             def = 0; // Off
-            max = 4;
+            max = 5;
             break;
 
         case MAIN::control::soloCC:

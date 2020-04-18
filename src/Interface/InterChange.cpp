@@ -2,7 +2,7 @@
     InterChange.cpp - General communications
 
     Copyright 2016-2019, Will Godfrey & others
-    Copyright 2020 Kristian Amlie, Will Godfrey
+    Copyright 2020 Kristian Amlie, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -99,7 +99,6 @@ InterChange::InterChange(SynthEngine *_synth) :
 
 bool InterChange::Init()
 {
-    flagsValue = 0xffffffff;
 #ifndef YOSHIMI_LV2_PLUGIN
     fromCLI = new ringBuff(256, commandBlockSize);
 #endif
@@ -997,12 +996,16 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
                     newMsg = true;
                     break;
                 case BANK::control::changeRootId:
-                {
                     if (engine == UNUSED)
                         getData->data.engine = synth->getRuntime().currentRoot;
                     synth->bank.changeRootID(getData->data.engine, value);
                     synth->saveBanks();
-                }
+                    break;
+                case BANK::control::refreshDefaults:
+                    if (value)
+                        synth->bank.checkLocalBanks();
+                    synth->getRuntime().banksChecked = true;
+                break;
             }
             getData->data.source &= ~TOPLEVEL::action::lowPrio;
             break;
@@ -1463,6 +1466,28 @@ void InterChange::resolveReplies(CommandBlock *getData)
 
     if (source == TOPLEVEL::action::fromCLI)
         synth->getRuntime().finishedCLI = true;
+}
+
+
+// This is only used when no valid banks can be found
+void InterChange::generateSpecialInstrument(int npart, std::string name)
+{
+    synth->part[npart]->Pname = name;
+    Part *part;
+    part = synth->part[npart];
+    part->partefx[0]->changeeffect(1);
+    part->kit[0].Padenabled = false;
+    part->kit[0].Psubenabled = true;
+
+    SUBnoteParameters *pars;
+    pars = part->kit[0].subpars;
+    pars->Phmag[1] = 75;
+    pars->Phmag[2] = 40;
+    pars->Pbandwidth = 60;
+
+    //EffectMgr *eff;
+    //eff = synth->part[npart]->partefx[0];
+
 }
 
 
@@ -2755,6 +2780,13 @@ void InterChange::commandMain(CommandBlock *getData)
             else
                 value = synth->getRuntime().NumAvailableParts;
             break;
+        case MAIN::control::panLawType:
+            if (write)
+                synth->getRuntime().panLaw = value_int;
+            else
+                value = synth->getRuntime().panLaw;
+            break;
+
 
         case MAIN::control::detune: // done elsewhere
             break;
@@ -2768,24 +2800,44 @@ void InterChange::commandMain(CommandBlock *getData)
                 value = synth->masterMono;
             break;
 
-        case MAIN::control::soloType: // solo mode
-            if (write && value_int <= 4)
+        case MAIN::control::soloType:
+            if (write && value_int <= MIDI::SoloType::Channel)
             {
                 synth->getRuntime().channelSwitchType = value_int;
                 synth->getRuntime().channelSwitchCC = 128;
                 synth->getRuntime().channelSwitchValue = 0;
-                if ((value_int & 5) == 0)
+                switch (value_int)
                 {
-                    for (int i = 0; i < NUM_MIDI_PARTS; ++i)
-                        synth->part[i]->Prcvchn = (i & 15);
-                }
-                else
-                {
-                    for (int i = 1; i < NUM_MIDI_CHANNELS; ++i)
-                    {
-                        synth->part[i]->Prcvchn = 16;
-                    }
-                    synth->part[0]->Prcvchn = 0;
+                    case MIDI::SoloType::Disabled:
+                        break;
+
+                    case MIDI::SoloType::Row:
+                        for (int i = 1; i < NUM_MIDI_CHANNELS; ++i)
+                        {
+                            synth->part[i]->Prcvchn = NUM_MIDI_CHANNELS;
+                        }
+                        synth->part[0]->Prcvchn = 0;
+                        break;
+
+                    case MIDI::SoloType::Column:
+                        for (int i = 0; i < NUM_MIDI_PARTS; ++i)
+                            synth->part[i]->Prcvchn = (i & (NUM_MIDI_CHANNELS - 1));
+                        break;
+
+                    case MIDI::SoloType::Loop:
+                    case MIDI::SoloType::TwoWay:
+                        for (int i = 0; i < NUM_MIDI_CHANNELS; ++i)
+                            synth->part[i]->Prcvchn = NUM_MIDI_CHANNELS;
+                        synth->part[0]->Prcvchn = 0;
+                        break;
+
+                    case MIDI::SoloType::Channel:
+                        for (int p = 0; p < NUM_MIDI_PARTS; ++p)
+                        {
+                            if (synth->part[p]->Prcvchn >= NUM_MIDI_CHANNELS)
+                                synth->part[p]->Prcvchn = p &(NUM_MIDI_CHANNELS - 1);
+                        }
+                        break;
                 }
             }
             else
@@ -3053,6 +3105,38 @@ void InterChange::commandPart(CommandBlock *getData)
                 synth->SetPartKeyMode(npart, value_int);
             else
                 value = (synth->ReadPartKeyMode(npart)) & 3; // clear out temporary legato
+            break;
+        case PART::control::channelATset:
+            if (write)
+            {
+                part->PchannelATchoice = value_int;
+                int tmp1, tmp2;
+                tmp1 = tmp2 = part->PkeyATchoice;
+                tmp1 &= ~value_int;
+                if (tmp1 != tmp2)
+                {
+                    part->PkeyATchoice = tmp1; // can't have the same
+                    getData->data.parameter = tmp1; // send possible correction
+                }
+            }
+            else
+                value = part->PchannelATchoice;
+            break;
+        case PART::control::keyATset:
+            if (write)
+            {
+                part->PkeyATchoice = value_int;
+                int tmp1, tmp2;
+                tmp1 = tmp2 = part->PchannelATchoice;
+                tmp1 &= ~value_int;
+                if (tmp1 != tmp2)
+                {
+                    part->PchannelATchoice = tmp1; // can't have the same
+                    getData->data.parameter = tmp1; // send possible correction
+                }
+            }
+            else
+                value = part->PkeyATchoice;
             break;
         case PART::control::portamento:
             if (write)
@@ -3326,7 +3410,6 @@ void InterChange::commandPart(CommandBlock *getData)
         case PART::control::drumMode:
             if (write)
             {
-                part->legatoFading = 0;
                 part->Pdrummode = value_bool;
                 synth->setPartMap(npart);
             }
@@ -3677,7 +3760,7 @@ void InterChange::commandAdd(CommandBlock *getData)
             break;
         case ADDSYNTH::control::panning:
             if (write)
-                pars->setGlobalPan(value_int);
+                pars->setGlobalPan(value_int, synth->getRuntime().panLaw);
             else
                 value = pars->GlobalPar.PPanning;
             break;
@@ -3843,7 +3926,7 @@ void InterChange::commandAddVoice(CommandBlock *getData)
             break;
         case ADDVOICE::control::panning:
             if (write)
-                 pars->setVoicePan(nvoice, value_int);
+                 pars->setVoicePan(nvoice, value_int, synth->getRuntime().panLaw);
             else
                 value = pars->VoicePar[nvoice].PPanning;
             break;
@@ -4267,7 +4350,7 @@ void InterChange::commandSub(CommandBlock *getData)
             break;
         case SUBSYNTH::control::panning:
             if (write)
-                pars->setPan(value);
+                pars->setPan(value, synth->getRuntime().panLaw);
             else
                 value = pars->PPanning;
             break;
@@ -4502,7 +4585,7 @@ void InterChange::commandPad(CommandBlock *getData)
             break;
         case PADSYNTH::control::panning:
             if (write)
-                pars->setPan(value);
+                pars->setPan(value, synth->getRuntime().panLaw);
             else
                 value = pars->PPanning;
             break;
@@ -5965,7 +6048,17 @@ void InterChange::commandEffects(CommandBlock *getData)
     else
         return; // invalid part number
     if (kititem > EFFECT::type::dynFilter)
+        return; // invalid kit number
+    //cout << "here "  << int(getData->data.source & TOPLEVEL::action::noAction) << "  kit " << int(kititem & 127) << "  eff " << eff->geteffect() << endl;
+    if (control != PART::control::effectType && (kititem & 127) != eff->geteffect())
+    {
+        if ((getData->data.source & TOPLEVEL::action::noAction) != TOPLEVEL::action::fromMIDI)
+            synth->getRuntime().Log("Not Available"); // TODO sort this better for CLI as well as MIDI
+        getData->data.source = TOPLEVEL::action::noAction;
         return;
+    }
+
+
     if (kititem == EFFECT::type::dynFilter && getData->data.insert != UNUSED)
     {
         if (write)
