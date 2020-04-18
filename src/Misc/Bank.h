@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2010, Alan Calvert
-    Copyright 2014-2019 Will Godfrey & others
+    Copyright 2014-2020 Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -91,8 +91,6 @@ typedef struct _RootEntry
 
 typedef map<size_t, RootEntry> RootEntryMap; // Maps root id to root entry.
 
-typedef map<size_t, map<string, size_t> > BankHintsMap;
-
 class SynthEngine;
 
 class Bank
@@ -101,7 +99,6 @@ class Bank
 
     public:
         Bank(SynthEngine *_synth);
-        ~Bank();
         int getType(unsigned int ninstrument, size_t bank, size_t root);
         string getname(unsigned int ninstrument, size_t bank, size_t root);
         string getnamenumbered(unsigned int ninstrument, size_t bank, size_t root);
@@ -126,16 +123,16 @@ class Bank
         bool newIDbank(string newbankdir, unsigned int bankID, size_t rootID = 0xff);
         bool newbankfile(string newbankdir, size_t rootID);
         std::string removebank(unsigned int bankID, size_t rootID = 0xff);
-        void rescanforbanks(void);
-        void clearBankrootDirlist(void);
         void removeRoot(size_t rootID);
         bool changeRootID(size_t oldID, size_t newID);
 
         bool setCurrentRootID(size_t newRootID);
-        bool setCurrentBankID(size_t newBankID, bool ignoreMissing = false);
-        size_t getCurrentBankID();
+        unsigned int findFirstBank(size_t newRootID);
+        bool setCurrentBankID(size_t newBankID, bool ignoreMissing = true);
         size_t addRootDir(string newRootDir);
-        void parseConfigFile(XMLwrapper *xml);
+        bool parseBanksFile(XMLwrapper *xml);
+        bool installRoots();
+        bool installNewRoot(size_t rootID, string rootdir, bool reload = false);
         void saveToConfigFile(XMLwrapper *xml);
 
         string getBankPath(size_t rootID, size_t bankID);
@@ -155,6 +152,8 @@ class Bank
         void writeVersion(int version)
             {BanksVersion = version;}
         int BanksVersion;
+        void checkLocalBanks(void);
+        void generateSingleRoot(string newRoot, bool clear = true);
 
     private:
         bool addtobank(size_t rootID, size_t bankID, int pos, const string filename, const string name);
@@ -162,21 +161,21 @@ class Bank
              // returns true if the instrument was added
 
         void deletefrombank(size_t rootID, size_t bankID, unsigned int pos);
-        void scanrootdir(int root_idx); // scans a root dir for banks
-        size_t add_bank(string name, string, size_t rootID);
+        bool isValidBank(string chkdir);
         bool check_bank_duplicate(string alias);
 
         //string dirname;
         const string defaultinsname;
-        const string force_bank_dir_file;
         SynthEngine *synth;
 
         RootEntryMap  roots;
-        BankHintsMap hints;
 
         InstrumentEntry &getInstrumentReference(size_t rootID, size_t bankID, size_t ninstrument );
 
-        void addDefaultRootDirs();
+        bool transferDefaultDirs(string bankdirs[]);
+        bool transferOneDir(string bankdirs[], int baseNumber, int listNumber);
+
+        void addDefaultRootDirs(string bankdirs[]);
 
         size_t getNewRootIndex();
         size_t getNewBankIndex(size_t rootID);

@@ -490,7 +490,7 @@ class BankUI {: {public BankProcess_, RootProcess_}
           label {Show engines/types}
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, CONFIG::control::showEnginesTypes, o->value(), TOPLEVEL::type::Integer, TOPLEVEL::section::config);}
-          xywh {477 531 136 15} down_box DOWN_BOX labelsize 11
+          xywh {477 531 136 15} down_box DOWN_BOX labelsize 11 hide
           code0 {o->value(synth->getRuntime().checksynthengines);}
         }
         Fl_Button addpatch {
@@ -849,10 +849,20 @@ class BankUI {: {public BankProcess_, RootProcess_}
         dirname = fl_dir_chooser("Add a root directory for banks:", NULL, 0);
         if (!dirname)
             return;
-        synth->getBankRef().addRootDir(dirname);
+        if(!file::isDirectory(dirname))
+        {
+            if (fl_choice("Directory is missing, or doesn't have at least \\n1 bank with at least 1 instrument. \\nCreate missing entries?", NULL, "No", "Yes") != 2)
+                return;
+            synth->getBankRef().generateSingleRoot(dirname, false);
+            synth->getGuiMaster()->updatepart();
+        }
+        else
+        {
+            size_t idx = synth->getBankRef().addRootDir(dirname);
+            synth->getBankRef().installNewRoot(idx, dirname);
+        }
         synth->saveBanks();
         readbankcfg();
-        rescan_for_banks(true);
         Pend->hide();}
         xywh {10 225 75 35} box THIN_UP_BOX labelsize 12 align 128 hide
       }
@@ -866,7 +876,7 @@ class BankUI {: {public BankProcess_, RootProcess_}
             readbankcfg();
         }
         activatebutton_rootdir(false);
-        rescan_for_banks(false);
+        rescan_for_banks();
         Pend->hide();}
         xywh {95 225 75 35} box THIN_UP_BOX labelsize 12 align 128 hide deactivate
         code0 {o->deactivate();}
@@ -998,7 +1008,7 @@ class BankUI {: {public BankProcess_, RootProcess_}
                     fl_alert("%s",message.c_str());
             }
             else
-                rescan_for_banks(false);
+                rescan_for_banks();
             break;
         case BANK::control::selectFirstInstrumentToSwap:
             break;
@@ -1007,17 +1017,17 @@ class BankUI {: {public BankProcess_, RootProcess_}
             if (message.find("FAILED") != std::string::npos)
                 if(source == TOPLEVEL::action::fromGUI)
                     fl_alert("%s",message.c_str());
-            rescan_for_banks(false);
+            rescan_for_banks();
             break;
 
         case BANK::control::selectBank:
-            rescan_for_banks(false);
+            rescan_for_banks();
             break;
         case BANK::control::renameBank:
         if (message.find("FAILED") != std::string::npos)
                 if(source == TOPLEVEL::action::fromGUI)
                     fl_alert("%s",message.c_str());
-            rescan_for_banks(false);
+            rescan_for_banks();
             break;
 
         case BANK::control::selectFirstBankToSwap:
@@ -1026,16 +1036,19 @@ class BankUI {: {public BankProcess_, RootProcess_}
             if (message.find("FAILED") != std::string::npos)
                 if(source == TOPLEVEL::action::fromGUI)
                     fl_alert("%s",message.c_str());
-            rescan_for_banks(false);
+            rescan_for_banks();
             break;
 
         case BANK::control::selectRoot:
             readbankcfg();
-            rescan_for_banks(false);
+            rescan_for_banks();
             break;
         case BANK::control::changeRootId:
             readbankcfg();
-            rescan_for_banks(false);
+            rescan_for_banks();
+            break;
+        case BANK::control::refreshDefaults:
+            readbankcfg();
             break;
     }} {}
   }
@@ -1060,16 +1073,19 @@ class BankUI {: {public BankProcess_, RootProcess_}
   Function {~BankUI()} {return_type virtual
   } {
     code {//
+        saveWin(synth, instrumentuiwindow->x(), instrumentuiwindow->y(), instrumentuiwindow->visible(), "bankInst");
         instrumentuiwindow->hide();
         delete instrumentuiwindow;
+        saveWin(synth,  bankuiwindow->x(),  bankuiwindow->y(),  bankuiwindow->visible(), "bankBank");
         bankuiwindow->hide();
         delete bankuiwindow;
+        saveWin(synth,  rootuiwindow->x(),  rootuiwindow->y(), rootuiwindow->visible(), "bankRoot");
         rootuiwindow->hide();
         delete rootuiwindow;} {}
   }
   Function {Show()} {} {
     code {// called from part UI
-    rescan_for_banks(false);
+    rescan_for_banks();
     set_bank_slot();
     instrumentuiwindow->show();
     readbutton->value(1);
@@ -1094,7 +1110,7 @@ class BankUI {: {public BankProcess_, RootProcess_}
   Function {init(Fl_Spinner *cbwig_)} {} {
     code {//
     cbwig = cbwig_;
-    rescan_for_banks(false);
+    rescan_for_banks();
     unsearched = true;
     searchType->value(1);
     if(synth->getRuntime().checksynthengines)
@@ -1281,7 +1297,7 @@ class BankUI {: {public BankProcess_, RootProcess_}
         }
         bank->setCurrentBankID(slot);
         rs[slot]->rootrefresh(bt, rt);
-        rescan_for_banks(false);
+        rescan_for_banks();
         set_bank_slot();
         setrootread();
         refreshmainwindow();
@@ -1313,7 +1329,7 @@ class BankUI {: {public BankProcess_, RootProcess_}
             {
                 send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate, BANK::control::selectSecondBankAndSwap, 0, TOPLEVEL::type::Integer, TOPLEVEL::section::bank, slot);
                 rselected = -1;
-                rescan_for_banks(false);
+                rescan_for_banks();
                 setrootread();
                 done = true;
             }
@@ -1378,13 +1394,9 @@ class BankUI {: {public BankProcess_, RootProcess_}
             rs[rsel]->rootrefresh(fetchData(0, BANK::control::selectBank, TOPLEVEL::section::bank), fetchData(0, BANK::control::selectRoot, TOPLEVEL::section::bank));
         }} {}
   }
-  Function {rescan_for_banks(bool reload)} {} {
+  Function {rescan_for_banks()} {} {
     code {//
     banklist->clear();
-    if(reload)
-    {
-        bank->rescanforbanks();
-    }
     const BankEntryMap &banks = bank->getBanks(fetchData(0, BANK::control::selectRoot, TOPLEVEL::section::bank));
     BankEntryMap::const_iterator it;
     for (it = banks.begin(); it != banks.end(); ++it)

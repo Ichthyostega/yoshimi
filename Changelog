@@ -1,4 +1,234 @@
-yoshimi 1.7.0.1
+yoshimi 1.7.1 rc4
+
+2020-4-18 Will
+* BugFix: Segfault due to change in commit
+  817fbc6ea91a064839eebae1f54efc20753cb927
+  Only seen by 1 person so far.
+* Trapped rogue dir in file list for directory copy.
+* Confirming Bugfixes.
+* Further doc updates.
+* Set version as 1.7.1 rc4
+
+2020-4-17 Will
+* Changed PART_POLY to PART_NORMAL.
+  It could be confused with PART_POLIPHONY.
+* Changed POLIPHONY - 20 to PART_POLIPHONY.
+* Moved default poliphony for parts from Part.cpp to globals.h
+* Yet more doc updates!
+* Set version as 1.7.1 rc3
+
+2020-4-15 Will
+* Minor correction to AddSynth Voice/List window position fetch.
+  They were refetching last saved position even when moved.
+* Removed some redundant code.
+* Cleared pedantic error/warning traps in CMakeLists.txt
+* Further doc updates.
+* Set version as 1.7.1 rc2
+
+2020-4-13 Will
+* Doc updates - no code changes.
+
+2020-4-11 Will
+* Aftertouch Modulation temporarily hidden.
+  Not satisfied with it's operation.
+* Set version as 1.7.1 rc1
+
+2020-4-9 Will
+* Adding new bank roots will offer to create them if missing.
+  Not CLI yet.
+
+2020-4-8 Will
+* Corrected Part panning range.
+  Didn't quite reduce extreme left to zero.
+
+2020-4-7 Will
+* Corrected direction of Pan Law Boost.
+
+2020-4-6 Will
+* Added presets broweser to remembered positions.
+* Disabled aftercouch emulation.
+* Added Stefaan to Yoshimi_Helpers.
+
+2020-4-2 Will
+* More refimentments to the text messaging and actions.
+  Not yet available to the CLI.
+* Added Volume to channel aftertouch.
+
+2020-4-2 Will
+* BugFix: MIDI-learn initialsing killing GUI startup warnings.
+* Imroved first time startup messages and bank actions.
+
+2020-3-31 Will
+* fftw3.h now only included in DSP/FFTwrapper.h
+  All other uses refer back to this.
+* Fixed sample step size now only calculated in one place.
+  Previously done in many places requiring two indirect
+  fetches and a division. Now just one indirect fetch.
+* sent_all_buffersize_f renamed to fixed_buffersize_f
+  The previous name was confusingly incorrect.
+* Applied similar optimisations to oscllator code.
+
+2020-3-30 Will
+* Completed transfers to improved GUI windowing.
+  Some tidying yet to do.
+
+2020-3-29 Will
+* Fixed regresssion. Loading MIDIlearn not displaying.
+* MIDIlearn and Vector added to improved GUI windowing.
+* Mixer, Banks, VertKeyb added to improved GUI windowing.
+* Console, Scales added to improved GUI windowing.
+* ADnote, PADnote, Subnote added to improved GUI windowing.
+
+2020-3-28 Will
+* Merged in panning law control.
+* Added 'Yet Another Flute" to 'Companion' bank.
+* Temporarily disabled hiding engine type colours.
+  Related code will be removed later if no objections.
+* Unified GUI numbering of config window files.
+* First trial of improved GUI window positioning.
+  Only controller windows so far.
+* Create GUI window directory!
+* Moved panning law from config to patch sets.
+
+2020-3-26 Will
+* Aftertouch fully MIDI-learnable.
+  Also blocks normal control action by default.
+* AT GUI follows standard right button close practice.
+* Updated docs.
+
+2020-3-22 Will
+* Added Filter Q to aftertouch.
+* Re-enabled negative filter cutoff.
+* Updated docs.
+* Made channel AT emulation in MusicIO.cpp configurable.
+
+2020-3-21 Will
+* Enabled CLI access to aftertouch.
+* Updated docs.
+
+2020-3-20 Will
+* Move aftertouch CC selection fully into 'part'.
+  This enusres all parts independently see it.
+
+2020-3-19 Will
+* Stop state file opening an empty MIDI learn window.
+
+2020-3-18 Will
+* Merged in revised legato code from Iain.
+* Implemented Channel aftertouch.
+  More to do on this.
+* Completed Channel aftertouch.
+* Second attempt at completion :(
+
+2020-3-17 Will
+* Implemented Modulation PolyAT.
+
+2020-3-15 Will
+* Created GUI for PolyAT.
+  Can't yet run two effects at the same time.
+* PolyAT saved in patch sets.
+* Temporarly hid PolyAT negative filter cutoff.
+  It doesn't work at all well :(
+* Both PolyAT effect can now be run together.
+
+2020-3-12 Will
+* Small refinements to PolyAT.
+
+2020-3-10 Will
+* Merged in first trial of PolyAT.
+  Currently fixed as filter cutoff.
+* Corrected Mixer channel colours for Solo.
+* PolyAT can do lowering as well as raising filter cutoff.
+* Defined some PolyAT types in globals.h
+
+2020-3-7 Will
+* Installed full placeholder for key pressure detection.
+* Provided emulator for key pressure in MusicIO.cpp.
+
+2020-3-6 Will
+* Patched in additional Solo type 'Channel' from Matthew.
+  Made a few minor corrections.
+* Applied some optimisations to Solo Channel mode.
+* Updated docs.
+
+2020-3-4 Will
+* Revised Solo switch selection for performance and clarity.
+
+2020-3-3 Will
+* Merged in various fixes from Iain.
+* BugFix: not closing directories after use :(
+* Revised file/directory copying.
+  Options are now: always write, only missing, only newer
+
+2020-3-1 Will
+* Improved code for spacing new bank IDs.
+* BugFix: LV2 not updating MIDI-learn GUI.
+  Reinstated original window control, but now with
+  correct action being set!
+
+2020-2-17 Will
+* Implemented Hyperbolic Secant Waveform option.
+* Converted waveshape numbers to labels.
+* Adjusted some CLI text.
+
+2020-2-14 Will
+* If no banks are found at startup a new one is generated.
+  This will be in the .local directory and will contain one
+  subsynth instrument.
+
+2020-2-13 Will
+* BugFix: MIDI-learn crash if accessing non-exisitent effect.
+  This need more work to correctly report to the CLI.
+* Suppressed test message in filterUI.
+* Updated docs.
+
+2020-2-11 Will
+* Corrected MIDI-Learn save title bar.
+* New bank structure almost complete.
+  There is a workround for an anomaly where
+  startup seems to create phantom empty banks.
+
+2020-2-9 Will
+* More revision of banks code.
+  Still some startup anomallies.
+* Provisional fix for CLI part setting oddity.
+  Need to do more on this.
+
+2020-2-8 Will
+* Corrected CLI not setting bank from top level.
+* Further improvements to missing root/bank handling.
+* Transfer of default banks to .local in place.
+  Still some corner cases to be sorted.
+
+2020-2-6 Will
+* .local/yoshimi now changed as /local/share/yoshimi
+* Copyfile can now copy only if newer.
+  Also passed through copydir.
+* Copying defaults to .local/share/yoshimi uses 'newer'
+
+2020-2-4 Will
+:rebank: Basic structure mostly complete.
+:rebank: Testing for defects and redundant code.
+:rebank: Removed considerable redundant code.
+:rebank: Define bank root at strartup restored.
+    This appears to have been lost some time ago.
+
+* Completed merge of rebank.
+* Found and removed aditional redundant code.
+
+2020-2-3 Will
+:rebank:  basic structure now in place.
+
+2020-2-2 Will
+:rebank: started new root/bank structure.
+
+2020-2-1 Will
+* Building bank root uses new listDir(
+* Revised bank and file permissions.
+* Revised & simplified fresh population of banks.
+* Removed redundant code.
+* Revised and sinplified loadbank(
+* Further revision of bank population.
 
 2020-1-31 Will
 * Changed .bankdir references in Bank( to validBank label.

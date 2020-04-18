@@ -119,7 +119,7 @@ class SynthEngine
 
         void NoteOn(unsigned char chan, unsigned char note, unsigned char velocity);
         void NoteOff(unsigned char chan, unsigned char note);
-        int RunChannelSwitch(int value);
+        int RunChannelSwitch(unsigned char chan, int value);
         void SetController(unsigned char chan, int CCtype, short int par);
         void SetZynControls(bool in_place);
         int setRootBank(int root, int bank, bool notinplace = true);
@@ -164,7 +164,11 @@ class SynthEngine
 
         Part *part[NUM_MIDI_PARTS];
         unsigned int fadeAll;
+        // Per sample change in gain calculated whenever samplerate changes (which
+        // is currently only on init). fadeStep is used in SynthEngine, while
+        // fadeStepShort is used directly by notes, currently only for legato.
         float fadeStep;
+        float fadeStepShort;
         float fadeLevel;
 
         // parameters
@@ -178,11 +182,18 @@ class SynthEngine
         float oscilsize_f;
         int halfoscilsize;
         float halfoscilsize_f;
+        float oscil_sample_step_f;
+        float oscil_norm_factor_pm;
+        float oscil_norm_factor_fm;
 
-        int sent_buffersize; //used for variable length runs
-        int sent_bufferbytes; //used for variable length runs
-        float sent_buffersize_f; //used for variable length runs
-        float sent_all_buffersize_f; //used for variable length runs (mainly for lv2 - calculate envelopes and lfo)
+        // Reference values used for normalization
+        static constexpr float samplerate_ref_f = 44100.0f;
+        static constexpr float oscilsize_ref_f = float(1024 * 256);
+
+        int           sent_buffersize; //used for variable length runs
+        int           sent_bufferbytes; //used for variable length runs
+        float         sent_buffersize_f; //used for variable length runs
+        float         fixed_sample_step_f;
         float         TransVolume;
         float         Pvolume;
         float         ControlStep;

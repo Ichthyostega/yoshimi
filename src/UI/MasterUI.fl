@@ -132,34 +132,25 @@ class MasterUI {: {private GuiUpdates}
   }
   Function {~MasterUI()} {} {
     code {//
-      saveWindowData();
+      saveWin(synth, masterwindow->x(), masterwindow->y(), 1, "master");
       masterwindow->hide();
       aboutwindow->hide();
       delete aboutwindow;
       syseffsendwindow->hide();
       delete syseffsendwindow;
+      saveWin(synth, panelwindow->x(), panelwindow->y(), panelwindow->visible(), "mixer");
       panelwindow->hide();
       delete panelwindow;
       if (microtonalui)
-      {
-          microtonalui->Hide();
           delete microtonalui;
-      }
       if (bankui)
-      {
-          bankui->Hide();
           delete bankui;
-      }
       if (virkeyboard)
-      {
-          virkeyboard->Hide();
           delete virkeyboard;
-      }
+
       if (configui)
-      {
-          configui->Hide();
           delete configui;
-      }
+
       if (presetsui)
       {
           presetsui->Hide();
@@ -171,36 +162,23 @@ class MasterUI {: {private GuiUpdates}
           delete paramsui;
       }
       if (vectorui)
-      {
-          vectorui->Hide();
           delete vectorui;
-      }
       if (midilearnui)
-      {
-          midilearnui->Hide();
           delete midilearnui;
-      }
 
       if (yoshiLog)
       {
-          yoshiLog->Hide();
+          saveWin(synth, yoshiLog->logConsole->x(),yoshiLog->logConsole->y(), yoshiLog->logConsole->visible(), "log");
           delete yoshiLog;
       }
-      //if (instance == 0)
-          //Fl::unlock();
       delete masterwindow;} {}
   }
   Function {Init(const char *_label)} {} {
     code {//
       instance = synth->getUniqueId();
+      file::createDir(synth->getRuntime().ConfigDir + "/windows");
 
-      filename = synth->getRuntime().ConfigDir + "/" +synth->getRuntime().programCmd();
-      if (instance > 0)
-      {
-          filename += ("-" + asString(instance));
-      }
       partmax = synth->getRuntime().NumAvailableParts;
-      filename += EXTEN::window;
       microtonalui = new MicrotonalUI(&synth->microtonal, synth);
       bankui = new BankUI(synth);
       virkeyboard = new VirKeyboard(synth);
@@ -211,8 +189,15 @@ class MasterUI {: {private GuiUpdates}
       midilearnui = new MidiLearnUI(synth);
       yoshiLog = new ConsoleUI();
       openedit = false;
-
       make_window();
+
+      int fetchX, fetchY, fetchO;
+      loadWin(synth, fetchX, fetchY, fetchO, "master");
+      masterwindow->position(fetchX, fetchY);
+      bool foundWindows = true;
+      if (instance == 0)
+          foundWindows = fetchO;
+      //std::cout << "Found windows " << int(foundWindows) << std::endl;
       loadWindowData();
       string starterror = "";
       if(synth->getIsLV2Plugin())
@@ -228,95 +213,64 @@ class MasterUI {: {private GuiUpdates}
       if (starterror.find("Could not") != std::string::npos)
           fl_alert("%s", starterror.c_str());
 
-      // these don't have access to synth ->
       microtonalui->microtonaluiwindow->copy_label(synth->makeUniqueName("Scales").c_str());
       yoshiLog->logConsole->copy_label(synth->makeUniqueName("Console").c_str());
 
-      if (panelO)
-          mixerpanel->do_callback();
-      if (instrumentsO)
-          bankui->Show();
-      if (banksO)
-          bankui->bankuiwindow->show();
-      if (presetsO)
-          configui->presets->show();
-      if (rootsO)
-          bankui->rootuiwindow->show();
-      if (scalesO)
-          microtonalui->microtonaluiwindow->show();
-      if (virkbdO)
-          virkeyboard->Show();
-      if (settingsO)
-          configui->Show();
-      if (yoshiLogO)
-          yoshiLog->Show();
-      if (vectorO)
-          vectorui->Show();
-      if (mlearnO)
-          midilearnui->Show();
-      if (controllersO)
-          partui->ctlwindow->show();
-      if (midictlO)
-          partui->ctlmidi->show();
-      if (inseditO)
-          partui->instrumenteditwindow->show();
-      //if (kitlistO)
-          //partui->instrumentkitlist->show();
-      //if (partfxO)
-          //partui->partfx->show();
-      if (NewWindows)
+      if (!foundWindows)
       {
-          words->copy_label("As this is a first time start, please check 'Yoshimi->Settings' then save and restart. More information can be found in the manual.");
-          message->show();
-          message->position(masterwindow->x() + 36, masterwindow->y() + 170);
+          string msg = "As this is a first time start, please check 'Yoshimi->Settings' then save and restart. More information can be found in the manual.";
+          setmessage(UNUSED, true, msg, "Close");
       }
       else if (synth->getRuntime().oldConfig)
       {
           string msg;
           msg = "Existing config older than V " + to_string(MIN_CONFIG_MAJOR) + "." + to_string(MIN_CONFIG_MINOR) + " \\nCheck settings, save and restart.";
-          message->position(masterwindow->x() + masterwindow->w() / 2 - message->w() / 2, masterwindow->y() + masterwindow->h() / 2 - message->h() / 2);
-          words->copy_label(msg.c_str());
-          message->show();}} {}
+          setmessage(UNUSED, true, msg, "Close");
+      }
+      else if (instance == 0 && synth->getRuntime().banksChecked == false)
+      {
+          string msg = "Default banks have been copied to {user}.local/share/yoshimi/found \\nAdd these to the bank roots window?";
+          setmessage(TOPLEVEL::msgResponse::refreshBankDefaults, true, msg, "Ask Later", "No", "Yes");} {}} {}
   }
   Function {make_window()} {} {
     Fl_Window masterwindow {
       label {Yoshimi meets ZynAddSubFX}
       callback {//
-      bool close = true;
-      bool force = Fl::event_state(FL_CTRL);
-      if (!force && synth->getRuntime().configChanged)
-      {
-          int r = fl_choice("Parameters Changed", "Save Changes", "Cancel", "Don't Save");
-          switch (r)
-          {
-              case 0:
-                  synth->getRuntime().configChanged = false;
-                  // this seems backwards but it *always* saves.
-                  // seeing configChanged makes it reload the old settings first.
-                  break;
-              case 2:
-                  break;
-              default:
-                  close = false;
-                  break;
-          }
-      }
-      if (close)
-      {
-          if (force)
-              firstSynth->getRuntime().exitType = FORCED_EXIT;
-              /*
-               * The above line shouldn't be necessary!
-               * It works fine on jack but fails on ALSA.
-               * My best guess is that ALSA shuts down so quickly
-               * that one of the ringbuffers carrying the command
-               * is deleted before it can be read.
-               */
-              //send_data(0, TOPLEVEL::control::forceExit, 0, UNUSED);
+            bool close = true;
+            bool force = Fl::event_state(FL_CTRL);
+            if (!force && synth->getRuntime().configChanged)
+            {
+                int r = fl_choice("Parameters Changed", "Save Changes", "Cancel", "Don't Save");
+                switch (r)
+                {
+                    case 0:
+                        synth->getRuntime().configChanged = false;
+                        // this seems backwards but it *always* saves.
+                        // seeing configChanged makes it reload the old settings first.
+                        break;
+                    case 2:
+                        break;
+                    default:
+                        close = false;
+                        break;
+                }
+            }
+            if (close)
+            {
+                if (force)
+                    firstSynth->getRuntime().exitType = FORCED_EXIT;
+                    /*
+                    * The above line shouldn't be necessary!
+                    * It works fine on jack but fails on ALSA.
+                    * My best guess is that ALSA shuts down so quickly
+                    * that one of the ringbuffers carrying the command
+                    * is deleted before it can be read.
+                    */
+                    //send_data(0, TOPLEVEL::control::forceExit, 0, UNUSED);
 
-          synth->guiClosed(true);
-      }}
-      xywh {231 433 385 465} type Double labelfont 13 labelsize 12 hide xclass Yoshimi
+                synth->guiClosed(true);
+            }}
+      xywh {6 423 385 465} type Double labelfont 13 labelsize 12 hide xclass Yoshimi
     } {
       Fl_Box {} {
         xywh {279 28 103 85} box ENGRAVED_FRAME
@@ -367,7 +321,7 @@ class MasterUI {: {private GuiUpdates}
           }
           MenuItem {} {
             label {&Reports...}
-            callback {yoshiLog->Show();}
+            callback {yoshiLog->logConsole->show();}
             xywh {0 0 34 20} labelsize 12
           }
           MenuItem {} {
@@ -537,7 +491,7 @@ class MasterUI {: {private GuiUpdates}
           MenuItem {} {
             label {S&how Settings...}
             callback {//
-            microtonalui->Show();}
+            microtonalui->microtonaluiwindow->show();}
             xywh {20 20 100 20} labelsize 12
           }
           MenuItem {} {
@@ -693,7 +647,7 @@ paramsui->Show(TOPLEVEL::XML::Scale);}
         Fl_Button {} {
           label {Virtual Keyboard}
           callback {//
-          virkeyboard->Show();}
+          virkeyboard->virkeyboardwindow->show();}
           tooltip {Virtual Keyboard} xywh {85 60 110 24} box PLASTIC_UP_BOX color 228 labelsize 11 labelcolor 32
         }
         Fl_Button mixerpanel {
@@ -706,15 +660,14 @@ paramsui->Show(TOPLEVEL::XML::Scale);}
         Fl_Button {} {
           label {Midi Learn}
           callback {//
-          midilearnui->Show();
-          //yoshiLog->Show();}
+                midilearnui->midilearnwindow->show();}
           tooltip {Message Log} xywh {203 60 70 24} box PLASTIC_UP_BOX color 228 labelsize 11
           code0 {/*if (synth->getRuntime().toConsole == false){o->deactivate();yoshiLog->Hide();}*/}
         }
         Fl_Button vectors {
           label Vectors
           callback {//
-          vectorui->Show();}
+          vectorui->vectorwindow->show();}
           tooltip {Vector Setup Window} xywh {203 30 70 24} box PLASTIC_UP_BOX color 228 labelsize 11 labelcolor 32
         }
       }
@@ -913,10 +866,10 @@ paramsui->Show(TOPLEVEL::XML::Scale);}
         } {}
       }
       Fl_Group partuigroup {
-        xywh {3 255 380 170} box ENGRAVED_FRAME
+        xywh {3 255 380 172} box ENGRAVED_FRAME
       } {
         Fl_Group partui {
-          xywh {3 255 379 170} color 47
+          xywh {3 255 379 172} color 47
           code0 {o->init(synth->part[0],0,bankui);}
           code1 {o->show();}
           class PartUI
@@ -982,6 +935,27 @@ paramsui->Show(TOPLEVEL::XML::Scale);}
         send_data(TOPLEVEL::action::forceUpdate, MAIN::control::availableParts, tmp, TOPLEVEL::type::Integer, TOPLEVEL::section::main);}
         tooltip {Set the number of available parts} xywh {93 264 40 20} labelsize 11 minimum 16 maximum 64 step 16 value 16 textsize 11
         code0 {o->value(partmax);}
+      }
+      Fl_Choice panning_law {
+        label {Pan Law}
+        callback {//
+                       send_data(0, MAIN::control::panLawType, o->value(), TOPLEVEL::type::Integer, TOPLEVEL::section::main);}
+        tooltip {Relative values when panned to extremes:
+   Per side | Equivalent Mono} xywh {219 340 160 20} down_box BORDER_BOX color 41 selection_color 0 labelsize 12 textfont 1 textsize 12 textcolor 255
+        code0 {o->value(fetchData(0, MAIN::control::panLawType, TOPLEVEL::section::main));}
+      } {
+        MenuItem {} {
+          label {Cut: 0dB | -6dB}
+          xywh {15 15 100 20} labelfont 1 labelsize 11
+        }
+        MenuItem {} {
+          label {Default: +3dB | -3dB}
+          xywh {25 25 100 20} labelfont 1 labelsize 11
+        }
+        MenuItem {} {
+          label {Boost: +6dB | 0dB}
+          tooltip {Per side + 6dB, Mono 0dB} xywh {35 35 100 20} labelfont 1 labelsize 11
+        }
       }
     }
     comment {line spaces in boxes below are critical} {in_source in_header
@@ -1260,10 +1234,14 @@ Alan Calvert started the project}
         }
         MenuItem switchloop {
           label Loop
-          xywh {0 0 34 20} labelsize 12
+          xywh {40 40 34 20} labelsize 12
         }
         MenuItem switchtwoway {
           label TwoWay
+          xywh {40 40 34 20} labelsize 12
+        }
+        MenuItem switchchannel {
+          label Channel
           xywh {0 0 34 20} labelsize 12
         }
       }
@@ -1277,17 +1255,30 @@ Alan Calvert started the project}
         label {?}
         xywh {5 9 280 45} color 55 selection_color 55 labelfont 1 labelsize 12 align 149
       }
-      Fl_Button {} {
-        label Close
-        callback {message->hide();}
-        xywh {211 60 70 20}
+      Fl_Button yesdoit {
+        label Yes
+        callback {//
+                send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate, BANK::control::refreshDefaults, 1, TOPLEVEL::type::Integer, TOPLEVEL::section::bank);
+                closebutton->do_callback();}
+        xywh {49 60 70 20} hide
       }
       Fl_Button cancel {
         label Cancel
         callback {//
-        send_data(0, MIDILEARN::control::cancelLearn, 0, 3, TOPLEVEL::section::midiLearn);
-        o->hide();}
+                if (msgGroup == TOPLEVEL::msgResponse::refreshBankDefaults)
+                    send_data(TOPLEVEL::action::lowPrio, BANK::control::refreshDefaults, 0, TOPLEVEL::type::Integer, TOPLEVEL::section::bank);
+                else
+                    send_data(0, MIDILEARN::control::cancelLearn, 0, 3, TOPLEVEL::section::midiLearn);
+                closebutton->do_callback();}
         xywh {130 60 70 20} hide
+      }
+      Fl_Button closebutton {
+        label Close
+        callback {//
+                yesdoit->hide();
+                cancel->hide();
+                message->hide();}
+        xywh {211 60 70 20}
       }
     }
   }
@@ -1378,7 +1369,7 @@ Alan Calvert started the project}
                     int newch = partui->midich->value() - 1;
                     switch (synth->getRuntime().channelSwitchType)
                     {
-                        case 1: // row
+                        case MIDI::SoloType::Row:
                             if (npart < NUM_MIDI_CHANNELS)
                             {
                                 if (npart != value_int)
@@ -1388,15 +1379,15 @@ Alan Calvert started the project}
                             }
                             break;
 
-                        case 2: // column
+                        case MIDI::SoloType::Column:
                             if(value_int == npart)
                                 newch = (value_int & mask);
                             else if((value_int & mask) == (npart & mask))
                                 newch = (value_int & mask) + NUM_MIDI_CHANNELS;
                             break;
 
-                        case 3: // loop
-                        case 4: // twoway
+                        case MIDI::SoloType::Loop:
+                        case MIDI::SoloType::TwoWay:
                             if (npart < NUM_MIDI_CHANNELS)
                             {
                                 if (npart == synth->getRuntime().channelSwitchValue)
@@ -1405,6 +1396,15 @@ Alan Calvert started the project}
                                     newch = NUM_MIDI_CHANNELS;
                             }
                             break;
+
+                        case MIDI::SoloType::Channel:
+                            //int ch = value_int % NUM_MIDI_CHANNELS;
+                            if (newch == chan || newch == chan + NUM_MIDI_CHANNELS)
+                                newch = chan;
+                            else
+                                newch = newch + NUM_MIDI_CHANNELS;
+                            break;
+
                     }
                     partui->midich->value(newch + 1);
 
@@ -1459,7 +1459,7 @@ Alan Calvert started the project}
             case MIDI::control::bankChange:
                 if (engine != UNUSED)
                     bankui->readbankcfg();
-                bankui->rescan_for_banks(false);
+                bankui->rescan_for_banks();
                 break;
         }
         return;
@@ -1574,6 +1574,9 @@ Alan Calvert started the project}
             setinspartlist();
             vectorui->checkParts(value_int);
             break;
+        case MAIN::control::panLawType:
+            panning_law->value(value_int);
+            break;
 
         case MAIN::control::detune:
             globalfinedetune->value(value);
@@ -1590,7 +1593,6 @@ Alan Calvert started the project}
             else
                 mastermono->label("S");
             break;
-
 
         case MAIN::control::soloType:
             channelswitch->value(value_int);
@@ -1643,7 +1645,7 @@ Alan Calvert started the project}
                     }
                 }
             }
-            bankui->rescan_for_banks(false);
+            bankui->rescan_for_banks();
             break;
         case MAIN::control::deleteBank: // delete bank and contents
             name = textMsgBuffer.fetch(miscmsg);
@@ -1652,7 +1654,7 @@ Alan Calvert started the project}
                 if (wasFromHere)
                     fl_alert("%s",name.c_str());
             }
-            bankui->rescan_for_banks(false);
+            bankui->rescan_for_banks();
             bankui->set_bank_slot();
             break;
 
@@ -1664,7 +1666,7 @@ Alan Calvert started the project}
             if (engine != UNUSED)
                 bankui->readbankcfg();
             if (insert != UNUSED || engine != UNUSED)
-                bankui->rescan_for_banks(false);
+                bankui->rescan_for_banks();
             updatepartprogram(kititem);
             break;
 
@@ -1760,7 +1762,7 @@ Alan Calvert started the project}
             else
             {
                 RecentScale->activate();
-                microtonalui->Hide();
+                microtonalui->microtonaluiwindow->hide();
                 microtonalui->make_window();
             }
             break;
@@ -1811,7 +1813,7 @@ Alan Calvert started the project}
             refresh_master_ui(1);
             resetPartsClip();
             if (midilearnui)
-                midilearnui->Hide();
+                midilearnui->midilearnwindow->hide();//Hide();
             setMasterLabel("");
             break;
 
@@ -1830,6 +1832,31 @@ Alan Calvert started the project}
             resetPartsClip();
             break;
     }} {}
+  }
+  Function {setmessage(int group, bool fixedPos, string text, string B1 = "Close", string B2 = "", string B3 = "")} {} {
+    code {//
+        msgGroup = group;
+        if (B3.empty())
+            yesdoit->hide();
+        else
+        {
+            yesdoit->copy_label(B3.c_str());
+            yesdoit->show();
+        }
+        if (B2.empty())
+            cancel->hide();
+        else
+        {
+            cancel->copy_label(B2.c_str());
+            cancel->show();
+        }
+        closebutton->copy_label(B1.c_str());
+        if (fixedPos)
+            message->position(masterwindow->x() + masterwindow->w() / 2 - message->w() / 2, masterwindow->y() + masterwindow->h() / 2 - message->h() / 2);
+        else
+            message->position(Fl::event_x_root() + 16, Fl::event_y_root());
+        words->copy_label(text.c_str());
+        message->show();} {}
   }
   Function {updatesendwindow()} {} {
     code {//
@@ -1890,9 +1917,9 @@ Alan Calvert started the project}
         oldswitch = channelswitch->value(); // disables 'pending'
         CS_CC = synth->getRuntime().channelSwitchCC;
     }
-    if (synth->getRuntime().channelSwitchType > 0)
+    if (synth->getRuntime().channelSwitchType > MIDI::SoloType::Disabled)
     {
-        if (oldswitch == 0)
+        if (oldswitch == MIDI::SoloType::Disabled)
         {
             CSspinner->value(115);
             CSpend->show();
@@ -1914,7 +1941,7 @@ Alan Calvert started the project}
   }
   Function {updateEngines(bool isOn)} {} {
     code {//
-        bankui->rescan_for_banks(true);
+        bankui->rescan_for_banks();
         bankui->enginecheck->value(isOn);
         if (isOn)
             bankui->B_search->activate();
@@ -2131,6 +2158,7 @@ Alan Calvert started the project}
     partmax = synth->getRuntime().NumAvailableParts;
     maxparts->value(partmax);
     checkmaxparts();
+    panning_law->value(fetchData(0, MAIN::control::panLawType, TOPLEVEL::section::main));
 
     npartcounter->value((synth->getRuntime().currentPart) + 1);
     int nval = synth->getRuntime().currentPart;
@@ -2185,7 +2213,7 @@ Alan Calvert started the project}
     updatepanel(type > 0);
     if (type != 5)
         vectorui->RefreshChans();
-    bankui->Hide();
+    //bankui->Hide();
     /*if (synth->getRuntime().toConsole == false)
         Reports->deactivate();
     else
@@ -2373,15 +2401,9 @@ Alan Calvert started the project}
   Function {setLogging(bool isConsole)} {} {
     code {//
     if (isConsole)
-    {
-        //Reports->activate();
-        yoshiLog->Show();
-    }
+        yoshiLog->logConsole->show();
     else
-    {
-        //Reports->deactivate();
-        yoshiLog->Hide();
-    }} {}
+        yoshiLog->logConsole->hide();} {}
   }
   Function {updateBankRootDirs()} {} {
     code {bankui->readbankcfg();} {}
@@ -2391,7 +2413,7 @@ Alan Calvert started the project}
     if (type == 0)
     {
         bankui->readbankcfg();
-        bankui-> rescan_for_banks(false);
+        bankui-> rescan_for_banks();
     }} {}
   }
   Function {ShowAlert(int num)} {} {
@@ -2401,314 +2423,64 @@ Alan Calvert started the project}
   } {
     code {return synth;} {}
   }
-  Function {loadWindowData()} {} {
-    code {//
-
-    bool ok = false;
-    bool tmpWindows;
-    int masterX;
-    int masterY;
-    int masterO;
-
-    windows = fopen(filename.c_str(), "r");
-    if (windows == NULL)
-        NewWindows = true;
-    else
-        NewWindows = false;
-    ok = !NewWindows;
-    tmpWindows = NewWindows;
-    // we carry on anyway to set defaults
-    ok = getData(ok,
-                "master",
-                 masterX,
-                 masterY,
-                 masterO);
-    ok = getData(ok,
-                "panel",
-                 panelX,
-                 panelY,
-                 panelO);
-    ok = getData(ok,
-                "instruments",
-                 instrumentsX,
-                 instrumentsY,
-                 instrumentsO);
-    ok = getData(ok,
-                "banks",
-                 banksX,
-                 banksY,
-                 banksO);
-    ok = getData(ok,
-                "roots",
-                 rootsX,
-                 rootsY,
-                 rootsO);
-    ok = getData(ok,
-                "presets",
-                 presetsX,
-                 presetsY,
-                 presetsO);
-    ok = getData(ok,
-                "scales",
-                 scalesX,
-                 scalesY,
-                 scalesO);
-    if (NewWindows)
-    {
-         NewWindows = false;
-         virkbdX = 400;
-         virkbdY = 1;
-         virkbdO = 1;
-    }
-    ok = getData(ok,
-                "virtkeybd",
-                 virkbdX,
-                 virkbdY,
-                 virkbdO);
-    NewWindows = tmpWindows;
-    ok = getData(ok,
-                "settings",
-                 settingsX,
-                 settingsY,
-                 settingsO);
-    ok = getData(ok,
-                "yoshiLog",
-                 yoshiLogX,
-                 yoshiLogY,
-                 yoshiLogO);
-    ok = getData(ok,
-                "vectors",
-                 vectorX,
-                 vectorY,
-                 vectorO);
-    ok = getData(ok,
-                "MIDIlearn",
-                 mlearnX,
-                 mlearnY,
-                 mlearnO);
-    ok = getData(ok,
-                "controllers",
-                 controllersX,
-                 controllersY,
-                 controllersO);
-    ok = getData(ok,
-                "midicontrols",
-                 midictlX,
-                 midictlY,
-                 midictlO);
-    ok = getData(ok,
-                "instrumentedit",
-                 inseditX,
-                 inseditY,
-                 inseditO);
-    ok = getData(ok,
-                "kitlist",
-                 kitlistX,
-                 kitlistY,
-                 kitlistO);
-    ok = getData(ok,
-                "partFX",
-                 partfxX,
-                 partfxY,
-                 partfxO);
-
-    ok = getData(ok,
-                "SUBnote",
-                 subNoteX,
-                 subNoteY,
-                 subNoteO);
-    ok = getData(ok,
-                "PADnote",
-                 padNoteX,
-                 padNoteY,
-                 padNoteO);
-    ok = getData(ok,
-                "ADDnote",
-                 addNoteX,
-                 addNoteY,
-                 addNoteO);
-
-   if (windows != NULL)
-        fclose(windows);
-
-    masterwindow->position(masterX, masterY);
-    panelwindow->position(panelX, panelY);
-    bankui->instrumentuiwindow->position(instrumentsX, instrumentsY);
-    bankui->bankuiwindow->position(banksX, banksY);
-    bankui->rootuiwindow->position(rootsX, rootsY);
-    configui->presets->position(presetsX, presetsY);
-    microtonalui->microtonaluiwindow->position(scalesX, scalesY);
-    virkeyboard->virkeyboardwindow->position(virkbdX, virkbdY);
-    configui->configwindow->position(settingsX, settingsY);
-    yoshiLog->logConsole->position(yoshiLogX, yoshiLogY);
-    vectorui->vectorwindow->position(vectorX, vectorY);
-    midilearnui->midilearnwindow->position(mlearnX, mlearnY);
-    partui->ctlwindow->position(controllersX, controllersY);
-    partui->ctlmidi->position(midictlX, midictlY);
-    partui->instrumenteditwindow->position(inseditX, inseditY);
-    partui->instrumentkitlist->position(kitlistX, kitlistY);
-    partui->partfx->position(partfxX, partfxY);} {}
-  }
-  Function {saveWindowData()} {} {
-    code {//
-    windows = fopen(filename.c_str(), "w");
-
-    putData("master",
-             masterwindow->x(),
-             masterwindow->y(),
-             masterwindow->visible());
-    putData("panel",
-             panelwindow->x(),
-             panelwindow->y(),
-             panelwindow->visible());
-    putData("instruments",
-             bankui->instrumentuiwindow->x(),
-             bankui->instrumentuiwindow->y(),
-             bankui->instrumentuiwindow->visible());
-    putData("banks",
-             bankui->bankuiwindow->x(),
-             bankui->bankuiwindow->y(),
-             bankui->bankuiwindow->visible());
-    putData("roots",
-             bankui->rootuiwindow->x(),
-             bankui->rootuiwindow->y(),
-             bankui->rootuiwindow->visible());
-    putData("presets",
-             configui->presets->x(),
-             configui->presets->y(),
-             configui->presets->visible());
-    putData("scales",
-             microtonalui->microtonaluiwindow->x(),
-             microtonalui->microtonaluiwindow->y(),
-             microtonalui->microtonaluiwindow->visible());
-    putData("virtkeybd",
-             virkeyboard->virkeyboardwindow->x(),
-             virkeyboard->virkeyboardwindow->y(),
-             virkeyboard->virkeyboardwindow->visible());
-    putData("settings",
-             configui->configwindow->x(),
-             configui->configwindow->y(),
-             configui->configwindow->visible());
-    putData("yoshiLog",
-             yoshiLog->logConsole->x(),
-             yoshiLog->logConsole->y(),
-             yoshiLog->logConsole->visible());
-    putData("vectors",
-             vectorui->vectorwindow->x(),
-             vectorui->vectorwindow->y(),
-             vectorui->vectorwindow->visible());
-    putData("MIDIlearn",
-             midilearnui->midilearnwindow->x(),
-             midilearnui->midilearnwindow->y(),
-             midilearnui->midilearnwindow->visible());
-
-    if (partui->ctlwindow->x())
-        putData("controllers",
-                 partui->ctlwindow->x(),
-                 partui->ctlwindow->y(),
-                 partui->ctlwindow->visible());
-    else // no window so store previous values
-        putData("controllers",
-                 controllersX,
-                 controllersY,
-                 controllersO);
-
-    if (partui->ctlwindow->x())
-        putData("midcontrols",
-                 partui->ctlmidi->x(),
-                 partui->ctlmidi->y(),
-                 partui->ctlmidi->visible());
-    else // no window so store previous values
-        putData("controllers",
-                 midictlX,
-                 midictlY,
-                 midictlO);
-
-    if (partui->instrumenteditwindow->x())
-        putData("instrumentedit",
-                 partui->instrumenteditwindow->x(),
-                 partui->instrumenteditwindow->y(),
-                 partui->instrumenteditwindow->visible());
-    else
-        putData("instrumentedit",
-                 inseditX,
-                 inseditY,
-                 inseditO);
-
-    if (partui->instrumentkitlist->x())
-        putData("kitlist",
-                 partui->instrumentkitlist->x(),
-                 partui->instrumentkitlist->y(),
-                 partui->instrumentkitlist->visible());
-    else
-        putData("kitlist",
-                 kitlistX,
-                 kitlistY,
-                 kitlistO);
-
-    if(partui->partfx->x())
-        putData("partFX",
-                 partui->partfx->x(),
-                 partui->partfx->y(),
-                 partui->partfx->visible());
-    else
-        putData("partFX",
-                 partfxX,
-                 partfxY,
-                 partfxO);
-
-    putData("SUBnote",
-             subNoteX,
-             subNoteY,
-             subNoteO);
-    putData("PADnote",
-             padNoteX,
-             padNoteY,
-             padNoteO);
-    putData("ADDnote",
-             addNoteX,
-             addNoteY,
-             addNoteO);
-
-   fclose(windows);} {}
-  }
-  Function {getData(bool ok, string name, int& X, int& Y, int& O)} {return_type bool
+  Function {loadWindowData()} {open
   } {
     code {//
-    if (NewWindows)
+    int fetchX, fetchY, fetchO;
+    loadWin(synth, fetchX, fetchY, fetchO, "mixer");
+    panelwindow->position(fetchX, fetchY);
+    if (fetchO)
+        mixerpanel->do_callback();
+    loadWin(synth, fetchX, fetchY, fetchO, "bankInst");
+    bankui->instrumentuiwindow->position(fetchX, fetchY);
+    if (fetchO)
+        bankui->instrumentuiwindow->show();
+    loadWin(synth, fetchX, fetchY, fetchO, "bankBank");
+    bankui->bankuiwindow->position(fetchX, fetchY);
+    if (fetchO)
+    bankui->bankuiwindow->show();
+    loadWin(synth, fetchX, fetchY, fetchO, "bankRoot");
+    bankui->rootuiwindow->position(fetchX, fetchY);
+    if (fetchO)
+        bankui->rootuiwindow->show();
+    loadWin(synth, fetchX, fetchY, fetchO, "vertKeyb");
+    virkeyboard->virkeyboardwindow->position(fetchX, fetchY);
+    if (fetchO)
+        virkeyboard->virkeyboardwindow->show();
+    loadWin(synth, fetchX, fetchY, fetchO, "config");
+    configui->configwindow->position(fetchX, fetchY);
+    if (fetchO)
+        configui->Show(); // this does some initialising
+    loadWin(synth, fetchX, fetchY, fetchO, "log");
+    yoshiLog->logConsole->position(fetchX, fetchY);
+    if (fetchO)
+        yoshiLog->logConsole->show();
+    loadWin(synth, fetchX, fetchY, fetchO, "scales");
+    microtonalui->microtonaluiwindow->position(fetchX, fetchY);
+    if (fetchO)
+        microtonalui->microtonaluiwindow->show();
+    loadWin(synth, fetchX, fetchY, fetchO, "vector");
+    vectorui->vectorwindow->position(fetchX, fetchY);
+    if (fetchO)
+        vectorui->vectorwindow->show();
+    loadWin(synth, fetchX, fetchY, fetchO, "midiLearn");
+    midilearnui->midilearnwindow->position(fetchX, fetchY);
+    if (fetchO)
+        midilearnui->midilearnwindow->show();
+    loadWin(synth, fetchX, fetchY, fetchO, "ctlWin");
+    if (fetchO)
     {
-        X = 1;
-        Y = 1;
-        O = 0;
+        partui->ctlwindow->show();
+        loadWin(synth, fetchX, fetchY, fetchO, "afterT");
+        if (fetchO)
+            partui->aftertouchcontrol->show();
     }
-    if (!ok)
-        return false;
-
-    ok = (fgets(word, 20, windows) != NULL);
-    if (ok)
-        ok = strstr(word, name.c_str());
-    if (true)
-    {
-        ok = false;
-        if (fgets(word, 20, windows) != NULL)
-            X = atoi(word);
-        if (fgets(word, 20, windows) != NULL)
-            Y = atoi(word);
-        if (fgets(word, 20, windows) != NULL)
-        {
-            O = atoi(word);
-            ok = true;
-        }
-    }
-    return ok;} {}
-  }
-  Function {putData(string name, int X, int Y, int O)} {} {
-    code {//
-    string tosend = name + "\\n"
-                  + asString(X)+ "\\n"
-                  + asString(Y) + "\\n"
-                  + asString(O) + "\\n";
-    fputs(tosend.c_str(), windows);} {}
+    loadWin(synth, fetchX, fetchY, fetchO, "ctlmidi");
+    if (fetchO)
+        partui->ctlmidi->show();
+    loadWin(synth, fetchX, fetchY, fetchO, "partEdit");
+    if(fetchO)
+        partui->instrumenteditwindow->show();} {}
   }
   Function {checkBuffer(void)} {} {
     code {//
@@ -2763,121 +2535,7 @@ read_updates(synth);} {}
   }
   decl {string filename;} {private local
   }
-  decl {int panelX;} {private local
-  }
-  decl {int panelY;} {private local
-  }
-  decl {int panelO;} {private local
-  }
-  decl {int instrumentsX;} {private local
-  }
-  decl {int instrumentsY;} {private local
-  }
-  decl {int instrumentsO;} {private local
-  }
-  decl {int banksX;} {private local
-  }
-  decl {int banksY;} {private local
-  }
-  decl {int banksO;} {private local
-  }
-  decl {int rootsX;} {private local
-  }
-  decl {int rootsY;} {private local
-  }
-  decl {int rootsO;} {private local
-  }
-  decl {int presetsX;} {private local
-  }
-  decl {int presetsY;} {private local
-  }
-  decl {int presetsO;} {private local
-  }
-  decl {int scalesX;} {private local
-  }
-  decl {int scalesY;} {private local
-  }
-  decl {int scalesO;} {private local
-  }
-  decl {int virkbdX;} {private local
-  }
-  decl {int virkbdY;} {private local
-  }
-  decl {int virkbdO;} {private local
-  }
-  decl {int settingsX;} {private local
-  }
-  decl {int settingsY;} {private local
-  }
-  decl {int settingsO;} {private local
-  }
-  decl {int yoshiLogX;} {private local
-  }
-  decl {int yoshiLogY;} {private local
-  }
-  decl {int yoshiLogO;} {private local
-  }
-  decl {int vectorX;} {public local
-  }
-  decl {int vectorY;} {public local
-  }
-  decl {int vectorO;} {public local
-  }
-  decl {int mlearnX;} {public local
-  }
-  decl {int mlearnY;} {public local
-  }
-  decl {int mlearnO;} {public local
-  }
-  decl {int controllersX;} {public local
-  }
-  decl {int controllersY;} {public local
-  }
-  decl {int controllersO;} {public local
-  }
-  decl {int midictlX;} {public local
-  }
-  decl {int midictlY;} {public local
-  }
-  decl {int midictlO;} {public local
-  }
-  decl {int inseditX;} {private local
-  }
-  decl {int inseditY;} {private local
-  }
-  decl {int inseditO;} {private local
-  }
-  decl {int kitlistX;} {private local
-  }
-  decl {int kitlistY;} {private local
-  }
-  decl {int kitlistO;} {private local
-  }
-  decl {int partfxX;} {private local
-  }
-  decl {int partfxY;} {private local
-  }
-  decl {int partfxO;} {private local
-  }
-  decl {int subNoteX;} {public local
-  }
-  decl {int subNoteY;} {public local
-  }
-  decl {int subNoteO;} {public local
-  }
-  decl {int padNoteX;} {public local
-  }
-  decl {int padNoteY;} {public local
-  }
-  decl {int padNoteO;} {public local
-  }
-  decl {int addNoteX;} {public local
-  }
-  decl {int addNoteY;} {public local
-  }
-  decl {int addNoteO;} {public local
-  }
-  decl {bool NewWindows;} {private local
+  decl {int msgGroup;} {private local
   }
   decl {bool openedit;} {public local
   }

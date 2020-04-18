@@ -390,7 +390,13 @@ string CmdInterpreter::buildPartStatus(bool showPartDetails)
         result += "+";
     }
     else if (bitTest(context, LEVEL::Oscillator))
-        result += (" " + waveshape[(int)readControl(synth, 0, OSCILLATOR::control::baseFunctionType, npart, kitNumber, engine + voiceNumber, TOPLEVEL::insert::oscillatorGroup)]);
+    {
+        int type = (int)readControl(synth, 0, OSCILLATOR::control::baseFunctionType, npart, kitNumber, engine + voiceNumber, TOPLEVEL::insert::oscillatorGroup);
+        if (type > OSCILLATOR::wave::hyperSec)
+            result += " user";
+        else
+            result += (" " + waveshape[type]);
+    }
 
     if (bitTest(context, LEVEL::LFO))
     {
@@ -2433,8 +2439,7 @@ int CmdInterpreter::commandGroup(Parser& input)
     bool full = (input.matchnMove(1, "location"));
 
     int count = 0;
-    if (!instrumentGroup.empty())
-        instrumentGroup.clear();
+    instrumentGroup.clear();
     do {
         ++ count;
         line = textMsgBuffer.fetch(readControl(synth, 0, BANK::control::findInstrumentName, TOPLEVEL::section::bank, UNUSED, UNUSED, UNUSED, value - 1));
@@ -3117,8 +3122,6 @@ int CmdInterpreter::commandBank(Parser& input, unsigned char controlType, bool j
         {
             return sendNormal(synth, TOPLEVEL::action::lowPrio, tmp, controlType, BANK::control::selectRoot, TOPLEVEL::section::bank);
         }
-        if (justEntered)
-            return REPLY::done_msg;
         return sendNormal(synth, TOPLEVEL::action::lowPrio, tmp, controlType, BANK::control::selectBank, TOPLEVEL::section::bank);
         if (input.lineEnd(controlType))
             return REPLY::done_msg;
@@ -3129,6 +3132,8 @@ int CmdInterpreter::commandBank(Parser& input, unsigned char controlType, bool j
         if (isRoot)
             return sendNormal(synth, TOPLEVEL::action::lowPrio, tmp, controlType, BANK::control::changeRootId, TOPLEVEL::section::bank);
     }
+    if (justEntered)
+        return REPLY::done_msg;
     return REPLY::op_msg;
 }
 
@@ -3192,11 +3197,11 @@ int CmdInterpreter::commandConfig(Parser& input, unsigned char controlType)
         else if (controlType == TOPLEVEL::type::Write)
             return REPLY::value_msg;
     }
-    else if (input.matchnMove(3, "engines"))
+    /*else if (input.matchnMove(3, "engines"))
     {
         command = CONFIG::control::showEnginesTypes;
         value = (input.toggle() != 0);
-    }
+    }*/
 
     else if (input.matchnMove(2, "state"))
     {
@@ -4655,7 +4660,7 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
                     return REPLY::done_msg;
                 }
 
-                if (npart != tmp)
+                //if (npart != tmp) // TODO sort this properly!
                 {
                     npart = tmp;
                     if (controlType == TOPLEVEL::type::Write)
@@ -4892,6 +4897,45 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
         tmp -= 1;
         return sendNormal( synth, 0, tmp, controlType, PART::control::midiChannel, npart);
     }
+    if (input.matchnMove(2, "aftertouch"))
+    {
+        int tmp = PART::aftertouchType::modulation * 2;
+        int cmd = PART::control::channelATset;
+        if (input.matchnMove(1, "key"))
+            cmd = PART::control::keyATset;
+        else if (!input.matchnMove(1, "chan"))
+            return REPLY::op_msg;
+        if (input.matchnMove(1, "Off"))
+            tmp = PART::aftertouchType::off;
+        else
+        {
+            if (input.matchnMove(1, "Filter"))
+            {
+                tmp = PART::aftertouchType::filterCutoff;
+                if (input.matchnMove(1, "Down"))
+                    tmp |= PART::aftertouchType::filterCutoffDown;
+            }
+            if (input.matchnMove(1, "Peak"))
+            {
+                tmp = PART::aftertouchType::filterQ;
+                if (input.matchnMove(1, "Down"))
+                    tmp |= PART::aftertouchType::filterQdown;
+            }
+            if (input.matchnMove(1, "Bend"))
+            {
+                tmp |= PART::aftertouchType::pitchBend;
+                if (input.matchnMove(1, "Down"))
+                    tmp |= PART::aftertouchType::pitchBendDown;
+            }
+            if (input.matchnMove(1, "Volume"))
+                tmp |= PART::aftertouchType::volume;
+            if (input.matchnMove(1, "Modulation"))
+                tmp |= PART::aftertouchType::modulation;
+        }
+        if (tmp == PART::aftertouchType::modulation * 2 && controlType != TOPLEVEL::type::Read)
+            return REPLY::value_msg;
+        return sendNormal( synth, 0, tmp & (PART::aftertouchType::modulation * 2 - 1), controlType, cmd, npart);
+    }
     if (input.matchnMove(1, "destination"))
     {
         int dest = 0;
@@ -4916,7 +4960,7 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
             if (input.lineEnd(controlType))
                 return REPLY::value_msg;
             value = string2int(input);
-            if (value < 1 || (value > POLIPHONY - 20))
+            if (value < 1 || value > PART_POLIPHONY)
                 return REPLY::range_msg;
         }
         return sendNormal( synth, 0, value, controlType, PART::control::maxNotes, npart);
@@ -5135,15 +5179,16 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
     if (input.matchnMove(1, "part"))
     {
         nFX = 0; // just to be sure
-        if (controlType != TOPLEVEL::type::Write && input.isAtEnd())
+        // TODO get correct part number
+        /*if (controlType != TOPLEVEL::type::Write && input.isAtEnd())
         {
             if (synth->partonoffRead(npart))
                 name = " enabled";
             else
                 name = " disabled";
-            Runtime.Log("Current part " + asString(npart) + name, 1);
+            Runtime.Log("Current part " + asString(npart + 1) + name, 1);
             return REPLY::done_msg;
-        }
+        }*/
         context = LEVEL::Top;
         bitSet(context, LEVEL::Part);
         nFXtype = synth->part[npart]->partefx[nFX]->geteffect();
@@ -5208,7 +5253,7 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
 
     if (input.matchnMove(2, "solo"))
     {
-        int value = 0; // disable
+        int value = MIDI::SoloType::Disabled;
 
         if (input.matchnMove(2, "cc"))
         {
@@ -5228,13 +5273,15 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
         }
 
         else if (input.matchnMove(1, "row"))
-            value = 1;
+            value = MIDI::SoloType::Row;
         else if (input.matchnMove(1, "column"))
-            value = 2;
+            value = MIDI::SoloType::Column;
         else if (input.matchnMove(1, "loop"))
-            value = 3;
+            value = MIDI::SoloType::Loop;
         else if (input.matchnMove(1, "twoway"))
-            value = 4;
+            value = MIDI::SoloType::TwoWay;
+        else if (input.matchnMove(1, "channel"))
+            value = MIDI::SoloType::Channel;
         return sendNormal( synth, 0, value, controlType, MAIN::control::soloType, TOPLEVEL::section::main);
     }
     if (input.matchnMove(2, "available")) // 16, 32, 64
@@ -5245,6 +5292,17 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
         if (controlType == TOPLEVEL::type::Write && value != 16 && value != 32 && value != 64)
             return REPLY::range_msg;
         return sendNormal( synth, 0, value, controlType, MAIN::control::availableParts, TOPLEVEL::section::main);
+    }
+    if (input.matchnMove(3, "panning"))
+    {
+        int value = MAIN::panningType::normal;
+        if(input.matchnMove(1, "cut"))
+            value = MAIN::panningType::cut;
+        else if (input.matchnMove(1, "boost"))
+            value = MAIN::panningType::boost;
+        else if (!input.matchnMove(1, "default") && controlType == TOPLEVEL::type::Write)
+            return REPLY::range_msg;
+        return sendNormal( synth, 0, value, controlType, MAIN::control::panLawType, TOPLEVEL::section::main);
     }
     return REPLY::op_msg;
 }
@@ -5345,7 +5403,13 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
     if (input.matchnMove(4, "test"))
     {
         list<string>testlist;
-        int count = file::listDir(&testlist, "/home/will/yoshimi-code/banks");
+        string testdir = "/home/will/yoshimi-code/banks/chip";
+        uint32_t count = file::listDir(&testlist, testdir);
+        if (count == 0xffffffff)
+        {
+            std::cout << "no such directory" << std::endl;
+            return Reply::DONE;
+        }
         testlist.sort();
 
         // safe removal
@@ -5358,7 +5422,14 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
         }
 
         for(list<string>::iterator it = testlist.begin(); it != testlist.end(); ++ it)
-            std::cout << *it << std::endl;
+        {
+            string name = *it;
+            if (file::isDirectory(testdir + "/" + name))
+            {
+                name += " - Dir";
+            }
+            std::cout << name << std::endl;
+        }
         std::cout << "total found " << count << std::endl;
         testlist.clear();
         return Reply::DONE;
@@ -6029,7 +6100,7 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
          * reduces the effect of the processing overhead outside the call loop itself.
          */
 
-        std::cout << "here" << std::endl;
+        std::cout << "here zread" << std::endl;
 
         // repeats, control, part, kit, engine, insert, parameter, miscmsg
         float result;

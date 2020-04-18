@@ -1,7 +1,7 @@
 /*
     globals.h - general static definitions
 
-    Copyright 2018-2019, Will Godfrey
+    Copyright 2018-2020, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -76,7 +76,7 @@ const unsigned char MAX_AD_HARMONICS = 128;
 const unsigned char MAX_SUB_HARMONICS = 64;
 const unsigned char PAD_MAX_SAMPLES = 96;
 const unsigned char NUM_MIDI_PARTS = 64;
-const unsigned char PART_POLY = 0;
+const unsigned char PART_NORMAL = 0;
 const unsigned char PART_MONO = 1;
 const unsigned char PART_LEGATO = 2;
 const unsigned char MIDI_NOT_LEGATO = 3;
@@ -114,6 +114,7 @@ const unsigned int MODOFF_COLOUR = 0x80808000;
 const unsigned char NUM_VOICES = 8;
 const unsigned char POLIPHONY = 80;
 const unsigned char PART_POLIPHONY = 60;
+const unsigned char PART_DEFAULT_LIMIT = 20;
 const unsigned char NUM_SYS_EFX = 4;
 const unsigned char NUM_INS_EFX = 8;
 const unsigned char NUM_PART_EFX = 3;
@@ -223,6 +224,14 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         // insert any new entries here
         textMessage = 254, // FE
         forceExit // this is effective from *any* section!
+    };
+
+    enum msgResponse : unsigned char {
+        refreshBankDefaults,
+        cancelBankDefaults,
+        cancelMidiLearn
+        // any other value = no response
+        // but there may still be a message
     };
 
     // inserts are here as they are split between many
@@ -344,7 +353,9 @@ namespace BANK // usage BANK::control::
         selectRoot = 32, // by ID - also reads the current one
         changeRootId, // change ID of current root
         addNamedRoot, // not yet - currently add at top level
-        deselectRoot // not yet - currently remove at top level
+        deselectRoot, // not yet - currently remove at top level
+        installBanks,
+        refreshDefaults
     };
 }
 
@@ -405,7 +416,8 @@ namespace MIDILEARN // usage MIDILEARN::control::block
         loadList = 241,
         loadFromRecent,
         saveList = 245,
-        cancelLearn = 250
+        cancelLearn = 250,
+        learned
     };
 }
 
@@ -461,6 +473,15 @@ namespace MIDI // usage MIDI::control::noteOn
         identNRPN = 0x8000,
         null
     };
+
+    enum SoloType : unsigned char {
+        Disabled = 0,
+        Row,
+        Column,
+        Loop,
+        TwoWay,
+        Channel
+    };
 }
 
 namespace SCALES // usage SCALES::control::refFrequency
@@ -493,6 +514,7 @@ namespace MAIN // usage MAIN::control::volume
         volume = 0,
         partNumber = 14,
         availableParts,
+        panLawType,
         detune = 32,
         keyShift = 35,
         mono,
@@ -527,6 +549,13 @@ namespace MAIN // usage MAIN::control::volume
         readMainLRpeak,
         readMainLRrms
     };
+
+    enum panningType : unsigned char {
+        cut = 0,
+        normal,
+        boost
+    };
+
 }
 
 namespace PART // usage PART::control::volume
@@ -538,6 +567,8 @@ namespace PART // usage PART::control::volume
         velocityOffset = 4,
         midiChannel,
         keyMode,
+        channelATset,
+        keyATset,
         portamento,
         enable,
         kitItemMute,
@@ -642,6 +673,18 @@ namespace PART // usage PART::control::volume
         addMod7,
         addMod8
     };
+
+    namespace aftertouchType { // all powers of 2 handled bit-wise
+        const unsigned int off = 0;
+        const unsigned int filterCutoff = 1;
+        const unsigned int filterCutoffDown = 2;
+        const unsigned int filterQ = 4;
+        const unsigned int filterQdown = 8;
+        const unsigned int pitchBend = 16;
+        const unsigned int pitchBendDown = 32;
+        const unsigned int volume = 64;
+        const unsigned int modulation = 128; // this must be highest bit
+    }
 }
 
 namespace ADDSYNTH // usage ADDSYNTH::control::volume
@@ -867,6 +910,26 @@ namespace OSCILLATOR // usage OSCILLATOR::control::phaseRandomness
 
         clearHarmonics = 96,
         convertToSine
+    };
+    enum wave : unsigned char {
+        sine = 0,
+        triangle,
+         pulse,
+         saw,
+         power,
+         gauss,
+         diode,
+         absSine,
+         pulseSine,
+         stretchSine,
+         chirp,
+         absStretchSine,
+         chebyshev,
+         square,
+         spike,
+         circle,
+         hyperSec,
+         user
     };
 }
 

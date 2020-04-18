@@ -24,8 +24,8 @@
 */
 
 #include <cstring>
-#include <fftw3.h>
 
+#include "DSP/FFTwrapper.h"
 #include "Misc/SynthEngine.h"
 #include "DSP/SVFilter.h"
 #include "Misc/NumericFuncs.h"
@@ -49,6 +49,27 @@ SVFilter::SVFilter(unsigned char Ftype, float Ffreq, float Fq,
     tmpismp = (float*)fftwf_malloc(synth->bufferbytes);
     cleanup();
     setfreq_and_q(Ffreq, Fq);
+}
+
+
+SVFilter::SVFilter(const SVFilter &orig) :
+    par(orig.par),
+    ipar(orig.ipar),
+    type(orig.type),
+    stages(orig.stages),
+    freq(orig.freq),
+    q(orig.q),
+    abovenq(orig.abovenq),
+    oldabovenq(orig.oldabovenq),
+    needsinterpolation(orig.needsinterpolation),
+    firsttime(orig.firsttime),
+    synth(orig.synth)
+{
+    outgain = orig.outgain;
+
+    memcpy(st, orig.st, sizeof(st));
+
+    tmpismp = (float*)fftwf_malloc(synth->bufferbytes);
 }
 
 
