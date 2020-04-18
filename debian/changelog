@@ -1,7 +1,7 @@
-yoshimi (1.7.1~RC4-1~buster) Lumiera-buster-tool; urgency=low
+yoshimi (1.7.1~RC4-1ppa1~focal) focal; urgency=low
 
   * New upstream version 1.7.1 == PREVIEW RC4
-  * Rebuild/Backport for Debian/Buster(stable).
+  * Rebuild/Backport for Ubuntu/Focal(20.04 LTS).
   * unofficial DEB package by Ichthyostega
 
  -- Hermann Vosseler <deb@ichthyostega.de>  Sun, 19 Apr 2020 01:06:38 +0200
