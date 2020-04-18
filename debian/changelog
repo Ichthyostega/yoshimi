@@ -1,3 +1,11 @@
+yoshimi (1.7.1~RC4-1~buster) Lumiera-buster-tool; urgency=low
+
+  * New upstream version 1.7.1 == PREVIEW RC4
+  * Rebuild/Backport for Debian/Buster(stable).
+  * unofficial DEB package by Ichthyostega
+
+ -- Hermann Vosseler <deb@ichthyostega.de>  Sun, 19 Apr 2020 01:06:38 +0200
+
 yoshimi (1.7.0.1-1~buster) Lumiera-buster-tool; urgency=low
 
   * New upstream version 1.7.0.1
