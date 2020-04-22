@@ -19,12 +19,18 @@
 
 */
 
+/*
+ * Uncomment the following define to emulate aftertouch
+ * To get the impression of channel aftertouch we change the
+ * event of the specified controller number.
+ * Change the value to suit your circumstances.
+ */
+//#define AFTERTOUCH_EMULATE 94
 
 #include "Misc/Config.h"
 #include "Misc/SynthEngine.h"
 #include "Misc/FormatFuncs.h"
 #include "MusicIO/MusicIO.h"
-
 
 using func::asString;
 
@@ -65,13 +71,28 @@ void MusicIO::setMidi(unsigned char par0, unsigned char par1, unsigned char par2
     bool inSync = LV2_engine || (synth->getRuntime().audioEngine == jack_audio && synth->getRuntime().midiEngine == jack_midi);
 
     CommandBlock putData;
+
+    unsigned int event = par0 & 0xf0;
+    unsigned char channel = par0 & 0xf;
+
+
+#ifdef AFTERTOUCH_EMULATE
+
+    if (event == 0xb0 && par1 == AFTERTOUCH_EMULATE)
+    {
+        par0 = 0xd0 | channel; // change to chanel aftertouch
+        par1 = par2; // shift parameter across
+        synth->mididecode.midiProcess(par0, par1, par2, in_place, inSync);
+        return;
+    }
+#endif
+
 /*
  * This below is a much simpler (faster) way
  * to do note-on and note-off
  * Tested on ALSA JACK and LV2 all combinations!
  */
-    unsigned int event = par0 & 0xf0;
-    unsigned char channel = par0 & 0xf;
+
     if (event == 0x80 || event == 0x90)
     {
         if (par2 < 1) // zero volume note on.

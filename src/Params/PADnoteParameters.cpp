@@ -5,7 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
     Copyright 2017-2019 Will Godfrey
-    Copyright 2020 Kristian Amlie
+    Copyright 2020 Kristian Amlie & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -25,6 +25,8 @@
 
 */
 
+#include <memory>
+
 #include "Misc/XMLwrapper.h"
 #include "DSP/FFTwrapper.h"
 #include "Synth/OscilGen.h"
@@ -34,11 +36,12 @@
 #include "Params/FilterParams.h"
 #include "Misc/SynthEngine.h"
 #include "Misc/FileMgrFuncs.h"
+#include "Misc/NumericFuncs.h"
 #include "Params/PADnoteParameters.h"
 #include "Misc/WavFile.h"
 
 using file::saveData;
-
+using func::setAllPan;
 
 PADnoteParameters::PADnoteParameters(FFTwrapper *fft_, SynthEngine *_synth) : Presets(_synth)
 {
@@ -132,7 +135,7 @@ void PADnoteParameters::defaults(void)
 
     // Amplitude Global Parameters
     PVolume = 90;
-    setPan(PPanning = 64); // center
+    setPan(PPanning = 64, synth->getRuntime().panLaw); // center
     PAmpVelocityScaleFunction = 64;
     AmpEnvelope->defaults();
     AmpLfo->defaults();
@@ -586,7 +589,9 @@ void PADnoteParameters::applyparameters()
 {
     const int samplesize = (((int)1) << (Pquality.samplesize + 14));
     int spectrumsize = samplesize / 2;
-    float spectrum[spectrumsize];
+    // spectrumsize can be quite large (up to 2MiB) and this is not a hot
+    // function, so allocate this on the heap
+    std::unique_ptr<float[]> spectrum(new float[spectrumsize]);
     int profilesize = 512;
     float profile[profilesize];
 
@@ -610,7 +615,7 @@ void PADnoteParameters::applyparameters()
         samplemax = 1;
 
     // prepare a BIG FFT stuff
-    FFTwrapper *fft = new FFTwrapper(samplesize);
+    FFTwrapper fft = FFTwrapper(samplesize);
     FFTFREQS fftfreqs;
     FFTwrapper::newFFTFREQS(&fftfreqs, samplesize / 2);
 
@@ -623,11 +628,11 @@ void PADnoteParameters::applyparameters()
         float basefreqadjust = powf(2.0f, tmp);
 
         if (Pmode == 0)
-            generatespectrum_bandwidthMode(spectrum, spectrumsize,
+            generatespectrum_bandwidthMode(&spectrum[0], spectrumsize,
                                            basefreq * basefreqadjust, profile,
                                            profilesize, bwadjust);
         else
-            generatespectrum_otherModes(spectrum, spectrumsize,
+            generatespectrum_otherModes(&spectrum[0], spectrumsize,
                                         basefreq * basefreqadjust);
 
         const int extra_samples = 5; // the last samples contains the first
@@ -641,7 +646,7 @@ void PADnoteParameters::applyparameters()
             fftfreqs.c[i] = spectrum[i] * cosf(phase);
             fftfreqs.s[i] = spectrum[i] * sinf(phase);
         }
-        fft->freqs2smps(&fftfreqs, newsample.smp);
+        fft.freqs2smps(&fftfreqs, newsample.smp);
         // that's all; here is the only ifft for the whole sample; no windows are used ;-)
 
         // normalize(rms)
@@ -651,7 +656,7 @@ void PADnoteParameters::applyparameters()
         rms = sqrtf(rms);
         if (rms < 0.000001)
             rms = 1.0;
-        rms *= sqrtf(262144.0f / samplesize);
+        rms *= sqrtf(float(1024 * 256) / samplesize);
         for (int i = 0; i < samplesize; ++i)
             newsample.smp[i] *= 1.0f / rms * 50.0f;
 
@@ -666,7 +671,6 @@ void PADnoteParameters::applyparameters()
         sample[nsample].basefreq = basefreq * basefreqadjust;
         newsample.smp = NULL;
     }
-    delete fft;
     FFTwrapper::deleteFFTFREQS(&fftfreqs);
 
     // delete the additional samples that might exists and are not useful
@@ -676,14 +680,15 @@ void PADnoteParameters::applyparameters()
 }
 
 
-void PADnoteParameters::setPan(char pan)
+void PADnoteParameters::setPan(char pan, unsigned char panLaw)
 {
     PPanning = pan;
     if (!randomPan())
     {
-        float t = (float)(PPanning - 1) / 126.0f;
-        pangainL = cosf(t * HALFPI);
-        pangainR = cosf((1.0f - t) * HALFPI);
+        //float t = (float)(PPanning - 1) / 126.0f;
+        //pangainL = cosf(t * HALFPI);
+        //pangainR = cosf((1.0f - t) * HALFPI);
+        setAllPan(PPanning, pangainL, pangainR, panLaw);
     }
     else
         pangainL = pangainR = 0.7f;
@@ -918,7 +923,7 @@ void PADnoteParameters::getfromXML(XMLwrapper *xml)
     if (xml->enterbranch("AMPLITUDE_PARAMETERS"))
     {
         PVolume=xml->getpar127("volume",PVolume);
-        setPan(xml->getpar127("panning",PPanning));
+        setPan(xml->getpar127("panning",PPanning), synth->getRuntime().panLaw);
         PAmpVelocityScaleFunction=xml->getpar127("velocity_sensing",PAmpVelocityScaleFunction);
         Fadein_adjustment = xml->getpar127("fadein_adjustment", Fadein_adjustment);
         PPunchStrength=xml->getpar127("punch_strength",PPunchStrength);

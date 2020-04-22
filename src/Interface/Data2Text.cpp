@@ -1,7 +1,7 @@
 /*
     Data2Text.cpp - conversion of commandBlock entries to text
 
-    Copyright 2019 Will Godfrey
+    Copyright 2020 Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -634,10 +634,10 @@ string DataText::resolveConfig(CommandBlock *getData, bool addValue)
             }
             showValue = false;
             break;
-        case CONFIG::control::showEnginesTypes:
+        /*case CONFIG::control::showEnginesTypes:
             contstr = "Show Engines & Types";
             yesno = true;
-            break;
+            break;*/
         case CONFIG::control::defaultStateStart:
             contstr += "Autoload default state";
             yesno = true;
@@ -1016,6 +1016,27 @@ string DataText::resolveMain(CommandBlock *getData, bool addValue)
             contstr = "Available Parts";
             break;
 
+        case MAIN::control::panLawType:
+            contstr = "Panning Law ";
+            if (addValue)
+            {
+                switch (value_int)
+                {
+                    case MAIN::panningType::cut:
+                        contstr += "cut";
+                        break;
+                    case MAIN::panningType::normal:
+                        contstr += "default";
+                        break;
+                    case MAIN::panningType::boost:
+                        contstr += "boost";
+                        break;
+                    default:
+                        contstr += "unrecognised";
+                }
+            }
+            showValue = false;
+            break;
         case MAIN::control::detune:
             contstr = "Detune";
             break;
@@ -1041,20 +1062,23 @@ string DataText::resolveMain(CommandBlock *getData, bool addValue)
             {
                 switch (value_int)
                 {
-                    case 0:
+                    case MIDI::SoloType::Disabled:
                         contstr += "Off";
                         break;
-                    case 1:
+                    case MIDI::SoloType::Row:
                         contstr += "Row";
                         break;
-                    case 2:
+                    case MIDI::SoloType::Column:
                         contstr += "Column";
                         break;
-                    case 3:
+                    case MIDI::SoloType::Loop:
                         contstr += "Loop";
                         break;
-                    case 4:
+                    case MIDI::SoloType::TwoWay:
                         contstr += "Twoway";
+                        break;
+                    case MIDI::SoloType::Channel:
+                        contstr += "Channel";
                         break;
                 }
             }
@@ -1222,6 +1246,47 @@ string DataText::resolveMain(CommandBlock *getData, bool addValue)
 }
 
 
+string DataText::resolveAftertouch(bool type, int value, bool addValue)
+{
+    std::string contstr;
+    if (type)
+        contstr = "ChannelAT";
+    else
+        contstr = "KeyAT";
+    if (!addValue)
+        return contstr;
+
+    if (value == PART::aftertouchType::off)
+        contstr += " Off";
+    else
+    {
+        if (value & PART::aftertouchType::filterCutoff)
+        {
+            contstr += "\n Filter Cutoff";
+            if (value & PART::aftertouchType::filterCutoffDown)
+                contstr += " Down";
+        }
+        if (value & PART::aftertouchType::filterQ)
+        {
+            contstr += "\n Peak";
+            if (value & PART::aftertouchType::filterQdown)
+                contstr += " Down";
+        }
+        if (value & PART::aftertouchType::pitchBend)
+        {
+            contstr += "\n Bend";
+            if (value & PART::aftertouchType::pitchBendDown)
+                contstr += " Down";
+        }
+        if (value & PART::aftertouchType::volume)
+            contstr += "\n Volume";
+        if (value & PART::aftertouchType::modulation)
+            contstr += "\n Modulation";
+    }
+    return contstr;
+}
+
+
 string DataText::resolvePart(CommandBlock *getData, bool addValue)
 {
     float value = getData->data.value.F;
@@ -1310,6 +1375,18 @@ string DataText::resolvePart(CommandBlock *getData, bool addValue)
                 else if (value_int >= 2)
                     contstr += "Legato";
             }
+            break;
+        case PART::control::channelATset:
+            showValue = false;
+            contstr = resolveAftertouch(true, value_int, addValue);
+            if (parameter != UNUSED)
+                contstr = contstr + "\n" + resolveAftertouch(false, parameter, addValue);
+            break;
+        case PART::control::keyATset:
+            showValue = false;
+            contstr = resolveAftertouch(false, value_int, addValue);
+            if (parameter != UNUSED)
+                contstr = contstr + "\n" + resolveAftertouch(true, parameter, addValue);
             break;
         case PART::control::portamento:
             contstr = "Portamento Enable";

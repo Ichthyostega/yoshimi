@@ -193,7 +193,7 @@ this->pars=pars;} {}
         {
             float nhr = pars->getNhr(i);
             int kx = (int)(lx / (float)maxharmonic * nhr);
-            if (kx < 0 || kx > lx)
+            if (kx < 0 || kx >= lx)
                 continue;
             spectrum[kx] = spc[i - 1] / max + 1e-9;
         }
@@ -245,7 +245,7 @@ class PADnoteUI {: {public PresetsUI_}
       label {PAD synth Parameters}
       xywh {143 20 535 450} type Double hide
       code0 {o->copy_label(synth->getGuiMaster()->setPartWindowTitle("PadSynth").c_str());}
-      code1 {o->position(synth->getGuiMaster()->padNoteX, synth->getGuiMaster()->padNoteY);}
+      code1 {int fetchX, fetchY, fetchO;loadWin(synth, fetchX, fetchY, fetchO, "pad");o->position(fetchX, fetchY);}
     } {
       Fl_Tabs {} {
         callback {//
@@ -1003,8 +1003,6 @@ class PADnoteUI {: {public PresetsUI_}
       Fl_Button {} {
         label Close
         callback {//
-        synth->getGuiMaster()->padNoteX = padnotewindow->x();
-        synth->getGuiMaster()->padNoteY = padnotewindow->y();
         padnotewindow->hide();
         if ((Fl::event_button() == 3))
         {
@@ -1348,7 +1346,7 @@ class PADnoteUI {: {public PresetsUI_}
     code {//
     delete(oscui);
     delete(resui);
-
+    saveWin(synth, padnotewindow->x(),padnotewindow->y(), padnotewindow->visible(), "pad");
     padnotewindow->hide();
     delete(padnotewindow);} {}
   }
