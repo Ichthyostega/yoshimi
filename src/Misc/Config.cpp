@@ -66,6 +66,7 @@ using func::nearestPowerOf2;
 using func::asString;
 using func::string2int;
 
+unsigned char panLaw = 1;
 
 namespace { // constants used in the implementation
     char prog_doc[] =
@@ -159,6 +160,8 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
     showCli(true),
     cliChanged(false),
     singlePath(false),
+    banksChecked(false),
+    panLaw(1),
     configChanged(false),
     rtprio(40),
     midi_bank_root(0), // 128 is used as 'disabled'
@@ -315,7 +318,7 @@ bool Config::loadConfig(void)
         Log ("Failed to find 'Home' directory - using tmp.\nSettings will be lost on computer shutdown.");
     }
     userHome = homedir + '/';
-    localDir = userHome + ".local/yoshimi";
+    localDir = userHome + ".local/share/yoshimi";
     if (!isDirectory(localDir))
     {
         if (createDir(localDir))
@@ -344,9 +347,10 @@ bool Config::loadConfig(void)
     if (thisInstance == 0 && sessionStage != Session::RestoreConf)
     {
         TextMsgBuffer::instance().init(); // sneaked it in here so it's early
-        string presetDir = localDir + "/presets";
+
+        presetDir = localDir + "/presets";
         if (!isDirectory(presetDir))
-        {
+        { // only ever want to do this once
             if (createDir(presetDir))
             {
                 Log("Failed to create presets directory '" + presetDir + "'");
@@ -357,10 +361,24 @@ bool Config::loadConfig(void)
                 int i = 1;
                 while (!presetsDirlist[i].empty())
                 {
-                    copyDir(presetsDirlist[i], presetDir);
+                    copyDir(presetsDirlist[i], presetDir, 1);
                     ++i;
                 }
             }
+        }
+        //cout << presetDir << endl;
+        definedBankRoot = localDir + "/found/";
+        if (!isDirectory(definedBankRoot))
+        { // only ever want to do this once
+            if (createDir(definedBankRoot))
+            {
+                Log("Failed to create root directory '" + definedBankRoot + "'");
+            }
+            else
+            {
+                ;
+            }
+        //cout << definedBankRoot << endl;
         }
     }
 
@@ -369,9 +387,9 @@ bool Config::loadConfig(void)
     if (thisInstance == 0 && sessionStage != Session::RestoreConf)
     {
         string newInstance0 = ConfigDir + yoshimi + EXTEN::instance;
-        if (isRegularFile(baseConfig) && !isRegularFile(newInstance0))
+        if (isRegularFile(baseConfig) && !isRegularFile(newInstance0), 0)
         {
-            file::copyFile(baseConfig, newInstance0);
+            file::copyFile(baseConfig, newInstance0, 0);
             Log("Reorganising config files.");
             if (isRegularFile(defaultStateName + EXTEN::state))
             {
@@ -487,7 +505,8 @@ void Config::restoreConfig(SynthEngine *_synth)
 void Config::defaultPresets(void)
 {
     string presetdirs[]  = {
-        string(getenv("HOME")) + "/.local/yoshimi/presets",
+        //string(getenv("HOME")) + "/.local/yoshimi/presets",
+        presetDir,
         extendLocalPath("/presets"),
         // The following is not a default one.
         //string(getenv("HOME")) + "/" + string(EXTEN::config) + "/yoshimi/presets",
@@ -538,6 +557,7 @@ bool Config::extractBaseParameters(XMLwrapper *xml)
     if (!cliChanged)
         showCli = xml->getparbool("enable_CLI", showCli);
     singlePath = xml->getparbool("enable_single_master", singlePath);
+    banksChecked = xml->getparbool("banks_checked", banksChecked);
     autoInstance = xml->getparbool("enable_auto_instance", autoInstance);
     if (autoInstance)
         activeInstance = xml->getparU("active_instances", 0);
@@ -683,7 +703,7 @@ bool Config::extractConfigData(XMLwrapper *xml)
     }
 
     //misc
-    checksynthengines = xml->getpar("check_pad_synth", checksynthengines, 0, 1);
+    //checksynthengines = xml->getpar("check_pad_synth", checksynthengines, 0, 1);
     if (tempRoot == 0)
         tempRoot = xml->getpar("root_current_ID", 0, 0, 127);
 
@@ -1514,7 +1534,7 @@ void GuiThreadMsg::processGuiMessages()
                         {
                             // special case for first synth startup
                             guiMaster->bankui->readbankcfg();
-                            guiMaster->bankui->rescan_for_banks(false);
+                            guiMaster->bankui->rescan_for_banks();
                         }
                         guiMaster->bankui->set_bank_slot();
                         guiMaster->bankui->refreshmainwindow();

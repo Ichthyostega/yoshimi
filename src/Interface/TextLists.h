@@ -1,7 +1,7 @@
 /*
     TextLists.h
 
-    Copyright 2019, Will Godfrey
+    Copyright 2019-2020, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -168,10 +168,11 @@ static std::string toplist [] = {
     "    PREset <n>",           "set numbered effect preset to n",
     "    -- ",                  "effect dependedent controls",
     "  AVailable <n>",          "available parts (16, 32, 64)",
+    "  PANning <n>",            "panning type (Cut, Default, Boost)",
     "  Volume <n>",             "master volume",
     "  SHift <n>",              "master key shift semitones (0 no shift)",
     "  DEtune <n>",             "master fine detune",
-    "  SOlo [s] [n]",           "channel 'solo' switcher (Row, Column, Loop, Twoway, CC, {other} off)",
+    "  SOlo [s] [n]",           "channel 'solo' switcher (Row, Column, Loop, Twoway, Channel, CC, {other} off)",
     "      CC <n>",             "incoming 'solo' CC number (type must be set first)",
     "end"
 };
@@ -184,7 +185,7 @@ static std::string configlist [] = {
     "Xml <n>",             "compression (0-9)",
     "REports [s]",         "destination (Stdout, other = console)",
     "SAved [s]",           "saved instrument type (Legacy {.xiz}, Yoshimi {.xiy}, Both)",
-    "ENGine [s]",          "enable instrument engines and types info (OFF, {other})",
+    //"ENGine [s]",          "enable instrument engines and types info (OFF, {other})",
     "EXPose <s>",          "show current context level (ON, OFF, PRompt)",
 
     "STate [s]",           "* autoload default at start (ON, {other})",
@@ -263,6 +264,8 @@ static std::string partlist [] = {
     "Humanise Pitch [n]",  "adds a small random pitch change at note_on",
     "Humanise Velocity [n]",  "adds a small random velocity change at note_on",
     "Channel <n>",         "MIDI channel (> 32 disables, > 16 note off only)",
+    "AFtertouch Chan <s1> [s2]", "Off, Filter (Down) + Peak (Down) + Bend (Down) + Modulation + Volume",
+    "AFtertouch Key <s1> [s2]",  "Off, Filter (Down) + Peak (Down) + Bend (Down) + Modulation",
     "Destination <s>",     "jack audio destination (Main, Part, Both)",
     "kit mode entries","",
     "KIT",                 "access controls but don't change type",
@@ -576,6 +579,7 @@ static std::string waveformlist [] = {
     "SQUare","",
     "SPIke","",
     "CIRcle","",
+    "HYPersec","",
     "Harmonic <n1> Amp <n2>",   "harmonic n1 to n2 intensity",
     "Harmonic <n1> Phase <n2>", "harmonic n1 to n2 phase",
     "Harmonic Shift <n>",       "amount harmonics are moved",
@@ -1008,8 +1012,8 @@ static std::string effdynamicfilter [] = {"LEV", "PAN", "FRE", "RAN", "WAV", "SH
 static std::string detuneType [] = {"DEFault", "L35", "L10", "E100", "E1200", "end"};
 
 // waveform controls
-static std::string waveshape [] = {"Sine", "Triangle", "Pulse", "Saw", "Power", "Gauss", "Diode", "AbsSine", "PulseSine", "StretchSine", "Chirp", "AbsStretchSine", "Chebyshev", "Square", "Spike", "Circle"};
-static std::string wavebase [] = {"SIN", "TRI", "PUL", "SAW", "POW", "GAU", "DIO", "ABS", "PSI", "SSI", "CHI", "ASI", "CHE", "SQU", "SPI", "CIR", "end"};
+static std::string waveshape [] = {"Sine", "Triangle", "Pulse", "Saw", "Power", "Gauss", "Diode", "AbsSine", "PulseSine", "StretchSine", "Chirp", "AbsStretchSine", "Chebyshev", "Square", "Spike", "Circle", "HyperSec"};
+static std::string wavebase [] = {"SIN", "TRI", "PUL", "SAW", "POW", "GAU", "DIO", "ABS", "PSI", "SSI", "CHI", "ASI", "CHE", "SQU", "SPI", "CIR", "HYP", "end"};
 static std::string basetypes [] = {"c2", "g2", "c3", "g3", "c4", "g4", "c5", "g5", "g6"};
 static std::string filtertype [] = {"OFF", "LP1", "HPA", "HPB", "BP1", "BS1", "LP2", "HP2", "BP2", "BS2", "COS", "SIN", "LSH", "SGM", "end"};
 static std::string adaptive [] = {"OFF", "ON", "SQU", "2XS", "2XA", "3XS", "3XA", "4XS", "4XA"};
