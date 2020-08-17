@@ -1,3 +1,10 @@
+yoshimi (1.7.2~dfsg0-1) unstable; urgency=medium
+
+  * New upstream version 1.7.2~dfsg0
+  * Drop patch, applied by upstream
+
+ -- Dennis Braun <d_braun@kabelmail.de>  Mon, 17 Aug 2020 20:38:58 +0200
+
 yoshimi (1.7.1~dfsg0-2) unstable; urgency=medium
 
   * Team upload
