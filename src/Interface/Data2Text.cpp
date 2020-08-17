@@ -69,7 +69,7 @@ std::string DataText::withValue(std::string resolved, unsigned char type, bool s
 string DataText::resolveAll(SynthEngine *_synth, CommandBlock *getData, bool addValue)
 {
     SynthEngine *synth = _synth;
-    float value = getData->data.value.F;
+    float value = getData->data.value;
     unsigned char type = getData->data.type;
     unsigned char control = getData->data.control;
     unsigned char npart = getData->data.part;
@@ -296,7 +296,7 @@ string DataText::resolveAll(SynthEngine *_synth, CommandBlock *getData, bool add
 
 string DataText::resolveVector(CommandBlock *getData, bool addValue)
 {
-    int value_int = lrint(getData->data.value.F);
+    int value_int = lrint(getData->data.value);
     unsigned char control = getData->data.control;
     unsigned int chan = getData->data.insert;
 
@@ -383,7 +383,7 @@ string DataText::resolveVector(CommandBlock *getData, bool addValue)
         name += " all ";
     else if (control >= VECTOR::control::Ycontroller)
         name += "Y ";
-    else if(control >= VECTOR::control::Xcontroller)
+    else if (control >= VECTOR::control::Xcontroller)
         name += "X ";
 
     if (isFeature)
@@ -409,7 +409,7 @@ string DataText::resolveVector(CommandBlock *getData, bool addValue)
 
 string DataText::resolveMicrotonal(CommandBlock *getData, bool addValue)
 {
-    int value = getData->data.value.F;
+    int value = getData->data.value;
     unsigned char control = getData->data.control;
     unsigned char parameter = getData->data.parameter;
 
@@ -552,7 +552,7 @@ string DataText::resolveMicrotonal(CommandBlock *getData, bool addValue)
 
 string DataText::resolveConfig(CommandBlock *getData, bool addValue)
 {
-    float value = getData->data.value.F;
+    float value = getData->data.value;
     unsigned char control = getData->data.control;
     unsigned char kititem = getData->data.kit;
     bool write = getData->data.type & TOPLEVEL::type::Write;
@@ -676,6 +676,10 @@ string DataText::resolveConfig(CommandBlock *getData, bool addValue)
             break;
         case CONFIG::control::enableAutoInstance:
             contstr += "Enable Auto Instance";
+            yesno = true;
+            break;
+        case CONFIG::control::enableHighlight:
+            contstr += "Enable Bank Highlight";
             yesno = true;
             break;
         case CONFIG::control::historyLock:
@@ -889,7 +893,7 @@ string DataText::resolveConfig(CommandBlock *getData, bool addValue)
             else
             {
                 contstr += "Condition - ";
-                 if(synth->getRuntime().configChanged)
+                 if (synth->getRuntime().configChanged)
                      contstr += "DIRTY";
                  else
                      contstr += "CLEAN";
@@ -908,7 +912,7 @@ string DataText::resolveConfig(CommandBlock *getData, bool addValue)
 
 string DataText::resolveBank(CommandBlock *getData, bool)
 {
-    int value_int = lrint(getData->data.value.F);
+    int value_int = lrint(getData->data.value);
     int control = getData->data.control;
     int kititem = getData->data.kit;
     int engine = getData->data.engine;
@@ -972,7 +976,7 @@ string DataText::resolveBank(CommandBlock *getData, bool)
 
 string DataText::resolveMain(CommandBlock *getData, bool addValue)
 {
-    float value = getData->data.value.F;
+    float value = getData->data.value;
     int value_int = lrint(value);
 
     unsigned char control = getData->data.control;
@@ -1089,7 +1093,7 @@ string DataText::resolveMain(CommandBlock *getData, bool addValue)
             if (addValue)
             {
                 if (value_int > 127)
-                    contstr += "undefined - set mode first";
+                    contstr += "undefined - set type first";
                 else
                     contstr += to_string(value_int);
             }
@@ -1221,7 +1225,7 @@ string DataText::resolveMain(CommandBlock *getData, bool addValue)
 
         case MAIN::control::readMainLRpeak:
             showValue = false;
-            if(kititem == 1)
+            if (kititem == 1)
                 contstr = "Right";
             else
                 contstr = "Left";
@@ -1230,7 +1234,7 @@ string DataText::resolveMain(CommandBlock *getData, bool addValue)
 
         case MAIN::control::readMainLRrms:
             showValue = false;
-            if(kititem == 1)
+            if (kititem == 1)
                 contstr = "Right";
             else
                 contstr = "Left";
@@ -1289,7 +1293,7 @@ string DataText::resolveAftertouch(bool type, int value, bool addValue)
 
 string DataText::resolvePart(CommandBlock *getData, bool addValue)
 {
-    float value = getData->data.value.F;
+    float value = getData->data.value;
     unsigned char control = getData->data.control;
     unsigned char npart = getData->data.part;
     unsigned char kititem = getData->data.kit;
@@ -1339,6 +1343,27 @@ string DataText::resolvePart(CommandBlock *getData, bool addValue)
     string contstr = "";
     switch (control)
     {
+        case PART::control::enable:
+            contstr += " Enable";
+            yesno = true;
+            break;
+        case PART::control::enableAdd:
+            contstr += "AddSynth Enable";
+            yesno = true;
+            break;
+        case PART::control::enableSub:
+            contstr += "SubSynth Enable";
+            yesno = true;
+            break;
+        case PART::control::enablePad:
+            contstr += "PadSynth Enable";
+            yesno = true;
+            break;
+        case PART::control::enableKitLine:
+            contstr += " Enable";
+            yesno = true;
+            break;
+
         case PART::control::volume:
             contstr = "Volume";
             break;
@@ -1392,25 +1417,7 @@ string DataText::resolvePart(CommandBlock *getData, bool addValue)
             contstr = "Portamento Enable";
             yesno = true;
             break;
-        case PART::control::enable:
-            if (!kitType)
-            {
-                switch(engine)
-                {
-                    case PART::engine::addSynth:
-                        contstr += "AddSynth";
-                        break;
-                    case PART::engine::subSynth:
-                        contstr += "SubSynth";
-                        break;
-                    case PART::engine::padSynth:
-                        contstr += "PadSynth";
-                        break;
-                }
-            }
-            contstr += " Enable";
-            yesno = true;
-            break;
+
         case PART::control::kitItemMute:
             if (kitType)
             {
@@ -1432,12 +1439,16 @@ string DataText::resolvePart(CommandBlock *getData, bool addValue)
             contstr = "Max To Last";
             break;
         case PART::control::resetMinMaxKey:
-            contstr = "Reset Key Range";
+            contstr = "Full Key Range";
+            showValue = false;
             break;
 
         case PART::control::kitEffectNum:
-            if (kitType)
-                contstr = "Effect Number";
+            if (value_int == 0)
+                contstr = "Effect Off";
+            else
+                contstr = "Effect Number " + to_string(value_int);
+            showValue = false;
             break;
 
         case PART::control::maxNotes:
@@ -1496,7 +1507,8 @@ string DataText::resolvePart(CommandBlock *getData, bool addValue)
             break;
 
         case PART::control::effectNumber:
-            contstr = "Effect Number";
+            contstr = "Effect Number " + to_string(value_int);
+            showValue = false;
             break;
         case PART::control::effectType:
             contstr = "Effect " + to_string(effNum + 1) + " Type";
@@ -1700,7 +1712,7 @@ string DataText::resolvePart(CommandBlock *getData, bool addValue)
 
 string DataText::resolveAdd(CommandBlock *getData, bool addValue)
 {
-    float value = getData->data.value.F;
+    float value = getData->data.value;
     unsigned char control = getData->data.control;
     unsigned char npart = getData->data.part;
     unsigned char kititem = getData->data.kit;
@@ -1716,13 +1728,20 @@ string DataText::resolveAdd(CommandBlock *getData, bool addValue)
     {
         case ADDSYNTH::control::volume:
             contstr = "Volume";
-
             break;
         case ADDSYNTH::control::velocitySense:
             contstr = "Vel Sens";
             break;
+
         case ADDSYNTH::control::panning:
             contstr = "Panning";
+            break;
+        case ADDSYNTH::control::enableRandomPan:
+            contstr = "Random Pan";
+            yesno = true;
+            break;
+        case ADDSYNTH::control::randomWidth:
+            contstr = "Random Width";
             break;
 
         case ADDSYNTH::control::detuneFrequency:
@@ -1781,7 +1800,7 @@ string DataText::resolveAdd(CommandBlock *getData, bool addValue)
 
 string DataText::resolveAddVoice(CommandBlock *getData, bool addValue)
 {
-    float value = getData->data.value.F;
+    float value = getData->data.value;
     unsigned char control = getData->data.control;
     unsigned char npart = getData->data.part;
     unsigned char kititem = getData->data.kit;
@@ -1834,6 +1853,14 @@ string DataText::resolveAddVoice(CommandBlock *getData, bool addValue)
         case ADDVOICE::control::panning:
             contstr = " Panning";
             break;
+        case ADDVOICE::control::enableRandomPan:
+            contstr = " Random Pan";
+            yesno = true;
+            break;
+        case ADDVOICE::control::randomWidth:
+            contstr = " Random Width";
+            break;
+
         case ADDVOICE::control::invertPhase:
             contstr = " Minus";
             yesno = true;
@@ -2043,7 +2070,7 @@ string DataText::resolveAddVoice(CommandBlock *getData, bool addValue)
 
         default:
             showValue = false;
-            contstr = "Unrecognised";
+            contstr = " Unrecognised";
     }
 
     return ("Part " + to_string(npart + 1) + " Kit " + to_string(kititem + 1) + " Add Voice " + to_string(nvoice + 1) + name + contstr);
@@ -2052,7 +2079,7 @@ string DataText::resolveAddVoice(CommandBlock *getData, bool addValue)
 
 string DataText::resolveSub(CommandBlock *getData, bool addValue)
 {
-    float value = getData->data.value.F;
+    float value = getData->data.value;
     unsigned char control = getData->data.control;
     unsigned char npart = getData->data.part;
     unsigned char kititem = getData->data.kit;
@@ -2102,6 +2129,13 @@ string DataText::resolveSub(CommandBlock *getData, bool addValue)
             break;
         case SUBSYNTH::control::panning:
             contstr = "Panning";
+            break;
+        case SUBSYNTH::control::enableRandomPan:
+            contstr = "Random Pan";
+            yesno = true;
+            break;
+        case SUBSYNTH::control::randomWidth:
+            contstr = "Random Width";
             break;
 
         case SUBSYNTH::control::bandwidth:
@@ -2210,7 +2244,7 @@ string DataText::resolveSub(CommandBlock *getData, bool addValue)
 
 string DataText::resolvePad(CommandBlock *getData, bool addValue)
 {
-    float value = getData->data.value.F;
+    float value = getData->data.value;
     unsigned char type = getData->data.type;
     unsigned char control = getData->data.control;
     unsigned char npart = getData->data.part;
@@ -2252,6 +2286,13 @@ string DataText::resolvePad(CommandBlock *getData, bool addValue)
             break;
         case PADSYNTH::control::panning:
             contstr = "Panning";
+            break;
+        case PADSYNTH::control::enableRandomPan:
+            contstr = "Random Pan";
+            yesno = true;
+            break;
+        case PADSYNTH::control::randomWidth:
+            contstr = "Random Width";
             break;
 
         case PADSYNTH::control::bandwidth:
@@ -2399,7 +2440,7 @@ string DataText::resolvePad(CommandBlock *getData, bool addValue)
 
 string DataText::resolveOscillator(CommandBlock *getData, bool addValue)
 {
-    float value = getData->data.value.F;
+    float value = getData->data.value;
     unsigned char type = getData->data.type;
     unsigned char control = getData->data.control;
     unsigned char npart = getData->data.part;
@@ -2432,7 +2473,7 @@ string DataText::resolveOscillator(CommandBlock *getData, bool addValue)
     {
         return ("Part " + to_string(npart + 1) + " Kit " + to_string(kititem + 1) + eng_name + " Harmonic " + to_string((int)control + 1) + " Amplitude" + isPad);
     }
-    else if(insert == TOPLEVEL::insert::harmonicPhaseBandwidth)
+    else if (insert == TOPLEVEL::insert::harmonicPhaseBandwidth)
     {
         return ("Part " + to_string(npart + 1) + " Kit " + to_string(kititem + 1) + eng_name + " Harmonic " + to_string((int)control + 1) + " Phase" + isPad);
     }
@@ -2567,7 +2608,7 @@ string DataText::resolveOscillator(CommandBlock *getData, bool addValue)
 
 string DataText::resolveResonance(CommandBlock *getData, bool addValue)
 {
-    int value = int(getData->data.value.F + 0.5f);
+    int value = int(getData->data.value + 0.5f);
     unsigned char type = getData->data.type;
     unsigned char control = getData->data.control;
     unsigned char npart = getData->data.part;
@@ -2662,7 +2703,7 @@ string DataText::resolveResonance(CommandBlock *getData, bool addValue)
 
 string DataText::resolveLFO(CommandBlock *getData, bool addValue)
 {
-    int value_int = int(getData->data.value.F);
+    int value_int = int(getData->data.value);
     unsigned char control = getData->data.control;
     unsigned char npart = getData->data.part;
     unsigned char kititem = getData->data.kit;
@@ -2742,7 +2783,7 @@ string DataText::resolveLFO(CommandBlock *getData, bool addValue)
 
 string DataText::resolveFilter(CommandBlock *getData, bool addValue)
 {
-    int value_int = int(getData->data.value.F);
+    int value_int = int(getData->data.value);
     unsigned char control = getData->data.control;
     unsigned char npart = getData->data.part;
     unsigned char kititem = getData->data.kit;
@@ -2897,7 +2938,7 @@ string DataText::resolveFilter(CommandBlock *getData, bool addValue)
 
 string DataText::resolveEnvelope(CommandBlock *getData, bool)
 {
-    int value = lrint(getData->data.value.F);
+    int value = lrint(getData->data.value);
     bool write = (getData->data.type & TOPLEVEL::type::Write) > 0;
     unsigned char control = getData->data.control;
     unsigned char npart = getData->data.part;
@@ -3025,7 +3066,7 @@ string DataText::resolveEnvelope(CommandBlock *getData, bool)
 
 string DataText::resolveEffects(CommandBlock *getData, bool addValue)
 {
-    int value = lrint(getData->data.value.F);
+    int value = lrint(getData->data.value);
     unsigned char control = getData->data.control;
     unsigned char npart = getData->data.part;
     unsigned char kititem = getData->data.kit;
@@ -3159,7 +3200,7 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
                 ref -= 2;
             effname = " Reverb ";
             controlType = reverblist[(ref) * 2];
-            if (control == 10 && addValue == true && offset > 0)
+            if (control == 10 && addValue == true)// && offset > 0)
             {
                 showValue = false;
                 switch (value)
@@ -3289,14 +3330,14 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
             effname = " EQ ";
             if (control > 1)
             {
-                if(offset)
+                if (offset)
                     effname += "(Band " + to_string(int(parameter)) + ") ";
                 if (ref > 10)
                     ref -= 7;
                 else    // there is no 3 to 9 in the list names
                 {       // but there is an extra line after 10
                     ref -= 8;
-                    if(addValue == true && offset > 0)
+                    if (addValue == true && offset > 0)
                     {
                         showValue = false;
                         contstr = " " + stringCaps(eqtypes[value], 1);
@@ -3309,7 +3350,7 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
         case EFFECT::type::dynFilter:
             effname = " DynFilter ";
             controlType = dynfilterlist[control * 2];
-            if(addValue == true && offset > 0)
+            if (addValue == true && offset > 0)
             {
                 if (control == 4)
                 {

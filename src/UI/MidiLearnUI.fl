@@ -406,7 +406,7 @@ Note: Adding/deleting entries or changing CC/Chan will renumber the lines.} xywh
   }
   Function {returns_update(CommandBlock *getData)} {} {
     code {//
-    int value = lrint(getData->data.value.F);
+    int value = lrint(getData->data.value);
     unsigned char type = getData->data.type;
     unsigned char control = getData->data.control;
     unsigned char kititem = getData->data.kit;
@@ -423,7 +423,7 @@ Note: Adding/deleting entries or changing CC/Chan will renumber the lines.} xywh
         case MIDILEARN::control::block:
             break;
         case MIDILEARN::control::ignoreMove:
-            if(type != UNUSED) // edit line in place
+            if (type != UNUSED) // edit line in place
             {
                 midilearnkititem[value]->blockcheck->value((type & 1) != 0);
                 midilearnkititem[value]->compresscheck->value((type & 2) != 0);
@@ -468,7 +468,7 @@ Note: Adding/deleting entries or changing CC/Chan will renumber the lines.} xywh
             break;
         case MIDILEARN::control::reportActivity: // flash LED
             IDold = kititem | (engine << 8);
-            for(int i = 0; i < MIDI_LEARN_BLOCK; ++ i)
+            for (int i = 0; i < MIDI_LEARN_BLOCK; ++ i)
             {
                 if (midilearnkititem[i] != NULL && midilearnkititem[i]->mutecheck->value() == 0)
                 {
@@ -495,7 +495,7 @@ Note: Adding/deleting entries or changing CC/Chan will renumber the lines.} xywh
   }
   Function {addLine(CommandBlock *getData)} {} {
     code {//
-    int lineNo = ((int)getData->data.value.F);
+    int lineNo = ((int)getData->data.value);
     int status = getData->data.type;
     string name = textMsgBuffer.fetch(getData->data.miscmsg);
     none->hide();

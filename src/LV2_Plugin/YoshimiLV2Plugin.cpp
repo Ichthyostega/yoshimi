@@ -197,7 +197,7 @@ void YoshimiLV2Plugin::process(uint32_t sample_count)
     LV2_Atom_Sequence *aSeq = static_cast<LV2_Atom_Sequence *>(_notifyDataPortOut);
     size_t neededAtomSize = sizeof(LV2_Atom_Event) + sizeof(LV2_Atom_Object_Body);
     size_t paddedSize = (neededAtomSize + 7U) & (~7U);
-    if(synth->getNeedsSaving() && _notifyDataPortOut && aSeq->atom.size >= paddedSize) //notify host about plugin's changes
+    if (synth->getNeedsSaving() && _notifyDataPortOut && aSeq->atom.size >= paddedSize) //notify host about plugin's changes
     {
         synth->setNeedsSaving(false);
         aSeq->atom.type = _atom_type_sequence;
@@ -214,7 +214,7 @@ void YoshimiLV2Plugin::process(uint32_t sample_count)
 
         aSeq->atom.size += paddedSize;
     }
-    else if(aSeq)
+    else if (aSeq)
     {
         aSeq->atom.size = sizeof(LV2_Atom_Sequence_Body);
     }
@@ -271,6 +271,7 @@ YoshimiLV2Plugin::YoshimiLV2Plugin(SynthEngine *synth, double sampleRate, const 
 {
     _uridMap.handle = NULL;
     _uridMap.map = NULL;
+    flatbankprgs.clear();
     const LV2_Feature *f = NULL;
     const Yoshimi_LV2_Options_Option *options = NULL;
     while ((f = *features) != NULL)
@@ -349,7 +350,7 @@ bool YoshimiLV2Plugin::init()
     if (!prepBuffers())
         return false;
 
-    if(!_synth->Init(_sampleRate, _bufferSize))
+    if (!_synth->Init(_sampleRate, _bufferSize))
     {
         synth->getRuntime().LogError("Can't init synth engine");
 	return false;
@@ -378,10 +379,12 @@ bool YoshimiLV2Plugin::init()
 }
 
 
-LV2_Handle	YoshimiLV2Plugin::instantiate (const struct _LV2_Descriptor *desc, double sample_rate, const char *bundle_path, const LV2_Feature *const *features)
+LV2_Handle	YoshimiLV2Plugin::instantiate (const LV2_Descriptor *desc, double sample_rate, const char *bundle_path, const LV2_Feature *const *features)
 {
     SynthEngine *synth = new SynthEngine(0, NULL, true);
-    if (synth == NULL || !synth->getRuntime().isRuntimeSetupCompleted()){
+    if (!synth->getRuntime().isRuntimeSetupCompleted())
+    {
+        delete synth;
         return NULL;
     }
     Fl::lock();
@@ -396,9 +399,11 @@ LV2_Handle	YoshimiLV2Plugin::instantiate (const struct _LV2_Descriptor *desc, do
     YoshimiLV2Plugin *inst = new YoshimiLV2Plugin(synth, sample_rate, bundle_path, features, desc);
     if (inst->init())
         return static_cast<LV2_Handle>(inst);
-    else {
+    else
+    {
         synth->getRuntime().LogError("Failed to create Yoshimi LV2 plugin");
         delete inst;
+        delete synth;
     }
     return NULL;
 }
@@ -711,9 +716,9 @@ bool YoshimiLV2PluginUI::init()
 }
 
 
-LV2UI_Handle YoshimiLV2PluginUI::instantiate(const _LV2UI_Descriptor *descriptor, const char *plugin_uri, const char *bundle_path, LV2UI_Write_Function write_function, LV2UI_Controller controller, LV2UI_Widget *widget, const LV2_Feature * const *features)
+LV2UI_Handle YoshimiLV2PluginUI::instantiate(const LV2UI_Descriptor *descriptor, const char *plugin_uri, const char *bundle_path, LV2UI_Write_Function write_function, LV2UI_Controller controller, LV2UI_Widget *widget, const LV2_Feature * const *features)
 {
-    const _LV2UI_Descriptor *desc = descriptor;
+    const LV2UI_Descriptor *desc = descriptor;
     descriptor = desc;
     const char *plug = plugin_uri;
     plugin_uri = plug;

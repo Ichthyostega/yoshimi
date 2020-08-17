@@ -36,6 +36,8 @@ enum ValueType {
     VC_percent128,
     VC_percent255,
     VC_percent64_127,
+    VC_PhaseOffset,
+    VC_WaveHarmonicMagnitude,
     VC_GlobalFineDetune,
     VC_MasterVolume,
     VC_LFOfreq,
@@ -80,6 +82,7 @@ enum ValueType {
     VC_SubBandwidth,
     VC_SubBandwidthScale,
     VC_SubBandwidthRel,
+    VC_SubHarmonicMagnitude,
     VC_FXSysSend,
     VC_FXEchoVol,
     VC_FXEchoDelay,
@@ -115,8 +118,8 @@ void collect_data(SynthEngine *synth, float value, unsigned char action, unsigne
 
 string convert_value(ValueType type, float val);
 
-string variable_prec_units(float v, string u, int maxPrec, bool roundup = false);
-string custom_value_units(float v, string u, int prec=0);
+string variable_prec_units(float v, const string& u, int maxPrec, bool roundup = false);
+string custom_value_units(float v, const string& u, int prec=0);
 void  custom_graph_dimensions(ValueType vt, int& w, int& h);
 void custom_graphics(ValueType vt, float val,int W,int H);
 ValueType getLFOdepthType(int group);

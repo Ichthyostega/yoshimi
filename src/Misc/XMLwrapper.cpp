@@ -89,7 +89,7 @@ XMLwrapper::XMLwrapper(SynthEngine *_synth, bool _isYoshi, bool includeBase) :
         //std::cout << "Zyn doctype" << std::endl;
         mxmlElementSetAttr(doctype, "ZynAddSubFX-data", NULL);
         root = mxmlNewElement(tree, "ZynAddSubFX-data");
-        mxmlElementSetAttr(root, "version-major", "3");
+        mxmlElementSetAttr(root, "version-major", "2");
         mxmlElementSetAttr(root, "version-minor", "0");
         mxmlElementSetAttr(root, "ZynAddSubFX-author", "Nasca Octavian Paul");
         information.yoshiType = 0;
@@ -189,7 +189,7 @@ void XMLwrapper::checkfileinformation(const std::string& filename, unsigned int&
         if (idx != NULL)
         {
             seen |= 2;
-            if(strstr(idx, "name=\"ADDsynth_used\" value=\"yes\""))
+            if (strstr(idx, "name=\"ADDsynth_used\" value=\"yes\""))
                 information.ADDsynth_used = 1;
         }
 
@@ -197,7 +197,7 @@ void XMLwrapper::checkfileinformation(const std::string& filename, unsigned int&
         if (idx != NULL)
         {
             seen |= 4;
-            if(strstr(idx, "name=\"SUBsynth_used\" value=\"yes\""))
+            if (strstr(idx, "name=\"SUBsynth_used\" value=\"yes\""))
                 information.SUBsynth_used = 1;
         }
 
@@ -205,7 +205,7 @@ void XMLwrapper::checkfileinformation(const std::string& filename, unsigned int&
         if (idx != NULL)
         {
             seen |= 1;
-            if(strstr(idx, "name=\"PADsynth_used\" value=\"yes\""))
+            if (strstr(idx, "name=\"PADsynth_used\" value=\"yes\""))
                 information.PADsynth_used = 1;
         }
     }
@@ -507,6 +507,7 @@ bool XMLwrapper::loadXMLfile(const std::string& filename)
     }
     node = root;
     push(root);
+    synth->fileCompatible = true;
     if (zynfile)
     {
         xml_version.major = string2int(mxmlElementGetAttr(root, "version-major"));
@@ -520,8 +521,12 @@ bool XMLwrapper::loadXMLfile(const std::string& filename)
 //        synth->getRuntime().Log("XML: Yoshimi " + asString(xml_version.y_major));
     }
     else
+    {
         synth->getRuntime().lastXMLmajor = 0;
-
+        if (xml_version.major > 2)
+            synth->fileCompatible = false;
+    }
+// std::cout << "major " << int(xml_version.major) << "  Yosh " << int(synth->getRuntime().lastXMLmajor) << std::endl;
     if (mxmlElementGetAttr(root, "Yoshimi-minor"))
     {
         xml_version.y_minor = string2int(mxmlElementGetAttr(root, "Yoshimi-minor"));

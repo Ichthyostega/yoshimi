@@ -46,21 +46,6 @@
 #define Fmul2I 1073741823
 #define Cshift2I 23
 
-/*
- * proposed conversions from float to hi res int
- * multiplier is 1000000
- *
- * for LFO freq turns actual value 85.25 into 85250000
- * current step size 0.06 becomes 6000
- *
- * scales reference frequency 440Hz becomes 440000000
- * At 20Hz resolution is still better than 1/1000 cent
- * Assumed detectable interval is 5 cents
- *
- * also use for integers that need higher resolution
- * such as unspecified 0-127 integers
-*/
-
 // many of the following are for convenience and consistency
 // changing them is likely to have unpredicable consequences
 
@@ -112,8 +97,7 @@ const unsigned int MODOFF_COLOUR = 0x80808000;
 
 // these were previously (pointlessly) user configurable
 const unsigned char NUM_VOICES = 8;
-const unsigned char POLIPHONY = 80;
-const unsigned char PART_POLIPHONY = 60;
+const unsigned char POLIPHONY = 60;
 const unsigned char PART_DEFAULT_LIMIT = 20;
 const unsigned char NUM_SYS_EFX = 4;
 const unsigned char NUM_INS_EFX = 8;
@@ -271,7 +255,7 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         MasterConfig,
         Presets,
         Bank,
-        History,
+        History
     };
 }
 
@@ -296,6 +280,7 @@ namespace CONFIG // usage CONFIG::control::oscillatorSize
         enableCLI,
         enableAutoInstance,
         enableSinglePath,
+        enableHighlight, // in banks
         historyLock,
         exposeStatus, // CLI only
 
@@ -340,6 +325,7 @@ namespace BANK // usage BANK::control::
         deleteInstrument, // from bank
         selectFirstInstrumentToSwap,
         selectSecondInstrumentAndSwap,
+        lastSeenInBank,
 
         selectBank = 16, // in root, by ID or read ID + name
         renameBank, // or read just the name
@@ -462,6 +448,8 @@ namespace MIDI // usage MIDI::control::noteOn
         pitchWheelInner = 128,
         channelPressureInner,
         keyPressureInner,
+        soloType,
+        soloCC,
 
         pitchWheel = 640,
         channelPressure,
@@ -487,12 +475,13 @@ namespace MIDI // usage MIDI::control::noteOn
 namespace SCALES // usage SCALES::control::refFrequency
 {
     enum control : unsigned char {
-        refFrequency = 0,
+        enableMicrotonal = 0,
+        refFrequency,
         refNote,
         invertScale,
         invertedScaleCenter,
         scaleShift,
-        enableMicrotonal = 8,
+
         enableKeyboardMap = 16,
         lowKey,
         middleKey,
@@ -511,13 +500,13 @@ namespace SCALES // usage SCALES::control::refFrequency
 namespace MAIN // usage MAIN::control::volume
 {
     enum control : unsigned char {
-        volume = 0,
+        mono = 0,
+        volume,
         partNumber = 14,
         availableParts,
         panLawType,
         detune = 32,
         keyShift = 35,
-        mono,
         soloType = 48,
         soloCC,
 
@@ -561,18 +550,22 @@ namespace MAIN // usage MAIN::control::volume
 namespace PART // usage PART::control::volume
 {
     enum control : unsigned char {
-        volume = 0,
+        enable = 0,
+        enableAdd,
+        enableSub,
+        enablePad,
+        enableKitLine,
+        volume,
         velocitySense,
         panning,
-        velocityOffset = 4,
+        velocityOffset,
         midiChannel,
         keyMode,
         channelATset,
         keyATset,
         portamento,
-        enable,
         kitItemMute,
-        minNote = 16,
+        minNote,
         maxNote,
         minToLastKey,
         maxToLastKey,
@@ -693,8 +686,8 @@ namespace ADDSYNTH // usage ADDSYNTH::control::volume
         volume = 0,
         velocitySense,
         panning,
-
-        enable = 8,
+        enableRandomPan,
+        randomWidth,
 
         detuneFrequency = 32,
         octave = 35,
@@ -716,12 +709,14 @@ namespace ADDSYNTH // usage ADDSYNTH::control::volume
 namespace ADDVOICE // usage ADDVOICE::control::volume
 {
     enum control : unsigned char {
-        volume = 0,
+        enableVoice = 0,
+        volume,
         velocitySense,
         panning,
-        invertPhase = 4,
-        enableAmplitudeEnvelope = 7,
-        enableVoice,
+        enableRandomPan,
+        randomWidth,
+        invertPhase,
+        enableAmplitudeEnvelope,
         enableAmplitudeLFO,
 
         modulatorType = 16, // Off, Morph, Ring, PM, FM, PWM
@@ -782,8 +777,8 @@ namespace SUBSYNTH // usage SUBSYNTH::control::volume
         volume = 0,
         velocitySense,
         panning,
-
-        enable = 8,
+        enableRandomPan,
+        randomWidth,
 
         bandwidth = 16,
         bandwidthScale,
@@ -820,8 +815,8 @@ namespace PADSYNTH // usage PADSYNTH::control::volume
         volume = 0,
         velocitySense,
         panning,
-
-        enable = 8,
+        enableRandomPan,
+        randomWidth,
 
         bandwidth = 16,
         bandwidthScale,
@@ -936,10 +931,11 @@ namespace OSCILLATOR // usage OSCILLATOR::control::phaseRandomness
 namespace RESONANCE // usage RESONANCE::control::maxDb
 {
     enum control : unsigned char {
-        maxDb = 0,
+        enableResonance = 0,
+        maxDb,
         centerFrequency,
         octaves,
-        enableResonance = 8,
+
         randomType = 10, // coarse, medium, fine
         interpolatePeaks = 20, // smooth, linear
         protectFundamental,
@@ -1053,10 +1049,7 @@ namespace EFFECT // usage EFFECT::type::none
 
 union CommandBlock{
     struct{
-        union{
-            float F;
-            int32_t I;
-        } value;
+        float value;
         unsigned char type;
         unsigned char source;
         unsigned char control;
