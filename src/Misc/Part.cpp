@@ -26,7 +26,6 @@
 
 */
 
-
 #include "Params/ADnoteParameters.h"
 #include "Params/SUBnoteParameters.h"
 #include "Params/PADnoteParameters.h"
@@ -53,8 +52,6 @@ using file::findLeafName;
 using func::dB2rap;
 using func::findSplitPoint;
 using func::setAllPan;
-
-//extern unsigned char panLaw;
 
 Part::Part(Microtonal *microtonal_, FFTwrapper *fft_, SynthEngine *_synth) :
     microtonal(microtonal_),
@@ -264,7 +261,7 @@ void Part::setChannelAT(int type, int value)
     {
         if (value > 0)
         {
-            if(oldFilterState == -1)
+            if (oldFilterState == -1)
                 oldFilterState = ctl->filtercutoff.data;
             float adjust = oldFilterState / 127.0f;
             if (type & PART::aftertouchType::filterCutoffDown)
@@ -283,7 +280,7 @@ void Part::setChannelAT(int type, int value)
     {
         if (value > 0)
         {
-            if(oldFilterQstate == -1)
+            if (oldFilterQstate == -1)
                 oldFilterQstate = ctl->filtercutoff.data;
             float adjust = oldFilterQstate / 127.0f;
             if (type & PART::aftertouchType::filterQdown)
@@ -581,11 +578,11 @@ void Part::NoteOn(int note, int velocity, bool renote)
                         continue; // We will not perform legato across 2 key regions.
 
                     partnote[pos].kititem[ci].sendtoparteffect =
-                        ( kit[item].Psendtoparteffect < NUM_PART_EFX)
+                        (kit[item].Psendtoparteffect < NUM_PART_EFX)
                             ? kit[item].Psendtoparteffect
                             : NUM_PART_EFX; // if this parameter is 127 for "unprocessed"
                     partnote[posb].kititem[ci].sendtoparteffect =
-                        ( kit[item].Psendtoparteffect < NUM_PART_EFX)
+                        (kit[item].Psendtoparteffect < NUM_PART_EFX)
                             ? kit[item].Psendtoparteffect
                             : NUM_PART_EFX;
 
@@ -812,31 +809,34 @@ void Part::NoteOn(int note, int velocity, bool renote)
     }
 
     // this only release the keys if there is maximum number of keys allowed
-    setkeylimit(Pkeylimit);
+    //setkeylimit(Pkeylimit);
+    if (Pkeymode == PART_NORMAL)
+        enforcekeylimit();
 }
 
 
 // Note Off Messages
 void Part::NoteOff(int note) //release the key
 {
-    int i;
     // This note is released, so we remove it from the list.
     monomemnotes.remove(note);
 
-    for ( i = POLIPHONY - 1; i >= 0; i--)
+    bool keep = Pkeymode > PART_NORMAL  && !Pdrummode && !monomemnotes.empty();
+    for (int i = 0; i < POLIPHONY; ++i)
     {   //first note in, is first out if there are same note multiple times
         if (partnote[i].status == KEY_PLAYING && partnote[i].note == note)
         {
-            if (!ctl->sustain.sustain)
+            if (ctl->sustain.sustain)
+                partnote[i].status = KEY_RELEASED_AND_SUSTAINED;
+            else
             {   //the sustain pedal is not pushed
-                if (Pkeymode > PART_NORMAL  && !Pdrummode && !monomemnotes.empty())
+                if (keep)
                     MonoMemRenote(); // To play most recent still held note.
                 else
+                {
                     ReleaseNotePos(i);
-            }
-            else
-            {   // the sustain pedal is pushed
-                partnote[i].status = KEY_RELEASED_AND_SUSTAINED;
+                    break; // only release one note.
+                }
             }
         }
     }
@@ -1050,38 +1050,33 @@ void Part::KillNotePos(int pos)
 }
 
 
-// Set Part's key limit
-void Part::setkeylimit(unsigned char Pkeylimit_)
+void Part::enforcekeylimit()
 {
-    Pkeylimit = Pkeylimit_;
-    int keylimit = Pkeylimit;
-
     // release old keys if the number of notes>keylimit
-    if (Pkeymode == PART_NORMAL)
+    int notecount = 0;
+    for (int i = 0; i < POLIPHONY; ++i)
     {
-        int notecount = 0;
+        if (partnote[i].status == KEY_PLAYING
+            || partnote[i].status == KEY_RELEASED_AND_SUSTAINED)
+            notecount++;
+    }
+    while (notecount > Pkeylimit)
+    {   // find out the oldest note
+        int oldestnotepos = 0;
+        int maxtime = 0;
+
         for (int i = 0; i < POLIPHONY; ++i)
         {
-            if (partnote[i].status == KEY_PLAYING
+            if ((partnote[i].status == KEY_PLAYING
                 || partnote[i].status == KEY_RELEASED_AND_SUSTAINED)
-                notecount++;
-        }
-        int oldestnotepos = -1, maxtime = 0;
-        if (notecount > keylimit)
-        {   // find out the oldest note
-            for (int i = 0; i < POLIPHONY; ++i)
+                && partnote[i].time > maxtime)
             {
-                if ((partnote[i].status == KEY_PLAYING
-                    || partnote[i].status == KEY_RELEASED_AND_SUSTAINED)
-                        && partnote[i].time > maxtime)
-                {
-                    maxtime = partnote[i].time;
-                    oldestnotepos = i;
-                }
+                maxtime = partnote[i].time;
+                oldestnotepos = i;
             }
         }
-        if (oldestnotepos != -1)
-            ReleaseNotePos(oldestnotepos);
+        ReleaseNotePos(oldestnotepos);
+        --notecount;
     }
 }
 
@@ -1089,8 +1084,6 @@ void Part::setkeylimit(unsigned char Pkeylimit_)
 // Compute Part samples and store them in the partoutl[] and partoutr[]
 void Part::ComputePartSmps(void)
 {
-    int k;
-    int noteplay; // 0 if there is nothing activated
     tmpoutl = synth->getRuntime().genMixl;
     tmpoutr = synth->getRuntime().genMixr;
     for (int nefx = 0; nefx < NUM_PART_EFX + 1; ++nefx)
@@ -1099,14 +1092,14 @@ void Part::ComputePartSmps(void)
         memset(partfxinputr[nefx], 0, synth->sent_bufferbytes);
     }
 
-    for (k = 0; k < POLIPHONY; ++k)
+    for (int k = 0; k < POLIPHONY; ++k)
     {
         int oldFilterState;
         int oldBendState;
         int oldModulationState;
         if (partnote[k].status == KEY_OFF)
             continue;
-        noteplay = 0;
+        int noteplay = 0; // 0 if there is nothing activated
         partnote[k].time++;
         int keyATtype = partnote[k].keyATtype;
         int keyATvalue = partnote[k].keyATvalue;
@@ -1301,9 +1294,6 @@ void Part::checkPanning(float step, unsigned char panLaw)
     float actualPan = ((TransPanning + 1.0f) * (126.0f / 127.0f));
      // resolves min value full Left
     setAllPan(actualPan, pangainL,pangainR, panLaw);
-    //t = ((TransPanning > 0) ? (TransPanning - 1) : 0.0f) / 126.0f;
-    //pangainL = cosf(t * HALFPI);
-    //pangainR = cosf((1.0f - t) * HALFPI);
 }
 
 
@@ -1478,6 +1468,7 @@ void Part::add2XML(XMLwrapper *xml, bool subset)
 
 bool Part::saveXML(string filename, bool yoshiFormat)
 {
+    synth->usingYoshiType = yoshiFormat;
     synth->getRuntime().xmlType = TOPLEVEL::XML::Instrument;
     XMLwrapper *xml = new XMLwrapper(synth, yoshiFormat);
     if (!xml)
@@ -1690,8 +1681,8 @@ void Part::getfromXML(XMLwrapper *xml)
     PkeyATchoice = xml->getpar("key_aftertouch", PkeyATchoice, 0, 255);
 
     Pkeylimit = xml->getpar127("key_limit", Pkeylimit);
-    if (Pkeylimit < 1 || Pkeylimit > PART_POLIPHONY)
-        Pkeylimit = PART_POLIPHONY;
+    if (Pkeylimit < 1 || Pkeylimit > POLIPHONY)
+        Pkeylimit = POLIPHONY;
     Pfrand = xml->getpar127("random_detune", Pfrand);
     if (Pfrand > 50)
         Pfrand = 50;
@@ -1716,7 +1707,7 @@ void Part::getfromXML(XMLwrapper *xml)
 
 float Part::getLimits(CommandBlock *getData)
 {
-    float value = getData->data.value.F;
+    float value = getData->data.value;
     int request = int(getData->data.type & TOPLEVEL::type::Default);
     int control = getData->data.control;
     int npart = getData->data.part;
@@ -1735,6 +1726,32 @@ float Part::getLimits(CommandBlock *getData)
 
     switch (control)
     {
+        case PART::control::enable:
+            if (npart == 0)
+                def = 1;
+            else
+                def = 0;
+            max = 1;
+            break;
+        case PART::control::enableAdd:
+            type |= learnable;
+            if (npart == 0)
+                def = 1;
+            else
+                def = 0;
+            max = 1;
+            break;
+        case PART::control::enableSub:
+        case PART::control::enablePad:
+            type |= learnable;
+            def = 0;
+            max = 1;
+            break;
+        case PART::control::enableKitLine:
+            def = 0;
+            max = 1;
+            break;
+
         case PART::control::volume:
             type &= ~TOPLEVEL::type::Integer;
             type |= learnable;
@@ -1775,14 +1792,6 @@ float Part::getLimits(CommandBlock *getData)
             max = 1;
             break;
 
-        case PART::control::enable:
-            if (npart == 0)
-                def = 1;
-            else
-                def = 0;
-            max = 1;
-            break;
-
         case PART::control::kitItemMute:
             type |= learnable;
             def = 0;
@@ -1811,7 +1820,7 @@ float Part::getLimits(CommandBlock *getData)
 
         case PART::control::maxNotes:
             def = 20;
-            max = PART_POLIPHONY;
+            max = POLIPHONY;
             break;
 
         case PART::control::keyShift:
@@ -1861,6 +1870,7 @@ float Part::getLimits(CommandBlock *getData)
             def = 0;
             break;
         case PART::control::effectBypass:
+            type |= learnable;
             max = 1;
             def = 0;
             break;
@@ -1924,9 +1934,9 @@ float Part::getLimits(CommandBlock *getData)
     switch (request)
     {
         case TOPLEVEL::type::Adjust:
-            if(value < min)
+            if (value < min)
                 value = min;
-            else if(value > max)
+            else if (value > max)
                 value = max;
         break;
         case TOPLEVEL::type::Minimum:

@@ -299,7 +299,7 @@ void EnvelopeParams::store2defaults(void)
 
 float envelopeLimit::getEnvelopeLimits(CommandBlock *getData)
 {
-    float value = getData->data.value.F;
+    float value = getData->data.value;
     int request = int(getData->data.type & TOPLEVEL::type::Default);
     int control = getData->data.control;
     int engine = getData->data.engine;
@@ -543,9 +543,9 @@ float envelopeLimit::getEnvelopeLimits(CommandBlock *getData)
     switch (request)
     {
         case TOPLEVEL::type::Adjust:
-            if(value < min)
+            if (value < min)
                 value = min;
-            else if(value > max)
+            else if (value > max)
                 value = max;
         break;
         case TOPLEVEL::type::Minimum:

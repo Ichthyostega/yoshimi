@@ -281,7 +281,7 @@ unsigned char Echo::getpar(int npar)
 
 float Echolimit::getlimits(CommandBlock *getData)
 {
-    int value = getData->data.value.F;
+    int value = getData->data.value;
     int control = getData->data.control;
     int request = getData->data.type & 3; // clear upper bits
     int npart = getData->data.part;
@@ -323,9 +323,9 @@ float Echolimit::getlimits(CommandBlock *getData)
     switch (request)
     {
         case TOPLEVEL::type::Adjust:
-            if(value < min)
+            if (value < min)
                 value = min;
-            else if(value > max)
+            else if (value > max)
                 value = max;
             break;
         case TOPLEVEL::type::Minimum:

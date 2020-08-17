@@ -85,7 +85,7 @@ eff = eff_;
 
         if (freqx > 0.0 && freqx < 1.0)
         fl_line(x() + (int) (freqx * w()), y(),
-            x() + (int) (freqx * w()), y( ) + h());} {}
+            x() + (int) (freqx * w()), y() + h());} {}
   }
   Function {draw()} {} {
     code {int ox = x(), oy = y(), lx = w(), ly = h(), i, iy, oiy;
@@ -108,7 +108,7 @@ eff = eff_;
 
         for (i = 1; i < 10; ++i)
         {
-            if(i == 1)
+            if (i == 1)
             {
                 draw_freq_line(i * 100.0,0);
                 draw_freq_line(i * 1000.0,0);
@@ -1228,7 +1228,6 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
       }
       Fl_Group bandgroup {
         xywh {245 40 130 50} box ENGRAVED_FRAME
-        code0 {if (eff->geteffectpar(10)==0) o->deactivate();}
       } {
         Fl_Dial freqdial {
           label Freq
@@ -1472,13 +1471,13 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
   }
   Function {returns_update(CommandBlock *getData)} {} {
     code {//
-    float value = getData->data.value.F;
+    float value = getData->data.value;
     int value_int = int(value + 0.5f);
     unsigned char control = getData->data.control;
     unsigned char efftype = getData->data.kit;
     unsigned char effnum = getData->data.engine;
     bool isdynfilter = (effnum == EFFECT::type::dynFilter);
-    unsigned char secondary = getData->data.miscmsg;
+    unsigned char secondary = getData->data.offset;
 
     int textCol = 14;
     if (fetchData(0, 200, getData->data.part, efftype, effnum) != 0)
@@ -1777,7 +1776,7 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
 
         case EFFECT::type::eq:
             //synth->getRuntime().Log("EQ " + to_string(value_int) + "  " + to_string(int(control)));
-            if(control == EFFECT::control::level)
+            if (control == EFFECT::control::level)
             {
                 eqp0->value(value);
             }
@@ -1822,7 +1821,7 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
             break;
 
         case EFFECT::type::dynFilter:
-            if(isdynfilter)
+            if (isdynfilter)
             { // shouldn't get here
                 //cout << "DyneFilter" << endl;
                 return;
@@ -2058,20 +2057,25 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
             effdistorsionwindow->show();
             break;
         case 7:
+        {
             eqband = 0;
+            int type = eff->geteffectpar(10);
             eqp0->value(eff->geteffectpar(0));
             bandcounter->value(eqband);
-            typechoice->value(eff->geteffectpar(10));
-            eqgraph->redraw();
+            typechoice->value(type);
             freqdial->value(eff->geteffectpar(11));
             gaindial->value(eff->geteffectpar(12));
-            if (eff->geteffectpar(10) < 6)
-                gaindial->deactivate();
             qdial->value(eff->geteffectpar(13));
+            if (type < 3)
+                qdial->deactivate();
+            if (type < 6)
+                gaindial->deactivate();
             stagescounter->value(eff->geteffectpar(14));
+            eqgraph->redraw();
             eqgraph->init(eff);
             effeqwindow->show();
             break;
+        }
         case 8:
             make_filter_window();
             dfp->value(eff->getpreset());

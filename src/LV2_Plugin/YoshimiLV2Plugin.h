@@ -35,7 +35,7 @@
 #include <string>
 #include <vector>
 #include <semaphore.h>
-#include <jack/jack.h>
+//#include <jack/jack.h>
 //#include <jack/ringbuffer.h>
 
 #include "Misc/SynthEngine.h"
@@ -67,13 +67,13 @@ private:
    sem_t _midiSem;
 
    struct midi_event {
-       jack_nframes_t time;
+       uint32_t time;//jack_nframes_t time;
        char data[4]; // all events of interest are <= 4bytes
    };
 
    float *_bFreeWheel;
 
-   jack_ringbuffer_t *_midiRingBuf;
+   //jack_ringbuffer_t *_midiRingBuf;
    pthread_t _pIdleThread;
 
    float *lv2Left [NUM_MIDI_PARTS + 1];
@@ -106,7 +106,7 @@ public:
    virtual void registerAudioPort(int) {}
 
    //static methods
-   static LV2_Handle	instantiate (const struct _LV2_Descriptor *, double sample_rate, const char *bundle_path, const LV2_Feature *const *features);
+   static LV2_Handle	instantiate (const LV2_Descriptor *, double sample_rate, const char *bundle_path, const LV2_Feature *const *features);
    static void connect_port(LV2_Handle instance, uint32_t port, void *data_location);
    static void activate(LV2_Handle instance);
    static void deactivate(LV2_Handle instance);
@@ -159,7 +159,7 @@ public:
     YoshimiLV2PluginUI(const char *, LV2UI_Write_Function, LV2UI_Controller, LV2UI_Widget *widget, const LV2_Feature *const *features);
     ~YoshimiLV2PluginUI();
     bool init();
-    static LV2UI_Handle	instantiate(const struct _LV2UI_Descriptor *descriptor, const char *plugin_uri, const char *bundle_path, LV2UI_Write_Function write_function, LV2UI_Controller controller, LV2UI_Widget *widget, const LV2_Feature *const *features);
+    static LV2UI_Handle	instantiate(const LV2UI_Descriptor *descriptor, const char *plugin_uri, const char *bundle_path, LV2UI_Write_Function write_function, LV2UI_Controller controller, LV2UI_Widget *widget, const LV2_Feature *const *features);
     static void cleanup(LV2UI_Handle ui);
     static void static_guiClosed(void *arg);
     void run();

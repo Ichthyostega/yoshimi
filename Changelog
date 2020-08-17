@@ -1,4 +1,257 @@
-yoshimi 1.7.1
+yoshimi 1.7.2
+
+2020-8-16 Will
+* Final doc updates.
+* Set release version 1.7.2
+
+2020-8-16 Will
+* Doc updates - no code changes.
+
+2020-8-12- Will
+* Merged in pull reqeuest for Kristian.
+  Completes SubSynth frequency correction for all
+  detune cases.
+* Further bank startup enhancement and enabled.
+  Copies new default instruments into .share
+* Set latest Advanced guide.
+
+
+2020-8-11- Will
+* BugFix: GUI kitmode entries updating wrong items.
+* Started work on Banks enhancement.
+  Currently disabled.
+
+2020-8-10- Will
+* Provisional fix for SubSynth frequency bug.
+
+2020-8-8 Will
+* Removed references to Jack in LV2.
+  Used time_t instead of jack_nframes_t
+* Applied patch from Hubert.
+  Removed jack reference from LV2 cmake file.
+
+2020-8-2 Will
+* Clarifed CLI 'solo' controls.
+* Further refinements to 'solo' NRPNs
+* Updated docs.
+
+2020-7-30 Will
+* BugFix: NRPN 'Solo' not working. Changed actual control numbers.
+* Revised NRPN recognition, particularly shortform ones.
+* Updated docs.
+* Started ODF format of full list of CCs and NRPNs (in docs).
+
+2020-7-26 Will
+* Merged following fixes from Kristian
+  Avoid out-of-bounds phase when moving the phase slider of live
+   voice.
+  Fix unison phase randomness not being respected in sub voices.
+  Optimize: Avoid running a full note update when only one part
+   has changed
+
+* Reverted union for 'value' in command block.
+  Not using the int version, and seems unnecessary.
+
+2020-7-18 Will
+* CLI can now restore full key range for part and kit mode.
+* Unison enable button now correct when set from CLI.
+* Updated docs.
+
+2020-7-16 Will
+* Updated user guide to include latest changes.
+* Changed AddVoice delay slider to not show boxed value.
+  It makes the track longer and it's already in the tooltip.
+
+2020-7-16 Jesper
+* Added dynamic tooltips for AddSynth phase offset sliders,
+  waveform editor per-harmonic phase offset and magnitude
+  sliders, and SubSynth per-harmonic magnitude sliders.
+* Changed direction of per-harmonic phase offset slider in
+  the waveform editor to make it consistent with other phase
+  offset controls.
+
+2020-7-14 Will
+* Manual correction NRPN History MSB
+
+2020-7-8 Will
+* Updated Advanced User Manual 1.7.1 +.
+  Still carries 1.7.1 version in the filename.
+
+2020-7-6 Will
+* Corrected dynamic tooltip for engine level pan controls.
+* Implemented dynamic tooltip for pan width controls.
+  Repurposed the (now redundant) panningRandom type.
+* Framed and highlighted engine level Vol/Pan control groups.
+  They now look like the stock inserts.
+* BugFix: Messed up voice selection with above changes :(
+
+2020-7-5 Will
+* BugFix: Part edit SubSynth button showing wrong colour.
+* BugFix: EQ effect not showing correct controls active.
+  Particularly when loading patch/instrument.
+* Default bank ID correction.
+* Doc Updates.
+
+2020-7-2 Will
+* System Effect Enable now MIDI-learnable.
+* Part Effect Bypass  now MIDI-learnable.
+* Unified all float to bool conversions.
+* Some minor style cleanups.
+
+2020-6-20 Will
+* BugFix: New stand-alone startup crashing on some window managers.
+  Now using a different (non-threaded) structure.
+* Small bank cleanups.
+
+2020-6-19 Will
+* Moved bank refresh thead message from SynthEngine to main.
+  doesn't seen relevant for LV2.
+* Moved NewSynth thread message to end of startup code.
+* Moved Fl::lock to early in main().
+* Early start message now in detached thread.
+
+2020-6-18 Will
+* BugFix: banks doing unnecessary rewrites to local/share
+  A minor banks issue also seen - to be fixed.
+
+2020-6-12 Will
+* Applied patches from Marco for additional LFO types.
+
+2020-6-10 Will
+* Further work on random pan for compatibility.
+  Should be complete now!
+* Found some magic numders used for 'type' :(
+
+2020-6-8 Will
+* AddVoice Listitem now sees mod oscilator.
+  Not yet fully updated.
+* Fixed regression: listitem freq slide now correct.
+
+2020-6-7 Will
+* Random pan width enabled for CLI.
+* Unified CLI panning controls.
+* Updated docs.
+
+2020-6-6 Will
+* Trial of PadSynth random width control done.
+* Trial of SubSynth random width control done.
+* Added forgotten PadSynth random load and save :(
+* Trial of AddVoice random width control mostly done.
+  Voice list not included yet.
+
+2020-6-5 Will
+* Added line in AddNote.cpp ring mod code for amp mod.
+  Commented out, but there for trials.
+* General cleanups and removed reduntant code.
+* BugFix: Request for invalid root reports, but still sets it!
+
+2020-6-4 Will
+* First trial of AddSynth Gobal random width control.
+  Has partial legacy compatibility.
+
+2020-6-3 Will
+* Unified random panning, with variable position and width.
+  Fixed values until parameter setup and control done,
+  but follows pan law.
+
+2020-5-30 Will
+* CLI only shows GUI sys/ins effect changes when visible.
+  Updates the settings but doesn't change selection shown.
+
+2020-5-27 Will
+* GUI and CLI fully in sync for Add, Sub, Pad enables.
+  Includes correct action for kit mode.
+
+2020-5-20 Will
+* Separated out CLI SubSynth and PadSynth overtones.
+* Separated out CLI de-pop and punch.
+* Separated remaining CLI controls and deleted partCommon
+
+2020-5-19 Will
+* Fixed regression CLI not enabling PadSyth.
+* Separated out CLI engine detune controls.
+
+2020-5-17 Will
+* Moved CLI part specific controls from Common to Part.
+  Don't know why they were in Common anyway.
+* Changed CLI kit mode Disable to Normal.
+  Clearer, and less chance of confusion.
+
+2020-5-16 Will
+* Separated out part, engine, kit enable controls.
+  This actually slightly reduces the code, and reduces
+  complexity significantly.
+  There may be some GUI anomalys when CLI controlled.
+
+2020-5-15 Will
+* Separated out CLI engine level volume, pannning, velocity.
+  This results in doplication but less complexity, and
+  less chance of control additions causing problem,
+
+2020-5-14 Will
+* BugFix: Reverb type to bandwidth not resetting BW control.
+* Corrected some controls still using direct numbers.
+* Note On/Off fully respects multiple same note in Poly mode.
+* Added 'Cracked Chimes' to Companion bank.
+* Moved '.config/yoshimi/yoshimi.history' to:
+  '.local/share/yoshimi/recent'
+  This is for XDG compliance, as it is not a config file.
+
+2020-5-13 Will
+* Reverted PART_POLIPHONY and POLIPHONY to single limit.
+* Refactored noteoff code.
+* Refactored and changed setnotelimit to enforcenotelimit.
+  This still isn't corrected when changing the key limit
+  downwards by more than one as it only removes the oldest.
+* enforcenotelimit now loops to remove all older notes :)
+* BugFix: GUI Part volume control not working.
+  It was still using direct numeric entry so failed when the
+  recent change of control values.
+
+
+2020-5-9 Will
+* Merged GUI fixes from Kristian.
+* Reinstated ocsillator window saving.
+  Fault was due to missing window test in PadSynth UI :(
+
+2020-5-9 Will
+* BugFix: Disabled oscillator window saving caused segfaults.
+* Reorganised several enable control values for consistency.
+* Doc updates.
+
+2020-5-4 Will
+* BugFix: CLI not responding to engine on/off.
+  Caused by aftertouch controls shifing part enable.
+  Temporarily fixed by swapping the list order.
+  Need to sort out properly so CLI uses correct controls.
+
+2020-5-2 Will
+* Added waveform to remembered window positions.
+
+2020-5-1 Will
+* BugFix: new highlight not recognised for higher numbers.
+  Loss of precision.
+* Removed highlight from MIDI - possible race.
+* Added switch in config to enable/disable highlighting.
+  Default is 'off'.
+
+2020-4-30 Will
+* Latest instrument now recognised by CLI.
+* Saving to bank also recognised as latest.
+* More refinements to BankUI.
+
+2020-4-29 Will
+* Initialisation and memory leak fixes found by Stefaan.
+* Reverted hidden buttons in instance > 0 bank windows.
+  It was causing confusion especially for LV2 users.
+* Added bold highlight for last instrument load from bank.
+
+2020-4-26 Will
+* Further work on incompatible file recognition.
+
+2020-4-23 Will
+* Confirmed Modulator improvements from Kristian.
+* Started recognition of default and changed zyn files.
 
 2020-4-20 Will
 * Added Resonance to managed windows.

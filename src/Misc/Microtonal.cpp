@@ -175,7 +175,7 @@ float Microtonal::getNoteFreq(int note, int keyshift)
                 deltanote++;
         float rap_anote_middlenote =
             (deltanote == 0) ? (1.0f) : (octave[(deltanote - 1) % octavesize].tuning);
-        if(deltanote != 0)
+        if (deltanote != 0)
             rap_anote_middlenote *= powf(octave[octavesize - 1].tuning,
                                          (deltanote - 1) / octavesize);
         if (minus)
@@ -227,7 +227,7 @@ float Microtonal::getNoteFreq(int note, int keyshift)
 
 string Microtonal::reformatline(string text)
 {
-    text.erase(remove_if( text.begin(), text.end(),
+    text.erase(remove_if (text.begin(), text.end(),
      [](char c){ return (c =='\r' || c =='\t' || c == ' ' || c == '\n');}), text.end() );
 
     size_t found;
@@ -238,7 +238,7 @@ string Microtonal::reformatline(string text)
         text = tmp + text;
     }
     found = text.size();
-    if ( found < 11)
+    if (found < 11)
     {
         string tmp  (11 - found, '0'); // trailing zeros
         text += tmp;
@@ -316,7 +316,7 @@ int Microtonal::linetotunings(unsigned int nline, const char *line)
             break;
     }
 
-    tmpoctave[nline].text = reformatline(string(line));
+    tmpoctave[nline].text = reformatline(line);
     tmpoctave[nline].tuning = tuning;
     tmpoctave[nline].type = type;
     tmpoctave[nline].x1 = x1;
@@ -467,7 +467,7 @@ string Microtonal::tuningtotext()
 }
 
 
-int Microtonal::loadLine(string text, size_t &point, char *line, size_t maxlen)
+int Microtonal::loadLine(const string& text, size_t &point, char *line, size_t maxlen)
 {
     do {
         line[0] = 0;
@@ -480,7 +480,7 @@ int Microtonal::loadLine(string text, size_t &point, char *line, size_t maxlen)
 
 
 // Loads the tunings from a scl file
-int Microtonal::loadscl(string filename)
+int Microtonal::loadscl(const string& filename)
 {
     string text = loadText(filename);
     if (text == "")
@@ -534,7 +534,7 @@ int Microtonal::loadscl(string filename)
 
 
 // Loads the mapping from a kbm file
-int Microtonal::loadkbm(string filename)
+int Microtonal::loadkbm(const string& filename)
 {
     string text = loadText(filename);
     if (text == "")
@@ -795,7 +795,7 @@ void Microtonal::getfromXML(XMLwrapper *xml)
 }
 
 
-bool Microtonal::saveXML(string filename)
+bool Microtonal::saveXML(const string& filename)
 {
     synth->getRuntime().xmlType = TOPLEVEL::XML::Scale;
     XMLwrapper *xml = new XMLwrapper(synth);
@@ -810,7 +810,7 @@ bool Microtonal::saveXML(string filename)
 }
 
 
-bool Microtonal::loadXML(string filename)
+bool Microtonal::loadXML(const string& filename)
 {
     XMLwrapper *xml = new XMLwrapper(synth);
     if (NULL == xml)
@@ -838,7 +838,7 @@ bool Microtonal::loadXML(string filename)
 
 float Microtonal::getLimits(CommandBlock *getData)
 {
-    float value = getData->data.value.F;
+    float value = getData->data.value;
     int request = int(getData->data.type & TOPLEVEL::type::Default);
     int control = getData->data.control;
 
@@ -935,9 +935,9 @@ float Microtonal::getLimits(CommandBlock *getData)
     switch (request)
     {
         case TOPLEVEL::type::Adjust:
-            if(value < min)
+            if (value < min)
                 value = min;
-            else if(value > max)
+            else if (value > max)
                 value = max;
         break;
         case TOPLEVEL::type::Minimum:

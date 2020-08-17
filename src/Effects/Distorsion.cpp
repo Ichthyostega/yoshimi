@@ -178,7 +178,7 @@ void Distorsion::setvolume(unsigned char Pvolume_)
 {
     Pvolume = Pvolume_;
     float tmp = Pvolume / 127.0f;
-    if(insertion == 0)
+    if (insertion == 0)
     {
         outvolume.setTargetValue(powf(0.01f, (1.0f - tmp)) * 4.0f);
         volume.setTargetValue(1.0f);
@@ -322,7 +322,7 @@ unsigned char Distorsion::getpar(int npar)
 
 float Distlimit::getlimits(CommandBlock *getData)
 {
-    int value = getData->data.value.F;
+    int value = getData->data.value;
     int control = getData->data.control;
     int request = getData->data.type & 3; // clear upper bits
     int npart = getData->data.part;
@@ -377,9 +377,9 @@ float Distlimit::getlimits(CommandBlock *getData)
     switch (request)
     {
         case TOPLEVEL::type::Adjust:
-            if(value < min)
+            if (value < min)
                 value = min;
-            else if(value > max)
+            else if (value > max)
                 value = max;
             break;
         case TOPLEVEL::type::Minimum:

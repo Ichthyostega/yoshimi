@@ -4,25 +4,21 @@ BUG! part level overload indicator not cleared for part numbers > 16.
 
 Minor bug Multi instances produce jack error reports when main instance closed, even if they have been closed first - been there since V 1.4.1 :(
 
+GUI Oddity. Pres spacebar on startup and you get directed to reset. Press it after tabbing down checkboxes and you enter the MIDI learn dialogue.
+
+Investigate AddSynth amplitude modulation. Basic code is commented out in ring modulation.
+
 Revise GUI voice list related to voice editor.
 
 Effect change warning for dynfilter insert not yet done.
 
-CLI sys/ins updates wrong.
-
-Some CLI addvoice kit mode controls don't update the GUI.
-
 CLI waveform (in voice) changes don't update GUI unless waveform window is open too.
-
-Find out why reporting errors in 'Bank' is very slow.
 
 Requested: auto 'apply' timer for padsynth.
 
 Expand MIDI-learn to include:
     learn groups (paging)
     GUI view by group but CLI and running search only by CC & chan
-
-Make NRPN MIDI-learn able to be re-learned.
 
 LV2: internal sound banks do not appear to be exposed as LV2 presets
 Visible in carla apparently.
@@ -38,5 +34,7 @@ RPNs (channel based)
 100,2 Coarse detune
 
 Improve Copy & Paste functionality.
+
+SYSEX - do we need it? If so, for what and how?
 
 Documentation!

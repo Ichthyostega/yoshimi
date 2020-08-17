@@ -122,7 +122,7 @@ void LFOParams::getfromXML(XMLwrapper *xml)
 
 float LFOlimit::getLFOlimits(CommandBlock *getData)
 {
-    float value = getData->data.value.F;
+    float value = getData->data.value;
     int request = int(getData->data.type & TOPLEVEL::type::Default);
     int control = getData->data.control;
     int engine = getData->data.engine;
@@ -193,7 +193,7 @@ float LFOlimit::getLFOlimits(CommandBlock *getData)
         case LFOINSERT::control::amplitudeRandomness:
             break;
         case LFOINSERT::control::type:
-            max = 6;
+            max = 9;
             type &= ~learnable;
             break;
         case LFOINSERT::control::continuous:
@@ -217,9 +217,9 @@ float LFOlimit::getLFOlimits(CommandBlock *getData)
     switch (request)
     {
         case TOPLEVEL::type::Adjust:
-            if(value < min)
+            if (value < min)
                 value = min;
-            else if(value > max)
+            else if (value > max)
                 value = max;
         break;
         case TOPLEVEL::type::Minimum:
