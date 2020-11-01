@@ -856,7 +856,7 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
             type |= TOPLEVEL::type::Write;
             if (part == UNUSED)
                 part = TOPLEVEL::section::config;
-            collect_data(synth, value, action, (Fl::event_button() | type), control, part, kit, engine, insert, par, UNUSED, miscmsg);} {}
+            collect_data(synth, value, action, type, control, part, kit, engine, insert, par, UNUSED, miscmsg);} {}
   }
   Function {fetchData(float value, int control, int part, int kititem = UNUSED, int engine = UNUSED, int insert = UNUSED, int parameter = UNUSED, int offset = UNUSED, int miscmsg = UNUSED, int request = UNUSED)} {return_type float
   } {
@@ -893,7 +893,7 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
                         value_int = value_int >> 1;
                         ++ tmp; // count the bits for switch number
                     }
-                    buff_size->value(tmp);
+                    buff_size->value(tmp - 1);
                     break;
                 case CONFIG::control::padSynthInterpolation:
                     pad_interpol->value(value_int);

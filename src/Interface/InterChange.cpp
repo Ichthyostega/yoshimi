@@ -214,6 +214,11 @@ void *InterChange::sortResultsThread(void)
 
         CommandBlock getData;
 
+        /* It is possible that several operations initiated from
+         * different sources complete within the same period
+         * (especially with large buffer sizes) so this small
+         * ring buffer ensures they can all clear together.
+         */
         while (synth->audioOut.load() == muteState::Active)
         {
             //std::cout << "here fetching" << std:: endl;
@@ -299,11 +304,11 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
     int value = lrint(getData->data.value);
     unsigned char type = getData->data.type;
     unsigned char control = getData->data.control;
-    unsigned char npart = getData->data.part;
+    unsigned char switchNum = getData->data.part;
     unsigned char kititem = getData->data.kit;
     unsigned char engine = getData->data.engine;
     unsigned char insert = getData->data.insert;
-    unsigned char parameter = getData->data.parameter;
+    //unsigned char parameter = getData->data.parameter;
     //unsigned char miscmsg = getData->data.miscmsg;
 
     while (syncWrite)
@@ -315,7 +320,7 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
     (void) guiTo; // suppress warning when headless build
     unsigned char newMsg = false;//NO_MSG;
 
-    if (npart == TOPLEVEL::section::main && control == MAIN::control::loadFileFromList)
+    if (switchNum == TOPLEVEL::section::main && control == MAIN::control::loadFileFromList)
     {
         //std::cout << "kit " << int(kititem) << "  engine " << int(engine) << "  insert " << int(insert) << std::endl;
         int result = synth->LoadNumbered(kititem, engine);
@@ -374,933 +379,44 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
     else
         text = "";
 
-    unsigned int tmp;
-    std::string name;
-    bool learnUpdate = false;
-
-    int switchNum = npart;
     if (control == TOPLEVEL::control::textMessage)
         switchNum = TOPLEVEL::section::message; // this is a bit hacky :(
 
     switch(switchNum)
     {
         case TOPLEVEL::section::vector:
-        {
-            switch(control)
-            {
-                case VECTOR::control::name:
-                    if (write)
-                    {
-                        synth->getRuntime().vectordata.Name[insert] = text;
-                    }
-                    else
-                        text = synth->getRuntime().vectordata.Name[insert];
-                    newMsg = true;
-                    getData->data.source &= ~TOPLEVEL::action::lowPrio;
-                    guiTo = true;
-                    break;
-            }
+            value = indirectVector(getData, synth, newMsg, guiTo, text);
             break;
-        }
+
         case TOPLEVEL::section::midiIn: // program / bank / root
-        {
-            //std::cout << " interchange prog " << value << "  chan " << int(kititem) << "  bank " << int(engine) << "  root " << int(insert) << std::endl;
-
-            int msgID;
-            if (control == MIDI::control::instrument)
-            {
-                msgID = synth->setProgramFromBank(getData);
-                getData->data.control = MAIN::control::loadInstrumentFromBank;
-                getData->data.part = TOPLEVEL::section::main;
-                // moved to 'main' for return updates.
-                if (msgID > NO_MSG)
-                    text = " FAILED " + text;
-                else
-                    text = "ed ";
-            }
-            else
-            {
-                msgID = synth->setRootBank(getData->data.insert, getData->data.engine);
-                if (msgID > NO_MSG)
-                    text = "FAILED " + text;
-                else
-                    text = "";
-            }
-            text += textMsgBuffer.fetch(msgID & NO_MSG);
-            newMsg = true;
-            getData->data.source = TOPLEVEL::action::toAll;
-            // everyone will want to knopw about these!
-            guiTo = true;
+            value = indirectMidi(getData, synth, newMsg, guiTo, text);
             break;
-        }
         case TOPLEVEL::section::scales:
-        {
-            switch(control)
-            {
-                case SCALES::control::tuning:
-                    text = formatScales(text);
-                    value = synth->microtonal.texttotunings(text.c_str());
-                    if (value > 0)
-                        synth->setAllPartMaps();
-                    break;
-                case SCALES::control::keyboardMap:
-                    text = formatScales(text);
-                    value = synth->microtonal.texttomapping(text.c_str());
-                    if (value > 0)
-                        synth->setAllPartMaps();
-                    break;
-
-                case SCALES::control::importScl:
-                    value = synth->microtonal.loadscl(setExtension(text,EXTEN::scalaTuning));
-                    if (value > 0)
-                    {
-                        text = "";
-                        char *buf = new char[100];
-                        for (int i = 0; i < value; ++ i)
-                        {
-                            synth->microtonal.tuningtoline(i, buf, 100);
-                            if (i > 0)
-                                text += "\n";
-                            text += std::string(buf);
-                        }
-                        delete [] buf;
-                    }
-                    break;
-                case SCALES::control::importKbm:
-                    value = synth->microtonal.loadkbm(setExtension(text,EXTEN::scalaKeymap));
-                    if (value > 0)
-                    {
-                        text = "";
-                        int map;
-                        for (int i = 0; i < value; ++ i)
-                        {
-                            if (i > 0)
-                                text += "\n";
-                            map = synth->microtonal.Pmapping[i];
-                            if (map == -1)
-                                text += 'x';
-                            else
-                                text += std::to_string(map);
-                        }
-                        getData->data.kit = synth->microtonal.PrefNote;
-                        getData->data.engine = synth->microtonal.Pfirstkey;
-                        getData->data.insert = synth->microtonal.Pmiddlenote;
-                        getData->data.parameter |= synth->microtonal.Plastkey; // need to keep top bit
-                        synth->setAllPartMaps();
-                    }
-                    break;
-
-                case SCALES::control::name:
-                    if (write)
-                    {
-                        synth->microtonal.Pname = text;
-                    }
-                    else
-                        text = synth->microtonal.Pname;
-                    newMsg = true;
-                    break;
-                case SCALES::control::comment:
-                    if (write)
-                        synth->microtonal.Pcomment = text;
-                    else
-                        text = synth->microtonal.Pcomment;
-                    newMsg = true;
-                    break;
-            }
-            getData->data.source &= ~TOPLEVEL::action::lowPrio;
-            guiTo = true;
+            value = indirectScales(getData, synth, newMsg, guiTo, text);
             break;
-        }
+
         case TOPLEVEL::section::main:
-        {
-            switch (control)
-            {
-                case MAIN::control::detune:
-                {
-                    if (write)
-                    {
-                        synth->microtonal.Pglobalfinedetune = value;
-                        synth->setAllPartMaps();
-                    }
-                    else
-                        value = synth->microtonal.Pglobalfinedetune;
-                    break;
-                }
-                case MAIN::control::keyShift:
-                {
-                    if (write)
-                    {
-                        synth->setPkeyshift(value + 64);
-                        synth->setAllPartMaps();
-                    }
-                    else
-                        value = synth->Pkeyshift - 64;
-                    break;
-                }
-
-                case MAIN::control::exportBank:
-                {
-                    if (kititem == UNUSED)
-                        kititem = synth->getRuntime().currentRoot;
-                    text = synth->bank.exportBank(text, kititem, value);
-                    newMsg = true;
-                    break;
-                }
-
-                case MAIN::control::importBank:
-                {
-                    if (kititem == UNUSED)
-                        kititem = synth->getRuntime().currentRoot;
-                    text = synth->bank.importBank(text, kititem, value);
-                    newMsg = true;
-                    break;
-                }
-                case MAIN::control::deleteBank:
-                {
-                    text = synth->bank.removebank(value, kititem);
-                    newMsg = true;
-                    break;
-                }
-
-                case MAIN::control::loadInstrumentFromBank:
-                {
-                    unsigned int result = synth->setProgramFromBank(getData);
-                    text = textMsgBuffer.fetch(result & NO_MSG);
-                    if (result < 0x1000)
-                    {
-                        if (synth->getRuntime().bankHighlight)
-                            synth->getRuntime().lastBankPart = (value << 15) | (synth->getRuntime().currentBank << 8) | synth->getRuntime().currentRoot;
-                        else
-                            synth->getRuntime().lastBankPart = UNUSED;
-                        text = "ed " + text;
-                        //std::cout << "here ins " << int((synth->getRuntime().lastBankPart >> 15) & 0x7f) << "  bank " << int((synth->getRuntime().lastBankPart >> 8) & 0x7f) << "  root " << int(synth->getRuntime().lastBankPart & 0x7f) << std::endl;
-                    }
-                    else
-                        text = " FAILED " + text;
-                    newMsg = true;
-                    break;
-                }
-
-                case MAIN::control::loadInstrumentByName:
-                {
-                    getData->data.miscmsg = textMsgBuffer.push(text);
-                    unsigned int result = synth->setProgramByName(getData);
-                    text = textMsgBuffer.fetch(result & NO_MSG);
-                    synth->getRuntime().lastBankPart = UNUSED;
-                    if (result < 0x1000)
-                        text = "ed " + text;
-                    else
-                        text = " FAILED " + text;
-                    newMsg = true;
-                    break;
-                }
-
-                case MAIN::control::saveNamedInstrument:
-                {
-                    bool ok = true;
-                    int saveType = synth->getRuntime().instrumentFormat;
-                    // This is both. Below we send them individually.
-
-                    if (saveType & 2) // Yoshimi format
-                        ok = synth->part[value]->saveXML(text, true);
-                    if (ok && (saveType & 1)) // legacy
-                        ok = synth->part[value]->saveXML(text, false);
-
-                    if (ok)
-                    {
-                        synth->getRuntime().sessionSeen[TOPLEVEL::XML::Instrument] = true;
-                        synth->addHistory(setExtension(text, EXTEN::zynInst), TOPLEVEL::XML::Instrument);
-                        synth->part[value]->PyoshiType = (saveType & 2);
-                        text = "d " + text;
-                    }
-                    else
-                        text = " FAILED " + text;
-                    newMsg = true;
-                    break;
-                }
-                case MAIN::control::loadNamedPatchset:
-                    vectorClear(NUM_MIDI_CHANNELS);
-                    if (synth->loadPatchSetAndUpdate(text))
-                    {
-                        synth->addHistory(setExtension(text, EXTEN::patchset), TOPLEVEL::XML::Patch);
-                        text = "ed " + text;
-                    }
-                    else
-                        text = " FAILED " + text;
-                    synth->getRuntime().lastBankPart = UNUSED;
-                    newMsg = true;
-                    break;
-                case MAIN::control::saveNamedPatchset:
-                    if (synth->savePatchesXML(text))
-                    {
-                        synth->addHistory(setExtension(text, EXTEN::patchset), TOPLEVEL::XML::Patch);
-                        text = "d " + text;
-                    }
-                    else
-                        text = " FAILED " + text;
-                    newMsg = true;
-                    break;
-                case MAIN::control::loadNamedVector:
-                    tmp = synth->loadVectorAndUpdate(insert, text);
-                    if (tmp < NO_MSG)
-                    {
-                        getData->data.insert = tmp;
-                        synth->addHistory(setExtension(text, EXTEN::vector), TOPLEVEL::XML::Vector);
-                        text = "ed " + text + " to chan " + std::to_string(int(tmp + 1));
-                    }
-                    else
-                        text = " FAILED " + text;
-                    synth->getRuntime().lastBankPart = UNUSED;
-                    newMsg = true;
-                    break;
-                case MAIN::control::saveNamedVector:
-                {
-                    std::string oldname = synth->getRuntime().vectordata.Name[insert];
-                    int pos = oldname.find("No Name");
-                    if (pos >=0 && pos < 2)
-                        synth->getRuntime().vectordata.Name[insert] = findLeafName(text);
-                    tmp = synth->saveVector(insert, text, true);
-                    if (tmp == NO_MSG)
-                    {
-                        synth->addHistory(setExtension(text, EXTEN::vector), TOPLEVEL::XML::Vector);
-                        text = "d " + text;
-                    }
-                    else
-                    {
-                        name = textMsgBuffer.fetch(tmp);
-                        if (name != "FAIL")
-                            text = " " + name;
-                        else
-                            text = " FAILED " + text;
-                    }
-                    newMsg = true;
-                    break;
-                }
-                case MAIN::control::loadNamedScale:
-                    if (synth->loadMicrotonal(text))
-                    {
-                        synth->addHistory(setExtension(text, EXTEN::scale), TOPLEVEL::XML::Scale);
-                        text = "ed " + text;
-                    }
-                    else
-                        text = " FAILED " + text;
-                    newMsg = true;
-                    break;
-                case MAIN::control::saveNamedScale:
-                    if (synth->saveMicrotonal(text))
-                    {
-                        synth->addHistory(setExtension(text, EXTEN::scale), TOPLEVEL::XML::Scale);
-                        text = "d " + text;
-                    }
-                    else
-                        text = " FAILED " + text;
-                    newMsg = true;
-                    break;
-                case MAIN::control::loadNamedState:
-                    vectorClear(NUM_MIDI_CHANNELS);
-                    if (synth->loadStateAndUpdate(text))
-                    {
-                        string name = synth->getRuntime().ConfigDir + "/yoshimi";
-                        name += ("-" + to_string(synth->getUniqueId()));
-                        name += ".state";
-                        if ((text != name)) // never include default state
-                            synth->addHistory(text, TOPLEVEL::XML::State);
-                        text = "ed " + text;
-                        learnUpdate = true;
-                        /*
-                         * This needs improving. We should only set it
-                         * when the state file contains a learn list.
-                         */
-                    }
-                    else
-                        text = " FAILED " + text;
-                    synth->getRuntime().lastBankPart = UNUSED;
-                    newMsg = true;
-                    break;
-                case MAIN::control::saveNamedState:
-                {
-                    string filename = setExtension(text, EXTEN::state);
-                    if (synth->saveState(filename))
-                    {
-                        string name = synth->getRuntime().ConfigDir + "/yoshimi";
-                        name += ("-" + to_string(synth->getUniqueId()));
-                        name += ".state";
-                        if ((text != name)) // never include default state
-                            synth->addHistory(filename, TOPLEVEL::XML::State);
-                        text = "d " + text;
-                    }
-                    else
-                        text = " FAILED " + text;
-                    newMsg = true;
-                    break;
-                }
-                case MAIN::control::loadFileFromList:
-                    break; // do nothing here
-                case MAIN::control::exportPadSynthSamples:
-                {
-                    unsigned char partnum = insert;
-                    synth->partonoffWrite(partnum, -1);
-                    setpadparams(partnum, kititem);
-                    if (synth->part[partnum]->kit[kititem].padpars->export2wav(text))
-                        text = "d " + text;
-                    else
-                        text = " FAILED some samples " + text;
-                    newMsg = true;
-                    break;
-                }
-                case MAIN::control::masterReset:
-                    synth->resetAll(0);
-                    break;
-                case MAIN::control::masterResetAndMlearn:
-                    synth->resetAll(1);
-                    break;
-                case MAIN::control::openManualPDF: // display user guide
-                {
-                    std::string manfile = synth->manualname();
-                    unsigned int pos = manfile.rfind(".") + 1;
-                    int wanted = std::stoi(manfile.substr(pos, 3));
-                    int count = wanted + 2;
-                    manfile = manfile.substr(0, pos);
-                    std::string path = "";
-                    while (path == "" && count >= 0) // scan current first, then older versions
-                    {
-                        --count;
-                        path = findFile("/usr/", (manfile + std::to_string(count)).c_str(), "pdf");
-                        if (path == "")
-                        path = findFile("/usr/", (manfile + std::to_string(count)).c_str(), "pdf.gz");
-                        if (path == "")
-                        path = findFile("/home/", (manfile + std::to_string(count)).c_str(), "pdf");
-                    }
-                    std::cout << "man " << manfile << "\npath " << path << std::endl;
-                    if (path == "")
-                        text = "Can't find manual :(";
-                    else if (count < wanted)
-                        text = "Can't find current manual. Using older one";
-                    if (path != "")
-                    {
-                        std::string command = "xdg-open " + path + "&";
-                        FILE *fp = popen(command.c_str(), "r");
-                        if (fp == NULL)
-                            text = "Can't find PDF reader :(";
-                        pclose(fp);
-                    }
-                    newMsg = true;
-                    break;
-                }
-                case MAIN::control::startInstance:
-                    if (synth == firstSynth)
-                    {
-                        if (value > 0 && value < 32)
-                            startInstance = value | 0x80;
-                        else
-                            startInstance = 0x81; // next available
-                        while (startInstance > 0x80)
-                            usleep(1000);
-                        value = startInstance; // actual instance found
-                        startInstance = 0; // just to be sure
-                    }
-                    break;
-                case MAIN::control::stopInstance:
-                    text = std::to_string(value) + " ";
-                    if (value < 0 || value >= 32)
-                        text += "Out of range";
-                    else
-                    {
-                        SynthEngine *toClose = firstSynth->getSynthFromId(value);
-                        if (toClose == firstSynth && value > 0)
-                            text += "Can't find";
-                        else
-                        {
-                            toClose->getRuntime().runSynth = false;
-                            text += "Closed";
-                        }
-                    }
-                    newMsg = true;
-                    break;
-
-                case MAIN::control::stopSound:
-#ifdef REPORT_NOTES_ON_OFF
-                    // note test
-                    synth->getRuntime().Log("note on sent " + std::to_string(synth->getRuntime().noteOnSent));
-                    synth->getRuntime().Log("note on seen " + std::to_string(synth->getRuntime().noteOnSeen));
-                    synth->getRuntime().Log("note off sent " + std::to_string(synth->getRuntime().noteOffSent));
-                    synth->getRuntime().Log("note off seen " + std::to_string(synth->getRuntime().noteOffSeen));
-                    synth->getRuntime().Log("notes hanging sent " + std::to_string(synth->getRuntime().noteOnSent - synth->getRuntime().noteOffSent));
-                    synth->getRuntime().Log("notes hanging seen " + std::to_string(synth->getRuntime().noteOnSeen - synth->getRuntime().noteOffSeen));
-#endif
-                    synth->ShutUp();
-                    break;
-            }
-            getData->data.source &= ~TOPLEVEL::action::lowPrio;
-            if (control != MAIN::control::startInstance && control != MAIN::control::stopInstance)
-                guiTo = true;
+            value = indirectMain(getData, synth, newMsg, guiTo, text);
             break;
-        }
 
         case TOPLEVEL::section::bank: // instrument / bank
-        {
-            switch (control)
-            {
-                case BANK::control::renameInstrument:
-                {
-                    if (kititem == UNUSED)
-                    {
-                        kititem = synth->getRuntime().currentBank;
-                        getData->data.kit = kititem;
-                    }
-                    if (engine == UNUSED)
-                    {
-                        engine = synth->getRuntime().currentRoot;
-                        getData->data.engine = engine;
-                    }
-                    int msgID = synth->bank.setInstrumentName(text, insert, kititem, engine);
-                    if (msgID > NO_MSG)
-                        text = " FAILED ";
-                    else
-                        text = " ";
-                    text += textMsgBuffer.fetch(msgID & NO_MSG);
-                    synth->getRuntime().lastBankPart = UNUSED;
-                    newMsg = true;
-                    break;
-                }
-                case BANK::control::saveInstrument:
-                {
-                    if (kititem == UNUSED)
-                    {
-                        kititem = synth->getRuntime().currentBank;
-                        getData->data.kit = kititem;
-                    }
-                    if (engine == UNUSED)
-                    {
-                        engine = synth->getRuntime().currentRoot;
-                        getData->data.engine = engine;
-                    }
-                    if (parameter == UNUSED)
-                    {
-                        parameter = synth->getRuntime().currentPart;
-                        getData->data.parameter = parameter;
-                    }
-                    text = synth->part[parameter]->Pname;
-                    if (text == DEFAULT_NAME)
-                        text = "FAILED Can't save default instrument type";
-                    else if (!synth->bank.savetoslot(engine, kititem, insert, parameter))
-                        text = "FAILED Could not save " + text + " to " + to_string(insert + 1);
-                    else
-                    { // 0x80 on engine indicates it is a save not a load
-                        if (synth->getRuntime().bankHighlight)
-                            synth->getRuntime().lastBankPart = (insert << 15) | (kititem << 8) | engine | 0x80;
-                        text = "" + to_string(insert + 1) +". " + text;
-                    }
-                    newMsg = true;
-                    break;
-                }
-                case BANK::control::deleteInstrument:
-                {
-                    text  = synth->bank.clearslot(value, synth->getRuntime().currentRoot,  synth->getRuntime().currentBank);
-                    synth->getRuntime().lastBankPart = UNUSED;
-                    newMsg = true;
-                    break;
-                }
-
-                case BANK::control::selectFirstInstrumentToSwap:
-                {
-                    if (kititem == UNUSED)
-                    {
-                        kititem = synth->getRuntime().currentBank;
-                        getData->data.kit = kititem;
-                    }
-                    if (engine == UNUSED)
-                    {
-                        engine = synth->getRuntime().currentRoot;
-                        getData->data.engine = engine;
-                    }
-                    //std::cout << "Int swap 1 I " << int(value)  << "  B " << int(kititem) << "  R " << int(engine) << std::endl;
-                    swapInstrument1 = insert;
-                    swapBank1 = kititem;
-                    swapRoot1 = engine;
-                    break;
-                }
-                case BANK::control::selectSecondInstrumentAndSwap:
-                {
-                    if (kititem == UNUSED)
-                    {
-                        kititem = synth->getRuntime().currentBank;
-                        getData->data.kit = kititem;
-                    }
-                    if (engine == UNUSED)
-                    {
-                        engine = synth->getRuntime().currentRoot;
-                        getData->data.engine = engine;
-                    }
-                    //std::cout << "Int swap 2 I " << int(insert) << "  B " << int(kititem) << "  R " << int(engine) << std::endl;
-                    text = synth->bank.swapslot(swapInstrument1, insert, swapBank1, kititem, swapRoot1, engine);
-                    swapInstrument1 = UNUSED;
-                    swapBank1 = UNUSED;
-                    swapRoot1 = UNUSED;
-                    synth->getRuntime().lastBankPart = UNUSED;
-                    newMsg = true;
-                    guiTo = true;
-                    break;
-                }
-                case BANK::control::selectBank:
-                    if (engine == UNUSED)
-                        engine = getData->data.engine = synth->getRuntime().currentRoot;
-                    if (write)
-                    {
-                        text = textMsgBuffer.fetch(synth->setRootBank(engine, value) & NO_MSG);
-
-                    }
-                    else
-                    {
-                        int tmp = synth->getRuntime().currentBank;
-                        text = "Current: " +(to_string(tmp)) + " " + synth->bank.getBankName(tmp, getData->data.engine);
-                    }
-                    newMsg = true;
-                    break;
-                case BANK::control::renameBank:
-                    if (engine == UNUSED)
-                        engine = getData->data.engine = synth->getRuntime().currentRoot;
-                    if (write)
-                    {
-                        int tmp = synth->bank.changeBankName(getData->data.engine, value, text);
-                        text = textMsgBuffer.fetch(tmp & NO_MSG);
-                        if (tmp > NO_MSG)
-                            text = "FAILED: " + text;
-                        //std::cout << text << std::endl;
-                        guiTo = true;
-                    }
-                    else
-                    {
-                        text = " Name: " + synth->bank.getBankName(value, getData->data.engine);
-                    }
-                    newMsg = true;
-                    break;
-
-                case BANK::control::selectFirstBankToSwap:
-                    if (engine == UNUSED)
-                    {
-                        engine = synth->getRuntime().currentRoot;
-                        getData->data.engine = engine;
-                    }
-                    swapBank1 = kititem;
-                    swapRoot1 = engine;
-                    break;
-                case BANK::control::selectSecondBankAndSwap:
-                    if (engine == UNUSED)
-                    {
-                        engine = synth->getRuntime().currentRoot;
-                        getData->data.engine = engine;
-                    }
-                    text = synth->bank.swapbanks(swapBank1, kititem, swapRoot1, engine);
-                    swapBank1 = UNUSED;
-                    swapRoot1 = UNUSED;
-                    newMsg = true;
-                    guiTo = true;
-                    break;
-
-                case BANK::control::selectRoot:
-                    if (write)
-                    {
-                        int msgID = synth->setRootBank(value, UNUSED);
-                        if (msgID < NO_MSG)
-                            synth->saveBanks(); // do we need this when only selecting?
-                        text = textMsgBuffer.fetch(msgID & NO_MSG);
-                    }
-                    else
-                    {
-                        int tmp = synth->getRuntime().currentRoot;
-                        text = "Current Root: " +(to_string(tmp)) + " " + synth->bank.getRootPath(tmp);
-                    }
-                    newMsg = true;
-                    break;
-                case BANK::control::changeRootId:
-                    if (engine == UNUSED)
-                        getData->data.engine = synth->getRuntime().currentRoot;
-                    synth->bank.changeRootID(getData->data.engine, value);
-                    synth->saveBanks();
-                    break;
-                case BANK::control::refreshDefaults:
-                    if (value)
-                        synth->bank.checkLocalBanks();
-                    synth->getRuntime().banksChecked = true;
-                break;
-            }
-            getData->data.source &= ~TOPLEVEL::action::lowPrio;
+            value = indirectBank(getData, synth, newMsg, guiTo, text);
             break;
-        }
 
         case TOPLEVEL::section::config:
-        {
-            switch (control)
-            {
-                case CONFIG::control::jackMidiSource:
-                    if (write)
-                    {
-                        synth->getRuntime().jackMidiDevice = text;
-                        synth->getRuntime().configChanged = true;
-                    }
-                    else
-                        text = synth->getRuntime().jackMidiDevice;
-                    newMsg = true;
-                    break;
-                case CONFIG::control::jackServer:
-                    if (write)
-                    {
-                        synth->getRuntime().jackServer = text;
-                        synth->getRuntime().configChanged = true;
-                    }
-                    else
-                        text = synth->getRuntime().jackServer;
-                    newMsg = true;
-                    break;
-                case CONFIG::control::alsaMidiSource:
-                    if (write)
-                    {
-                        synth->getRuntime().alsaMidiDevice = text;
-                        synth->getRuntime().configChanged = true;
-                    }
-                    else
-                        text = synth->getRuntime().alsaMidiDevice;
-                    newMsg = true;
-                    break;
-                case CONFIG::control::alsaAudioDevice:
-                    if (write)
-                    {
-                        synth->getRuntime().alsaAudioDevice = text;
-                        synth->getRuntime().configChanged = true;
-                    }
-                    else
-                        text = synth->getRuntime().alsaAudioDevice;
-                    newMsg = true;
-                    break;
-                case CONFIG::control::addPresetRootDir:
-                {
-                    bool isOK = false;
-                    if (isDirectory(text))
-                        isOK= true;
-                    else
-                    {
-                        if (createDir(text))
-                        {
-                            text = " FAILED could not create " + text;
-                        }
-                        else
-                            isOK = true;
-                    }
-                    if (isOK)
-                    {
-                        int i = 0;
-                        while (!firstSynth->getRuntime().presetsDirlist[i].empty())
-                            ++i;
-                        if (i > (MAX_PRESETS - 2))
-                            text = " FAILED preset list full";
-                        else
-                        {
-                            firstSynth->getRuntime().presetsDirlist[i] = text;
-                            text = "ed " + text;
-                        }
-                    }
-                    newMsg = true;
-                    synth->getRuntime().configChanged = true;
-                    break;
-                }
-                case CONFIG::control::removePresetRootDir:
-                {
-                    int i = value;
-                    text = firstSynth->getRuntime().presetsDirlist[i];
-                    while (!firstSynth->getRuntime().presetsDirlist[i + 1].empty())
-                    {
-                        firstSynth->getRuntime().presetsDirlist[i] = firstSynth->getRuntime().presetsDirlist[i + 1];
-                        ++i;
-                    }
-                    firstSynth->getRuntime().presetsDirlist[i] = "";
-                    synth->getRuntime().currentPreset = 0;
-                    newMsg = true;
-                    synth->getRuntime().configChanged = true;
-                    break;
-                }
-                case CONFIG::control::currentPresetRoot:
-                {
-                    if (write)
-                    {
-                        synth->getRuntime().currentPreset = value;
-                        synth->getRuntime().configChanged = true;
-                    }
-                    else
-                        value = synth->getRuntime().currentPreset = value;
-                    text = firstSynth->getRuntime().presetsDirlist[value];
-                    newMsg = true;
-                    break;
-                }
-                case CONFIG::control::saveCurrentConfig:
-                    if (write)
-                    {
-                        text = synth->getRuntime().ConfigFile;
-                        if (synth->getRuntime().saveConfig())
-                            text = "d " + text;
-                        else
-                            text = " FAILED " + text;
-                    }
-                    else
-                        text = "READ";
-                    newMsg = true;
-                    getData->data.miscmsg = textMsgBuffer.push(text); // slightly odd case
-                    break;
-                case CONFIG::control::historyLock:
-                {
-                    if (write)
-                        synth->setHistoryLock(kititem, value);
-                    else
-                        value = synth->getHistoryLock(kititem);
-                    break;
-                }
-            }
-            if ((getData->data.source & TOPLEVEL::action::noAction) != TOPLEVEL::action::fromGUI)
-                guiTo = true;
-            getData->data.source &= ~TOPLEVEL::action::lowPrio;
+            value = indirectConfig(getData, synth, newMsg, guiTo, text);
             break;
-        }
+
         case TOPLEVEL::section::message:
-        {
             newMsg = true;
             getData->data.source &= ~TOPLEVEL::action::lowPrio;
             break;
-        }
         default:
-        {
-            if (npart < NUM_MIDI_PARTS)
+            if (switchNum < NUM_MIDI_PARTS)
             {
-                switch(control)
-                {
-                    case PART::control::keyShift:
-                    {
-                        if (write)
-                        {
-                            synth->part[npart]->Pkeyshift = value + 64;
-                            synth->setPartMap(npart);
-                        }
-                        else
-                            value = synth->part[npart]->Pkeyshift - 64;
-                        getData->data.source &= ~TOPLEVEL::action::lowPrio;
-                    }
-                    break;
-
-                    case PART::control::defaultInstrument: // clear part
-                        if (write)
-                        {
-                            doClearPart(npart);
-                            synth->getRuntime().sessionSeen[TOPLEVEL::XML::Instrument] = false;
-                            getData->data.source &= ~TOPLEVEL::action::lowPrio;
-                        }
-                        break;
-
-                    case PART::control::padsynthParameters:
-                        if (write)
-                        {
-                            setpadparams(npart, kititem);
-                            getData->data.source &= ~TOPLEVEL::action::lowPrio;
-                        }
-                        else
-                            value = synth->part[npart]->kit[kititem].padpars->Papplied;
-                        break;
-
-                    case PART::control::audioDestination:
-                        if (npart < synth->getRuntime().NumAvailableParts)
-                        {
-                            if (value & 2)
-                            {
-                                mainRegisterAudioPort(synth, npart);
-                            }
-                            getData->data.source &= ~TOPLEVEL::action::lowPrio;
-                        }
-                        break;
-                    case PART::control::instrumentCopyright:
-                        if (write)
-                        {
-                            synth->part[npart]->info.Pauthor = text;
-                            guiTo = true;
-                        }
-                        else
-                            text = synth->part[npart]->info.Pauthor;
-                        getData->data.source &= ~TOPLEVEL::action::lowPrio;
-                        newMsg = true;
-                        break;
-                    case PART::control::instrumentComments:
-                        if (write)
-                        {
-                            synth->part[npart]->info.Pcomments = text;
-                            guiTo = true;
-                        }
-                        else
-                            text = synth->part[npart]->info.Pcomments;
-                        getData->data.source &= ~TOPLEVEL::action::lowPrio;
-                        newMsg = true;
-                        break;
-                    case PART::control::instrumentName: // part or kit item names
-                        if (kititem == UNUSED)
-                        {
-                            if (write)
-                            {
-                                synth->part[npart]->Pname = text;
-                                guiTo = true;
-                            }
-                            else
-                            {
-                                text = synth->part[npart]->Pname;
-                            }
-                        }
-                        else if (synth->part[npart]->Pkitmode)
-                        {
-                            if (kititem >= NUM_KIT_ITEMS)
-                                text = " FAILED out of range";
-                            else
-                            {
-                                if (write)
-                                {
-                                    synth->part[npart]->kit[kititem].Pname = text;
-                                    guiTo = true;
-                                }
-                                else
-                                {
-                                    text = synth->part[npart]->kit[kititem].Pname;
-                                }
-                            }
-                        }
-                        else
-                            text = " FAILED Not in kit mode";
-                        getData->data.source &= ~TOPLEVEL::action::lowPrio;
-                        newMsg = true;
-                        break;
-                    case PART::control::instrumentType:
-                        if (write)
-                        {
-                            synth->part[npart]->info.Ptype = value;
-                            guiTo = true;
-                        }
-                        else
-                            value = synth->part[npart]->info.Ptype;
-                        getData->data.source &= ~TOPLEVEL::action::lowPrio;
-                        break;
-                    case PART::control::defaultInstrumentCopyright:
-                        std::string name = synth->getRuntime().ConfigDir + "/copyright.txt";
-                        if (parameter == 0) // load
-                        {
-                            text = loadText(name); // TODO provide failure warning
-                            synth->part[npart]->info.Pauthor = text;
-                            guiTo = true;
-                        }
-                        else
-                        {
-                            text = synth->part[npart]->info.Pauthor;
-                            saveText(text, name);
-                        }
-                        getData->data.source &= ~TOPLEVEL::action::lowPrio;
-                        newMsg = true;
-                        break;
-                }
+                value = indirectPart(getData, synth, newMsg, guiTo, text);
             }
             break;
-        }
     }
     //std::cout << ">" << text << "<" << std::endl;
 
@@ -1329,7 +445,7 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
 #endif
         bool ok = returnsBuffer->write(getData->bytes);
 #ifdef GUI_FLTK
-        if (synth->getRuntime().showGui && npart == TOPLEVEL::section::scales && control == SCALES::control::importScl)
+        if (synth->getRuntime().showGui && switchNum == TOPLEVEL::section::scales && control == SCALES::control::importScl)
         {   // loading a tuning includes a name and comment!
             getData->data.control = SCALES::control::name;
             getData->data.miscmsg = textMsgBuffer.push(synth->microtonal.Pname);
@@ -1338,8 +454,12 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
             getData->data.miscmsg = textMsgBuffer.push(synth->microtonal.Pcomment);
             ok &= returnsBuffer->write(getData->bytes);
         }
-        if (synth->getRuntime().showGui && learnUpdate)
+        if (synth->getRuntime().showGui && switchNum == TOPLEVEL::section::main && control == MAIN::control::loadNamedState)
             synth->midilearn.updateGui();
+        /*
+         * This needs improving. We should only set it
+         * when the state file contains a learn list.
+         */
 #endif
         if (!ok)
             synth->getRuntime().Log("Unable to  write to returnsBuffer buffer");
@@ -1367,6 +487,973 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
     }
 }
 
+
+int InterChange::indirectVector(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text)
+{
+    bool write = (getData->data.type & TOPLEVEL::type::Write);
+    int value = getData->data.value;
+    int control = getData->data.control;
+    int insert = getData->data.insert;
+
+    switch(control)
+    {
+        case VECTOR::control::name:
+            if (write)
+                synth->getRuntime().vectordata.Name[insert] = text;
+            else
+                text = synth->getRuntime().vectordata.Name[insert];
+            newMsg = true;
+            getData->data.source &= ~TOPLEVEL::action::lowPrio;
+            guiTo = true;
+            break;
+    }
+
+    return value;
+}
+
+
+int InterChange::indirectMidi(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text)
+{
+    int value = getData->data.value;
+    int control = getData->data.control;
+    //std::cout << " interchange prog " << value << "  chan " << int(kititem) << "  bank " << int(engine) << "  root " << int(insert) << std::endl;
+
+    int msgID;
+    if (control == MIDI::control::instrument)
+    {
+        msgID = synth->setProgramFromBank(getData);
+        getData->data.control = MAIN::control::loadInstrumentFromBank;
+        getData->data.part = TOPLEVEL::section::main;
+        // moved to 'main' for return updates.
+        if (msgID > NO_MSG)
+            text = " FAILED " + text;
+        else
+            text = "ed ";
+    }
+    else
+    {
+        msgID = synth->setRootBank(getData->data.insert, getData->data.engine);
+        if (msgID > NO_MSG)
+            text = "FAILED " + text;
+        else
+            text = "";
+    }
+    text += textMsgBuffer.fetch(msgID & NO_MSG);
+    newMsg = true;
+    getData->data.source = TOPLEVEL::action::toAll;
+    // everyone will want to knopw about these!
+    guiTo = true;
+    return value;
+}
+
+
+int InterChange::indirectScales(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text)
+{
+    bool write = (getData->data.type & TOPLEVEL::type::Write);
+    int value = getData->data.value;
+    int control = getData->data.control;
+
+    switch(control)
+    {
+        case SCALES::control::tuning:
+            text = formatScales(text);
+            value = synth->microtonal.texttotunings(text.c_str());
+            if (value > 0)
+                synth->setAllPartMaps();
+            break;
+        case SCALES::control::keyboardMap:
+            text = formatScales(text);
+            value = synth->microtonal.texttomapping(text.c_str());
+            if (value > 0)
+                synth->setAllPartMaps();
+            break;
+
+        case SCALES::control::importScl:
+            value = synth->microtonal.loadscl(setExtension(text,EXTEN::scalaTuning));
+            if (value > 0)
+            {
+                text = "";
+                char *buf = new char[100];
+                for (int i = 0; i < value; ++ i)
+                {
+                    synth->microtonal.tuningtoline(i, buf, 100);
+                    if (i > 0)
+                        text += "\n";
+                    text += std::string(buf);
+                }
+                delete [] buf;
+            }
+            break;
+        case SCALES::control::importKbm:
+            value = synth->microtonal.loadkbm(setExtension(text,EXTEN::scalaKeymap));
+            if (value > 0)
+            {
+                text = "";
+                int map;
+                for (int i = 0; i < value; ++ i)
+                {
+                    if (i > 0)
+                        text += "\n";
+                    map = synth->microtonal.Pmapping[i];
+                    if (map == -1)
+                        text += 'x';
+                    else
+                        text += std::to_string(map);
+                }
+                getData->data.kit = synth->microtonal.PrefNote;
+                getData->data.engine = synth->microtonal.Pfirstkey;
+                getData->data.insert = synth->microtonal.Pmiddlenote;
+                getData->data.parameter |= synth->microtonal.Plastkey; // need to keep top bit
+                synth->setAllPartMaps();
+            }
+            break;
+
+        case SCALES::control::name:
+            if (write)
+            {
+                synth->microtonal.Pname = text;
+            }
+            else
+                text = synth->microtonal.Pname;
+            newMsg = true;
+            break;
+        case SCALES::control::comment:
+            if (write)
+                synth->microtonal.Pcomment = text;
+            else
+                text = synth->microtonal.Pcomment;
+            newMsg = true;
+            break;
+    }
+    getData->data.source &= ~TOPLEVEL::action::lowPrio;
+    guiTo = true;
+    return value;
+}
+
+
+int InterChange::indirectMain(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text)
+{
+    bool write = (getData->data.type & TOPLEVEL::type::Write);
+    int value = getData->data.value;
+    int control = getData->data.control;
+    int kititem = getData->data.kit;
+    int insert = getData->data.insert;
+    switch (control)
+    {
+        case MAIN::control::detune:
+        {
+            if (write)
+            {
+                synth->microtonal.Pglobalfinedetune = value;
+                synth->setAllPartMaps();
+            }
+            else
+                value = synth->microtonal.Pglobalfinedetune;
+            break;
+        }
+        case MAIN::control::keyShift:
+        {
+            if (write)
+            {
+                synth->setPkeyshift(value + 64);
+                synth->setAllPartMaps();
+            }
+            else
+                value = synth->Pkeyshift - 64;
+            break;
+        }
+
+        case MAIN::control::exportBank:
+        {
+            if (kititem == UNUSED)
+                kititem = synth->getRuntime().currentRoot;
+            text = synth->bank.exportBank(text, kititem, value);
+            newMsg = true;
+            break;
+        }
+        case MAIN::control::importBank:
+        {
+            if (kititem == UNUSED)
+                kititem = synth->getRuntime().currentRoot;
+            text = synth->bank.importBank(text, kititem, value);
+            newMsg = true;
+            break;
+        }
+        case MAIN::control::deleteBank:
+        {
+            text = synth->bank.removebank(value, kititem);
+            newMsg = true;
+            break;
+        }
+        case MAIN::control::loadInstrumentFromBank:
+        {
+            unsigned int result = synth->setProgramFromBank(getData);
+            text = textMsgBuffer.fetch(result & NO_MSG);
+            if (result < 0x1000)
+            {
+                if (synth->getRuntime().bankHighlight)
+                    synth->getRuntime().lastBankPart = (value << 15) | (synth->getRuntime().currentBank << 8) | synth->getRuntime().currentRoot;
+                else
+                    synth->getRuntime().lastBankPart = UNUSED;
+                text = "ed " + text;
+                //std::cout << "here ins " << int((synth->getRuntime().lastBankPart >> 15) & 0x7f) << "  bank " << int((synth->getRuntime().lastBankPart >> 8) & 0x7f) << "  root " << int(synth->getRuntime().lastBankPart & 0x7f) << std::endl;
+            }
+            else
+                text = " FAILED " + text;
+            newMsg = true;
+            break;
+        }
+
+        case MAIN::control::loadInstrumentByName:
+        {
+            getData->data.miscmsg = textMsgBuffer.push(text);
+            unsigned int result = synth->setProgramByName(getData);
+            text = textMsgBuffer.fetch(result & NO_MSG);
+            synth->getRuntime().lastBankPart = UNUSED;
+            if (result < 0x1000)
+                text = "ed " + text;
+            else
+                text = " FAILED " + text;
+            newMsg = true;
+            break;
+        }
+
+        case MAIN::control::saveNamedInstrument:
+        {
+            bool ok = true;
+            int saveType = synth->getRuntime().instrumentFormat;
+            // This is both. Below we send them individually.
+
+            if (saveType & 2) // Yoshimi format
+                ok = synth->part[value]->saveXML(text, true);
+            if (ok && (saveType & 1)) // legacy
+                ok = synth->part[value]->saveXML(text, false);
+
+            if (ok)
+            {
+                synth->getRuntime().sessionSeen[TOPLEVEL::XML::Instrument] = true;
+                synth->addHistory(setExtension(text, EXTEN::zynInst), TOPLEVEL::XML::Instrument);
+                synth->part[value]->PyoshiType = (saveType & 2);
+                text = "d " + text;
+            }
+            else
+                text = " FAILED " + text;
+            newMsg = true;
+            break;
+        }
+        case MAIN::control::loadNamedPatchset:
+            vectorClear(NUM_MIDI_CHANNELS);
+            if (synth->loadPatchSetAndUpdate(text))
+            {
+                synth->addHistory(setExtension(text, EXTEN::patchset), TOPLEVEL::XML::Patch);
+                text = "ed " + text;
+            }
+            else
+                text = " FAILED " + text;
+            synth->getRuntime().lastBankPart = UNUSED;
+            newMsg = true;
+            break;
+        case MAIN::control::saveNamedPatchset:
+            if (synth->savePatchesXML(text))
+            {
+                synth->addHistory(setExtension(text, EXTEN::patchset), TOPLEVEL::XML::Patch);
+                text = "d " + text;
+            }
+            else
+                text = " FAILED " + text;
+            newMsg = true;
+            break;
+        case MAIN::control::loadNamedVector:
+        {
+            int tmp = synth->loadVectorAndUpdate(insert, text);
+            if (tmp < NO_MSG)
+            {
+                getData->data.insert = tmp;
+                synth->addHistory(setExtension(text, EXTEN::vector), TOPLEVEL::XML::Vector);
+                text = "ed " + text + " to chan " + std::to_string(int(tmp + 1));
+            }
+            else
+                text = " FAILED " + text;
+            synth->getRuntime().lastBankPart = UNUSED;
+            newMsg = true;
+            break;
+        }
+        case MAIN::control::saveNamedVector:
+        {
+            std::string oldname = synth->getRuntime().vectordata.Name[insert];
+            int pos = oldname.find("No Name");
+            if (pos >=0 && pos < 2)
+                synth->getRuntime().vectordata.Name[insert] = findLeafName(text);
+            int tmp = synth->saveVector(insert, text, true);
+            if (tmp == NO_MSG)
+            {
+                synth->addHistory(setExtension(text, EXTEN::vector), TOPLEVEL::XML::Vector);
+                text = "d " + text;
+            }
+            else
+            {
+                string name = textMsgBuffer.fetch(tmp);
+                if (name != "FAIL")
+                    text = " " + name;
+                else
+                    text = " FAILED " + text;
+            }
+            newMsg = true;
+            break;
+        }
+       case MAIN::control::loadNamedScale:
+           if (synth->loadMicrotonal(text))
+           {
+                synth->addHistory(setExtension(text, EXTEN::scale), TOPLEVEL::XML::Scale);
+                text = "ed " + text;
+            }
+            else
+                text = " FAILED " + text;
+            newMsg = true;
+            break;
+        case MAIN::control::saveNamedScale:
+            if (synth->saveMicrotonal(text))
+            {
+                synth->addHistory(setExtension(text, EXTEN::scale), TOPLEVEL::XML::Scale);
+                text = "d " + text;
+            }
+            else
+                text = " FAILED " + text;
+            newMsg = true;
+            break;
+        case MAIN::control::loadNamedState:
+            vectorClear(NUM_MIDI_CHANNELS);
+            if (synth->loadStateAndUpdate(text))
+            {
+                string name = synth->getRuntime().ConfigDir + "/yoshimi";
+                name += ("-" + to_string(synth->getUniqueId()));
+                name += ".state";
+                if ((text != name)) // never include default state
+                    synth->addHistory(text, TOPLEVEL::XML::State);
+                text = "ed " + text;
+            }
+            else
+                text = " FAILED " + text;
+            synth->getRuntime().lastBankPart = UNUSED;
+            newMsg = true;
+            break;
+        case MAIN::control::saveNamedState:
+        {
+            string filename = setExtension(text, EXTEN::state);
+            if (synth->saveState(filename))
+            {
+                string name = synth->getRuntime().ConfigDir + "/yoshimi";
+                name += ("-" + to_string(synth->getUniqueId()));
+                name += ".state";
+                if ((text != name)) // never include default state
+                    synth->addHistory(filename, TOPLEVEL::XML::State);
+                text = "d " + text;
+            }
+            else
+                text = " FAILED " + text;
+            newMsg = true;
+            break;
+        }
+        case MAIN::control::loadFileFromList:
+            break; // do nothing here
+        case MAIN::control::exportPadSynthSamples:
+        {
+            unsigned char partnum = insert;
+            synth->partonoffWrite(partnum, -1);
+            setpadparams(partnum, kititem);
+            if (synth->part[partnum]->kit[kititem].padpars->export2wav(text))
+                text = "d " + text;
+            else
+                text = " FAILED some samples " + text;
+            newMsg = true;
+            break;
+        }
+        case MAIN::control::masterReset:
+            synth->resetAll(0);
+            break;
+        case MAIN::control::masterResetAndMlearn:
+            synth->resetAll(1);
+            break;
+        case MAIN::control::openManualPDF: // display user guide
+        {
+            std::string manfile = synth->manualname();
+            unsigned int pos = manfile.rfind(".") + 1;
+            int wanted = std::stoi(manfile.substr(pos, 3));
+            int count = wanted + 2;
+            manfile = manfile.substr(0, pos);
+            std::string path = "";
+            while (path == "" && count >= 0) // scan current first, then older versions
+            {
+                --count;
+                path = findFile("/usr/", (manfile + std::to_string(count)).c_str(), "pdf");
+                if (path == "")
+                path = findFile("/usr/", (manfile + std::to_string(count)).c_str(), "pdf.gz");
+                if (path == "")
+                path = findFile("/home/", (manfile + std::to_string(count)).c_str(), "pdf");
+            }
+            std::cout << "man " << manfile << "\npath " << path << std::endl;
+            if (path == "")
+                text = "Can't find manual :(";
+            else if (count < wanted)
+                text = "Can't find current manual. Using older one";
+            if (path != "")
+            {
+                std::string command = "xdg-open " + path + "&";
+                FILE *fp = popen(command.c_str(), "r");
+                if (fp == NULL)
+                    text = "Can't find PDF reader :(";
+                pclose(fp);
+            }
+            newMsg = true;
+            break;
+        }
+        case MAIN::control::startInstance:
+            if (synth == firstSynth)
+            {
+                if (value > 0 && value < 32)
+                    startInstance = value | 0x80;
+                else
+                    startInstance = 0x81; // next available
+                while (startInstance > 0x80)
+                    usleep(1000);
+                value = startInstance; // actual instance found
+                startInstance = 0; // just to be sure
+            }
+            break;
+        case MAIN::control::stopInstance:
+            text = std::to_string(value) + " ";
+            if (value < 0 || value >= 32)
+                text += "Out of range";
+            else
+            {
+                SynthEngine *toClose = firstSynth->getSynthFromId(value);
+                if (toClose == firstSynth && value > 0)
+                    text += "Can't find";
+                else
+                {
+                    toClose->getRuntime().runSynth = false;
+                    text += "Closed";
+                }
+            }
+            newMsg = true;
+            break;
+
+        case MAIN::control::stopSound:
+#ifdef REPORT_NOTES_ON_OFF
+            // note test
+            synth->getRuntime().Log("note on sent " + std::to_string(synth->getRuntime().noteOnSent));
+            synth->getRuntime().Log("note on seen " + std::to_string(synth->getRuntime().noteOnSeen));
+            synth->getRuntime().Log("note off sent " + std::to_string(synth->getRuntime().noteOffSent));
+            synth->getRuntime().Log("note off seen " + std::to_string(synth->getRuntime().noteOffSeen));
+            synth->getRuntime().Log("notes hanging sent " + std::to_string(synth->getRuntime().noteOnSent - synth->getRuntime().noteOffSent));
+            synth->getRuntime().Log("notes hanging seen " + std::to_string(synth->getRuntime().noteOnSeen - synth->getRuntime().noteOffSeen));
+#endif
+            synth->ShutUp();
+            break;
+    }
+    getData->data.source &= ~TOPLEVEL::action::lowPrio;
+    if (control != MAIN::control::startInstance && control != MAIN::control::stopInstance)
+        guiTo = true;
+    return value;
+}
+
+
+
+int InterChange::indirectBank(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text)
+{
+    bool write = (getData->data.type & TOPLEVEL::type::Write);
+    int value = getData->data.value;
+    int control = getData->data.control;
+    int kititem = getData->data.kit;
+    int engine = getData->data.engine;
+    int insert = getData->data.insert;
+    int parameter = getData->data.parameter;
+    switch (control)
+    {
+        case BANK::control::renameInstrument:
+        {
+            if (kititem == UNUSED)
+            {
+                kititem = synth->getRuntime().currentBank;
+                getData->data.kit = kititem;
+            }
+            if (engine == UNUSED)
+            {
+                engine = synth->getRuntime().currentRoot;
+                getData->data.engine = engine;
+            }
+            int msgID = synth->bank.setInstrumentName(text, insert, kititem, engine);
+            if (msgID > NO_MSG)
+                text = " FAILED ";
+            else
+                text = " ";
+            text += textMsgBuffer.fetch(msgID & NO_MSG);
+            synth->getRuntime().lastBankPart = UNUSED;
+            newMsg = true;
+            break;
+        }
+        case BANK::control::saveInstrument:
+        {
+            if (kititem == UNUSED)
+            {
+                kititem = synth->getRuntime().currentBank;
+                getData->data.kit = kititem;
+            }
+            if (engine == UNUSED)
+            {
+                engine = synth->getRuntime().currentRoot;
+                getData->data.engine = engine;
+            }
+            if (parameter == UNUSED)
+            {
+                parameter = synth->getRuntime().currentPart;
+                getData->data.parameter = parameter;
+            }
+            text = synth->part[parameter]->Pname;
+            if (text == DEFAULT_NAME)
+                text = "FAILED Can't save default instrument type";
+            else if (!synth->bank.savetoslot(engine, kititem, insert, parameter))
+                text = "FAILED Could not save " + text + " to " + to_string(insert + 1);
+            else
+            { // 0x80 on engine indicates it is a save not a load
+                if (synth->getRuntime().bankHighlight)
+                    synth->getRuntime().lastBankPart = (insert << 15) | (kititem << 8) | engine | 0x80;
+                text = "" + to_string(insert + 1) +". " + text;
+            }
+            newMsg = true;
+            break;
+        }
+        case BANK::control::deleteInstrument:
+        {
+            text  = synth->bank.clearslot(value, synth->getRuntime().currentRoot,  synth->getRuntime().currentBank);
+            synth->getRuntime().lastBankPart = UNUSED;
+            newMsg = true;
+            break;
+        }
+
+        case BANK::control::selectFirstInstrumentToSwap:
+        {
+            if (kititem == UNUSED)
+            {
+                kititem = synth->getRuntime().currentBank;
+                getData->data.kit = kititem;
+            }
+            if (engine == UNUSED)
+            {
+                engine = synth->getRuntime().currentRoot;
+                getData->data.engine = engine;
+            }
+            //std::cout << "Int swap 1 I " << int(value)  << "  B " << int(kititem) << "  R " << int(engine) << std::endl;
+            swapInstrument1 = insert;
+            swapBank1 = kititem;
+            swapRoot1 = engine;
+            break;
+        }
+        case BANK::control::selectSecondInstrumentAndSwap:
+        {
+            if (kititem == UNUSED)
+            {
+                kititem = synth->getRuntime().currentBank;
+                getData->data.kit = kititem;
+            }
+            if (engine == UNUSED)
+            {
+                engine = synth->getRuntime().currentRoot;
+                getData->data.engine = engine;
+            }
+            //std::cout << "Int swap 2 I " << int(insert) << "  B " << int(kititem) << "  R " << int(engine) << std::endl;
+            text = synth->bank.swapslot(swapInstrument1, insert, swapBank1, kititem, swapRoot1, engine);
+            swapInstrument1 = UNUSED;
+            swapBank1 = UNUSED;
+            swapRoot1 = UNUSED;
+            synth->getRuntime().lastBankPart = UNUSED;
+            newMsg = true;
+            guiTo = true;
+            break;
+        }
+        case BANK::control::selectBank:
+            if (engine == UNUSED)
+                engine = getData->data.engine = synth->getRuntime().currentRoot;
+            if (write)
+            {
+                text = textMsgBuffer.fetch(synth->setRootBank(engine, value) & NO_MSG);
+
+            }
+            else
+            {
+                int tmp = synth->getRuntime().currentBank;
+                text = "Current: " +(to_string(tmp)) + " " + synth->bank.getBankName(tmp, getData->data.engine);
+            }
+            newMsg = true;
+            break;
+        case BANK::control::renameBank:
+            if (engine == UNUSED)
+                engine = getData->data.engine = synth->getRuntime().currentRoot;
+            if (write)
+            {
+                int tmp = synth->bank.changeBankName(getData->data.engine, value, text);
+                text = textMsgBuffer.fetch(tmp & NO_MSG);
+                if (tmp > NO_MSG)
+                    text = "FAILED: " + text;
+                //std::cout << text << std::endl;
+                guiTo = true;
+            }
+            else
+            {
+                text = " Name: " + synth->bank.getBankName(value, getData->data.engine);
+            }
+            newMsg = true;
+            break;
+
+        case BANK::control::selectFirstBankToSwap:
+            if (engine == UNUSED)
+            {
+                engine = synth->getRuntime().currentRoot;
+                getData->data.engine = engine;
+            }
+            swapBank1 = kititem;
+            swapRoot1 = engine;
+            break;
+        case BANK::control::selectSecondBankAndSwap:
+            if (engine == UNUSED)
+            {
+                engine = synth->getRuntime().currentRoot;
+                getData->data.engine = engine;
+            }
+            text = synth->bank.swapbanks(swapBank1, kititem, swapRoot1, engine);
+            swapBank1 = UNUSED;
+            swapRoot1 = UNUSED;
+            newMsg = true;
+            guiTo = true;
+            break;
+
+        case BANK::control::selectRoot:
+            if (write)
+            {
+                int msgID = synth->setRootBank(value, UNUSED);
+                if (msgID < NO_MSG)
+                    synth->saveBanks(); // do we need this when only selecting?
+                text = textMsgBuffer.fetch(msgID & NO_MSG);
+            }
+            else
+            {
+                int tmp = synth->getRuntime().currentRoot;
+                text = "Current Root: " +(to_string(tmp)) + " " + synth->bank.getRootPath(tmp);
+            }
+            newMsg = true;
+            break;
+        case BANK::control::changeRootId:
+            if (engine == UNUSED)
+                getData->data.engine = synth->getRuntime().currentRoot;
+            synth->bank.changeRootID(getData->data.engine, value);
+            synth->saveBanks();
+            break;
+        case BANK::control::refreshDefaults:
+            if (value)
+                synth->bank.checkLocalBanks();
+            synth->getRuntime().banksChecked = true;
+        break;
+    }
+    getData->data.source &= ~TOPLEVEL::action::lowPrio;
+    return value;
+}
+
+
+int InterChange::indirectConfig(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text)
+{
+    bool write = (getData->data.type & TOPLEVEL::type::Write);
+    int value = getData->data.value;
+    int control = getData->data.control;
+    int kititem = getData->data.kit;
+    switch (control)
+    {
+        case CONFIG::control::jackMidiSource:
+            if (write)
+            {
+                synth->getRuntime().jackMidiDevice = text;
+                synth->getRuntime().configChanged = true;
+            }
+            else
+                text = synth->getRuntime().jackMidiDevice;
+            newMsg = true;
+            break;
+        case CONFIG::control::jackServer:
+            if (write)
+            {
+                synth->getRuntime().jackServer = text;
+                synth->getRuntime().configChanged = true;
+            }
+            else
+                text = synth->getRuntime().jackServer;
+            newMsg = true;
+            break;
+        case CONFIG::control::alsaMidiSource:
+            if (write)
+            {
+                synth->getRuntime().alsaMidiDevice = text;
+                synth->getRuntime().configChanged = true;
+            }
+            else
+                text = synth->getRuntime().alsaMidiDevice;
+            newMsg = true;
+            break;
+        case CONFIG::control::alsaAudioDevice:
+            if (write)
+            {
+                synth->getRuntime().alsaAudioDevice = text;
+                synth->getRuntime().configChanged = true;
+            }
+            else
+                text = synth->getRuntime().alsaAudioDevice;
+            newMsg = true;
+            break;
+        case CONFIG::control::addPresetRootDir:
+        {
+            bool isOK = false;
+            if (isDirectory(text))
+                isOK= true;
+            else
+            {
+                if (createDir(text))
+                {
+                    text = " FAILED could not create " + text;
+                }
+                else
+                    isOK = true;
+            }
+            if (isOK)
+            {
+                int i = 0;
+                while (!firstSynth->getRuntime().presetsDirlist[i].empty())
+                    ++i;
+                if (i > (MAX_PRESETS - 2))
+                    text = " FAILED preset list full";
+                else
+                {
+                    firstSynth->getRuntime().presetsDirlist[i] = text;
+                    text = "ed " + text;
+                }
+            }
+            newMsg = true;
+            synth->getRuntime().configChanged = true;
+            break;
+        }
+        case CONFIG::control::removePresetRootDir:
+        {
+            int i = value;
+            text = firstSynth->getRuntime().presetsDirlist[i];
+            while (!firstSynth->getRuntime().presetsDirlist[i + 1].empty())
+            {
+                firstSynth->getRuntime().presetsDirlist[i] = firstSynth->getRuntime().presetsDirlist[i + 1];
+                ++i;
+            }
+            firstSynth->getRuntime().presetsDirlist[i] = "";
+            synth->getRuntime().currentPreset = 0;
+            newMsg = true;
+            synth->getRuntime().configChanged = true;
+            break;
+        }
+        case CONFIG::control::currentPresetRoot:
+        {
+            if (write)
+            {
+                synth->getRuntime().currentPreset = value;
+                synth->getRuntime().configChanged = true;
+            }
+            else
+                value = synth->getRuntime().currentPreset = value;
+            text = firstSynth->getRuntime().presetsDirlist[value];
+            newMsg = true;
+            break;
+        }
+        case CONFIG::control::saveCurrentConfig:
+            if (write)
+            {
+                text = synth->getRuntime().ConfigFile;
+                if (synth->getRuntime().saveConfig())
+                    text = "d " + text;
+                else
+                    text = " FAILED " + text;
+            }
+            else
+                text = "READ";
+            newMsg = true;
+            getData->data.miscmsg = textMsgBuffer.push(text); // slightly odd case
+            break;
+        case CONFIG::control::historyLock:
+        {
+            if (write)
+                synth->setHistoryLock(kititem, value);
+            else
+                value = synth->getHistoryLock(kititem);
+            break;
+        }
+    }
+    if ((getData->data.source & TOPLEVEL::action::noAction) != TOPLEVEL::action::fromGUI)
+        guiTo = true;
+    getData->data.source &= ~TOPLEVEL::action::lowPrio;
+    return value;
+}
+
+
+int InterChange::indirectPart(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text)
+{
+    bool write = (getData->data.type & TOPLEVEL::type::Write);
+    int value = getData->data.value;
+    int control = getData->data.control;
+    int npart = getData->data.part;
+    int kititem = getData->data.kit;
+    int parameter = getData->data.parameter;
+
+    Part *part = synth->part[npart];
+
+    switch(control)
+    {
+        case PART::control::keyShift:
+        {
+            if (write)
+            {
+                part->Pkeyshift = value + 64;
+                synth->setPartMap(npart);
+            }
+            else
+                value = part->Pkeyshift - 64;
+            getData->data.source &= ~TOPLEVEL::action::lowPrio;
+        }
+        break;
+        case PART::control::enableKitLine:
+            if (write)
+            {
+                part->setkititemstatus(kititem, value);
+                synth->partonoffWrite(npart, 2);
+                getData->data.source &= ~TOPLEVEL::action::lowPrio;
+            }
+        break;
+
+        case PART::control::defaultInstrument: // clear part
+            if (write)
+            {
+                doClearPart(npart);
+                synth->getRuntime().sessionSeen[TOPLEVEL::XML::Instrument] = false;
+                getData->data.source &= ~TOPLEVEL::action::lowPrio;
+            }
+            break;
+        case PART::control::enablePad:
+            if (write)
+            {
+                int temp = kititem;
+                if (temp >= NUM_KIT_ITEMS)
+                    temp = 0;
+                setpadparams(npart, temp);
+                getData->data.source &= ~TOPLEVEL::action::lowPrio;
+            }
+            break;
+        case PART::control::padsynthParameters:
+            if (write)
+            {
+                setpadparams(npart, kititem);
+                getData->data.source &= ~TOPLEVEL::action::lowPrio;
+            }
+            else
+                value = part->kit[kititem].padpars->Papplied;
+            break;
+
+        case PART::control::audioDestination:
+            if (npart < synth->getRuntime().NumAvailableParts)
+            {
+                if (value & 2)
+                {
+                    mainRegisterAudioPort(synth, npart);
+                }
+                getData->data.source &= ~TOPLEVEL::action::lowPrio;
+            }
+            break;
+        case PART::control::instrumentCopyright:
+            if (write)
+            {
+                part->info.Pauthor = text;
+                guiTo = true;
+            }
+            else
+                text = part->info.Pauthor;
+            getData->data.source &= ~TOPLEVEL::action::lowPrio;
+            newMsg = true;
+            break;
+        case PART::control::instrumentComments:
+            if (write)
+            {
+                part->info.Pcomments = text;
+                guiTo = true;
+            }
+            else
+                text = part->info.Pcomments;
+            getData->data.source &= ~TOPLEVEL::action::lowPrio;
+            newMsg = true;
+            break;
+        case PART::control::instrumentName: // part or kit item names
+            if (kititem == UNUSED)
+            {
+                if (write)
+                {
+                    part->Pname = text;
+                    guiTo = true;
+                }
+                else
+                {
+                    text = part->Pname;
+                }
+            }
+            else if (part->Pkitmode)
+            {
+                if (kititem >= NUM_KIT_ITEMS)
+                    text = " FAILED out of range";
+                else
+                {
+                    if (write)
+                    {
+                        part->kit[kititem].Pname = text;
+                        guiTo = true;
+                    }
+                    else
+                    {
+                        text = part->kit[kititem].Pname;
+                    }
+                }
+            }
+            else
+                text = " FAILED Not in kit mode";
+            getData->data.source &= ~TOPLEVEL::action::lowPrio;
+            newMsg = true;
+            break;
+        case PART::control::instrumentType:
+            if (write)
+            {
+                part->info.Ptype = value;
+                guiTo = true;
+            }
+            else
+                value = part->info.Ptype;
+            getData->data.source &= ~TOPLEVEL::action::lowPrio;
+            break;
+        case PART::control::defaultInstrumentCopyright:
+            std::string name = synth->getRuntime().ConfigDir + "/copyright.txt";
+            if (parameter == 0) // load
+            {
+                text = loadText(name); // TODO provide failure warning
+                part->info.Pauthor = text;
+                guiTo = true;
+            }
+            else
+            {
+                text = part->info.Pauthor;
+                saveText(text, name);
+            }
+            getData->data.source &= ~TOPLEVEL::action::lowPrio;
+            newMsg = true;
+            break;
+    }
+    return value;
+}
 
 std::string InterChange::formatScales(std::string text)
 {
@@ -1840,84 +1927,14 @@ bool InterChange::commandSendReal(CommandBlock *getData)
         return false;
     }
 
-    if (engine == PART::engine::padSynth)
-    {
-        switch(insert)
-        {
-            case UNUSED:
-                commandPad(getData);
-                part->kit[kititem].padpars->presetsUpdated();
-                break;
-            case TOPLEVEL::insert::LFOgroup:
-                commandLFO(getData);
-                break;
-            case TOPLEVEL::insert::filterGroup:
-                commandFilter(getData);
-                break;
-            case TOPLEVEL::insert::envelopeGroup:
-                commandEnvelope(getData);
-                break;
-            case TOPLEVEL::insert::envelopePoints:
-                commandEnvelope(getData);
-                break;
-            case TOPLEVEL::insert::envelopePointChange:
-                commandEnvelope(getData);
-                break;
-            case TOPLEVEL::insert::oscillatorGroup:
-                commandOscillator(getData,  part->kit[kititem].padpars->POscil);
-                part->kit[kititem].padpars->presetsUpdated();
-                break;
-            case TOPLEVEL::insert::harmonicAmplitude:
-                commandOscillator(getData,  part->kit[kititem].padpars->POscil);
-                part->kit[kititem].padpars->presetsUpdated();
-                break;
-            case TOPLEVEL::insert::harmonicPhaseBandwidth:
-                commandOscillator(getData,  part->kit[kititem].padpars->POscil);
-                part->kit[kititem].padpars->presetsUpdated();
-                break;
-            case TOPLEVEL::insert::resonanceGroup:
-                commandResonance(getData, part->kit[kititem].padpars->resonance);
-                part->kit[kititem].padpars->presetsUpdated();
-                break;
-            case TOPLEVEL::insert::resonanceGraphInsert:
-                commandResonance(getData, part->kit[kititem].padpars->resonance);
-                part->kit[kititem].padpars->presetsUpdated();
-                break;
-        }
-        return true;
-    }
+    if (engine == PART::engine::addSynth)
+        return processAdd(getData, synth);
 
     if (engine == PART::engine::subSynth)
-    {
-        switch (insert)
-        {
-            case UNUSED:
-                commandSub(getData);
-                part->kit[kititem].subpars->presetsUpdated();
-                break;
-            case TOPLEVEL::insert::harmonicAmplitude:
-                commandSub(getData);
-                part->kit[kititem].subpars->presetsUpdated();
-                break;
-            case TOPLEVEL::insert::harmonicPhaseBandwidth:
-                commandSub(getData);
-                part->kit[kititem].subpars->presetsUpdated();
-                break;
-            case TOPLEVEL::insert::filterGroup:
-                commandFilter(getData);
-                break;
-            case TOPLEVEL::insert::envelopeGroup:
-                commandEnvelope(getData);
-                break;
-            case TOPLEVEL::insert::envelopePoints:
-                commandEnvelope(getData);
-                break;
-            case TOPLEVEL::insert::envelopePointChange:
-                commandEnvelope(getData);
-                break;
-        }
-        return true;
-    }
+        return processSub(getData, synth);
+
+    if (engine == PART::engine::padSynth)
+        return processPad(getData, synth);
 
     if (engine >= PART::engine::addVoice1)
     {
@@ -1928,95 +1945,193 @@ bool InterChange::commandSendReal(CommandBlock *getData)
             synth->getRuntime().finishedCLI = true;
             return false;
         }
-        switch (insert)
-        {
-            case UNUSED:
-                commandAddVoice(getData);
-                part->kit[kititem].adpars->presetsUpdated();
-                break;
-            case TOPLEVEL::insert::LFOgroup:
-                commandLFO(getData);
-                break;
-            case TOPLEVEL::insert::filterGroup:
-                commandFilter(getData);
-                break;
-            case TOPLEVEL::insert::envelopeGroup:
-            case TOPLEVEL::insert::envelopePoints:
-            case TOPLEVEL::insert::envelopePointChange:
-                commandEnvelope(getData);
-                break;
-            case TOPLEVEL::insert::oscillatorGroup:
-            case TOPLEVEL::insert::harmonicAmplitude:
-            case TOPLEVEL::insert::harmonicPhaseBandwidth:
-                if (engine >= PART::engine::addMod1)
-                {
-                    engine -= PART::engine::addMod1;
-                    if (control != 113)
-                    {
-                        int voicechange = part->kit[kititem].adpars->VoicePar[engine].PextFMoscil;
-                        //std::cout << "ext Mod osc " << voicechange << std::endl;
-                        if (voicechange != -1)
-                        {
-                            engine = voicechange;
-                            getData->data.engine = engine +  PART::addMod1;
-                        }   // force it to external mod
-                    }
-
-                    commandOscillator(getData,  part->kit[kititem].adpars->VoicePar[engine].POscilFM);
-                }
-                else
-                {
-                    engine -= PART::engine::addVoice1;
-                    if (control != 137)
-                    {
-                        int voicechange = part->kit[kititem].adpars->VoicePar[engine].Pextoscil;
-                        //std::cout << "ext voice osc " << voicechange << std::endl;
-                        if (voicechange != -1)
-                        {
-                            engine = voicechange;
-                            getData->data.engine = engine | PART::engine::addVoice1;
-                        }   // force it to external voice
-                    }
-
-                    commandOscillator(getData,  part->kit[kititem].adpars->VoicePar[engine].POscil);
-                }
-                part->kit[kititem].adpars->presetsUpdated();
-                break;
-        }
-        return true;
+        return processVoice(getData, synth);
     }
 
-    if (engine == PART::engine::addSynth)
-    {
-        switch (insert)
-        {
-            case UNUSED:
-                commandAdd(getData);
-                part->kit[kititem].adpars->presetsUpdated();
-                break;
-            case TOPLEVEL::insert::LFOgroup:
-                commandLFO(getData);
-                break;
-            case TOPLEVEL::insert::filterGroup:
-                commandFilter(getData);
-                break;
-            case TOPLEVEL::insert::envelopeGroup:
-            case TOPLEVEL::insert::envelopePoints:
-            case TOPLEVEL::insert::envelopePointChange:
-                commandEnvelope(getData);
-                break;
-            case TOPLEVEL::insert::resonanceGroup:
-            case TOPLEVEL::insert::resonanceGraphInsert:
-                commandResonance(getData, part->kit[kititem].adpars->GlobalPar.Reson);
-                part->kit[kititem].adpars->presetsUpdated();
-                break;
-        }
-        return true;
-    }
     getData->data.source = TOPLEVEL::action::noAction;
     synth->getRuntime().Log("Invalid engine number");
     synth->getRuntime().finishedCLI = true;
     return false;
+}
+
+
+bool InterChange::processAdd(CommandBlock *getData, SynthEngine *synth)
+{
+    Part *part = synth->part[getData->data.part];
+    int kititem = getData->data.kit;
+    switch(getData->data.insert)
+    {
+        case UNUSED:
+            commandAdd(getData);
+            part->kit[kititem].adpars->presetsUpdated();
+            break;
+        case TOPLEVEL::insert::LFOgroup:
+            commandLFO(getData);
+            break;
+        case TOPLEVEL::insert::filterGroup:
+            commandFilter(getData);
+            break;
+        case TOPLEVEL::insert::envelopeGroup:
+        case TOPLEVEL::insert::envelopePoints:
+        case TOPLEVEL::insert::envelopePointChange:
+            commandEnvelope(getData);
+            break;
+        case TOPLEVEL::insert::resonanceGroup:
+        case TOPLEVEL::insert::resonanceGraphInsert:
+            commandResonance(getData, part->kit[kititem].adpars->GlobalPar.Reson);
+            part->kit[kititem].adpars->presetsUpdated();
+            break;
+        }
+    return true;
+}
+
+
+bool InterChange::processVoice(CommandBlock *getData, SynthEngine *synth)
+{
+    Part *part = synth->part[getData->data.part];
+    int control = getData->data.control;
+    int kititem = getData->data.kit;
+    int engine = getData->data.engine;
+    switch(getData->data.insert)
+    {
+        case UNUSED:
+            commandAddVoice(getData);
+            part->kit[kititem].adpars->presetsUpdated();
+            break;
+        case TOPLEVEL::insert::LFOgroup:
+            commandLFO(getData);
+            break;
+        case TOPLEVEL::insert::filterGroup:
+            commandFilter(getData);
+            break;
+        case TOPLEVEL::insert::envelopeGroup:
+        case TOPLEVEL::insert::envelopePoints:
+        case TOPLEVEL::insert::envelopePointChange:
+            commandEnvelope(getData);
+            break;
+        case TOPLEVEL::insert::oscillatorGroup:
+        case TOPLEVEL::insert::harmonicAmplitude:
+        case TOPLEVEL::insert::harmonicPhaseBandwidth:
+            if (engine >= PART::engine::addMod1)
+            {
+                engine -= PART::engine::addMod1;
+                if (control != ADDVOICE::control::modulatorOscillatorSource)
+                {
+                    int voicechange = part->kit[kititem].adpars->VoicePar[engine].PextFMoscil;
+                    //std::cout << "ext Mod osc " << voicechange << std::endl;
+                    if (voicechange != -1)
+                    {
+                        engine = voicechange;
+                        getData->data.engine = engine +  PART::addMod1;
+                    }   // force it to external mod
+                }
+
+                commandOscillator(getData,  part->kit[kititem].adpars->VoicePar[engine].POscilFM);
+            }
+            else
+            {
+                engine -= PART::engine::addVoice1;
+                if (control != PART::control::sustainPedalEnable) // how can this ever be true!!!
+                {
+                    int voicechange = part->kit[kititem].adpars->VoicePar[engine].Pextoscil;
+                    //std::cout << "ext voice osc " << voicechange << std::endl;
+                    if (voicechange != -1)
+                    {
+                        engine = voicechange;
+                        getData->data.engine = engine | PART::engine::addVoice1;
+                    }   // force it to external voice
+                }
+                commandOscillator(getData,  part->kit[kititem].adpars->VoicePar[engine].POscil);
+            }
+            part->kit[kititem].adpars->presetsUpdated();
+            break;
+    }
+    return true;
+}
+
+
+bool InterChange::processSub(CommandBlock *getData, SynthEngine *synth)
+{
+    Part *part = synth->part[getData->data.part];
+    int kititem = getData->data.kit;
+    switch(getData->data.insert)
+    {
+        case UNUSED:
+            commandSub(getData);
+            part->kit[kititem].subpars->presetsUpdated();
+            break;
+        case TOPLEVEL::insert::harmonicAmplitude:
+            commandSub(getData);
+            part->kit[kititem].subpars->presetsUpdated();
+            break;
+        case TOPLEVEL::insert::harmonicPhaseBandwidth:
+            commandSub(getData);
+            part->kit[kititem].subpars->presetsUpdated();
+            break;
+        case TOPLEVEL::insert::filterGroup:
+            commandFilter(getData);
+            break;
+        case TOPLEVEL::insert::envelopeGroup:
+            commandEnvelope(getData);
+            break;
+        case TOPLEVEL::insert::envelopePoints:
+            commandEnvelope(getData);
+            break;
+        case TOPLEVEL::insert::envelopePointChange:
+            commandEnvelope(getData);
+            break;
+    }
+    return true;
+}
+
+
+bool InterChange::processPad(CommandBlock *getData, SynthEngine *synth)
+{
+    Part *part = synth->part[getData->data.part];
+    int kititem = getData->data.kit;
+    switch(getData->data.insert)
+    {
+        case UNUSED:
+            commandPad(getData);
+            part->kit[kititem].padpars->presetsUpdated();
+            break;
+        case TOPLEVEL::insert::LFOgroup:
+            commandLFO(getData);
+            break;
+        case TOPLEVEL::insert::filterGroup:
+            commandFilter(getData);
+            break;
+        case TOPLEVEL::insert::envelopeGroup:
+            commandEnvelope(getData);
+            break;
+        case TOPLEVEL::insert::envelopePoints:
+            commandEnvelope(getData);
+            break;
+        case TOPLEVEL::insert::envelopePointChange:
+            commandEnvelope(getData);
+            break;
+        case TOPLEVEL::insert::oscillatorGroup:
+            commandOscillator(getData,  part->kit[kititem].padpars->POscil);
+            part->kit[kititem].padpars->presetsUpdated();
+            break;
+        case TOPLEVEL::insert::harmonicAmplitude:
+            commandOscillator(getData,  part->kit[kititem].padpars->POscil);
+            part->kit[kititem].padpars->presetsUpdated();
+            break;
+        case TOPLEVEL::insert::harmonicPhaseBandwidth:
+            commandOscillator(getData,  part->kit[kititem].padpars->POscil);
+            part->kit[kititem].padpars->presetsUpdated();
+            break;
+        case TOPLEVEL::insert::resonanceGroup:
+            commandResonance(getData, part->kit[kititem].padpars->resonance);
+            part->kit[kititem].padpars->presetsUpdated();
+            break;
+        case TOPLEVEL::insert::resonanceGraphInsert:
+            commandResonance(getData, part->kit[kititem].padpars->resonance);
+            part->kit[kititem].padpars->presetsUpdated();
+            break;
+    }
+    return true;
 }
 
 
@@ -3154,13 +3269,23 @@ void InterChange::commandPart(CommandBlock *getData)
             break;
         case PART::control::enablePad:
             if (write)
+            {
                 part->kit[kititem].Ppadenabled = value_bool;
+                if (!part->kit[kititem].padpars->Papplied)
+                {
+                    synth->partonoffWrite(npart, -1);
+                    getData->data.source = TOPLEVEL::action::lowPrio;
+                }
+            }
             else
                 value = part->kit[kititem].Ppadenabled;
             break;
         case PART::control::enableKitLine:
             if (write)
-                part->setkititemstatus(kititem, value_bool);
+            {
+                synth->partonoffWrite(npart, -1);
+                getData->data.source = TOPLEVEL::action::lowPrio;
+            }
             else
                 value = part->kit[kititem].Penabled;
             break;
@@ -3702,17 +3827,21 @@ void InterChange::commandPart(CommandBlock *getData)
             break;
         case PART::control::midiExpression:
             if (write)
-            {
                 part->SetController(MIDI::CC::expression, value);
-            }
             else
                 value = part->ctl->expression.data;
             break;
         case PART::control::midiSustain:
-            ; // not yet
+            if (write)
+                part->ctl->setsustain(value);
+            else
+                value = part->ctl->sustain.data;
             break;
         case PART::control::midiPortamento:
-            ; // not yet
+            if (write)
+                part->ctl->setportamento(value);
+            else
+                value = part->ctl->portamento.data;
             break;
         case PART::control::midiFilterQ:
             if (write)
@@ -3731,6 +3860,25 @@ void InterChange::commandPart(CommandBlock *getData)
                 part->ctl->setbandwidth(value);
             else
                 value = part->ctl->bandwidth.data;
+            break;
+
+        case PART::control::midiFMamp:
+            if (write)
+                part->ctl->setfmamp(value);
+            else
+                value = part->ctl->fmamp.data;
+            break;
+        case PART::control::midiResonanceCenter:
+            if (write)
+                part->ctl->setresonancecenter(value);
+            else
+                value = part->ctl->resonancecenter.data;
+            break;
+        case PART::control::midiResonanceBandwidth:
+            if (write)
+                part->ctl->setresonancebw(value);
+            else
+                value = part->ctl->resonancebandwidth.data;
             break;
 
         case PART::control::instrumentCopyright: // done elsewhere
@@ -3839,11 +3987,11 @@ void InterChange::commandAdd(CommandBlock *getData)
                     getData->data.value = 1;
                     value_int = 1;
                 }
-                pars->GlobalPar.PDetuneType = value_int +1;
+                pars->GlobalPar.PDetuneType = value_int;
             }
             else
             {
-                value = pars->GlobalPar.PDetuneType -1;
+                value = pars->GlobalPar.PDetuneType;
                 if (value < 1)
                     value = 1;
             }
@@ -5832,6 +5980,7 @@ void InterChange::envelopeReadWrite(CommandBlock *getData, EnvelopeParams *pars)
                 pars->Penvval[point] = val;
                 getData->data.value = val;
                 getData->data.offset = Xincrement;
+                pars->presetsUpdated();
             }
             else
                 getData->data.value = UNUSED;
@@ -5855,6 +6004,7 @@ void InterChange::envelopeReadWrite(CommandBlock *getData, EnvelopeParams *pars)
                 -- pars->Penvsustain;
             pars->Penvpoints = envpoints;
             getData->data.value = envpoints;
+            pars->presetsUpdated();
         }
         return;
     }
@@ -5874,6 +6024,7 @@ void InterChange::envelopeReadWrite(CommandBlock *getData, EnvelopeParams *pars)
                 Xincrement = 0;
             else
                 pars->Penvdt[point] = Xincrement;
+            pars->presetsUpdated();
         }
         else
         {
@@ -6506,11 +6657,59 @@ float InterChange::returnLimits(CommandBlock *getData)
         return value;
     }
 
+    if (npart == TOPLEVEL::section::midiIn)
+    {
+        min = 0;
+        max = 127;
+        switch (control)
+        {
+            case PART::control::volume:
+                def = 96;
+                break;
+            case PART::control::midiExpression:
+                def = 127;
+                break;
+            case PART::control::midiSustain:
+                def = 0;
+                break;
+            case PART::control::midiPortamento:
+                def = 0;
+                break;
+            case PART::control::midiFMamp:
+                def = 127;
+                break;
+            default:
+                def = 64;
+        }
+        std::cout << "here " << int(def) << std::endl;
+
+
+        switch (request)
+        {
+            case TOPLEVEL::type::Adjust:
+                if (value < min)
+                    value = min;
+                else if (value > max)
+                    value = max;
+            break;
+            case TOPLEVEL::type::Minimum:
+                value = min;
+                break;
+            case TOPLEVEL::type::Maximum:
+                value = max;
+                break;
+            case TOPLEVEL::type::Default:
+                value = def;
+                break;
+        }
+        return value;
+    }
 
     min = 0;
     max = 127;
     def = 0;
     std::cout << "Using unknown defaults" << std::endl;
+    //std::cout << "Part " << int(npart) << std::endl;
 
     switch (request)
     {

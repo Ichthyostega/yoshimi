@@ -86,6 +86,13 @@ class InterChange : private DataText
         pthread_t  sortResultsThreadHandle;
         void muteQueueWrite(CommandBlock *getData);
         void indirectTransfers(CommandBlock *getData, bool noForward = false);
+        int indirectVector(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text);
+        int indirectMidi(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text);
+        int indirectScales(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text);
+        int indirectMain(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text);
+        int indirectBank(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text);
+        int indirectConfig(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text);
+        int indirectPart(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text);
         std::string formatScales(std::string text);
 
         unsigned int lockTime;
@@ -93,6 +100,10 @@ class InterChange : private DataText
         unsigned int swapRoot1;
         unsigned int swapBank1;
         unsigned int swapInstrument1;
+        bool processAdd(CommandBlock *getData, SynthEngine *synth);
+        bool processVoice(CommandBlock *getData, SynthEngine *synth);
+        bool processSub(CommandBlock *getData, SynthEngine *synth);
+        bool processPad(CommandBlock *getData, SynthEngine *synth);
 
         void commandMidi(CommandBlock *getData);
         void vectorClear(int Nvector);

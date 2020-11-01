@@ -1,4 +1,90 @@
-yoshimi 1.7.2
+yoshimi 1.7.3
+
+2020-10-29 Will
+*Updated docs.
+* Set release as 1.7.3 (mantenance)
+
+2020-10-27 Will
+* BugFix: base func mod not enabled for triangle wave.
+
+2020-10-25 Will
+* BugFix: Failing to load some .scl files.
+  Microsoft format text generating blank lines.
+
+2020-10-24 Will
+* Bugfix: Voice enable not recognised from voice list.
+
+2020-10-8 Will
+* BugFix: Addsynth Global detune type range wrong.
+
+2020-9-20 Will
+* BugFix: Indirect vector not being called.
+  Copy and paste error :(
+
+2020-9-20 Will
+* Removed very old commented out WidgetPdial code.
+  It was a bit hacky and was long since superceded.
+
+2020-9-16 Will
+* Split out engine processes from commandSendReal.
+* Found and replaced 2 magic numbers.
+  Don't understand how sustainPedalEnable can ever be
+  relevant in addVoice! (InterChange.cpp line 1969);
+* Split indirectMain out of indirectTransfers.
+* Cleaned up indirectMain.
+* Split indirectBank out of indirectTransfers.
+* Split indirectConfig out of indirectTransfers.
+* Split indirectPart out of indirectTransfers.
+* Split indirectScales out of indirectTransfers.
+* Spilt indirectVector & indirectMidi from indirectTransfers.
+
+2020-9-11 Will
+* Fixed some confusing CLI info typos.
+* Corrected CLI anomaly with instrument default copyright.
+  It was possible to set it outside the part context
+  and sometimes this only worked for part 1.
+
+2020-9-6 Will
+* Major revision of virtual keyboard.
+  Controller values match existing settings.
+  Displayed values updated when changing channel.
+  RH button defaults recognised.
+* Updated Docs.
+
+2020-9-4 Will
+* Slightly increased splash times and moved timeout point.
+* Moved Interchange Init to end of Synth Init.
+  Ensures everything set before Interchange threads run.
+* Disabled all parts at start of default setting.
+
+2020-9-2 Will
+* Simplified GUI code for button 3 use.
+* Temporary fix to virtual keyboard default controller.
+
+2020-8-25 Will
+* Click on mixer volume clears all overloads on that column.
+  But overload warning only set for currently visible row.
+* Small clarifying change to part send text in main window.
+
+2020-8-24 Will
+* Enabling part kit items now goes through indirect transfers.
+  Stops Xruns, but part is now silenced during this.
+* First time enabling of PadSynth applies parameters.
+  Has to silence the part in the process.
+
+2020-8-19 Will
+* Commented out 'Warnings as errors' in CMakeLists.txt
+  Was causing problems for less experienced builders.
+
+2020-8-19 Will
+* Reverted removal of lv2ext/programs#Interface
+  Needed by Carla to identify banks.
+* Ensured last fix was applied to both yoshimi & yoshimi-multi
+
+2020-8-18 Will
+* Bugfix: Segfault on LV2 due to untested thread join.
+* Cleaned up some warnings from lv2lint test program.
+  Two warnings remaining. Also one fail I don't understand :(
 
 2020-8-16 Will
 * Final doc updates.
