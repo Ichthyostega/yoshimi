@@ -1,0 +1,4 @@
+# Run yoshimi without gui in command line interface
+Test-Command: yoshimi -Ci &
+Depends: @
+Restrictions: allow-stderr, superficial
