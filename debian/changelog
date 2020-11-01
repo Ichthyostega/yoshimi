@@ -1,3 +1,10 @@
+yoshimi (1.7.3~dfsg0-1) unstable; urgency=medium
+
+  * New upstream version 1.7.3~dfsg0
+  * Add a superficial autopkgtest
+
+ -- Dennis Braun <d_braun@kabelmail.de>  Sun, 01 Nov 2020 23:04:52 +0100
+
 yoshimi (1.7.2~dfsg0-1) unstable; urgency=medium
 
   * New upstream version 1.7.2~dfsg0
