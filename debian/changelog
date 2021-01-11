@@ -1,3 +1,10 @@
+yoshimi (1.7.4~dfsg0-1) UNRELEASED; urgency=medium
+
+  * New upstream version 1.7.4~dfsg0
+  * Bump S-V to 4.5.1, no changes needed
+
+ -- Dennis Braun <d_braun@kabelmail.de>  Mon, 11 Jan 2021 22:43:36 +0100
+
 yoshimi (1.7.3~dfsg0-1) unstable; urgency=medium
 
   * New upstream version 1.7.3~dfsg0
