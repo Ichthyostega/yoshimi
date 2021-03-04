@@ -52,6 +52,8 @@
 // global variable; see SynthEngine.cpp and main.cpp
 extern SynthEngine *firstSynth;
 
+// these two are both zero and repesented by an enum entry
+const unsigned char type_read = TOPLEVEL::type::Adjust;
 
 namespace cli {
 
@@ -548,7 +550,7 @@ void CmdInterpreter::helpLoop(list<string>& msg, string *commands, int indent, b
     string dent;
     string blanks;
 
-    while (commands[word] != "end")
+    while (commands[word] != "@end")
     {
         left = commands[word];
         if (!single)
@@ -1128,7 +1130,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
          * If it's not valid we don't block, but pass on to
          * other command tests routines.
          */
-        if (controlType == TOPLEVEL::type::Read)
+        if (controlType == type_read)
             value = 1; // dummy value
         switch (nFXtype)
         {
@@ -1492,7 +1494,7 @@ int CmdInterpreter::midiControllers(Parser& input, unsigned char controlType)
         {
             if (input.matchnMove(1, "start"))
                 value = 0;
-            else if (input.matchnMove(1, "end"))
+            else if (input.matchnMove(1, "@end"))
                 value = 1;
             cmd = PART::control::portamentoThresholdType;
         }
@@ -1613,7 +1615,43 @@ int CmdInterpreter::LFOselect(Parser& input, unsigned char controlType)
     cmd = -1;
 
     if (input.matchnMove(1, "rate"))
+    {
         cmd = LFOINSERT::control::speed;
+        if (controlType == type_read && input.isAtEnd())
+            value = 0;
+
+        else
+        {
+            if (readControl(synth, 0, LFOINSERT::bpm, npart, kitNumber, engine, TOPLEVEL::insert::LFOgroup, group))
+            {
+                int num = string2int(input);
+                input.skipChars();
+                if (input.isAtEnd())
+                {
+                    synth->getRuntime().Log("BPM mode requires two values between 1 and 16");
+                    return REPLY::done_msg;
+                }
+                int div = string2int(input);
+                if (num > 3 && div > 3)
+                {
+                    synth->getRuntime().Log("Cannot have both values greater than 3");
+                    return REPLY::done_msg;
+                }
+                else if (num == div)
+                    num = div = 1;
+                value = func::BPMfractionLFOfreq(num, div);
+            }
+            else
+            {
+                value = string2float(input);
+                if (value < 0 || value > 1)
+                {
+                    synth->getRuntime().Log("frequency requires a value between 0.0 and 1.0");
+                    return REPLY::done_msg;
+                }
+            }
+        }
+    }
     else if (input.matchnMove(1, "intensity"))
         cmd = LFOINSERT::control::depth;
     else if (input.matchnMove(1, "start"))
@@ -1627,14 +1665,19 @@ int CmdInterpreter::LFOselect(Parser& input, unsigned char controlType)
         value = (input.toggle() == 1);
         cmd = LFOINSERT::control::continuous;
     }
+    else if (input.matchnMove(1, "bpm"))
+    {
+        value = (input.toggle() == 1);
+        cmd = LFOINSERT::control::bpm;
+    }
     else if (input.matchnMove(1, "type"))
     {
-        if (controlType == TOPLEVEL::type::Read && input.isAtEnd())
+        if (controlType == type_read && input.isAtEnd())
             value = 0;
         else
         {
             int idx = 0;
-            while (LFOtype [idx] != "end")
+            while (LFOtype [idx] != "@end")
             {
                 if (input.matchnMove(2, LFOtype[idx].c_str()))
                 {
@@ -1725,7 +1768,7 @@ int CmdInterpreter::filterSelect(Parser& input, unsigned char controlType)
     }
     else if (input.matchnMove(2, "category"))
     {
-        if (controlType == TOPLEVEL::type::Read && input.isAtEnd())
+        if (controlType == type_read && input.isAtEnd())
                 value = 0; // dummy value
         else
         {
@@ -1833,7 +1876,7 @@ int CmdInterpreter::filterSelect(Parser& input, unsigned char controlType)
         }
         else if (input.matchnMove(2, "type"))
         {
-            if (controlType == TOPLEVEL::type::Read && input.isAtEnd())
+            if (controlType == type_read && input.isAtEnd())
                 value = 0;
             switch (baseType)
             {
@@ -2149,15 +2192,20 @@ int CmdInterpreter::commandGroup(Parser& input)
     if (input.isAtEnd())
     {
         synth->getRuntime().Log("\nInstrument Groups");
-        for (int i = 0; i < 17; ++ i)
+        int i = 0;
+        string entry = type_list[i];
+        while (entry != "@end")
         {
-            line = "  " + instrumentGroupType[i];
+            entry = func::stringCaps(entry, 3);
+            line = "  " + func::stringCaps(entry, 3);
             synth->getRuntime().Log(line);
+            ++ i;
+            entry = type_list[i];
         }
         return REPLY::done_msg;
     }
     string name = string{input};
-    value = stringNumInList(name, instrumentGroupType, 2) + 1;
+    value = stringNumInList(name, type_list, 2) + 1;
     //std::cout << value << std::endl;
     if (value < 1)
         return REPLY::range_msg;
@@ -2800,7 +2848,7 @@ int CmdInterpreter::commandBank(Parser& input, unsigned char controlType, bool j
     if (input.matchnMove(1, "name"))
     {
         string name = string{input};
-        if (controlType != TOPLEVEL::type::Read && name <= "!")
+        if (controlType != type_read && name <= "!")
             return REPLY::value_msg;
         int miscMsg = textMsgBuffer.push(string(input));
         int tmp = readControl(synth, 0, BANK::control::selectBank, TOPLEVEL::section::bank);
@@ -2848,7 +2896,7 @@ int CmdInterpreter::commandBank(Parser& input, unsigned char controlType, bool j
         isRoot = true;
     if (input.lineEnd(controlType))
         return REPLY::done_msg;
-    if (input.isdigit() || controlType == TOPLEVEL::type::Read)
+    if (input.isdigit() || controlType == type_read)
     {
         int tmp = string2int127(input);
         input.skipChars();
@@ -2931,11 +2979,11 @@ int CmdInterpreter::commandConfig(Parser& input, unsigned char controlType)
         else if (controlType == TOPLEVEL::type::Write)
             return REPLY::value_msg;
     }
-    /*else if (input.matchnMove(3, "engines"))
-    {
-        command = CONFIG::control::showEnginesTypes;
-        value = (input.toggle() != 0);
-    }*/
+    //else if (input.matchnMove(3, "engines"))
+    //{
+        //command = CONFIG::control::showEnginesTypes;
+        //value = (input.toggle() != 0);
+    //}
 
     else if (input.matchnMove(2, "state"))
     {
@@ -3364,14 +3412,6 @@ int CmdInterpreter::modulator(Parser& input, unsigned char controlType)
                 value -= 1;
             cmd = ADDVOICE::control::externalModulator;
         }
-        if (input.matchnMove(2, "sideband"))
-        {
-            if (readControl(synth, 0, ADDVOICE::control::modulatorType, npart, kitNumber, PART::engine::addVoice1 + voiceNumber) != 2)
-                return REPLY::inactive_msg;
-
-            cmd = ADDVOICE::control::modRingToSide;
-            value = (input.toggle() == 1);
-        }
 
         if (input.matchnMove(3, "oscillator"))
         {
@@ -3460,7 +3500,7 @@ int CmdInterpreter::modulator(Parser& input, unsigned char controlType)
             {
                 if (input.lineEnd(controlType))
                     return REPLY::value_msg;
-                if (controlType == TOPLEVEL::type::Read)
+                if (controlType == type_read)
                     value = 2; // dummy value
                 else
                 {
@@ -3580,7 +3620,7 @@ int CmdInterpreter::addVoice(Parser& input, unsigned char controlType)
         {
             if (input.lineEnd(controlType))
                 return REPLY::value_msg;
-            if (controlType == TOPLEVEL::type::Read)
+            if (controlType == type_read)
                 value = 2; // dummy value
             else
             {
@@ -3736,7 +3776,7 @@ int CmdInterpreter::addVoice(Parser& input, unsigned char controlType)
                 cmd = ADDVOICE::control::unisonVibratoSpeed;
             else if (input.matchnMove(1, "invert"))
             {
-                if (controlType == TOPLEVEL::type::Read)
+                if (controlType == type_read)
                     value = 1; // dummy value
                 else
                 {
@@ -3844,7 +3884,7 @@ int CmdInterpreter::addSynth(Parser& input, unsigned char controlType)
         {
             if (input.lineEnd(controlType))
                 return REPLY::value_msg;
-            if (controlType == TOPLEVEL::type::Read)
+            if (controlType == type_read)
                 value = 2; // dummy value
             else
             {
@@ -4001,7 +4041,7 @@ int CmdInterpreter::subSynth(Parser& input, unsigned char controlType)
         {
             if (input.lineEnd(controlType))
                 return REPLY::value_msg;
-            if (controlType == TOPLEVEL::type::Read)
+            if (controlType == type_read)
                 value = 2; // dummy value
             else
             {
@@ -4073,7 +4113,7 @@ int CmdInterpreter::subSynth(Parser& input, unsigned char controlType)
     {
         if (input.matchnMove(1, "Position"))
         {
-            if (controlType == TOPLEVEL::type::Read)
+            if (controlType == type_read)
                 value = 1; // dummy value
             else
             {
@@ -4288,7 +4328,7 @@ int CmdInterpreter::padSynth(Parser& input, unsigned char controlType)
         {
             if (input.lineEnd(controlType))
                 return REPLY::value_msg;
-            if (controlType == TOPLEVEL::type::Read)
+            if (controlType == type_read)
                 value = 2; // dummy value
             else
             {
@@ -4363,7 +4403,7 @@ int CmdInterpreter::padSynth(Parser& input, unsigned char controlType)
     {
         if (input.matchnMove(1, "Position"))
         {
-            if (controlType == TOPLEVEL::type::Read)
+            if (controlType == type_read)
                 value = 1; // dummy value
             else
             {
@@ -4728,7 +4768,7 @@ int CmdInterpreter::waveform(Parser& input, unsigned char controlType)
     int engine = contextToEngines(context);
     unsigned char insert = TOPLEVEL::insert::oscillatorGroup;
 
-    if (controlType == TOPLEVEL::type::Read && input.isAtEnd())
+    if (controlType == type_read && input.isAtEnd())
         value = 0; // dummy value
     else
     {
@@ -5047,20 +5087,15 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
             Runtime.Log("Part name is " + synth->part[npart]->Pname);
             return REPLY::done_msg;
         }
-        if (input.matchnMove(2, "clear"))
+        /*if (input.matchnMove(2, "clear"))
         {
-            sendDirect(synth, 0, 0, controlType, PART::control::defaultInstrument, npart, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, tmp);
+            sendDirect(synth, 0, 0, controlType, MAIN::control::defaultPart, npart);
             return REPLY::done_msg;
-        }
+        }*/
         if (!input.isAtEnd()) // force part not channel number
         {
             if (input.matchnMove(1, "group"))
             {
-                if (!readControl(synth, 0, CONFIG::control::showEnginesTypes, TOPLEVEL::section::config))
-                {
-                    synth->getRuntime().Log("Instrument engine and type info must be enabled");
-                    return REPLY::done_msg;
-                }
                 if (instrumentGroup.empty())
                 {
                     Runtime.Log("No list entries, or list not seen");
@@ -5336,7 +5371,7 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
             if (input.matchnMove(1, "Modulation"))
                 tmp |= PART::aftertouchType::modulation;
         }
-        if (tmp == PART::aftertouchType::modulation * 2 && controlType != TOPLEVEL::type::Read)
+        if (tmp == PART::aftertouchType::modulation * 2 && controlType != type_read)
             return REPLY::value_msg;
         return sendNormal(synth, 0, tmp & (PART::aftertouchType::modulation * 2 - 1), controlType, cmd, npart);
     }
@@ -5455,12 +5490,12 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
         if (controlType == TOPLEVEL::type::Write)
         {
             string name = type_list[pos];
-            while (name != "end" && !input.matchnMove(3, name.c_str()))
+            while (name != "@end" && !input.matchnMove(3, name.c_str()))
             {
                 ++ pos;
                 name = type_list[pos];
             }
-            if (name == "end")
+            if (name == "@end")
                 pos = 0; // undefined
         }
         return sendNormal(synth, TOPLEVEL::action::lowPrio, pos, controlType, PART::control::instrumentType, npart);
@@ -5708,6 +5743,15 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
             return REPLY::range_msg;
         return sendNormal(synth, 0, value, controlType, MAIN::control::panLawType, TOPLEVEL::section::main);
     }
+    if (input.matchnMove(2, "clear"))
+    {
+        if (input.lineEnd(controlType))
+            return REPLY::value_msg;
+        int value = string2int(input) -1;
+        if (value < 0)
+            return REPLY::range_msg;
+        return sendNormal(synth, 0, value, controlType, MAIN::control::defaultPart, TOPLEVEL::section::main);
+    }
     return REPLY::op_msg;
 }
 
@@ -5733,14 +5777,17 @@ Reply CmdInterpreter::processSrcriptFile(const string& filename)
     const char DELIM_NEWLINE ='\n';
     while (std::getline(reader, line, DELIM_NEWLINE))
     {
+        //std::cout << "line >" << line << "<" << std::endl;
         scriptParser.initWithExternalBuffer(line);
-
         if (scriptParser.isTooLarge())
         {
             Runtime.Log("*** Error: line " + to_string(lineNo) + " too long");
-            continue;
+            return Reply(REPLY::failed_msg);
         }
         ++ lineNo;
+        if (line.empty())
+            continue; // skip empty line but count it.
+
         scriptParser.skipSpace();
         if (scriptParser.peek() == '#' || iscntrl((unsigned char) scriptParser.peek()))
         {   // skip comment lines
@@ -5753,14 +5800,19 @@ Reply CmdInterpreter::processSrcriptFile(const string& filename)
         }
         if (scriptParser.matchnMove(4, "wait"))
         {
-            int tmp = string2int(scriptParser);
-            if (tmp < 1)
-                tmp = 1;
-            else if (tmp > 1000)
-                tmp = 1000;
-            Runtime.Log("Waiting " + std::to_string(tmp) + "mS");
-            usleep((tmp - 1) * 1000);
-            // total processing may add up to another 1 mS
+            int mSec = string2int(scriptParser);
+            if (mSec < 2)
+                mSec = 2;
+            else if (mSec > 30000)
+                mSec = 30000;
+            mSec -= 1; //allow for internal time
+            Runtime.Log("Waiting " + std::to_string(mSec) + "mS");
+            if (mSec > 1000)
+            {
+                sleep (mSec / 1000);
+                mSec = mSec % 1000;
+            }
+            usleep(mSec * 1000);
         }
         else
         {
@@ -5803,39 +5855,11 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
         return Reply::DONE;
     }
 #endif
-
-    if (input.matchnMove(4, "test"))
+    if (input.matchnMove(5, "filer"))
     {
-        list<string>testlist;
-        string testdir = "/home/will/yoshimi-code/banks/chip";
-        uint32_t count = file::listDir(&testlist, testdir);
-        if (count == 0xffffffff)
-        {
-            std::cout << "no such directory" << std::endl;
-            return Reply::DONE;
-        }
-        testlist.sort();
-
-        // safe removal
-        std::list<string>::iterator r_it = testlist.end();
-        while (r_it != testlist.begin())
-        {
-            string name = *--r_it;
-            if (name.substr(0, 2) == ("Re"))
-                r_it = testlist.erase(r_it);
-        }
-
-        for (list<string>::iterator it = testlist.begin(); it != testlist.end(); ++ it)
-        {
-            string name = *it;
-            if (file::isDirectory(testdir + "/" + name))
-            {
-                name += " - Dir";
-            }
-            std::cout << name << std::endl;
-        }
-        std::cout << "total found " << count << std::endl;
-        testlist.clear();
+        string result;
+        file::dir2string(result, "/home/will", ".xiz");
+        std::cout << result << std::endl;
         return Reply::DONE;
     }
 
@@ -5846,16 +5870,27 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
             sendDirect(synth, 0, 0, TOPLEVEL::type::Write, TOPLEVEL::control::forceExit, UNUSED);
             return Reply::DONE;
         }
+        bool echo = (synth->getRuntime().toConsole);
         if (currentInstance > 0)
         {
+            if (echo)
+                std::cout << "Can only exit from instance 0" << std::endl;
             Runtime.Log("Can only exit from instance 0", 1);
             return Reply::DONE;
         }
         string message;
         if (Runtime.configChanged)
+        {
+            if (echo)
+                std::cout << "System config has been changed. Still exit N/y?" << std::endl;
             message = "System config has been changed. Still exit";
+        }
         else
+        {
+            if (echo)
+                std::cout << "All data will be lost. Still exit N/y?" << std::endl;
             message = "All data will be lost. Still exit";
+        }
         if (query(message, false))
         {
             // this seems backwards but it *always* saves.
@@ -5952,11 +5987,11 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
     {
         if (input.matchnMove(1, "group"))
         {
-            if (!readControl(synth, 0, CONFIG::control::showEnginesTypes, TOPLEVEL::section::config))
-            {
-                synth->getRuntime().Log("Instrument engine and type info must be enabled");
-                return REPLY::done_msg;
-            }
+            //if (!readControl(synth, 0, CONFIG::control::showEnginesTypes, TOPLEVEL::section::config))
+            //{
+                //synth->getRuntime().Log("Instrument engine and type info must be enabled");
+                //return REPLY::done_msg;
+            //}
             return Reply{commandGroup(input)};
         }
         return Reply{commandList(input)};
@@ -5981,7 +6016,7 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
          * we no longer test for line end as some contexts can return
          * useful information with a simple read.
          */
-        return Reply{commandReadnSet(input, TOPLEVEL::type::Read)};
+        return Reply{commandReadnSet(input, type_read)};
     }
 
     if (input.matchnMove(3, "minimum"))
@@ -6028,50 +6063,13 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
     {
         if (input.matchnMove(1, "root"))
         {
-            int found = synth->getBankRef().addRootDir(input);
-            if (!found)
-            {
-                Runtime.Log("Can't find path " + string{input});
-            }
-#ifdef GUI_FLTK
-            else
-            {
-                GuiThreadMsg::sendMessage(synth, GuiThreadMsg::UpdatePaths, 0);
-                Runtime.Log("Added new root ID " + asString(found) + " as " + string{input});
-                synth->saveBanks();
-            }
-#endif
-            return Reply::DONE;
+            return sendNormal(synth, TOPLEVEL::action::lowPrio, 0, TOPLEVEL::type::Write, BANK::control::addNamedRoot, TOPLEVEL::section::bank, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(input));
         }
         if (input.matchnMove(1, "bank"))
         {
-            int slot;
             int root = readControl(synth, 0, BANK::control::selectRoot, TOPLEVEL::section::bank);
-            bool found = false;
-            for (slot = 0; slot < MAX_BANKS_IN_ROOT; ++slot)
-            {
-                if (synth->getBankRef().getBankName(slot, root).empty())
-                {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found)
-            {
-                Runtime.Log("Current root has no space!");
-                return Reply::DONE;
-            }
-            if (!synth->getBankRef().newIDbank(string{input}, (unsigned int)slot))
-            {
-                Runtime.Log("Could not create bank " + string{input} + " for ID " + asString(slot));
-                return Reply::DONE;
-            }
 
-            Runtime.Log("Created  new bank " + string{input} + " with ID " + asString(slot));
-#ifdef GUI_FLTK
-            GuiThreadMsg::sendMessage(synth, GuiThreadMsg::UpdatePaths, 0);
-#endif
-            return Reply::DONE;
+            return sendNormal(synth, TOPLEVEL::action::lowPrio, 0, TOPLEVEL::type::Write, BANK::control::createBank, TOPLEVEL::section::bank, UNUSED, root, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(input));
         }
         if (input.matchnMove(2, "yoshimi"))
         {
@@ -6141,18 +6139,7 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
                     return Reply{REPLY::range_msg};
                 else
                 {
-                    string rootname = synth->getBankRef().getRootPath(rootID);
-                    if (rootname.empty())
-                        Runtime.Log("Can't find path " + asString(rootID));
-                    else
-                    {
-                        synth->getBankRef().removeRoot(rootID);
-#ifdef GUI_FLTK
-                        GuiThreadMsg::sendMessage(synth, GuiThreadMsg::UpdatePaths, 0);
-#endif
-                        Runtime.Log("Un-linked " + rootname);
-                        synth->saveBanks();
-                    }
+                    sendDirect(synth, TOPLEVEL::action::lowPrio, 0, TOPLEVEL::type::Write,BANK::deselectRoot, TOPLEVEL::section::bank, rootID);
                     return Reply::DONE;
                 }
             }
@@ -6181,19 +6168,15 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
                         return Reply{REPLY::range_msg};
                 }
             }
-
-            string filename = synth->getBankRef().getBankName(bankID, rootID);
-            if (filename.empty())
+            int tmp = int(readControl(synth, TOPLEVEL::action::lowPrio, BANK::control::findBankSize, TOPLEVEL::section::bank, bankID, rootID));
+            if (tmp == UNUSED)
             {
                 Runtime.Log("No bank at this location");
                 return Reply::DONE;
             }
-
-            int tmp = synth->getBankRef().getBankSize(bankID, readControl(synth, 0, BANK::control::selectRoot, TOPLEVEL::section::bank));
-            std::cout << "ID " << bankID << "  name " << filename << std::endl;
-            if (tmp)
+            else if (tmp)
             {
-                Runtime.Log("Bank " + filename + " has " + asString(tmp) + " Instruments");
+                Runtime.Log("Bank " + to_string(bankID) + " has " + asString(tmp) + " Instruments");
                 if (!query("Delete bank and all of these", false))
                 {
                     Runtime.Log("Aborted");

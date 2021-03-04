@@ -1,7 +1,7 @@
 /*
     MiscGui.cpp - common link between GUI and synth
 
-    Copyright 2016-2020 Will Godfrey & others
+    Copyright 2016-2021 Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -35,7 +35,6 @@ namespace { // Implementation details...
 
     TextMsgBuffer& textMsgBuffer = TextMsgBuffer::instance();
 }
-
 
 float collect_readData(SynthEngine *synth, float value, unsigned char control, unsigned char part, unsigned char kititem, unsigned char engine, unsigned char insert, unsigned char parameter, unsigned char offset, unsigned char miscmsg, unsigned char request)
 {
@@ -76,11 +75,10 @@ void collect_data(SynthEngine *synth, float value, unsigned char action, unsigne
     {
         if (collect_readData(synth, 0, PART::control::partBusy, part))
         {
-            fl_alert("Part %d is busy", int(part));
+            alert(synth, "Part " + to_string(part + 1) + " is busy");
             return;
         }
     }
-
     CommandBlock putData;
     putData.data.value = value;
     putData.data.control = control;
@@ -119,12 +117,8 @@ void collect_data(SynthEngine *synth, float value, unsigned char action, unsigne
                     }
                     else
                     {
-                        synth->getGuiMaster()->setmessage(UNUSED, false, "Can't learn this control");
+                        alert(synth, "Can't learn this control");
                         synth->getRuntime().Log("Can't MIDI-learn this control");
-                        /* can't use fl_alert here.
-                        * For some reason it goes into a loop on spin boxes
-                        * and runs menus up to their max value.
-                        */
                         type = TOPLEVEL::type::Learnable;
                     }
                 }
@@ -145,33 +139,48 @@ void collect_data(SynthEngine *synth, float value, unsigned char action, unsigne
 
     putData.data.type = type;
     putData.data.source = action;
-    //cout << "collect_data value " << value << "  action " << int(action)  << "  type " << int(type) << "  control " << int(control) << "  part " << int(part) << "  kit " << int(kititem) << "  engine " << int(engine) << "  insert " << int(insert)  << "  par " << int(parameter) << " par2 " << int(par2) << endl;
+    //cout << "collect_data value " << value << "  action " << int(action)  << "  type " << int(type) << "  control " << int(control) << "  part " << int(part) << "  kit " << int(kititem) << "  engine " << int(engine) << "  insert " << int(insert)  << "  par " << int(parameter) << " offset " << int(offset) << " msg " << int(miscmsg) << endl;
     if (!synth->interchange.fromGUI->write(putData.bytes))
         synth->getRuntime().Log("Unable to write to fromGUI buffer.");
+}
+
+void alert(SynthEngine *synth, string message)
+{
+    synth->getGuiMaster()->query("", "", "", message);
+}
+
+int choice(SynthEngine *synth, string one, string two, string three, string message)
+{
+    return synth->getGuiMaster()->query(one, two, three, message);
+}
+
+string setfiler(SynthEngine *synth, string title, string name, bool save, int extension)
+{
+    return synth->getGuiMaster()->setfiler(title, name, save, extension);
+}
+
+string input_text(SynthEngine *synth, string label, string text)
+{
+    return synth->getGuiMaster()->setinput(label, text);
 }
 
 
 void GuiUpdates::read_updates(SynthEngine *synth)
 {
     CommandBlock getData;
-    bool isChanged = false;
     while (synth->interchange.toGUI->read(getData.bytes))
     {
         Fl::lock();
         decode_updates(synth, &getData);
         Fl::unlock();
-        isChanged = true;
     }
-    /*
-     * we perform all the updates that have occured in this refresh
-     * period then do just a single FLTK check for 'damage'
-     */
-    if (isChanged)
+    // and pull up to 5 entries from log
+    for (int i = 0; !synth->getRuntime().LogList.empty() && i < 5; ++i)
     {
-        Fl::lock();
-        Fl::check();
-        Fl::unlock();
+        synth->getGuiMaster()->Log(synth->getRuntime().LogList.front());
+        synth->getRuntime().LogList.pop_front();
     }
+    //GuiThreadMsg::processGuiMessages();
 }
 
 
@@ -226,19 +235,13 @@ void GuiUpdates::decode_updates(SynthEngine *synth, CommandBlock *getData)
 
 //        cout << "Con " << int(control) << "  Kit " << int(kititem) << "  Eng " << int(engine) << "  Ins " << int(insert) << endl;
 
-    fl_line_style(FL_SOLID); // probably not needed
-    if (control == TOPLEVEL::control::textMessage) // just show a message
+    if (control == TOPLEVEL::control::textMessage) // just show a non-modal message
     {
         string name = textMsgBuffer.fetch(miscmsg);
         if (name.empty())
             synth->getGuiMaster()->message->hide();
         else
-        {
             synth->getGuiMaster()->setmessage(UNUSED, true, name, "Close");
-            //synth->getGuiMaster()->words->copy_label(name.c_str());
-            //synth->getGuiMaster()->cancel->hide();
-            //synth->getGuiMaster()->message->show();
-        }
         return;
     }
     if (npart == TOPLEVEL::section::scales)
@@ -321,12 +324,6 @@ void GuiUpdates::decode_updates(SynthEngine *synth, CommandBlock *getData)
 
     if (kititem >= NUM_KIT_ITEMS && kititem != UNUSED)
         return; // invalid kit number
-
-    if (kititem == UNUSED && engine == UNUSED && insert == UNUSED && control == PART::control::defaultInstrument) // special case for part clear
-    {
-        synth->getGuiMaster()->returns_update(getData);
-        return;
-    }
 
     if (insert != UNUSED || (control != PART::control::enable && control != PART::control::instrumentName))
     {
@@ -567,6 +564,95 @@ void GuiUpdates::decode_updates(SynthEngine *synth, CommandBlock *getData)
     }
 }
 
+static string freqBPMStr(float val)
+{
+    // The switch statement below will need to be altered if this is ever
+    // changed. Remember that intervals need to be preserved too, not just the
+    // total number of steps, otherwise saved instruments will get incorrect
+    // values.
+    static_assert(LFO_BPM_STEPS == 33, "Need to adjust LFO_BPM_STEPS table.");
+    return LFObpm[int(roundf(val * (LFO_BPM_STEPS + 2)))];
+    /*
+     * switch replaced by call into Interface/TextLists.h
+     * so it is now unifed with CLI response - Will.
+     */
+
+    /*switch ((int)roundf(val * (LFO_BPM_STEPS + 2))) {
+    case 0:
+        // Some room to expand in the future. Fallthrough.
+    case 1:
+        return string("1/16 BPM");
+    case 2:
+        return string("1/15 BPM");
+    case 3:
+        return string("1/14 BPM");
+    case 4:
+        return string("1/13 BPM");
+    case 5:
+        return string("1/12 BPM");
+    case 6:
+        return string("1/11 BPM");
+    case 7:
+        return string("1/10 BPM");
+    case 8:
+        return string("1/9 BPM");
+    case 9:
+        return string("1/8 BPM");
+    case 10:
+        return string("1/7 BPM");
+    case 11:
+        return string("1/6 BPM");
+    case 12:
+        return string("1/5 BPM");
+    case 13:
+        return string("1/4 BPM");
+    case 14:
+        return string("1/3 BPM");
+    case 15:
+        return string("1/2 BPM");
+    case 16:
+        return string("2/3 BPM");
+    case 17:
+        return string("1/1 BPM");
+    case 18:
+        return string("3/2 BPM");
+    case 19:
+        return string("2/1 BPM");
+    case 20:
+        return string("3/1 BPM");
+    case 21:
+        return string("4/1 BPM");
+    case 22:
+        return string("5/1 BPM");
+    case 23:
+        return string("6/1 BPM");
+    case 24:
+        return string("7/1 BPM");
+    case 25:
+        return string("8/1 BPM");
+    case 26:
+        return string("9/1 BPM");
+    case 27:
+        return string("10/1 BPM");
+    case 28:
+        return string("11/1 BPM");
+    case 29:
+        return string("12/1 BPM");
+    case 30:
+        return string("13/1 BPM");
+    case 31:
+        return string("14/1 BPM");
+    case 32:
+        return string("15/1 BPM");
+    case 34:
+        // Some room to expand in the future. Fallthrough.
+    case 33:
+        return string("16/1 BPM");
+    default:
+        return string("Unknown BPM");
+    }*/
+}
+
 string convert_value(ValueType type, float val)
 {
     float f;
@@ -610,6 +696,9 @@ string convert_value(ValueType type, float val)
         case VC_LFOfreq:
             f = (powf(2.0f, val * 10.0f) - 1.0f) / 12.0f;
             return variable_prec_units(f, "Hz", 3);
+
+        case VC_LFOfreqBPM:
+            return freqBPMStr(val);
 
         case VC_LFOdepthFreq: // frequency LFO
             f=powf(2.0f,(int)val/127.0f*11.0f)-1.0f;
@@ -766,6 +855,14 @@ string convert_value(ValueType type, float val)
                 return "-inf dB";
             else
                 return(custom_value_units((val-96.0f)/96.0f*40.0f,"dB",1));
+
+        case VC_PartHumaniseDetune:
+            s = "Detune: ";
+            i = (int) val;
+            if (i == 0)
+                return s + "disabled";
+            else
+                return s + "between 0 and " + to_string(i) + " cents";
 
         case VC_PartHumaniseVelocity:
             s = "Attenuation: ";
@@ -1350,6 +1447,11 @@ ValueType getLFOdepthType(int group)
     return(VC_plainValue);
 }
 
+ValueType getLFOFreqType(int bpmEnabled)
+{
+    return (bpmEnabled == 0) ? VC_LFOfreq : VC_LFOfreqBPM;
+}
+
 ValueType getFilterFreqType(int type)
 {
     switch(type)
@@ -1369,3 +1471,4 @@ ValueType getFilterFreqTrackType(int offset)
         default: return(VC_FilterFreqTrack1);
     }
 }
+

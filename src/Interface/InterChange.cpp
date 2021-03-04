@@ -50,9 +50,11 @@
     #include "MasterUI.h"
 #endif
 
+using file::localPath;
 using file::findFile;
 using file::isRegularFile;
 using file::createDir;
+using file::listDir;
 using file::isDirectory;
 using file::setExtension;
 using file::findLeafName;
@@ -89,7 +91,6 @@ InterChange::InterChange(SynthEngine *_synth) :
     syncWrite(false),
     lowPrioWrite(false),
     tick(0),
-    lockTime(0),
     swapRoot1(UNUSED),
     swapBank1(UNUSED),
     swapInstrument1(UNUSED)
@@ -100,12 +101,12 @@ InterChange::InterChange(SynthEngine *_synth) :
 bool InterChange::Init()
 {
 #ifndef YOSHIMI_LV2_PLUGIN
-    fromCLI = new ringBuff(256, commandBlockSize);
+    fromCLI = new ringBuff(512, commandBlockSize);
 #endif
     decodeLoopback = new ringBuff(1024, commandBlockSize);
 #ifdef GUI_FLTK
-    fromGUI = new ringBuff(512, commandBlockSize);
-    toGUI = new ringBuff(1024, commandBlockSize);
+    fromGUI = new ringBuff(1024, commandBlockSize);
+    toGUI = new ringBuff(2048, commandBlockSize);
 #endif
     fromMIDI = new ringBuff(1024, commandBlockSize);
 
@@ -118,6 +119,7 @@ bool InterChange::Init()
         synth->getRuntime().Log("Failed to start CLI resolve thread");
         goto bail_out;
     }
+    searchInst = searchBank = searchRoot = 0;
     return true;
 
 
@@ -179,38 +181,17 @@ void *InterChange::sortResultsThread(void)
          * To maintain portability we synthesise a very simple low accuracy
          * timer based on the loop time of this function. As it makes no system
          * calls apart from usleep() it is lightweight and should have no thread
-         * safety issues. It is used mostly for timeouts.
+         * safety issues. It is used mostly for low priority timeouts.
          */
         ++ tick;
-        /*
-        if (!(tick & 8191))
+
+        /*if (!(tick & 8191))
         {
             if (tick & 16383)
                 std::cout << "Tick" << std::endl;
             else
                 std::cout << "Tock" << std::endl;
         }*/
-
-        // a false positive here is not actually a problem.
-        unsigned char testRead = 0;
-        /*
-         * This was a test routine to check for a stuck flag blocking reads.
-         * We need to discover if either of the new flags can become stuck.
-         * They are, in any case, cleared on main resets.
-         */
-        if (lockTime == 0 && testRead != 0)
-        {
-            tick |= 1; // make sure it's not zero
-            lockTime = tick;
-        }
-        else if (lockTime > 0 && testRead == 0)
-            lockTime = 0;
-        else if (lockTime > 0 && (tick - lockTime) > 32766)
-        { // about 4 seconds - may need improving
-
-            std::cout << "stuck read block cleared" << std::endl;
-            lockTime = 0;
-        }
 
         CommandBlock getData;
 
@@ -219,13 +200,13 @@ void *InterChange::sortResultsThread(void)
          * (especially with large buffer sizes) so this small
          * ring buffer ensures they can all clear together.
          */
-        while (synth->audioOut.load() == muteState::Active)
+        while (synth->audioOut.load() == _SYS_::mute::Active)
         {
             //std::cout << "here fetching" << std:: endl;
             if (muteQueue->read(getData.bytes))
                 indirectTransfers(&getData);
             else
-                synth->audioOut.store(muteState::Complete);
+                synth->audioOut.store(_SYS_::mute::Complete);
         }
 
         while (decodeLoopback->read(getData.bytes))
@@ -291,11 +272,36 @@ void InterChange::muteQueueWrite(CommandBlock *getData)
         std::cout << "failed to write to muteQueue" << std::endl;
         return;
     }
-    if (synth->audioOut.load() == muteState::Idle)
+    if (synth->audioOut.load() == _SYS_::mute::Idle)
     {
         //std::cout << "here pending" << std:: endl;
-        synth->audioOut.store(muteState::Pending);
+        synth->audioOut.store(_SYS_::mute::Pending);
     }
+}
+
+
+std::string InterChange::manualSearch(std::string dir2search, std::string path2match)
+{
+    std::list<string> wanted;
+    listDir(&wanted, dir2search);
+    if (wanted.empty())
+    return "";
+    wanted.sort();
+
+    std::string path = "";
+    std::list<string>::reverse_iterator itr = wanted.rbegin();
+    while (itr != wanted.rend())
+    {
+        std::string tmp = *itr;
+        if (tmp.find(path2match) != std::string::npos)
+        {
+            path = tmp;
+            itr = wanted.rend();
+        }
+        else
+            ++itr;
+    }
+    return path;
 }
 
 
@@ -322,7 +328,6 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
 
     if (switchNum == TOPLEVEL::section::main && control == MAIN::control::loadFileFromList)
     {
-        //std::cout << "kit " << int(kititem) << "  engine " << int(engine) << "  insert " << int(insert) << std::endl;
         int result = synth->LoadNumbered(kititem, engine);
         if (result > NO_MSG)
             getData->data.miscmsg = result & NO_MSG;
@@ -387,7 +392,11 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
         case TOPLEVEL::section::vector:
             value = indirectVector(getData, synth, newMsg, guiTo, text);
             break;
-
+        case TOPLEVEL::section::midiLearn:
+            if (control == MIDILEARN::control::findSize)
+                value = synth->midilearn.findSize();
+            // very naughty! should do better
+            break;
         case TOPLEVEL::section::midiIn: // program / bank / root
             value = indirectMidi(getData, synth, newMsg, guiTo, text);
             break;
@@ -418,7 +427,6 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
             }
             break;
     }
-    //std::cout << ">" << text << "<" << std::endl;
 
      // CLI message text has to be set here.
     if (!synth->fileCompatible)
@@ -426,7 +434,7 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
 
     if (newMsg)
         value = textMsgBuffer.push(text);
-    // TODO need to inmprove message handling for multiple receivers
+    // TODO need to improve message handling for multiple receivers
 
     getData->data.value = float(value);
     if (write)
@@ -471,8 +479,6 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
 #ifdef GUI_FLTK
             if ((getData->data.source & TOPLEVEL::action::noAction) == TOPLEVEL::action::fromGUI)
             {
-                //CommandBlock putData;
-                //memcpy(putData.bytes, getData->bytes, sizeof(putData));
                 getData->data.control = TOPLEVEL::control::textMessage;
                 getData->data.miscmsg = textMsgBuffer.push("File from ZynAddSubFX 3.0 or later has parameter types changed incompatibly with earlier versions, and with Yoshimi. It may not perform correctly.");
                 returnsBuffer->write(getData->bytes);
@@ -516,8 +522,6 @@ int InterChange::indirectMidi(CommandBlock *getData, SynthEngine *synth, unsigne
 {
     int value = getData->data.value;
     int control = getData->data.control;
-    //std::cout << " interchange prog " << value << "  chan " << int(kititem) << "  bank " << int(engine) << "  root " << int(insert) << std::endl;
-
     int msgID;
     if (control == MIDI::control::instrument)
     {
@@ -696,7 +700,6 @@ int InterChange::indirectMain(CommandBlock *getData, SynthEngine *synth, unsigne
                 else
                     synth->getRuntime().lastBankPart = UNUSED;
                 text = "ed " + text;
-                //std::cout << "here ins " << int((synth->getRuntime().lastBankPart >> 15) & 0x7f) << "  bank " << int((synth->getRuntime().lastBankPart >> 8) & 0x7f) << "  root " << int(synth->getRuntime().lastBankPart & 0x7f) << std::endl;
             }
             else
                 text = " FAILED " + text;
@@ -854,15 +857,30 @@ int InterChange::indirectMain(CommandBlock *getData, SynthEngine *synth, unsigne
             newMsg = true;
             break;
         }
+        case MAIN::control::readLastSeen:
+            break; // do nothing here
         case MAIN::control::loadFileFromList:
             break; // do nothing here
+
+        case MAIN::control::defaultPart: // clear part
+            if (write)
+            {
+                doClearPart(value);
+                synth->getRuntime().sessionSeen[TOPLEVEL::XML::Instrument] = false;
+                getData->data.source &= ~TOPLEVEL::action::lowPrio;
+            }
+            break;
+
         case MAIN::control::exportPadSynthSamples:
         {
             unsigned char partnum = insert;
             synth->partonoffWrite(partnum, -1);
             setpadparams(partnum, kititem);
             if (synth->part[partnum]->kit[kititem].padpars->export2wav(text))
+            {
+                synth->addHistory(text, TOPLEVEL::XML::PadSample);
                 text = "d " + text;
+            }
             else
                 text = " FAILED some samples " + text;
             newMsg = true;
@@ -877,28 +895,43 @@ int InterChange::indirectMain(CommandBlock *getData, SynthEngine *synth, unsigne
         case MAIN::control::openManualPDF: // display user guide
         {
             std::string manfile = synth->manualname();
-            unsigned int pos = manfile.rfind(".") + 1;
-            int wanted = std::stoi(manfile.substr(pos, 3));
-            int count = wanted + 2;
-            manfile = manfile.substr(0, pos);
+            std::string stub = manfile.substr(0, manfile.rfind("-"));
+
             std::string path = "";
-            while (path == "" && count >= 0) // scan current first, then older versions
+            std::string lastdir = "";
+            std::string found = "";
+            std::string search = "/usr/share/doc/yoshimi";
+            path = manualSearch(search, stub);
+            found = path;
+            lastdir = search;
+
+            search = "/usr/local/share/doc/yoshimi";
+            path = manualSearch(search, stub);
+            if (path >= found)
             {
-                --count;
-                path = findFile("/usr/", (manfile + std::to_string(count)).c_str(), "pdf");
-                if (path == "")
-                path = findFile("/usr/", (manfile + std::to_string(count)).c_str(), "pdf.gz");
-                if (path == "")
-                path = findFile("/home/", (manfile + std::to_string(count)).c_str(), "pdf");
+                found = path;
+                lastdir = search;
             }
-            std::cout << "man " << manfile << "\npath " << path << std::endl;
-            if (path == "")
-                text = "Can't find manual :(";
-            else if (count < wanted)
-                text = "Can't find current manual. Using older one";
-            if (path != "")
+
+            search = localPath();
+            if (!search.empty())
             {
-                std::string command = "xdg-open " + path + "&";
+                path = manualSearch(search, stub);
+                if (path >= found)
+                {
+                    found = path;
+                    lastdir = search;
+                }
+            }
+
+            if (found.empty())
+                text = "Can't find manual :(";
+            else
+            {
+                if (found.substr(0, found.rfind(".")) != manfile)
+                text = "Can't find current manual. Using older one";
+
+                std::string command = "xdg-open " + lastdir + "/" + found + "&";
                 FILE *fp = popen(command.c_str(), "r");
                 if (fp == NULL)
                     text = "Can't find PDF reader :(";
@@ -1043,7 +1076,6 @@ int InterChange::indirectBank(CommandBlock *getData, SynthEngine *synth, unsigne
                 engine = synth->getRuntime().currentRoot;
                 getData->data.engine = engine;
             }
-            //std::cout << "Int swap 1 I " << int(value)  << "  B " << int(kititem) << "  R " << int(engine) << std::endl;
             swapInstrument1 = insert;
             swapBank1 = kititem;
             swapRoot1 = engine;
@@ -1061,7 +1093,6 @@ int InterChange::indirectBank(CommandBlock *getData, SynthEngine *synth, unsigne
                 engine = synth->getRuntime().currentRoot;
                 getData->data.engine = engine;
             }
-            //std::cout << "Int swap 2 I " << int(insert) << "  B " << int(kititem) << "  R " << int(engine) << std::endl;
             text = synth->bank.swapslot(swapInstrument1, insert, swapBank1, kititem, swapRoot1, engine);
             swapInstrument1 = UNUSED;
             swapBank1 = UNUSED;
@@ -1095,7 +1126,6 @@ int InterChange::indirectBank(CommandBlock *getData, SynthEngine *synth, unsigne
                 text = textMsgBuffer.fetch(tmp & NO_MSG);
                 if (tmp > NO_MSG)
                     text = "FAILED: " + text;
-                //std::cout << text << std::endl;
                 guiTo = true;
             }
             else
@@ -1103,6 +1133,62 @@ int InterChange::indirectBank(CommandBlock *getData, SynthEngine *synth, unsigne
                 text = " Name: " + synth->bank.getBankName(value, getData->data.engine);
             }
             newMsg = true;
+            break;
+        case BANK::control::createBank:
+            {
+                bool isOK = true;
+                int newbank = kititem;
+                int rootID = engine;
+                if (rootID == UNUSED)
+                    rootID = synth->getRuntime().currentRoot;
+                if (newbank == UNUSED)
+                {
+                    isOK = false;
+                    newbank = 5; // offset to avoid zero for as long as possible
+                    for (int i = 0; i < MAX_BANKS_IN_ROOT; ++i)
+                    {
+                        newbank = (newbank + 5) & 0x7f;
+                        if (synth->getBankRef().getBankName(newbank, rootID).empty())
+                        {
+                            isOK = true;
+                            break;
+                        }
+                    }
+                    if (!isOK)
+                        text = "FAILED: Root " + to_string(rootID) + " has no space";
+                }
+                if (isOK)
+                {
+                    string trytext = synth->bank.getBankName(newbank, rootID);
+                    if (!trytext.empty())
+                    {
+                        text = "FAILED: ID " + to_string(newbank) + " already contains " + trytext;
+                        isOK = false;
+                    }
+
+                    if (isOK && !synth->getBankRef().newIDbank(text, newbank))
+                    {
+                        text = "FAILED Could not create bank " + text + " for ID " + asString(newbank);
+                        isOK = false;
+                    }
+                }
+                if (isOK)
+                    text = "Created " + text + " at ID " + to_string(newbank) + " in root " + to_string(rootID);
+                newMsg = true;
+                guiTo = true;
+            }
+            break;
+
+        case BANK::control::deleteBank:
+            break; // not yet!
+
+        case BANK::control::findBankSize:
+            if (engine == UNUSED)
+                engine = synth->getRuntime().currentRoot;
+            if (synth->bank.getBankName(kititem, engine).empty())
+                value = UNUSED;
+            else
+                value = synth->bank.getBankSize(kititem, engine);
             break;
 
         case BANK::control::selectFirstBankToSwap:
@@ -1148,6 +1234,42 @@ int InterChange::indirectBank(CommandBlock *getData, SynthEngine *synth, unsigne
             synth->bank.changeRootID(getData->data.engine, value);
             synth->saveBanks();
             break;
+        case BANK::addNamedRoot:
+            if (write) // not realistically readable
+            {
+                if (kititem != UNUSED)
+                {
+                    kititem = synth->getBankRef().generateSingleRoot(text, false);
+                    getData->data.kit = kititem;
+                    synth->getBankRef().installNewRoot(kititem, text);
+                    synth->saveBanks();
+                }
+                else
+                {
+                    size_t found = synth->getBankRef().addRootDir(text);
+                    if (found)
+                    {
+                        synth->getBankRef().installNewRoot(found, text);
+                        synth->saveBanks();
+                    }
+                    else
+                    {
+                        value = UNUSED;
+                        text = "Can't find path " + text;
+                    }
+                }
+                newMsg = true;
+            }
+            break;
+        case BANK::deselectRoot:
+            if (write) // not realistically readable
+            {
+                if (synth->getBankRef().removeRoot(kititem))
+                    value = UNUSED;
+                synth->saveBanks();
+            }
+            break;
+
         case BANK::control::refreshDefaults:
             if (value)
                 synth->bank.checkLocalBanks();
@@ -1330,14 +1452,6 @@ int InterChange::indirectPart(CommandBlock *getData, SynthEngine *synth, unsigne
             }
         break;
 
-        case PART::control::defaultInstrument: // clear part
-            if (write)
-            {
-                doClearPart(npart);
-                synth->getRuntime().sessionSeen[TOPLEVEL::XML::Instrument] = false;
-                getData->data.source &= ~TOPLEVEL::action::lowPrio;
-            }
-            break;
         case PART::control::enablePad:
             if (write)
             {
@@ -1396,6 +1510,8 @@ int InterChange::indirectPart(CommandBlock *getData, SynthEngine *synth, unsigne
                 if (write)
                 {
                     part->Pname = text;
+                    if (part->Poriginal.empty())
+                        part->Poriginal = text;
                     guiTo = true;
                 }
                 else
@@ -1498,7 +1614,6 @@ float InterChange::readAllData(CommandBlock *getData)
 {
     if (getData->data.type & TOPLEVEL::type::Limits) // these are static
     {
-        //std::cout << "Read Control " << (int) getData->data.control << " Part " << (int) getData->data.part << "  Kit " << (int) getData->data.kit << " Engine " << (int) getData->data.engine << "  Insert " << (int) getData->data.insert << std::endl;
         /*
          * commandtype limits values
          * 0    adjusted input value
@@ -1534,7 +1649,6 @@ float InterChange::readAllData(CommandBlock *getData)
         synth->fetchMeterData();
         return getData->data.value;
     }
-    //std::cout << "Read Control " << (int) getData->data.control << " Type " << (int) getData->data.type << " Part " << (int) getData->data.part << "  Kit " << (int) getData->data.kit << " Engine " << (int) getData->data.engine << "  Insert " << (int) getData->data.insert << " Parameter " << (int) getData->data.parameter << " miscmsg " << (int) getData->data.miscmsg << std::endl;
     int npart = getData->data.part;
     bool indirect = ((getData->data.source & TOPLEVEL::action::muteAndLoop) == TOPLEVEL::action::lowPrio);
     if (npart < NUM_MIDI_PARTS && synth->part[npart]->busy)
@@ -1735,9 +1849,6 @@ void InterChange::historyActionCheck(CommandBlock *getData)
         case TOPLEVEL::XML::Vector:
             getData->data.source |= TOPLEVEL::action::muteAndLoop;
             break;
-        //case TOPLEVEL::XML::MLearn:
-            //getData->data.source |= TOPLEVEL::action::lowPrio;
-            //break;
     }
 }
 
@@ -1746,10 +1857,7 @@ void InterChange::returns(CommandBlock *getData)
 {
     synth->getRuntime().finishedCLI = true; // belt and braces :)
     if ((getData->data.source & TOPLEVEL::action::noAction) == TOPLEVEL::action::noAction)
-    {
-        //std::cout << "no action" << std::endl;
         return; // no further action
-    }
 
     if (getData->data.source < TOPLEVEL::action::lowPrio)
     { // currently only used by gui. this may change!
@@ -1836,11 +1944,6 @@ bool InterChange::commandSendReal(CommandBlock *getData)
 
     bool isGui = ((getData->data.source & TOPLEVEL::action::noAction) == TOPLEVEL::action::fromGUI);
     char button = type & 3;
-    /*if (control > 0 && getData->data.part < 64)
-    {
-        std::cout << "Type " << int(type) << "  Control " << int(control) << "  Part " << int(npart) << "  Kit " << int(kititem) << "  Engine " << int(engine) << std::endl;
-        std::cout  << "Insert " << int(insert)<< "  Parameter " << int(getData->data.parameter) << "  miscmsg " << int(getData->data.miscmsg) << std::endl;
-    }*/
 
     if (!isGui && button == 1)
     {
@@ -2018,7 +2121,6 @@ bool InterChange::processVoice(CommandBlock *getData, SynthEngine *synth)
                 if (control != ADDVOICE::control::modulatorOscillatorSource)
                 {
                     int voicechange = part->kit[kititem].adpars->VoicePar[engine].PextFMoscil;
-                    //std::cout << "ext Mod osc " << voicechange << std::endl;
                     if (voicechange != -1)
                     {
                         engine = voicechange;
@@ -2034,7 +2136,6 @@ bool InterChange::processVoice(CommandBlock *getData, SynthEngine *synth)
                 if (control != PART::control::sustainPedalEnable) // how can this ever be true!!!
                 {
                     int voicechange = part->kit[kititem].adpars->VoicePar[engine].Pextoscil;
-                    //std::cout << "ext voice osc " << voicechange << std::endl;
                     if (voicechange != -1)
                     {
                         engine = voicechange;
@@ -2143,12 +2244,8 @@ void InterChange::commandMidi(CommandBlock *getData)
     unsigned int char1 = getData->data.engine;
     unsigned char miscmsg = getData->data.miscmsg;
 
-    //std::cout << "value " << value_int << "  control " << int(control) << "  chan " << int(chan) << "  char1 " << char1 << "  char2 " << int(char2) << "  param " << int(parameter) << "  miscmsg " << int(miscmsg) << std::endl;
-
     if (control == MIDI::control::controller && char1 >= 0x80)
-    {
         char1 |= 0x200; // for 'specials'
-    }
 
     switch(control)
     {
@@ -2163,7 +2260,6 @@ void InterChange::commandMidi(CommandBlock *getData)
             getData->data.source = TOPLEVEL::action::noAction; // till we know what to do!
             break;
         case MIDI::control::controller:
-            //std::cout << "Midi controller ch " << std::to_string(int(chan)) << "  type " << std::to_string(int(char1)) << "  val " << std::to_string(value_int) << std::endl;
             synth->SetController(chan, char1, value_int);
             break;
 
@@ -2415,7 +2511,7 @@ void InterChange::commandMicrotonal(CommandBlock *getData)
     bool write = (type & TOPLEVEL::type::Write) > 0;
 
     int value_int = lrint(value);
-    bool value_bool = YOSH::F2B(value);
+    bool value_bool = _SYS_::F2B(value);
 
     switch (control)
     {
@@ -2570,7 +2666,7 @@ void InterChange::commandConfig(CommandBlock *getData)
 
     bool mightChange = true;
     int value_int = lrint(value);
-    bool value_bool = YOSH::F2B(value);
+    bool value_bool = _SYS_::F2B(value);
 
     switch (control)
     {
@@ -2624,12 +2720,6 @@ void InterChange::commandConfig(CommandBlock *getData)
                  synth->getRuntime().instrumentFormat = value_int;
             else
                 value = synth->getRuntime().instrumentFormat;
-            break;
-        case CONFIG::control::showEnginesTypes:
-            if (write)
-                 synth->getRuntime().checksynthengines = value_bool;
-            else
-                value = synth->getRuntime().checksynthengines;
             break;
 // switches
         case CONFIG::control::defaultStateStart:
@@ -3018,7 +3108,6 @@ void InterChange::commandMain(CommandBlock *getData)
             }
             break;
 
-
         case MAIN::control::loadInstrumentFromBank:
             synth->partonoffLock(kititem, -1);
             getData->data.source |= TOPLEVEL::action::lowPrio;
@@ -3059,9 +3148,22 @@ void InterChange::commandMain(CommandBlock *getData)
             break;
         case MAIN::control::saveNamedState: // done elsewhere
             break;
+        case MAIN::control::readLastSeen: // read only
+            value = textMsgBuffer.push(synth->lastItemSeen(value));
+            break;
         case MAIN::control::loadFileFromList:
             muteQueueWrite(getData);
             getData->data.source = TOPLEVEL::action::noAction;
+            break;
+
+        case MAIN::control::defaultPart: // doClearPart
+            if (write)
+            {
+                synth->partonoffWrite(value_int, -1);
+                getData->data.source = TOPLEVEL::action::lowPrio;
+            }
+            else
+                getData->data.source = TOPLEVEL::action::noAction;
             break;
 
         case MAIN::control::masterReset:
@@ -3154,10 +3256,7 @@ void InterChange::commandBank(CommandBlock *getData)
                 textMsgBuffer.push(synth->getBankRef().getname(value_int, kititem, engine));
             else
             {
-                static int inst = 0;
-                static int bank = 0;
-                static int root = 0;
-
+                int offset = type_offset [parameter];
                 /*
                  * This version of the call is for building up lists of instruments that match the given type.
                  * It will find the next in the series until the entire bank structure has been scanned.
@@ -3165,25 +3264,31 @@ void InterChange::commandBank(CommandBlock *getData)
                  * entire list has been scanned, and resets ready for a new set of calls.
                  */
 
+                if (offset == -1)
+                {
+                    synth->getRuntime().Log("caught invalid instrument type (-1)");
+                    textMsgBuffer.push("*");
+                }
+
                 do {
                     do {
                         do {
-                            if (synth->getBankRef().getType(inst, bank, root) == parameter)
+                            if (synth->getBankRef().getType(searchInst, searchBank, searchRoot) == offset)
                             {
-                                textMsgBuffer.push(asString(root, 3) + ": " + asString(bank, 3) + ". " + asString(inst + 1, 3) + "  " + synth->getBankRef().getname(inst, bank, root));
-                                ++ inst;
+                                textMsgBuffer.push(asString(searchRoot, 3) + ": " + asString(searchBank, 3) + ". " + asString(searchInst + 1, 3) + "  " + synth->getBankRef().getname(searchInst, searchBank, searchRoot));
+                                ++ searchInst;
                                 return;
                             }
-                            ++inst;
-                        } while (inst < 160);
+                            ++searchInst;
+                        } while (searchInst < MAX_INSTRUMENTS_IN_BANK);
 
-                        inst = 0;
-                        ++bank;
-                    } while (bank < 128);
-                    bank = 0;
-                    ++root;
-                } while (root < 128);
-                root = 0;
+                        searchInst = 0;
+                        ++searchBank;
+                    } while (searchBank < MAX_BANKS_IN_ROOT);
+                    searchBank = 0;
+                    ++searchRoot;
+                } while (searchRoot < MAX_BANK_ROOT_DIRS);
+                searchRoot = 0;
                 textMsgBuffer.push("*");
             }
             break;
@@ -3228,7 +3333,7 @@ void InterChange::commandPart(CommandBlock *getData)
         return;
     }
     int value_int = lrint(value);
-    char value_bool = YOSH::F2B(value);
+    char value_bool = _SYS_::F2B(value);
 
     Part *part;
     part = synth->part[npart];
@@ -3639,16 +3744,6 @@ void InterChange::commandPart(CommandBlock *getData)
             break;
         }
 
-        case PART::control::defaultInstrument: // doClearPart
-            if (write)
-            {
-                synth->partonoffWrite(npart, -1);
-                getData->data.source = TOPLEVEL::action::lowPrio;
-            }
-            else
-                getData->data.source = TOPLEVEL::action::noAction;
-            break;
-
         case PART::control::audioDestination:
             if (synth->partonoffRead(npart) != 1)
             {
@@ -3913,7 +4008,7 @@ void InterChange::commandAdd(CommandBlock *getData)
     bool write = (type & TOPLEVEL::type::Write) > 0;
 
     int value_int = lrint(value);
-    char value_bool = YOSH::F2B(value);
+    char value_bool = _SYS_::F2B(value);
 
     Part *part;
     part = synth->part[npart];
@@ -4091,7 +4186,7 @@ void InterChange::commandAddVoice(CommandBlock *getData)
     bool write = (type & TOPLEVEL::type::Write) > 0;
 
     int value_int = lrint(value);
-    char value_bool = YOSH::F2B(value);
+    char value_bool = _SYS_::F2B(value);
 
     Part *part;
     part = synth->part[npart];
@@ -4155,12 +4250,6 @@ void InterChange::commandAddVoice(CommandBlock *getData)
                 pars->VoicePar[nvoice].PFMEnabled = value_int;
             else
                 value = pars->VoicePar[nvoice].PFMEnabled;
-            break;
-        case ADDVOICE::control::modRingToSide:
-            if (write)
-                pars->VoicePar[nvoice].PFMringToSide = value_bool;
-            else
-                value = pars->VoicePar[nvoice].PFMringToSide;
             break;
         case ADDVOICE::control::externalModulator:
             if (write)
@@ -4510,7 +4599,7 @@ void InterChange::commandSub(CommandBlock *getData)
     bool write = (type & TOPLEVEL::type::Write) > 0;
 
     int value_int = lrint(value);
-    char value_bool = YOSH::F2B(value);
+    char value_bool = _SYS_::F2B(value);
 
     Part *part;
     part = synth->part[npart];
@@ -4781,7 +4870,7 @@ void InterChange::commandPad(CommandBlock *getData)
     bool write = (type & TOPLEVEL::type::Write) > 0;
 
     int value_int = lrint(value);
-    char value_bool = YOSH::F2B(value);
+    char value_bool = _SYS_::F2B(value);
 
     Part *part;
     part = synth->part[npart];
@@ -5102,7 +5191,7 @@ void InterChange::commandOscillator(CommandBlock *getData, OscilParameters *osci
     unsigned char insert = getData->data.insert;
 
     int value_int = lrint(value);
-    bool value_bool = YOSH::F2B(value);
+    bool value_bool = _SYS_::F2B(value);
     bool write = (type & TOPLEVEL::type::Write) > 0;
 
     if (insert == TOPLEVEL::insert::harmonicAmplitude)
@@ -5369,7 +5458,7 @@ void InterChange::commandResonance(CommandBlock *getData, Resonance *respar)
     unsigned char insert = getData->data.insert;
     unsigned char parameter = getData->data.parameter;
     int value_int = lrint(value);
-    bool value_bool = YOSH::F2B(value);
+    bool value_bool = _SYS_::F2B(value);
     bool write = (type & TOPLEVEL::type::Write) > 0;
 
     if (insert == TOPLEVEL::insert::resonanceGraphInsert)
@@ -5508,6 +5597,8 @@ void InterChange::lfoReadWrite(CommandBlock *getData, LFOParams *pars)
     switch (getData->data.control)
     {
         case LFOINSERT::control::speed:
+            if(pars->Pbpm) // set a flag so CLI can read the status
+                getData->data.offset = 1;
             if (write)
                 pars->setPfreq(val * Fmul2I);
             else
@@ -5545,9 +5636,15 @@ void InterChange::lfoReadWrite(CommandBlock *getData, LFOParams *pars)
             break;
         case LFOINSERT::control::continuous:
             if (write)
-                pars->setPcontinous(YOSH::F2B(val));
+                pars->setPcontinous(_SYS_::F2B(val));
             else
                 val = pars->Pcontinous;
+            break;
+        case LFOINSERT::control::bpm:
+            if (write)
+                pars->setPbpm(_SYS_::F2B(val));
+            else
+                val = pars->Pbpm;
             break;
         case LFOINSERT::control::frequencyRandomness:
             if (write)
@@ -6159,7 +6256,6 @@ void InterChange::commandSysIns(CommandBlock *getData)
     bool write = (type & TOPLEVEL::type::Write) > 0;
 
     int value_int = lrint(value);
-    //std::cout << "Value " << value_int << "  Control " << int(control) << "  Part " << int(npart) << "  Effnum " << int(effnum) << "  Insert " << int(insert) << std::endl;
     bool isSysEff = (npart == TOPLEVEL::section::systemEffects);
     if (isSysEff)
         effnum = synth->syseffnum;
@@ -6231,7 +6327,7 @@ void InterChange::commandSysIns(CommandBlock *getData)
             case EFFECT::sysIns::effectEnable: // system only
                 if (write)
                 {
-                    bool newSwitch = YOSH::F2B(value);
+                    bool newSwitch = _SYS_::F2B(value);
                     bool oldSwitch = synth->syseffEnable[effnum];
                     synth->syseffEnable[effnum] = newSwitch;
                     if (newSwitch != oldSwitch)
@@ -6285,7 +6381,6 @@ void InterChange::commandEffects(CommandBlock *getData)
         return; // invalid part number
     if (kititem > EFFECT::type::dynFilter)
         return; // invalid kit number
-    //cout << "here "  << int(getData->data.source & TOPLEVEL::action::noAction) << "  kit " << int(kititem & 127) << "  eff " << eff->geteffect() << endl;
     if (control != PART::control::effectType && (kititem & 127) != eff->geteffect())
     {
         if ((getData->data.source & TOPLEVEL::action::noAction) != TOPLEVEL::action::fromMIDI)
@@ -6308,7 +6403,6 @@ void InterChange::commandEffects(CommandBlock *getData)
         {
             value = eff->geteffectpar(-1);
             getData->data.value = value;
-            //std::cout << "Eff Changed " << int(value) << std::endl;
         }
         return; // specific for reading change status
     }
@@ -6342,7 +6436,6 @@ void InterChange::commandEffects(CommandBlock *getData)
                     getData->data.offset = eff->geteffectpar(12);
             }
         }
-        //std::cout << "eff value " << value << "  control " << int(control) << "  band " << synth->getRuntime().EQband << std::endl;
     }
     else
     {
@@ -6425,10 +6518,6 @@ float InterChange::returnLimits(CommandBlock *getData)
 
     float value = getData->data.value;
     int request = int(getData->data.type & TOPLEVEL::type::Default); // catches Adj, Min, Max, Def
-
-    //std::cout << "Limits Control " << control << " Part " << npart << "  Kit " << kititem << " Engine " << engine << "  Insert " << insert << "  Parameter " << parameter << std::endl;
-
-    //std::cout << "Top request " << request << std::endl;
 
     getData->data.type &= 0x1f; //  clear top bits
     getData->data.type |= TOPLEVEL::type::Integer; // default is integer & not learnable
@@ -6715,7 +6804,6 @@ float InterChange::returnLimits(CommandBlock *getData)
     max = 127;
     def = 0;
     std::cout << "Using unknown defaults" << std::endl;
-    //std::cout << "Part " << int(npart) << std::endl;
 
     switch (request)
     {

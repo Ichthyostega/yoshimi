@@ -2,7 +2,7 @@
 #   CMakeLists.txt
 #
 #   Copyright 2009-2011, Alan Calvert
-#   Copyright 2014-2020, Will Godfrey & others
+#   Copyright 2014-2021, Will Godfrey & others
 #
 #   This file is part of yoshimi, which is free software: you can
 #   redistribute it and/or modify it under the terms of the GNU General
@@ -41,10 +41,10 @@ add_definitions(-Wall)
 #add_definitions(-Wno-vla) # Nothing wrong with variable length arrays
 # ^^^ comment these out on release pushes
 
-set (YOSHIMI_VERSION "1.7.4")
+set (YOSHIMI_VERSION "2.0")
 
-add_definitions (-DMIN_CONFIG_MAJOR=1)
-add_definitions (-DMIN_CONFIG_MINOR=6)
+add_definitions (-DMIN_CONFIG_MAJOR=2)
+add_definitions (-DMIN_CONFIG_MINOR=0)
 
 file (WRITE version.txt "${YOSHIMI_VERSION}")
 
@@ -355,7 +355,10 @@ if (BuildWithFLTK)
         ${FltkUI_sources}
         UI/DynamicTooltip.cpp
         UI/WidgetPDial.cpp
+        UI/WidgetCheckButton.cpp
+        UI/WidgetSpinner.cpp
         UI/WidgetMWSlider.cpp
+        UI/YoshiWin.cpp
         UI/MiscGui.cpp
     )
     set (YOSHI_INCLUDES ${FLTK_INCLUDE_DIR})
@@ -376,10 +379,6 @@ endif ()
 if (ReportNotes)
     add_definitions (-DREPORT_NOTES_ON_OFF)
 endif ()
-
-add_definitions(-DDEFAULT_AUDIO=jack_audio)
-
-add_definitions(-DDEFAULT_MIDI=jack_midi)
 
 if (JackSessionSupport)
     message(STATUS "With jack session support")

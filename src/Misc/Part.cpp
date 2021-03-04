@@ -6,7 +6,7 @@
     Copyright 2009, James Morris
     Copyright 2009-2011, Alan Calvert
     Copyright 2014-2019, Will Godfrey
-    Copyright 2020 Kristian Amlie & others
+    Copyright 2021 Kristian Amlie & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -42,6 +42,7 @@
 #include "Misc/FileMgrFuncs.h"
 #include "Misc/NumericFuncs.h"
 #include "Misc/FormatFuncs.h"
+#include "Interface/TextLists.h"
 #include "Synth/Resonance.h"
 #include "Misc/Part.h"
 
@@ -163,6 +164,7 @@ void Part::setNoteMap(int keyshift)
 void Part::defaultsinstrument(void)
 {
     Pname = DEFAULT_NAME;
+    std::string   Poriginal = "";
     PyoshiType = 0;
     info.Ptype = 0;
     info.Pauthor.clear();
@@ -1349,14 +1351,14 @@ void Part::setkititemstatus(int kititem, int Penabled_)
 void Part::add2XMLinstrument(XMLwrapper *xml)
 {
     xml->beginbranch("INFO");
-    xml->addparstr("name", Pname);
+    xml->addparstr("name", Poriginal);
     xml->addparstr("author", info.Pauthor);
     xml->addparstr("comments", info.Pcomments);
-    xml->addpar("type",info.Ptype);
+    xml->addpar("type", type_offset[info.Ptype]);
+    xml->addparstr("file", Pname);
     xml->endbranch();
     if (Pname == DEFAULT_NAME)
         return;
-
 
     xml->beginbranch("INSTRUMENT_KIT");
     xml->addpar("kit_mode", Pkitmode);
@@ -1454,6 +1456,8 @@ void Part::add2XML(XMLwrapper *xml, bool subset)
     if (subset)
     {
         xml->addpar("key_mode", Pkeymode & MIDI_NOT_LEGATO);
+        xml->addpar("channel_aftertouch", PchannelATchoice);
+        xml->addpar("key_aftertouch", PkeyATchoice);
         xml->addpar("random_detune", Pfrand);
         xml->addpar("random_velocity", Pvelrand);
         xml->addparbool("breath_disable", PbreathControl != 2);
@@ -1478,6 +1482,8 @@ bool Part::saveXML(string filename, bool yoshiFormat)
     }
     if (Pname < "!") // this shouldn't be possible
         Pname = UNTITLED;
+    else if (Poriginal.empty() && Pname != UNTITLED)
+        Poriginal = Pname;
 
     if (yoshiFormat)
     {
@@ -1527,11 +1533,12 @@ int Part::loadXMLinstrument(string filename)
     }
     defaultsinstrument();
     PyoshiType = xml->information.yoshiType;
-    Pname = findLeafName(filename); // in case there's no internal
+    Pname = findLeafName(filename);
     int chk = findSplitPoint(Pname);
     if (chk > 0)
         Pname = Pname.substr(chk + 1, Pname.size() - chk - 1);
     getfromXMLinstrument(xml);
+
     if (hasYoshi)
     {
         Pkeymode = xml->getpar("key_mode", Pkeymode, PART_NORMAL, MIDI_LEGATO);
@@ -1564,15 +1571,42 @@ void Part::getfromXMLinstrument(XMLwrapper *xml)
     string tempname;
     if (xml->enterbranch("INFO"))
     {
-        tempname = xml->getparstr("name");
-        //synth->getRuntime().Log("name <" + tempname + ">");
-        if (tempname > "!")
-            Pname = tempname;
-        if (Pname <= "!" || Pname == DEFAULT_NAME)
-            Pname = UNTITLED;
+        Poriginal = xml->getparstr("name");
+        // counting type numbers but checking the *contents* of type_offset()
         info.Pauthor = xml->getparstr("author");
         info.Pcomments = xml->getparstr("comments");
-        info.Ptype = xml->getpar("type", info.Ptype, 0, 16);
+        int found = xml->getpar("type", 0, -20, 255); // should cover all!
+        int type = 0;
+        int offset = 0;
+        while (offset != 255 && offset != found)
+        {
+            ++type;
+            offset = type_offset[type];
+        }
+        if (offset == 255)
+            type = 0; // undefined
+        info.Ptype = type;
+
+        // The following is surprisingly complex!
+        if (Pname.empty())
+            Pname = xml->getparstr("file");
+
+        if (Poriginal == DEFAULT_NAME) // it's an old one
+            Poriginal = "";
+        if (Pname.empty()) // it's an older state file
+        {
+            if (Poriginal. empty())
+                Pname = DEFAULT_NAME;
+            else
+                Pname = Poriginal;
+        }
+        else if (Poriginal.empty()) // it's one from zyn
+            Poriginal = Pname;
+        if (Pname.empty() && Poriginal == UNTITLED)
+        {
+            Pname = UNTITLED;
+            Poriginal = "";
+        }
         xml->exitbranch();
     }
 
@@ -1809,7 +1843,6 @@ float Part::getLimits(CommandBlock *getData)
         case PART::control::minToLastKey:
         case PART::control::maxToLastKey:
         case PART::control::resetMinMaxKey:
-        case PART::control::defaultInstrument:
             def = 0;
             max = 0;
             break;

@@ -1,7 +1,7 @@
 /*
     FileMgr.h - all file operations
 
-    Copyright 2019-2020 Will Godfrey and others.
+    Copyright 2019-2021 Will Godfrey and others.
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -32,6 +32,7 @@
 #include <fstream>
 #include <dirent.h>
 #include <unistd.h>
+#include <stdio.h>
 #include <zlib.h>
 
 #include "globals.h"
@@ -49,6 +50,7 @@ const string yoshInst =      ".xiy";
 const string anyInst =       ".xi*";
 const string patchset =      ".xmz";
 const string state =         ".state";
+const string presets =       ".xpz";
 const string scale =         ".xsz";
 const string scalaTuning =   ".scl";
 const string scalaKeymap =   ".kbm";
@@ -96,6 +98,26 @@ inline void make_legit_pathname(string& fname)
               || c == '.'))
             fname.at(i) = '_';
     }
+}
+
+
+/*
+ * tries to find build time doc directory
+ * currently only used to find the latest user guide
+ */
+inline string localPath(void)
+{
+    char *tmpath;
+    tmpath = (char*) malloc(PATH_MAX);
+    getcwd (tmpath, PATH_MAX);
+    string path = string(tmpath);
+    free(tmpath);
+    size_t found = path.rfind("/");
+    if (found != string::npos)
+        path = path.substr(0, found + 1) + "doc";
+    else
+        path = "";
+    return path;
 }
 
 
@@ -309,7 +331,10 @@ inline uint32_t copyDir(const string& source, const string& destination, char op
     return count | (missing << 16);
 }
 
-
+/*
+ * this fills the given list with all contents removing the
+ * directory management from the calling functions.
+ */
 inline int listDir(std::list<string>* dirList, const string& dirName)
 {
     DIR *dir = opendir(dirName.c_str());
@@ -328,6 +353,102 @@ inline int listDir(std::list<string>* dirList, const string& dirName)
     }
     closedir(dir);
     return count;
+}
+
+/*
+ * we return the contents as sorted, sequential lists in directories
+ * and file of the required type as a series of leaf names (as the
+ * root directory is already known). This reduces the size of the
+ * string to a manageable length.
+ * Directories are prefixed to make them easier to identify.
+ */
+inline void dir2string(string &wanted, string currentDir, string exten, int opt = 0)
+{
+    // options
+    // &1 allow hidden dirs
+    // &2 allow hidden files
+    // &4 allow wildcards
+    // &8 hide all subdirectories
+    // &16 hide files (just looking for dirs)
+    std::list<string> build;
+    wanted = "";
+    uint32_t found = listDir(&build, currentDir);
+    if (found == 0xffffffff)
+        return;
+
+    if (build.size() > 1)
+        build.sort();
+   if(currentDir.back() != '/')
+        currentDir += '/';
+    string line;
+    if (!(opt & 8))
+    {
+        for (std::list<string>::iterator it = build.begin(); it != build.end(); ++it)
+        { // get directories
+            if ((opt & 1) || string(*it).front() != '.') // no hidden dirs
+            {
+                line = *it;
+                if (line.back() != '/')
+                    line += '/';
+                if (isDirectory(currentDir + line))
+                    wanted += ("Dir: " + line + "\n");
+            }
+        }
+    }
+    if (opt & 16)
+    {
+        build.clear();
+        return;
+    }
+    bool instype = ((exten == ".xiz") | (exten == ".xiy")  | (exten == ".xi*"));
+    string last;
+    last.clear();
+    for (std::list<string>::iterator it = build.begin(); it != build.end(); ++it)
+    { // get files
+        if ((opt & 2) || string(*it).front() != '.') // no hidden files
+        {
+            string next;
+            line = currentDir + *it;
+            if (isRegularFile(line))
+            {
+                next.clear();
+                if ((opt & 4))
+                {
+                    next = *it;
+                    if (!next.empty())
+                        wanted += (next + "\n");
+                }
+                else
+                {
+                    if (instype)
+                    {
+                        if (findExtension(line) == ".xiy" || findExtension(line) == ".xiz")
+                            next = *it;
+                    }
+                    else
+                    {
+                    if (findExtension(line) == exten)
+                        next = *it;
+                    }
+
+                    // remove the extension, the source knows what it is
+                    // and it must exist to have been found!
+                    if (!next.empty())
+                    {
+                        size_t pos = next.rfind('.');
+                        next = next.substr(0, pos);
+                        // also remove instrument type duplicates
+                        if (next != last)
+                        {
+                            last = next;
+                            wanted += (next + "\n");
+                        }
+                    }
+                }
+            }
+        }
+    }
+    build.clear();
 }
 
 

@@ -4,6 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2009 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
+    Copyright 2021, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -428,8 +429,8 @@ void AnalogFilter::singlefilterout(float *smp, fstage &x, fstage &y, float *c, f
     if (order == 1)
     {   // First order filter
         for (int i = 0; i < synth->sent_buffersize; ++i)
-        {
-            y0 = smp[i] * c[0] + x.c1 * c[1] + y.c1 * d[1];
+        { // anti-denormal added in here
+            y0 = (smp[i] + float(1e-20)) * c[0] + x.c1 * c[1] + y.c1 * d[1];
             y.c1 = y0;
             x.c1 = smp[i];
             smp[i] = y0; // out it goes
@@ -438,8 +439,8 @@ void AnalogFilter::singlefilterout(float *smp, fstage &x, fstage &y, float *c, f
     if (order == 2)
     { // Second order filter
         for (int i = 0; i < synth->sent_buffersize; ++i)
-        {
-            y0 = smp[i] * c[0] + x.c1 * c[1] + x.c2 * c[2] + y.c1 * d[1] + y.c2 * d[2];
+        { // anti-denormal added in here
+            y0 = (smp[i] + float(1e-20)) * c[0] + x.c1 * c[1] + x.c2 * c[2] + y.c1 * d[1] + y.c2 * d[2];
             y.c2 = y.c1;
             y.c1 = y0;
             x.c2 = x.c1;
@@ -452,7 +453,7 @@ void AnalogFilter::singlefilterout(float *smp, fstage &x, fstage &y, float *c, f
 
 void AnalogFilter::filterout(float *smp)
 {
-    if (needsinterpolation)
+     if (needsinterpolation)
     {
         memcpy(tmpismp, smp, synth->sent_bufferbytes);
         for (int i = 0; i < stages + 1; ++i)

@@ -73,10 +73,10 @@ void Envelope::recomputePoints()
     int mode = _envpars->Envmode;
 
     // for amplitude envelopes
-    if (mode == ENVMODE::amplitudeLin && linearenvelope == 0)
-        mode = ENVMODE::amplitudeLog; // change to log envelope
-    if (mode == ENVMODE::amplitudeLog && linearenvelope != 0)
-        mode = ENVMODE::amplitudeLin; // change to linear
+    if (mode == PART::envelope::groupmode::amplitudeLin && linearenvelope == 0)
+        mode = PART::envelope::groupmode::amplitudeLog; // change to log envelope
+    if (mode == PART::envelope::groupmode::amplitudeLog && linearenvelope != 0)
+        mode = PART::envelope::groupmode::amplitudeLin; // change to linear
 
     envstretch = powf(440.0f / basefreq, _envpars->Penvstretch / 64.0f);
 

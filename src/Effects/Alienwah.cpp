@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2009 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2018-2019, Will Godfrey
+    Copyright 2018-2021, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -69,6 +69,11 @@ Alienwah::~Alienwah()
 // Apply the effect
 void Alienwah::out(float *smpsl, float *smpsr)
 {
+    for (int i = 0; i < synth->sent_buffersize; ++i)
+    {
+            smpsl[i] += float(1e-20); // anti-denormal
+            smpsr[i] += float(1e-20); // anti-denormal
+    }
     float lfol;
     float lfor; // Left/Right LFOs
     complex<float> clfol, clfor, out, tmp;
@@ -168,7 +173,7 @@ void Alienwah::setdelay(unsigned char _delay)
         delete [] oldl;
     if (oldr != NULL)
         delete [] oldr;
-    Pdelay = (_delay >= MAX_ALIENWAH_DELAY) ? MAX_ALIENWAH_DELAY : _delay;
+    Pdelay = _delay;
     oldl = new complex<float>[Pdelay];
     oldr = new complex<float>[Pdelay];
     cleanup();
@@ -310,7 +315,6 @@ float Alienlimit::getlimits(CommandBlock *getData)
         case 7:
             break;
         case 8:
-            min = 1;
             max = 100;
             canLearn = 0;
             break;

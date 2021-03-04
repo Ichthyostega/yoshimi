@@ -2,7 +2,8 @@
 version 1.0304
 header_name {.h}
 code_name {.cc}
-comment {Copyright 2016-2020, Will Godfrey
+comment {
+Copyright 2016-2020, Will Godfrey
 
 This file is part of yoshimi, which is free software: you can
 redistribute it and/or modify it under the terms of the GNU General
@@ -30,6 +31,9 @@ decl {\#include "Misc/SynthEngine.h"} {public global
 }
 
 decl {\#include "UI/MiscGui.h"} {public local
+}
+
+decl {\#include "UI/WidgetSpinner.h"} {public local
 }
 
 decl {\#include "BankUI.h"} {public local
@@ -62,10 +66,13 @@ class VectorUI {} {
     Fl_Window vectorwindow {
       label {Yoshimi : Vectors}
       callback {//
-      o->hide()}
-      xywh {245 162 375 295} type Double labelfont 13 labelsize 12 align 0 hide
+      Closevector->do_callback();}
+      xywh {776 278 375 295} type Double labelfont 13 labelsize 12 align 0 hide resizable
+      code0 {vecDW = o->w();vecDH = o->h();}
+      code1 {o->size_range(vecDW, vecDH, 0, 0, 0, 0, 1);}
     } {
       Fl_Spinner setbasechan {
+        class WidgetSpinner
         label {Base Channel}
         callback {//
         BaseChan = o->value() - 1;
@@ -73,30 +80,24 @@ class VectorUI {} {
         tooltip {The channel number for this vector} xywh {121 12 38 20} labelfont 1 labelsize 12 maximum 16 textsize 12
         code0 {o->value(BaseChan + 1);}
       }
-      Fl_Menu_Button {} {
+      Fl_Menu_Button options {
         label Options
-        xywh {275 12 74 20} labelsize 12 textsize 12
-        code0 {(void) o; // suppress warning}
-        code1 {vector <string> listType = *synth->getHistory(TOPLEVEL::XML::Vector);}
-        code2 {if (listType.size() == 0) recenthistory->deactivate(); else recenthistory->activate();}
-      } {
-        MenuItem {} {
-          label Load
-          callback {//
-          loadVector("");}
-          xywh {0 0 34 20} labelsize 12
-        }
-        MenuItem {} {
-          label Save
-          callback {//
-          bool ok = true;
+        callback {int res = o->value();
+switch (res)
+{
+    case 0:
+        loadVector("");;
+        break;
+    case 1:
+    {
+        bool ok = true;
           int count;
           int size;
           string name;
 
           if (Xcc < 14)
           {
-              fl_alert("Nothing to save!");
+              alert(synth, "Nothing to save!");
               ok = false;
           }
           else
@@ -117,37 +118,34 @@ class VectorUI {} {
                       name = "No instruments set!";
                   else
                       name = "Only " + to_string(count/NUM_MIDI_CHANNELS) + " of " +  to_string(size/NUM_MIDI_CHANNELS) + " instruments set!";
-                  fl_alert("%s",name.c_str());
+                  alert(synth, name);
                   ok = false;
               }
           }
 
           if (ok)
-              saveVector();}
-          xywh {10 10 34 20} labelsize 12
-        }
-        MenuItem recenthistory {
-          label Recent
-          callback {//
-          paramsui->Recent->position(vectorwindow->x() + vectorwindow->w() - paramsui->Recent->w(),vectorwindow->y()+20);
-          paramsui->Show(TOPLEVEL::XML::Vector);}
-          xywh {20 20 34 20} labelsize 12 deactivate
-        }
-        MenuItem {} {
-          label {Clear Chan}
-          callback {//
-          send_data(TOPLEVEL::action::forceUpdate, VECTOR::control::erase, 0, TOPLEVEL::type::Integer, TOPLEVEL::section::vector, UNUSED, UNUSED, BaseChan);}
-          xywh {30 30 34 20} labelsize 12
-        }
-        MenuItem {} {
-          label {Clear All}
-          callback {//
-          send_data(TOPLEVEL::action::forceUpdate, VECTOR::control::erase, 0, TOPLEVEL::type::Integer);}
-          xywh {40 40 34 20} labelsize 12
-        }
-      }
+              saveVector();
+        break;
+    }
+    case 2:
+        paramsui->Recent->position(vectorwindow->x() + vectorwindow->w() - paramsui->Recent->w(),vectorwindow->y()+20);
+        paramsui->Show(TOPLEVEL::XML::Vector);
+        break;
+    case 3:
+        send_data(TOPLEVEL::action::forceUpdate, VECTOR::control::erase, 0, TOPLEVEL::type::Integer, TOPLEVEL::section::vector, UNUSED, UNUSED, BaseChan);
+        break;
+    case 4:
+        send_data(TOPLEVEL::action::forceUpdate, VECTOR::control::erase, 0, TOPLEVEL::type::Integer);
+        break;
+}}
+        xywh {275 12 74 20} labelsize 12 textsize 12
+        code0 {(void) o; // suppress warning}
+        code1 {vector <string> listType = *synth->getHistory(TOPLEVEL::XML::Vector);}
+        code2 {o->add("Load");o->add("Save");o->add("Recent");o->add("Clear Ch");o->add("Clear All");}
+        code3 {setRecent(listType.size() > 0);}
+      } {}
       Fl_Group Xgroup {
-        label X open
+        label X
         xywh {8 42 360 104} box PLASTIC_THIN_UP_BOX color 221 labelfont 1 labelsize 16 align 0 deactivate
       } {
         Fl_Box AddBackL {
@@ -160,7 +158,7 @@ class VectorUI {} {
           xywh {127 53 53 19} box FLAT_BOX color 50
         }
         Fl_Text_Display XinstL {
-          private xywh {20 69 160 1} box NO_BOX labelsize 12 align 97 textsize 12
+          xywh {20 69 160 1} box NO_BOX labelsize 12 align 97 textsize 12
         }
         Fl_Button XL {
           callback {//
@@ -179,7 +177,7 @@ class VectorUI {} {
           xywh {127 115 53 19} box FLAT_BOX color 50
         }
         Fl_Text_Display XinstR {
-          private xywh {20 131 160 1} box NO_BOX labelsize 12 align 97 textsize 12
+          xywh {20 131 160 1} box NO_BOX labelsize 12 align 97 textsize 12
         }
         Fl_Button XR {
           callback {//
@@ -201,16 +199,8 @@ class VectorUI {} {
               bitSet(Xf, 0);
           send_data(0, VECTOR::control::Xfeature0, o->value(), TOPLEVEL::type::Integer);}
           xywh {208 53 58 20} down_box BORDER_BOX labelsize 12 align 8 textsize 12
-        } {
-          MenuItem {} {
-            label Off
-            xywh {10 10 34 20} labelsize 12
-          }
-          MenuItem {} {
-            label Vol
-            xywh {0 0 34 20} labelsize 12
-          }
-        }
+          code0 {o->add("off");o->add("vol");}
+        } {}
         Fl_Choice Xfeat2 {
           label 2
           callback {//
@@ -224,20 +214,8 @@ class VectorUI {} {
           }
           send_data(0, VECTOR::control::Xfeature1, o->value(), TOPLEVEL::type::Integer);}
           xywh {302 53 58 20} down_box BORDER_BOX labelsize 12 textsize 12
-        } {
-          MenuItem {} {
-            label Off
-            xywh {20 20 34 20} labelsize 12
-          }
-          MenuItem {} {
-            label Pan
-            xywh {20 20 34 20} labelsize 12
-          }
-          MenuItem {} {
-            label {Pan R}
-            xywh {40 40 34 20} labelsize 12
-          }
-        }
+          code0 {o->add("off");o->add("pan");o->add("panR");}
+        } {}
         Fl_Choice Xfeat3 {
           label 3
           callback {//
@@ -251,20 +229,8 @@ class VectorUI {} {
           }
           send_data(0, VECTOR::control::Xfeature2, o->value(), TOPLEVEL::type::Integer);}
           xywh {208 115 58 20} down_box BORDER_BOX labelsize 12 align 8 textsize 12
-        } {
-          MenuItem {} {
-            label Off
-            xywh {30 30 34 20} labelsize 12
-          }
-          MenuItem {} {
-            label Filt
-            xywh {30 30 34 20} labelsize 12
-          }
-          MenuItem {} {
-            label {Filt R}
-            xywh {40 40 34 20} labelsize 12
-          }
-        }
+          code0 {o->add("off");o->add("filt");o->add("filtR");}
+        } {}
         Fl_Choice Xfeat4 {
           label 4
           callback {//
@@ -278,22 +244,11 @@ class VectorUI {} {
           }
           send_data(0, VECTOR::control::Xfeature3, o->value(), TOPLEVEL::type::Integer);}
           xywh {302 115 58 20} down_box BORDER_BOX labelsize 12 textsize 12
-        } {
-          MenuItem {} {
-            label Off
-            xywh {40 40 34 20} labelsize 12
-          }
-          MenuItem {} {
-            label Mod
-            xywh {50 50 34 20} labelsize 12
-          }
-          MenuItem {} {
-            label {Mod R}
-            xywh {40 40 34 20} labelsize 12
-          }
-        }
+          code0 {o->add("off");o->add("mod");o->add("modR");}
+        } {}
       }
       Fl_Spinner Xcontrol {
+        class WidgetSpinner
         label Controller
         callback {//
         int tmp = o->value();
@@ -323,7 +278,10 @@ class VectorUI {} {
       Fl_Button Closevector {
         label Close
         callback {//
-        vectorwindow->hide()}
+            saveWin(synth, vectorwindow->w(), vectorwindow->h(), vectorwindow->x(), vectorwindow->y(), false, "Vector");
+        vectorwindow->hide();
+        setVisible(synth, false, "Vector");
+        vectorSeen = false;}
         xywh {310 265 57 20} labelfont 13 labelsize 12
       }
       Fl_Group Ygroup {
@@ -381,16 +339,8 @@ class VectorUI {} {
               bitSet(Yf, 0);
           send_data(0, VECTOR::control::Yfeature0, o->value(), TOPLEVEL::type::Integer);}
           xywh {208 163 58 20} down_box BORDER_BOX labelsize 12 align 8 textsize 12
-        } {
-          MenuItem {} {
-            label Off
-            xywh {50 50 34 20} labelsize 12
-          }
-          MenuItem {} {
-            label Vol
-            xywh {10 10 34 20} labelsize 12
-          }
-        }
+          code0 {o->add("off");o->add("vol");}
+        } {}
         Fl_Choice Yfeat2 {
           label 2
           callback {//
@@ -404,20 +354,8 @@ class VectorUI {} {
           }
           send_data(0, VECTOR::control::Yfeature1, o->value(), TOPLEVEL::type::Integer);}
           xywh {302 163 58 20} down_box BORDER_BOX labelsize 12 textsize 12
-        } {
-          MenuItem {} {
-            label Off
-            xywh {60 60 34 20} labelsize 12
-          }
-          MenuItem {} {
-            label Pan
-            xywh {30 30 34 20} labelsize 12
-          }
-          MenuItem {} {
-            label {Pan R}
-            xywh {50 50 34 20} labelsize 12
-          }
-        }
+          code0 {o->add("off");o->add("pan");o->add("panR");}
+        } {}
         Fl_Choice Yfeat3 {
           label 3
           callback {//
@@ -431,20 +369,8 @@ class VectorUI {} {
           }
           send_data(0, VECTOR::control::Yfeature2, o->value(), TOPLEVEL::type::Integer);}
           xywh {208 225 58 20} down_box BORDER_BOX labelsize 12 align 8 textsize 12
-        } {
-          MenuItem {} {
-            label Off
-            xywh {70 70 34 20} labelsize 12
-          }
-          MenuItem {} {
-            label Filt
-            xywh {40 40 34 20} labelsize 12
-          }
-          MenuItem {} {
-            label {Filt R}
-            xywh {50 50 34 20} labelsize 12
-          }
-        }
+          code0 {o->add("off");o->add("filt");o->add("filtR");}
+        } {}
         Fl_Choice Yfeat4 {
           label 4
           callback {//
@@ -458,22 +384,11 @@ class VectorUI {} {
           }
           send_data(0, VECTOR::control::Yfeature3, o->value(), TOPLEVEL::type::Integer);}
           xywh {302 225 58 20} down_box BORDER_BOX labelsize 12 textsize 12
-        } {
-          MenuItem {} {
-            label Off
-            xywh {80 80 34 20} labelsize 12
-          }
-          MenuItem {} {
-            label Mod
-            xywh {50 50 34 20} labelsize 12
-          }
-          MenuItem {} {
-            label {Mod R}
-            xywh {60 60 34 20} labelsize 12
-          }
-        }
+          code0 {o->add("off");o->add("mod");o->add("modR");}
+        } {}
       }
       Fl_Spinner Ycontrol {
+        class WidgetSpinner
         label Controller
         callback {//
         int tmp = o->value();
@@ -503,17 +418,16 @@ class VectorUI {} {
         label {No Name}
         callback {//
         (void) o; // suppress warning
-        const char *tmp = NULL;
-        tmp = fl_input("Vector name:", loadlabel[BaseChan].c_str());
-        if (tmp != NULL && !string(tmp).empty())
-            send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate, VECTOR::control::name, 0, TOPLEVEL::type::Integer, TOPLEVEL::section::vector, UNUSED, UNUSED, BaseChan, UNUSED, textMsgBuffer.push(string(tmp)));}
+        string tmp = input_text(synth, "Vector name:", loadlabel[BaseChan]);
+        if (tmp != loadlabel[BaseChan])
+            send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate, VECTOR::control::name, 0, TOPLEVEL::type::Integer, TOPLEVEL::section::vector, UNUSED, UNUSED, BaseChan, UNUSED, textMsgBuffer.push(tmp));}
         tooltip {Last saved or loaded vector file - click to change} xywh {45 265 198 20} box THIN_DOWN_BOX labelfont 1 labelsize 12
       }
     }
   }
   Function {send_data(int action, int control, float value, int type, int part = TOPLEVEL::section::vector, int kit = UNUSED, int engine = UNUSED, int insert = UNUSED, int parameter = UNUSED, int miscmsg = UNUSED)} {} {
     code {//
-        if (control != 84 && control != 85 && control != 96)
+        if (control != 84 && control != 85 && control != VECTOR::control::erase)
         {
             insert = BaseChan;
         }
@@ -631,6 +545,14 @@ class VectorUI {} {
             break;
 }} {}
   }
+  Function {setRecent(bool active)} {} {
+    code {//
+    Fl_Menu_Item *m = (Fl_Menu_Item*)options->find_item("Recent");
+    if (active)
+        m->activate();
+    else
+        m->deactivate();} {}
+  }
   Function {VectorUI(SynthEngine *_synth, BankUI *_bankui, ParametersUI *_paramsui)} {} {
     code {//
     synth = _synth;
@@ -643,13 +565,16 @@ class VectorUI {} {
     Yf = 0;
     make_window();
     vectorwindow->copy_label(synth->makeUniqueName("Vectors").c_str());
-    updateAll();} {}
+    updateAll();
+    vectorSeen = false;
+    lastvectorW = 0;} {}
   }
   Function {~VectorUI()} {} {
     code {//
-    saveWin(synth, vectorwindow->x(), vectorwindow->y(), vectorwindow->visible(), "vector");  
-    vectorwindow->hide();
-    delete  vectorwindow;} {}
+        if (vectorSeen)
+            saveWin(synth, vectorwindow->w(), vectorwindow->h(), vectorwindow->x(), vectorwindow->y(), true, "Vector");
+        vectorwindow->hide();
+        delete  vectorwindow;} {}
   }
   Function {updateAll(bool everything = true)} {} {
     code {//
@@ -771,6 +696,81 @@ class VectorUI {} {
     else
         Yfeat4->value(0);} {}
   }
+  Function {Show(SynthEngine *synth)} {} {
+    code {//
+    int fetchW, fetchH, fetchX, fetchY, fetchO;
+    loadWin(synth, fetchW, fetchH, fetchX, fetchY, fetchO, "Vector");
+    vectorwindow->show();
+    if (fetchW < vecDW || fetchH < vecDH)
+    {
+        fetchW = vecDW;
+        fetchH = vecDH;
+    }
+    checkSane(fetchX, fetchY, fetchW, fetchH, vecDW, vecDH, true);
+
+    vectorwindow->resize(fetchX, fetchY, fetchW, fetchH);
+    vectorSeen = true;
+    lastvectorW = 0;} {}
+  }
+  Function {vectorRtext()} {} {
+    code {//
+    if (lastvectorW == vectorwindow->w())
+        return;
+    lastvectorW = vectorwindow->w();
+
+    float dW = vectorwindow->w() / vecDW;
+    float dH = vectorwindow->h() / vecDH;
+    float dScale;
+    if (dW < dH)
+        dScale = dW;
+    else
+        dScale = dH;
+    if (dScale < 0.2f)
+        dScale = 0.2f;
+
+    int size12 = int(dScale * 12);
+    int size16 = int(dScale * 16);
+
+    setbasechan->labelsize(size12);
+    setbasechan->textsize(size12);
+    options->labelsize(size12);
+        options->textsize(size12);
+
+    Xgroup->labelsize(size16);
+    Xcontrol->labelsize(size12);
+        Xcontrol->textsize(size12);
+    XinstL->labelsize(size12);
+    XinstR->labelsize(size12);
+    Xfeat->labelsize(size12);
+    Xfeat1->labelsize(size12);
+         Xfeat1->textsize(size12);
+    Xfeat2->labelsize(size12);
+         Xfeat2->textsize(size12);
+    Xfeat3->labelsize(size12);
+         Xfeat3->textsize(size12);
+    Xfeat4->labelsize(size12);
+         Xfeat4->textsize(size12);
+
+    Ygroup->labelsize(size16);
+    Ycontrol->labelsize(size12);
+        Ycontrol->textsize(size12);
+    YinstU->labelsize(size12);
+    YinstD->labelsize(size12);
+    Yfeat->labelsize(size12);
+    Yfeat1->labelsize(size12);
+        Yfeat1->textsize(size12);
+    Yfeat2->labelsize(size12);
+        Yfeat2->textsize(size12);;
+    Yfeat3->labelsize(size12);
+        Yfeat3->textsize(size12);
+    Yfeat4->labelsize(size12);
+        Yfeat4->textsize(size12);
+
+    Loaded->labelsize(size12);
+    Closevector->labelsize(size12);
+
+    vectorwindow->redraw();} {}
+  }
   Function {setInstrumentLabel(int npart)} {} {
     code {//
     if ((npart & 0xf) != BaseChan)
@@ -871,35 +871,19 @@ class VectorUI {} {
   }
   Function {loadVector(string fname)} {} {
     code {//
-    if (fname == "")
+    if (fname.empty())
     {
-        string lastname = synth->lastItemSeen(TOPLEVEL::XML::Vector);
-        if (lastname == "")
-            lastname = synth->getRuntime().userHome;
-        char *filename;
-        string exten = "({*" + EXTEN::vector + "})";
-        filename = fl_file_chooser("Open:", exten.c_str(), lastname.c_str(), 0);
-        if (filename == NULL)
+        fname = setfiler(synth,"", "", false, TOPLEVEL::XML::Vector);
+        if (fname.empty())
             return;
-        fname = string(filename);
     }
     send_data(TOPLEVEL::action::muteAndLoop | TOPLEVEL::action::forceUpdate, MAIN::loadNamedVector, 0, TOPLEVEL::type::Integer, TOPLEVEL::section::main, UNUSED, UNUSED, BaseChan, UNUSED, textMsgBuffer.push(fname));} {}
   }
   Function {saveVector()} {} {
     code {//
-    string lastname = synth->getLastfileAdded(TOPLEVEL::XML::Vector);
-    if (lastname == "")
-        lastname = synth->getRuntime().userHome;
-    const char *file = NULL;
-    string exten = "({*" + EXTEN::vector + "})";
-    file = fl_file_chooser("Save:", exten.c_str(), lastname.c_str(), 0);
-    if (file == NULL)
+    string filename = setfiler(synth,"", "", true, TOPLEVEL::XML::Vector);
+    if (filename.empty())
         return;
-
-    string filename = setExtension(string(file), "xvy");
-    if (isRegularFile(filename))
-        if (fl_choice("The file exists. \\nOverwrite it?", NULL, "No", "Yes") < 2)
-            return;
     int pos = loadlabel[BaseChan].find("No Name");
     if (pos >=0 && pos < 2)
         Loaded->copy_label(findLeafName(filename).c_str());
@@ -975,6 +959,14 @@ for (int i = 0; i < NUM_MIDI_CHANNELS; ++i)
   }
   decl {unsigned int Yf;} {private local
   }
+  decl {float vecDW;} {private local
+  }
+  decl {float vecDH;} {private local
+  }
   decl {string loadlabel [NUM_MIDI_CHANNELS];} {private local
+  }
+  decl {bool vectorSeen;} {private local
+  }
+  decl {int lastvectorW;} {private local
   }
 }

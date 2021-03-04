@@ -32,9 +32,6 @@ This file is a derivative of the ZynAddSubFX original.
 } {selected in_source in_header
 }
 
-decl {\#include <FL/Fl_File_Chooser.H>} {public local
-}
-
 decl {\#include <FL/fl_ask.H>} {public local
 }
 
@@ -47,7 +44,9 @@ decl {\#include "UI/MiscGui.h"
     \#include "ADnoteUI.h"
     \#include "SUBnoteUI.h"
     \#include "PADnoteUI.h"
+    \#include "UI/WidgetSpinner.h"
     \#include "UI/WidgetMWSlider.h"
+    \#include "UI/WidgetCheckButton.h"
     \#include "Params/Controller.h"} {public global
 }
 
@@ -65,36 +64,44 @@ class MicrotonalUI {} {
   Function {make_window()} {} {
     Fl_Window microtonaluiwindow {
       label Scales
-      xywh {28 43 410 485} type Double hide
+      callback {scaleClose->do_callback();}
+      xywh {612 332 410 485} type Double hide resizable
+      code0 {scaleDW = o->w(); scaleDH = o->h();}
+      code1 {o->size_range(scaleDW, scaleDH, 0, 0, 0, 0, 1);}
     } {
+      Fl_Box {} {
+        xywh {254 14 22 22} box UP_BOX color 237
+      }
       Fl_Group {} {
         tooltip {Center where the note's freqs. are turned upside-down} xywh {248 2 156 48} box ENGRAVED_FRAME
       } {
-        Fl_Text_Display {} {
+        Fl_Text_Display invertlabel {
           label Invert
           xywh {273 7 5 24} box NO_BOX labelfont 1 labelsize 12 align 136 textsize 11
         }
-        Fl_Text_Display {} {
+        Fl_Text_Display keyslabel {
           label keys
           xywh {273 18 5 30} box NO_BOX labelfont 1 labelsize 12 align 136 textsize 11
         }
         Fl_Check_Button invertKeys {
+          class Fl_Check_Button2
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, SCALES::control::invertScale, o->value(), TOPLEVEL::type::Integer);}
-          tooltip {Turn upside-down the note frequencies} xywh {256 16 19 19} box THIN_UP_BOX down_box DOWN_BOX color 237 labelfont 1 labelsize 13 align 136
+          tooltip {Turn upside-down the note frequencies} xywh {256 16 19 19} down_box DOWN_BOX color 50 labelfont 1 align 8
           code0 {o->value(microtonal->Pinvertupdown);}
         }
         Fl_Box {} {
           xywh {335 17 56 27} box THIN_UP_BOX color 237
         }
-        Fl_Text_Display {} {
+        Fl_Text_Display centerlabel {
           label Center
           xywh {336 17 50 8} box NO_BOX labelsize 11
         }
         Fl_Spinner centerinvertcounter {
+          class WidgetSpinner
           callback {//
           send_data(0, SCALES::control::invertedScaleCenter, o->value(), TOPLEVEL::type::Integer);}
-          xywh {339 20 47 20} labelsize 11 align 129 minimum 0 maximum 127 value 0 textfont 1 textsize 11
+          xywh {339 20 47 20} labelsize 11 align 129 minimum 0 maximum 127 value 0 textfont 1 textsize 12
           code0 {o->value(microtonal->Pinvertupdowncenter);}
           code1 {if (microtonal->Pinvertupdown==0) o->deactivate();}
         }
@@ -102,18 +109,19 @@ class MicrotonalUI {} {
       Fl_Group {} {
         xywh {108 2 141 48} box ENGRAVED_FRAME
       } {
-        Fl_Text_Display {} {
+        Fl_Text_Display reflabel {
           label {Ref.}
           xywh {155 20 50 8} box NO_BOX labelfont 1 labelsize 12
         }
         Fl_Box {} {
           xywh {188 19 54 25} box THIN_UP_BOX color 237
         }
-        Fl_Text_Display {} {
+        Fl_Text_Display notelabel {
           label Note
           xywh {191 18 50 8} box NO_BOX labelsize 11
         }
         Fl_Spinner anotecounter {
+          class WidgetSpinner
           callback {//
           send_data(0, SCALES::control::refNote, o->value(), TOPLEVEL::type::Integer);}
           tooltip {Midi note range: 24 (C1) to 84 (C6)} xywh {192 23 45 17} box FLAT_BOX labelsize 11 align 1 minimum 24 maximum 84 value 69 textfont 1 textsize 11
@@ -168,6 +176,9 @@ class MicrotonalUI {} {
           xywh {166 20 14 18} box NO_BOX hide
         }
       }
+      Fl_Box {} {
+        xywh {210 165 22 22} box UP_BOX color 237
+      }
       Fl_Group microtonalgroup {
         xywh {3 49 402 432} box ENGRAVED_FRAME
         code0 {if (microtonal->Penabled==0) o->deactivate();}
@@ -189,14 +200,15 @@ class MicrotonalUI {} {
         Fl_Box {} {
           xywh {315 65 56 27} box THIN_UP_BOX color 237
         }
-        Fl_Text_Display {} {
+        Fl_Text_Display shiftlabel {
           label Shift
           xywh {318 65 50 8} box NO_BOX labelsize 11
         }
         Fl_Spinner scaleShift {
+          class WidgetSpinner
           callback {//
           send_data(0, SCALES::control::scaleShift, o->value(), TOPLEVEL::type::Integer);}
-          tooltip {Octave base offset} xywh {320 68 47 20} labelsize 10 align 1 minimum -63 maximum 64 value 0 textfont 1 textsize 11
+          tooltip {Octave base offset} xywh {320 68 47 20} labelsize 10 align 1 minimum -63 maximum 64 value 0 textfont 1 textsize 12
           code0 {o->value(microtonal->Pscaleshift-64);}
         }
         Fl_Group Tuning {
@@ -214,15 +226,13 @@ class MicrotonalUI {} {
             tooltip {Notes/Octave} xywh {17 417 45 20} labelsize 10 align 5 maximum 500 step 1 value 12 textfont 1
             code0 {o->value(microtonal->getoctavesize());}
           }
-          Fl_Button {} {
+          Fl_Button importscl {
             label {Import .scl file}
             callback {//
-            string exten = "({*" + EXTEN::scalaTuning + "})";
-            const char *filename = fl_file_chooser("Open:", exten.c_str(), synth->getRuntime().userHome.c_str(), 0);
-            if (filename == NULL)
+            string filename = setfiler(synth,"", "", false, TOPLEVEL::XML::ScalaTune);
+            if (filename.empty())
                 return;
-
-            send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate, SCALES::control::importScl, 0, TOPLEVEL::type::Integer, UNUSED, textMsgBuffer.push(string(filename)));}
+            send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate, SCALES::control::importScl, 0, TOPLEVEL::type::Integer, UNUSED, textMsgBuffer.push(filename));}
             tooltip {Inport Scala .scl file (tunnings)} xywh {85 417 100 20} box THIN_UP_BOX labelfont 1 labelsize 10
           }
         }
@@ -237,15 +247,16 @@ class MicrotonalUI {} {
           Fl_Box {} {
             xywh {199 225 50 25} box THIN_UP_BOX color 237
           }
-          Fl_Text_Display {} {
+          Fl_Text_Display first1 {
             label First
             xywh {197 214 50 8} box NO_BOX labelsize 11
           }
-          Fl_Text_Display {} {
+          Fl_Text_Display first2 {
             label note
             xywh {198 224 50 8} box NO_BOX labelsize 11
           }
           Fl_Spinner firstnotecounter {
+            class WidgetSpinner
             callback {//
             int tmp = int (o->value());
             int max = middlenotecounter->value() - 1;
@@ -267,15 +278,16 @@ class MicrotonalUI {} {
           Fl_Box {} {
             xywh {199 290 50 25} box THIN_UP_BOX color 237
           }
-          Fl_Text_Display {} {
+          Fl_Text_Display middle1 {
             label Middle
             xywh {197 279 50 8} box NO_BOX labelsize 11
           }
-          Fl_Text_Display {} {
+          Fl_Text_Display middle2 {
             label note
             xywh {198 289 50 8} box NO_BOX labelsize 11
           }
           Fl_Spinner middlenotecounter {
+            class WidgetSpinner
             callback {//
             int tmp = int(o->value());
             int min = firstnotecounter->value() + 1;
@@ -306,15 +318,16 @@ class MicrotonalUI {} {
           Fl_Box {} {
             xywh {199 354 50 25} box THIN_UP_BOX color 237
           }
-          Fl_Text_Display {} {
+          Fl_Text_Display last1 {
             label Last
             xywh {197 344 50 8} box NO_BOX labelsize 11
           }
-          Fl_Text_Display {} {
+          Fl_Text_Display last2 {
             label note
             xywh {198 354 50 8} box NO_BOX labelsize 11
           }
           Fl_Spinner lastnotecounter {
+            class WidgetSpinner
             callback {//
             int tmp = int(o->value());
             int min = middlenotecounter->value() + 1;
@@ -339,25 +352,25 @@ class MicrotonalUI {} {
             xywh {202 417 44 20} labelsize 10 align 5 maximum 500 step 1 value 12 textfont 1
             code0 {o->value(microtonal->Pmapsize);}
           }
-          Fl_Button {} {
+          Fl_Button importkbm {
             label {Import .kbm file}
             callback {//
-            string exten = "({*" + EXTEN::scalaKeymap + "})";
-            const char *filename = fl_file_chooser("Open:", exten.c_str(), synth->getRuntime().userHome.c_str(), 0);
-            if (filename == NULL)
+            string filename = setfiler(synth,"", "", false, TOPLEVEL::XML::ScalaMap);
+            if (filename.empty())
                 return;
 
-            send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate, SCALES::control::importKbm, 0, TOPLEVEL::type::Integer, UNUSED, textMsgBuffer.push(string(filename)));}
+            send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate, SCALES::control::importKbm, 0, TOPLEVEL::type::Integer, UNUSED, textMsgBuffer.push(filename));}
             tooltip {Inport Scala .kbm file (keyboard mapping)} xywh {285 417 104 20} box THIN_UP_BOX labelfont 1 labelsize 10
           }
         }
         Fl_Check_Button mappingenabledbutton {
+          class Fl_Check_Button2
           label ON
           callback {//
           o->show();
 
           send_data(TOPLEVEL::action::forceUpdate, SCALES::control::enableKeyboardMap, o->value(), TOPLEVEL::type::Integer);}
-          tooltip {Enable the Mapping (otherwise the mapping is linear)} xywh {212 166 20 21} box THIN_UP_BOX down_box DOWN_BOX color 237 align 33
+          tooltip {Enable the Mapping (otherwise the mapping is linear)} xywh {212 166 20 21} down_box DOWN_BOX color 50 align 33
           code0 {o->value(microtonal->Pmappingenabled);}
           code1 {if (microtonal->Pmappingenabled==0) keymappinggroup->deactivate();}
         }
@@ -367,27 +380,34 @@ class MicrotonalUI {} {
           send_data(0, SCALES::control::tuning, 1, TOPLEVEL::type::Integer);
           send_data(0, SCALES::control::keyboardMap, 1, TOPLEVEL::type::Integer);
           send_data(0, SCALES::control::retune, 1, TOPLEVEL::type::Integer);}
-          tooltip {Retune the synth according to the inputs from "Tunnings" and "Keyboard Mapping"} xywh {152 447 107 28} box THIN_UP_BOX labeltype EMBOSSED_LABEL labelfont 1 labelsize 13
+          tooltip {Retune the synth according to the inputs from "Tunnings" and "Keyboard Mapping"} xywh {152 447 107 28} box THIN_UP_BOX labeltype EMBOSSED_LABEL labelfont 1
         }
       }
-      Fl_Text_Display {} {
+      Fl_Text_Display enablelabel {
         label Enable
         xywh {27 24 50 8} box NO_BOX labelfont 1 labelsize 12
       }
-      Fl_Text_Display {} {
+      Fl_Text_Display microtonallabel {
         label Microtonal
         xywh {40 40 50 8} box NO_BOX labelfont 1 labelsize 12
       }
+      Fl_Box {} {
+        xywh {2 13 22 22} box UP_BOX color 237
+      }
       Fl_Check_Button enableMicrotonal {
+        class Fl_Check_Button2
         callback {//
         send_data(TOPLEVEL::action::forceUpdate, SCALES::control::enableMicrotonal, o->value(), TOPLEVEL::type::Integer);}
-        xywh {4 13 21 22} box THIN_UP_BOX down_box DOWN_BOX color 237 labelfont 1 align 148
+        xywh {4 13 21 22} down_box DOWN_BOX color 50 labelfont 1 align 4
         code0 {o->value(microtonal->Penabled);}
       }
-      Fl_Button {} {
+      Fl_Button scaleClose {
         label Close
-        callback {microtonaluiwindow->hide();}
-        xywh {315 447 67 28} box THIN_UP_BOX
+        callback {//
+    saveWin(synth, microtonaluiwindow->w(), microtonaluiwindow->h(), microtonaluiwindow->x(), microtonaluiwindow->y(), false, "Scales");
+    microtonaluiwindow->hide();
+    lastscaleSeen = false;}
+        xywh {315 447 67 28} box THIN_UP_BOX down_box THIN_DOWN_BOX
       }
     }
   }
@@ -413,7 +433,7 @@ class MicrotonalUI {} {
 
     unsigned char miscmsg = getData->data.miscmsg;
     int value_int = lrint(value);
-    bool value_bool = YOSH::F2B(value);
+    bool value_bool = _SYS_::F2B(value);
     string msg;
 
     switch (control)
@@ -539,15 +559,93 @@ class MicrotonalUI {} {
     code {//
     synth = synth_;
     microtonal=microtonal_;
+    lastscaleW = 0;
+    lastscaleSeen = false;
     make_window();} {}
   }
   Function {~MicrotonalUI()} {} {
     code {//
-    saveWin(synth, microtonaluiwindow->x(), microtonaluiwindow->y(), microtonaluiwindow->visible(), "scales");
+    if (lastscaleSeen)
+        saveWin(synth, microtonaluiwindow->w(), microtonaluiwindow->h(), microtonaluiwindow->x(), microtonaluiwindow->y(), true, "Scales");
     microtonaluiwindow->hide();
     delete tuningsinput;
     delete mappinginput;
     delete microtonaluiwindow;} {}
+  }
+  Function {showScales()} {} {
+    code {//
+    int fetchX, fetchY, fetchW, fetchH, fetchO;
+
+    loadWin(synth, fetchW, fetchH, fetchX, fetchY, fetchO, "Scales");
+    if (fetchW < scaleDW || fetchH < scaleDH)
+    {
+        fetchW = scaleDW;
+        fetchH = scaleDH;
+    }
+    checkSane(fetchX, fetchY, fetchW, fetchH, scaleDW, scaleDH);
+
+    microtonaluiwindow->resize(fetchX, fetchY, fetchW, fetchH);
+    lastscaleW = 0;
+    lastscaleSeen = true;
+    microtonaluiwindow->show();} {}
+  }
+  Function {scaleRtext()} {} {
+    code {//
+    if (lastscaleW == microtonaluiwindow->w())
+        return;
+    lastscaleW = microtonaluiwindow->w();
+
+    float dScale = microtonaluiwindow->w() / float(scaleDW);
+
+    int size = int(10 * dScale);
+    int size11 = int(11 * dScale);
+    int size12 = int(12 * dScale);
+    int size14 = int(14 * dScale);
+
+    invertlabel->labelsize(size12);
+    keyslabel->labelsize(size12);
+    invertKeys->labelsize(size14);
+    centerlabel->labelsize(size11);
+    centerinvertcounter->textsize(size12);
+    reflabel->labelsize(size12);
+    notelabel->labelsize(size11);
+    anotecounter->textsize(size11);
+    afreqinput->labelsize(size11);
+        afreqinput->textsize(size);
+    AsetBack->labelsize(size14);
+    afreqset->labelsize(size14);
+    nameinput->labelsize(size11);
+        nameinput->textsize(size14);
+    commentinput->labelsize(size11);
+        commentinput->textsize(size14);
+    shiftlabel->labelsize(size11);
+    scaleShift->labelsize(size);
+        scaleShift->textsize(size12);
+    Tuning->labelsize(size11);
+    tuningsinput->textsize(size14);
+    octavesizeoutput->textsize(size14);
+    importscl->labelsize(size);
+    keymappinggroup->labelsize(11);
+    mappinginput->textsize(size14);
+    first1->labelsize(size11);
+    first2->labelsize(size11);
+        firstnotecounter->textsize(size11);
+    middle1->labelsize(size11);
+    middle2->labelsize(size11);
+        middlenotecounter->textsize(size11);
+    last1->labelsize(size11);
+    last2->labelsize(size11);
+        lastnotecounter->textsize(size11);
+    mapsizeoutput->textsize(size14);
+    importkbm->labelsize(size);
+    mappingenabledbutton->labelsize(size14);
+    applybutton->labelsize(size14);
+    enablelabel->labelsize(size12);
+    microtonallabel->labelsize(size12);
+    enableMicrotonal->labelsize(size14);
+    scaleClose->labelsize(size14);
+
+    microtonaluiwindow->redraw();} {}
   }
   Function {apply()} {} {
     code {//
@@ -619,7 +717,7 @@ class MicrotonalUI {} {
             message += "Value out of range";
             break;
     }
-    fl_alert("%s", message.c_str());} {}
+    alert(synth, message);} {}
   }
   decl {Microtonal *microtonal;} {private local
   }
@@ -634,5 +732,13 @@ class MicrotonalUI {} {
   decl {int oldMid;} {private local
   }
   decl {int oldLast;} {private local
+  }
+  decl {int scaleDW;} {private local
+  }
+  decl {int scaleDH;} {private local
+  }
+  decl {int lastscaleW;} {private local
+  }
+  decl {bool lastscaleSeen;} {private local
   }
 }
