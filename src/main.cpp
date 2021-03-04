@@ -2,7 +2,7 @@
     main.cpp
 
     Copyright 2009-2011, Alan Calvert
-    Copyright 2014-2020, Will Godfrey & others
+    Copyright 2014-2021, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -19,20 +19,14 @@
 
 */
 
-#include <sys/mman.h>
 #include <iostream>
 #include <string>
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <termios.h>
-#include <time.h>
-
-#include <map>
-#include <list>
 #include <pthread.h>
-#include <thread>
-#include <semaphore.h>
+
 #include <cstdio>
 #include <unistd.h>
 #include <readline/readline.h>
@@ -139,7 +133,6 @@ static void *mainGuiThread(void *arg)
 #ifdef GUI_FLTK
 
     Fl::lock();
-
     const int textHeight = 15;
     const int textY = 10;
     const unsigned char lred = 0xd7;
@@ -209,9 +202,6 @@ static void *mainGuiThread(void *arg)
 #endif
     while (firstSynth == NULL); // just wait
 
-#ifdef GUI_FLTK
-    GuiThreadMsg::sendMessage(firstSynth, GuiThreadMsg::RefreshCurBank, 1);
-#endif
     if (firstRuntime->autoInstance)
         newBlock();
     while (firstRuntime->runSynth)
@@ -251,15 +241,17 @@ static void *mainGuiThread(void *arg)
 #ifdef GUI_FLTK
             if (bShowGui)
             {
-                for (int i = 0; !_synth->getRuntime().LogList.empty() && i < 5; ++i)
+                MasterUI *guiMaster = _synth->getGuiMaster(false);
+                if (guiMaster)
                 {
-                    MasterUI *guiMaster = _synth->getGuiMaster(false);
-                    if (guiMaster)
+                    if (guiMaster->masterwindow)
                     {
-                        guiMaster->Log(_synth->getRuntime().LogList.front());
-                        _synth->getRuntime().LogList.pop_front();
+                        guiMaster->checkBuffer();
+                        Fl::check();
                     }
                 }
+                else
+                    GuiThreadMsg::processGuiMessages();
             }
 #endif
         }
@@ -294,7 +286,6 @@ static void *mainGuiThread(void *arg)
                     }
                 }
                 Fl::wait(0.033333);
-                GuiThreadMsg::processGuiMessages();
             }
             else
 #endif
@@ -347,13 +338,13 @@ int mainCreateNewInstance(unsigned int forceId)
     {
         synth->setWindowTitle(musicClient->midiClientName());
         if (firstSynth != NULL) //FLTK is not ready yet - send this message later for first synth
-        {
             GuiThreadMsg::sendMessage(synth, GuiThreadMsg::NewSynthEngine, 0);
-        }
+
+        // not too happy this is possible, maybe gui should be wrapped in a namespace
         if (synth->getRuntime().audioEngine < 1)
-            fl_alert("Yoshimi can't find an available sound system. Running with no Audio");
+            alert(synth, "Yoshimi can't find an available sound system. Running with no Audio");
         if (synth->getRuntime().midiEngine < 1)
-            fl_alert("Yoshimi can't find an input system. Running with no MIDI");
+            alert(synth, "Yoshimi can't find an input system. Running with no MIDI");
     }
     else
         synth->getRuntime().toConsole = false;
@@ -446,7 +437,6 @@ int main(int argc, char *argv[])
         while (!Config.empty() && count < 16 && found < 3)
         { // no need to count beyond 16 lines!
             std::string line = func::nextLine(Config);
-            //std::cout << count << "  " << line  << std::endl;
             ++ count;
             if (line.find("enable_splash") != std::string::npos)
             {

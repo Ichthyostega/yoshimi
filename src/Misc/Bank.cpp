@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2010, Alan Calvert
-    Copyright 2014-2020, Will Godfrey & others
+    Copyright 2014-2021, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -245,7 +245,6 @@ string Bank::clearslot(unsigned int ninstrument, size_t rootID, size_t bankID)
 bool Bank::savetoslot(size_t rootID, size_t bankID, int ninstrument, int npart)
 {
     string filepath = getBankPath(rootID, bankID);
-    //std::cout << filepath << std::endl;
     string name = synth->part[npart]->Pname;
     if (filepath.at(filepath.size() - 1) != '/')
         filepath += "/";
@@ -475,7 +474,7 @@ string Bank::exportBank(const string& exportdir, size_t rootID, unsigned int ban
 
 
 // Creates a new bank and copies in the contents of the external one
-string Bank::importBank(const string& importdir, size_t rootID, unsigned int bankID)
+string Bank::importBank(string importdir, size_t rootID, unsigned int bankID)
 {
     string name = "";
     bool ok = true;
@@ -503,6 +502,8 @@ string Bank::importBank(const string& importdir, size_t rootID, unsigned int ban
         }
         else
         {
+            if (importdir.back() == '/')
+                importdir = importdir.substr(0, importdir.length() - 1);
             string bankname = findLeafName(importdir);
             int repeats = 0;
             string suffix = "";
@@ -583,7 +584,6 @@ string Bank::importBank(const string& importdir, size_t rootID, unsigned int ban
 
 bool Bank::isDuplicate(size_t rootID, size_t bankID, int pos, const string filename)
 {
-    //cout << filename << " count " << roots [rootID].banks.count(bankID) << endl;
     string path = getRootPath(rootID) + "/" + getBankName(bankID, rootID) + "/" + filename;
     if (isRegularFile(setExtension(path, EXTEN::yoshInst)) && filename.rfind(EXTEN::zynInst) < string::npos)
         return 1;
@@ -614,22 +614,16 @@ bool Bank::newIDbank(const string& newbankdir, unsigned int bankID, size_t rootI
 bool Bank::newbankfile(const string& newbankdir, size_t rootID)
 {
      if (getRootPath(synth->getRuntime().currentRoot).empty())
-    {
-        synth->getRuntime().Log("Current bank root directory not set");
         return false;
-    }
+
     string newbankpath = getRootPath(rootID);
     if (newbankpath.at(newbankpath.size() - 1) != '/')
         newbankpath += "/";
     newbankpath += newbankdir;
     int result = createDir(newbankpath);
     if (result != 0)
-    {
-        synth->getRuntime().Log("Failed to create " + newbankpath);
         return false;
-    }
-    else
-        synth->getRuntime().Log("create " + newbankpath + " succeeded");
+
     string forcefile = newbankpath;
     if (forcefile.at(forcefile.size() - 1) != '/')
         forcefile += "/";
@@ -690,11 +684,6 @@ string Bank::removebank(unsigned int bankID, size_t rootID)
     if (deleteFile(IDfile))
         chk = 1;
 
-    if (chk > 0)
-    chk = deleteDir(bankName);
-    if (chk == 0)
-        return (" FAILED Can't remove " + bankName + ". Unrecognised contents may still exist.");
-
     roots [rootID].banks.erase(bankID);
     if (rootID == synth->getRuntime().currentRoot && bankID == synth->getRuntime().currentBank)
         setCurrentBankID(0, false);
@@ -708,13 +697,11 @@ string Bank::swapslot(unsigned int n1, unsigned int n2, size_t bank1, size_t ban
     if (n1 == n2 && bank1 == bank2 && root1 == root2)
         return " Can't swap with itself!";
 
-    //std::cout << "first " << getname(n1, bank1, root1) << "   second " << getname(n2, bank2, root2) << endl;
     /*
      * path entries will always have either .xiy or .xiz
      * otherwise they would not have been seen at all
      * however we test for, and move both if they exist
      */
-    //std::cout << "first ref" << getFullPath(root1, bank1, n1) << endl;
     string message = "";
     bool ok = true;
 
@@ -748,10 +735,7 @@ string Bank::swapslot(unsigned int n1, unsigned int n2, size_t bank1, size_t ban
             getInstrumentReference(root1, bank1, n1).clear();
         }
         if (!ok)
-        {
-            //rescanforbanks(); // might have corrupted it
             return (" FAILED" + message);
-        }
         else
             return (" Moved to " + message);
     }
@@ -785,10 +769,7 @@ string Bank::swapslot(unsigned int n1, unsigned int n2, size_t bank1, size_t ban
     }
 
     if (!ok)
-    {
-        //rescanforbanks(); // might have corrupted it
         return (" FAILED" + message);
-    }
 
     return ("ped " + firstName + " with " + secondName);
 }
@@ -1037,7 +1018,7 @@ bool Bank::addtobank(size_t rootID, size_t bankID, int pos, const string filenam
         instrRef.ADDsynth_used = (names & 1) > 0;
         instrRef.SUBsynth_used = (names & 2) > 0;
         instrRef.PADsynth_used = (names & 4) > 0;
-        instrRef.yoshiType = (names & 8) > 0;//xml->information.yoshiType;
+        instrRef.yoshiType = (names & 8) > 0;
     }
     return 0;
 }
@@ -1063,7 +1044,6 @@ InstrumentEntry &Bank::getInstrumentReference(size_t rootID, size_t bankID, size
 
 void Bank::updateShare(string bankdirs[], string localDir, string shareID)
 {
-    //cout << "writing version " << shareID << endl;
     saveText(to_string(BUILD_NUMBER), shareID);
     string next = "/Will_Godfrey_Companion";
     string destinationDir = localDir + "yoshimi/banks/Will_Godfrey_Companion"; // currently only concerned with this one.
@@ -1080,7 +1060,6 @@ void Bank::updateShare(string bankdirs[], string localDir, string shareID)
 
 void Bank::checkShare(string sourceDir, string destinationDir)
 {
-    //cout << "S " << sourceDir << "  D " << destinationDir << endl;
     copyDir(sourceDir, destinationDir, 0);
 }
 
@@ -1140,7 +1119,6 @@ bool Bank::transferOneDir(string bankdirs[], int baseNumber, int listNumber)
         {
             string oldBank = bankdirs[listNumber] + "/" + *it;
             string newBank = bankdirs[baseNumber] + "/" + *it;
-            //cout << oldBank << "  " << newBank << endl;
             createDir(newBank);
             uint32_t inside = copyDir(oldBank, newBank, 1);
             if (inside > 0 && inside < 0xffffffff)
@@ -1156,16 +1134,10 @@ void Bank::checkLocalBanks()
 {
     string localDir = firstSynth->getRuntime().definedBankRoot;
     if (isDirectory(localDir + "yoshimi/banks")) // yoshi
-    {
-        //cout << "idx" << i << "  dir " << bankdirs[i] << endl;
         addRootDir(localDir + "yoshimi/banks");
-    }
-    if (isDirectory(localDir + "zynaddsubfx/banks"))
-    {
-        //cout << "idx" << i << "  dir " << bankdirs[i] << endl;
-        addRootDir(localDir + "zynaddsubfx/banks"); // zyn
-    }
 
+    if (isDirectory(localDir + "zynaddsubfx/banks"))
+        addRootDir(localDir + "zynaddsubfx/banks"); // zyn
 }
 
 void Bank::addDefaultRootDirs(string bankdirs[])
@@ -1173,11 +1145,10 @@ void Bank::addDefaultRootDirs(string bankdirs[])
     string ourDir = firstSynth->getRuntime().definedBankRoot;
     int tot = 0;
     int i = 0;
-    while (bankdirs[i] != "end")
+    while (bankdirs[i] != "@end")
     {
         if (isDirectory(bankdirs[i]))
         {
-            //cout << "idx" << i << "  dir " << bankdirs[i] << endl;
             addRootDir(bankdirs [i]);
             ++tot;
         }
@@ -1185,39 +1156,33 @@ void Bank::addDefaultRootDirs(string bankdirs[])
     }
 
     for (int i = tot; i > 0; --i)
-    {
-        //cout << "ID " << i << "  new " << i * 5 << endl;
         changeRootID(i, i * 5);
-    }
 }
 
 
-void Bank::generateSingleRoot(const string& newRoot, bool clear)
+size_t Bank::generateSingleRoot(const string& newRoot, bool clear)
 {
-    //cout << "generating" << endl;
-
     createDir(newRoot);
 
     // add bank
-    string newBank = "newBank";
-    createDir(newRoot + "/" + newBank);
-    string toSave = newRoot + "/" + newBank + "/" + EXTEN::validBank;
+    string newBank = newRoot + "newBank";
+    createDir(newBank);
+    string toSave = newBank + "/" + EXTEN::validBank;
     saveText(string(YOSHIMI_VERSION), toSave);
-
     // now generate and save an instrument
     int npart = 0;
     string instrumentName = "First Instrument";
     synth->interchange.generateSpecialInstrument(npart, instrumentName);
 
-    string filename = newRoot + "/" + newBank + "/" + "0005-" + instrumentName + EXTEN::zynInst;
+    string filename = newBank + "/" + "0005-" + instrumentName + EXTEN::zynInst;
     synth->part[npart]->saveXML(filename, false);
 
     // set root and tidy up
     size_t idx = addRootDir(newRoot);
-    //cout << idx << endl;
-    changeRootID(idx, 5);
+
     if (clear)
         synth->part[npart]->defaultsinstrument();
+    return idx;
 }
 
 
@@ -1279,7 +1244,6 @@ string Bank::getBankPath(size_t rootID, size_t bankID)
     {
         return string("");
     }
-    //std::cout << getRootPath(rootID) << std::endl;
     string chkdir = getRootPath(rootID) + string("/") + roots [rootID].banks [bankID].dirname;
     if (chkdir.at(chkdir.size() - 1) == '/')
     {
@@ -1292,14 +1256,11 @@ string Bank::getBankPath(size_t rootID, size_t bankID)
 string Bank::getRootPath(size_t rootID)
 {
     if (roots.count(rootID) == 0 || roots [rootID].path.empty())
-    {
         return string("");
-    }
+
     string chkdir = roots [rootID].path;
     if (chkdir.at(chkdir.size() - 1) == '/')
-    {
         chkdir = chkdir.substr(0, chkdir.size() - 1);
-    }
 
     return chkdir;
 }
@@ -1348,14 +1309,18 @@ int Bank::engines_used(size_t rootID, size_t bankID, unsigned int ninstrument)
 }
 
 
-void Bank::removeRoot(size_t rootID)
+bool Bank::removeRoot(size_t rootID)
 {
     if (rootID == synth->getRuntime().currentRoot)
     {
         synth->getRuntime().currentRoot = 0;
     }
+    else if (roots [rootID].path.empty())
+        return true;
     roots.erase(rootID);
+    synth->getRuntime().currentRoot = roots.rbegin()->first;
     setCurrentRootID(synth->getRuntime().currentRoot);
+    return false;
 }
 
 
@@ -1369,13 +1334,9 @@ bool Bank::changeRootID(size_t oldID, size_t newID)
     while (it != roots.end())
     {
         if (it->second.path.empty())
-        {
             roots.erase(it++);
-        }
         else
-        {
             ++it;
-        }
     }
 
     return true;
@@ -1419,7 +1380,6 @@ unsigned int Bank::findFirstBank(size_t newRootID)
             if (!roots [newRootID].banks [i].dirname.empty())
             {
                 synth->getRuntime().currentBank = i;
-                //cout << "bank " << i << endl;
                 break;
             }
         }
@@ -1477,7 +1437,7 @@ bool Bank::parseBanksFile(XMLwrapper *xml)
         "/usr/local/share/zynaddsubfx/banks",
         localDir + "zynaddsubfx/banks",
         extendLocalPath("/banks"),
-        "end"
+        "@end"
     };
 
     bool rootsFound = transferDefaultDirs(bankdirs);
@@ -1506,7 +1466,11 @@ bool Bank::parseBanksFile(XMLwrapper *xml)
         {
             cout << "generating" << endl;
             string newRoot = firstSynth->getRuntime().definedBankRoot + "yoshimi/banks";
-            generateSingleRoot(newRoot);
+            size_t idx = generateSingleRoot(newRoot);
+            changeRootID(idx, 5);
+            synth->getRuntime().currentRoot = idx;
+            synth->getRuntime().currentBank = 5;
+
         }
         synth->getRuntime().currentRoot = 5;
         synth->getRuntime().banksChecked = true;
@@ -1548,7 +1512,6 @@ bool Bank::parseBanksFile(XMLwrapper *xml)
     {
         string found = synth->getRuntime().rootDefine;
         synth->getRuntime().rootDefine = "";
-        //cout << "Defined new root ID " << asString(newIndex) << " as " << found << endl;
     }
     installRoots();
 
@@ -1627,7 +1590,6 @@ bool Bank::installNewRoot(size_t rootID, string rootdir, bool reload)
         while (b_it != thisRoot.begin())
         {
             string trybank = *--b_it;
-            //cout << ">" << trybank;
             for (size_t id = 0; id < MAX_BANKS_IN_ROOT; ++id)
             {
                 if (roots [rootID].banks.count(id) == 0)
@@ -1679,7 +1641,6 @@ bool Bank::installNewRoot(size_t rootID, string rootdir, bool reload)
                 result = false;
                 break; // root is full!
             }
-            //cout << ">" << *it << "<" << endl;
             while (banksSet[newIndex] == true)
             {
                 newIndex += idStep;
@@ -1688,7 +1649,6 @@ bool Bank::installNewRoot(size_t rootID, string rootdir, bool reload)
             roots [rootID].banks [newIndex].dirname = *it;
             loadbank(rootID, newIndex);
             banksSet[newIndex] = true;
-            //cout << "ID " << newIndex << endl;
             ++ banksFound;
             BanksInRoots += 1; // this is the total of all banks
         }

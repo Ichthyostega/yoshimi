@@ -132,7 +132,7 @@ XMLwrapper::XMLwrapper(SynthEngine *_synth, bool _isYoshi, bool includeBase) :
         return;
     }
 
-    if (synth->getRuntime().xmlType <= TOPLEVEL::XML::Scale || synth->getRuntime().xmlType == TOPLEVEL::XML::Presets)
+    if (synth->getRuntime().xmlType <= TOPLEVEL::XML::Scale)
     {
             beginbranch("BASE_PARAMETERS");
                 addpar("max_midi_parts", NUM_MIDI_CHANNELS);
@@ -518,7 +518,7 @@ bool XMLwrapper::loadXMLfile(const std::string& filename)
         xml_version.y_major = string2int(mxmlElementGetAttr(root, "Yoshimi-major"));
         yoshitoo = true;
 
-//        synth->getRuntime().Log("XML: Yoshimi " + asString(xml_version.y_major));
+        //synth->getRuntime().Log("XML: Yoshimi " + asString(xml_version.y_major) + "  " + filename);
     }
     else
     {

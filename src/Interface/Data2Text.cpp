@@ -24,6 +24,7 @@
 #include "Misc/SynthEngine.h"
 #include "Misc/TextMsgBuffer.h"
 #include "Misc/FormatFuncs.h"
+#include "Misc/NumericFuncs.h"
 
 using std::string;
 using std::to_string;
@@ -555,9 +556,10 @@ string DataText::resolveConfig(CommandBlock *getData, bool addValue)
     float value = getData->data.value;
     unsigned char control = getData->data.control;
     unsigned char kititem = getData->data.kit;
+    unsigned char parameter = getData->data.parameter;
     bool write = getData->data.type & TOPLEVEL::type::Write;
     int value_int = lrint(value);
-    bool value_bool = YOSH::F2B(value);
+    bool value_bool = _SYS_::F2B(value);
 
     string contstr = "";
     switch (control)
@@ -634,10 +636,6 @@ string DataText::resolveConfig(CommandBlock *getData, bool addValue)
             }
             showValue = false;
             break;
-        /*case CONFIG::control::showEnginesTypes:
-            contstr = "Show Engines & Types";
-            yesno = true;
-            break;*/
         case CONFIG::control::defaultStateStart:
             contstr += "Autoload default state";
             yesno = true;
@@ -823,16 +821,21 @@ string DataText::resolveConfig(CommandBlock *getData, bool addValue)
             contstr += "Bank root CC ";
             if (addValue)
             {
-                switch (value_int)
+                if (parameter != UNUSED)
+                    contstr += textMsgBuffer.fetch(parameter);
+                else
                 {
-                    case 0:
-                        contstr += "MSB";
-                        break;
-                    case 32:
-                        contstr += "LSB";
-                        break;
-                    default:
-                        contstr += "OFF";
+                    switch (value_int)
+                    {
+                        case 0:
+                            contstr += "MSB";
+                            break;
+                        case 32:
+                            contstr += "LSB";
+                            break;
+                        default:
+                            contstr += "OFF";
+                    }
                 }
             }
             showValue = false;
@@ -842,16 +845,21 @@ string DataText::resolveConfig(CommandBlock *getData, bool addValue)
             contstr += "Bank CC ";
             if (addValue)
             {
-                switch (value_int)
+                if (parameter != UNUSED)
+                    contstr += textMsgBuffer.fetch(parameter);
+                else
                 {
-                    case 0:
-                        contstr += "MSB";
-                        break;
-                    case 32:
-                        contstr += "LSB";
-                        break;
-                    default:
-                        contstr += "OFF";
+                    switch (value_int)
+                    {
+                        case 0:
+                            contstr += "MSB";
+                            break;
+                        case 32:
+                            contstr += "LSB";
+                            break;
+                        default:
+                            contstr += "OFF";
+                    }
                 }
             }
             showValue = false;
@@ -865,7 +873,22 @@ string DataText::resolveConfig(CommandBlock *getData, bool addValue)
             yesno = true;
             break;
         case CONFIG::control::extendedProgramChangeCC:
-            contstr += "CC for extended program change";
+            if (addValue)
+            {
+            if (parameter != UNUSED)
+            {
+                string test = textMsgBuffer.fetch(parameter);
+                contstr += ("Extended program change CC in use by "  + test);
+            }
+            else if (value == 128)
+            {
+                contstr += ("Extended program change disabled");
+            }
+            else
+                contstr += "CC for extended program change ";
+            contstr += to_string(value_int);
+            }
+            showValue = false;
             break;
         case CONFIG::control::ignoreResetAllCCs:
             contstr += "Ignore 'reset all CCs'";
@@ -950,6 +973,18 @@ string DataText::resolveBank(CommandBlock *getData, bool)
         case BANK::control::renameBank:
             contstr = name;
             break;
+        case BANK::control::createBank:
+            contstr = name;
+            break;
+        case BANK::control::findBankSize:
+            if (value_int == UNUSED)
+                contstr = " Bank " + to_string(kititem) + " does not exist.";
+            else if (value_int == 0)
+                contstr = " Bank " + to_string(kititem) + " is empty.";
+            else
+                contstr = " Bank " + to_string(kititem) + " contains " + to_string(value_int) + " instruments";
+            showValue = false;
+            break;
 
         case BANK::control::selectFirstBankToSwap:
             contstr = "Set Bank ID " + to_string(kititem) + "  Root ID " + to_string(engine) + " for swap";
@@ -965,6 +1000,23 @@ string DataText::resolveBank(CommandBlock *getData, bool)
 
         case BANK::control::changeRootId:
             contstr = "Root ID changed " + to_string(engine) + " > " + to_string(value_int);
+            break;
+
+        case BANK::control::addNamedRoot:
+            if (value_int == UNUSED)
+                contstr = name;
+            else if (kititem != UNUSED)
+                contstr = "Created Bank Root " + name;
+            else
+                contstr = "Link Bank Root " + name;
+            break;
+
+        case BANK::control::deselectRoot:
+            if (value_int == UNUSED)
+                contstr = "Bank Root " + to_string(kititem) + " does not exist";
+            else
+                contstr = "Unlinked Bank Root " + to_string(kititem);
+            showValue = false;
             break;
 
         default:
@@ -1178,6 +1230,11 @@ string DataText::resolveMain(CommandBlock *getData, bool addValue)
             contstr = "Load Recent" + textMsgBuffer.fetch(value_int);
             break;
 
+        case MAIN::control::defaultPart:
+            showValue = false;
+            contstr = "Part " + to_string(value_int + 1) + " cleared";
+            break;
+
         case MAIN::control::exportPadSynthSamples:
             showValue = false;
             contstr = "PadSynth Samples Save" + textMsgBuffer.fetch(value_int);
@@ -1304,7 +1361,7 @@ string DataText::resolvePart(CommandBlock *getData, bool addValue)
 
     bool kitType = (insert == TOPLEVEL::insert::kitGroup);
     int value_int = lrint(value);
-    bool value_bool = YOSH::F2B(value);
+    bool value_bool = _SYS_::F2B(value);
 
     if (control == UNUSED)
         return "Number of parts";
@@ -1519,10 +1576,6 @@ string DataText::resolvePart(CommandBlock *getData, bool addValue)
         /*case PART::control::effectBypass:
             contstr = "Bypass Effect "+ to_string(effNum + 1);
             break;*/
-
-        case PART::control::defaultInstrument: // doClearPart
-            contstr = "Set Default Instrument";
-            break;
 
         case PART::control::audioDestination:
             contstr = "Audio destination ";
@@ -1882,10 +1935,6 @@ string DataText::resolveAddVoice(CommandBlock *getData, bool addValue)
                 contstr += addmodnameslist[value_int];
             }
             break;
-        case ADDVOICE::control::modRingToSide:
-            name = " Ringmod Sidebands only";
-            yesno = true;
-            break;
         case ADDVOICE::control::externalModulator:
             if (addValue)
             {
@@ -2150,6 +2199,7 @@ string DataText::resolveSub(CommandBlock *getData, bool addValue)
             break;
         case SUBSYNTH::control::enableBandwidthEnvelope:
             contstr = "Env Enab";
+            yesno = true;
             break;
 
         case SUBSYNTH::control::detuneFrequency:
@@ -2182,6 +2232,7 @@ string DataText::resolveSub(CommandBlock *getData, bool addValue)
             break;
         case SUBSYNTH::control::enableFrequencyEnvelope:
             contstr = "Env Enab";
+            yesno = true;
             break;
 
         case SUBSYNTH::control::overtoneParameter1:
@@ -2744,7 +2795,14 @@ string DataText::resolveLFO(CommandBlock *getData, bool addValue)
     switch (control)
     {
         case LFOINSERT::control::speed:
-            contstr = "Freq";
+            if (getData->data.offset == 1)
+            {
+                float value = getData->data.value;
+                contstr = "BPM ratio " + LFObpm[int(roundf(value * (LFO_BPM_STEPS + 2)))];
+                showValue = false;
+            }
+            else
+                contstr = "Freq";
             break;
         case LFOINSERT::control::depth:
             contstr = "Depth";
@@ -2768,6 +2826,11 @@ string DataText::resolveLFO(CommandBlock *getData, bool addValue)
         }
         case LFOINSERT::control::continuous:
             contstr = "Cont";
+            yesno = true;
+            break;
+        case LFOINSERT::control::bpm:
+            contstr = "BPM";
+            yesno = true;
             break;
         case LFOINSERT::control::frequencyRandomness:
             contstr = "FreqRand";
@@ -2878,6 +2941,7 @@ string DataText::resolveFilter(CommandBlock *getData, bool addValue)
         }
         case FILTERINSERT::control::frequencyTrackingRange:
             contstr = "Fre Trk Offs";
+            yesno = true;
             break;
         case FILTERINSERT::control::formantSlowness:
             contstr = "Form Fr Sl";
@@ -2924,6 +2988,7 @@ string DataText::resolveFilter(CommandBlock *getData, bool addValue)
             break;
         case FILTERINSERT::control::negateInput:
             contstr = "Neg Input";
+            yesno = true;
             break;
 
         default:
@@ -3040,9 +3105,11 @@ string DataText::resolveEnvelope(CommandBlock *getData, bool)
 
         case ENVELOPEINSERT::control::forcedRelease:
             contstr = "frcR";
+            yesno = true;
             break;
         case ENVELOPEINSERT::control::linearEnvelope:
             contstr = "L";
+            yesno = true;
             break;
 
         case ENVELOPEINSERT::control::edit:
@@ -3051,6 +3118,7 @@ string DataText::resolveEnvelope(CommandBlock *getData, bool)
 
         case ENVELOPEINSERT::control::enableFreeMode:
             contstr = "Freemode";
+            yesno = true;
             break;
         case ENVELOPEINSERT::control::points:
             contstr = "Points";

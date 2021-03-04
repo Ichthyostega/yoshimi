@@ -104,9 +104,13 @@ set (FltkUI_sources
     ../UI/DynamicTooltip.cpp
     ../UI/WidgetPDial.cpp
     ../UI/WidgetMWSlider.cpp
+    ../UI/WidgetCheckButton.cpp
+    ../UI/WidgetSpinner.cpp
+    ../UI/YoshiWin.cpp
 )
 
 add_definitions (-DYOSHIMI_LV2_PLUGIN=1)
+add_definitions (-fvisibility=hidden)
 
 add_library (yoshimi_lv2 MODULE
             ${yoshimi_lv2_plugin_files}

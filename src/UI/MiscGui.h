@@ -1,7 +1,7 @@
 /*
     MiscGui.h - common link between GUI and synth
 
-    Copyright 2016-2019 Will Godfrey & others
+    Copyright 2016-2021 Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -43,6 +43,7 @@ enum ValueType {
     VC_GlobalFineDetune,
     VC_MasterVolume,
     VC_LFOfreq,
+    VC_LFOfreqBPM,
     VC_LFOdepthFreq,
     VC_LFOdepthAmp,
     VC_LFOdepthFilter,
@@ -70,6 +71,7 @@ enum ValueType {
     VC_ADDVoiceDelay,
     VC_PitchBend,
     VC_PartVolume,
+    VC_PartHumaniseDetune,
     VC_PartHumaniseVelocity,
     VC_PanningRandom,
     VC_PanningStd,
@@ -118,6 +120,11 @@ float collect_readData(SynthEngine *synth, float value, unsigned char control, u
 
 void collect_data(SynthEngine *synth, float value, unsigned char action, unsigned char type, unsigned char control, unsigned char part, unsigned char kititem = 0xff, unsigned char engine = 0xff, unsigned char insert = 0xff, unsigned char parameter = 0xff, unsigned char offset = 0xff, unsigned char miscmsg = 0xff);
 
+void alert(SynthEngine *synth, string message);
+int choice(SynthEngine *synth, string one, string two, string three, string message);
+string setfiler(SynthEngine *synth, string title, string name, bool save, int extension);
+string input_text(SynthEngine *synth, string label, string text);
+
 string convert_value(ValueType type, float val);
 
 string variable_prec_units(float v, const string& u, int maxPrec, bool roundup = false);
@@ -125,6 +132,7 @@ string custom_value_units(float v, const string& u, int prec=0);
 void  custom_graph_dimensions(ValueType vt, int& w, int& h);
 void custom_graphics(ValueType vt, float val,int W,int H);
 ValueType getLFOdepthType(int group);
+ValueType getLFOFreqType(int bpmEnabled);
 ValueType getFilterFreqType(int type);
 ValueType getFilterFreqTrackType(int offset);
 
@@ -132,47 +140,141 @@ class GuiUpdates {
 
 public:
     void read_updates(SynthEngine *synth);
+
 private:
     void decode_envelope(SynthEngine *synth, CommandBlock *getData);
     void decode_updates(SynthEngine *synth, CommandBlock *getData);
 };
 
-inline void saveWin(SynthEngine *synth, int x, int y, int o, std::string filename)
+inline void saveWin(SynthEngine *synth, int w, int h, int x, int y, int o, std::string filename)
 {
     std::string ID = std::to_string(synth->getUniqueId()) + "-";
-    std::string values =  std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(o);
+    std::string values =  std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(w) + " " + std::to_string(h) + " " + std::to_string(o);
     //std::cout << values << std::endl;
     saveText(values, synth->getRuntime().ConfigDir + "/windows/" + ID + filename);
 }
 
-inline void loadWin(SynthEngine *synth, int& x, int& y, int& o, std::string filename)
+inline void loadWin(SynthEngine *synth, int& w, int& h, int& x, int& y, int& o, std::string filename)
 {
-    std::string ID = std::to_string(synth->getUniqueId()) + "-";;
+    std::string ID = std::to_string(synth->getUniqueId()) + "-";
     std::string values = loadText(synth->getRuntime().ConfigDir + "/windows/" + ID + filename);
     //std::cout << synth->getRuntime().ConfigDir << "/windows/" << ID << filename << std::endl;
+    w = h = o = 0;
     if (values == "")
     {
         x = y = 80;
-        o = 0;
     }
     else
     {
         size_t pos = values.find(' ');
         if (pos == string::npos)
+        {
             x = y = 80;
+        }
         else
         {
             x = stoi(values.substr(0, pos));
             if (x < 4)
                 x = 4;
+
             y = stoi(values.substr(pos));
             if (y < 10)
                 y = 10;
-            o = stoi(values.substr(values.rfind(' ')));
-            //std::cout << "x " << x << "   y " << y <<  "   o " << o << std::endl;
+
+            pos = values.find(' ', pos + 1);
+            if (pos == string::npos)
+                return;
+            w = stoi(values.substr(pos));
+
+            pos = values.find(' ', pos + 1);
+            if (pos == string::npos)
+                return;
+            h = stoi(values.substr(pos));
+
+            pos = values.find(' ', pos + 1);
+            if (pos == string::npos)
+                return;
+            o = stoi(values.substr(pos));
+            //std::cout << "x " << x << "   y " << y  << "   w " << w << "   h " << h <<  "   o " << o << "  " << filename << std::endl;
         }
     }
 }
 
+inline int lastSeen(SynthEngine *synth, std::string filename)
+{
+    std::string ID = std::to_string(synth->getUniqueId()) + "-";
+    std::string values = loadText(synth->getRuntime().ConfigDir + "/windows/" + ID + filename);
+    //std::cout << values << " " << filename << std::endl;
+    size_t pos = values.rfind(' ');
+    if (pos == string::npos)
+        return false;
+    ++pos;
+    return stoi(values.substr(pos));
+}
+
+inline void setVisible(SynthEngine *synth, bool v, std::string filename)
+{
+    std::string ID = std::to_string(synth->getUniqueId()) + "-";
+    std::string values = loadText(synth->getRuntime().ConfigDir + "/windows/" + ID + filename);
+    size_t pos = values.rfind(' ');
+    if (pos == string::npos)
+        return;
+    ++ pos;
+    bool vis = stoi(values.substr(pos));
+    if (vis == v)
+        return;
+    values.replace(pos, 1, std::to_string(v));
+    //std::cout << v << " " << values << " " << filename << std::endl;
+    saveText(values, synth->getRuntime().ConfigDir + "/windows/" + ID + filename);
+}
+
+inline void checkSane(int& x, int& y, int& w, int& h, int defW, int defH, bool halfsize = false)
+{
+    int maxW = Fl::w() - 5; // wiggle room
+    int maxH = Fl::h() - 30; // space for minimal titlebar
+
+    if ((w / defW) != (h / defH)) // ratio
+        w = h / defH * defW; // doesn't matter which one we pick!
+
+    int adjustW;
+    int adjustH;
+    if(halfsize)
+    {
+        adjustW = maxW / 2;
+        adjustH = maxH / 2;
+    }
+    else
+    {
+        adjustW = maxW;
+        adjustH = maxH;
+    }
+    if (w > maxW || h > maxH) // size
+    {
+        h = adjustH;
+        w = adjustW;
+        if (h / defH > w / defW)
+        {
+            h = w / defW * defH;
+        }
+        else
+        {
+            w = h / defH * defW;
+        }
+    }
+
+    if ((x + w) > maxW) // postion
+    {
+        x = maxW - w;
+        if (x < 5)
+            x = 5;
+    }
+    if ((y + h) > maxH)
+    {
+        y = maxH - h;
+        if (y < 30)
+            y = 30;
+    }
+//    std::cout << "x " << x << "  y " << y << "  w " << w << "  h " << h << std::endl;
+}
 
 #endif

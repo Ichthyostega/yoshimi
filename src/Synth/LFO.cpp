@@ -5,7 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
     Copyright 2017-2019, Will Godfrey & others
-    Copyright 2020 Kristian Amlie & others
+    Copyright 2020-2021 Kristian Amlie & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -47,15 +47,27 @@ LFO::LFO(LFOParams *_lfopars, float _basefreq, SynthEngine *_synth):
     if (lfopars->Pcontinous == 0)
     { // pre-init phase
         if (lfopars->Pstartphase == 0)
-            x = synth->numRandom();
+            startPhase = synth->numRandom();
         else
-            x = fmodf(((float)((int)lfopars->Pstartphase - 64) / 127.0f + 1.0f), 1.0f);
+            startPhase = fmodf(((float)((int)lfopars->Pstartphase - 64) / 127.0f + 1.0f), 1.0f);
+
+        if (lfopars->Pbpm != 0)
+        {
+            prevMonotonicBeat = synth->getMonotonicBeat();
+            prevBpmFrac = getBpmFrac();
+            startPhase = remainderf(startPhase - prevMonotonicBeat
+                                    * prevBpmFrac.first / prevBpmFrac.second, 1.0f);
+        }
     }
-    else
+    else if (lfopars->Pbpm == 0)
     { // pre-init phase, synced to other notes
-        float tmp = fmodf(synth->getLFOtime() * incx, 1.0f);
-        x = fmodf((((int)lfopars->Pstartphase - 64) / 127.0f + 1.0f + tmp), 1.0f);
+        startPhase = fmodf(synth->getLFOtime() * incx, 1.0f);
+        startPhase = fmodf((((int)lfopars->Pstartphase - 64) / 127.0f + 1.0f + startPhase), 1.0f);
     }
+    else // Pcontinous == 1 && Pbpm == 1.
+        startPhase = fmodf((((int)lfopars->Pstartphase - 64) / 127.0f + 1.0f), 1.0f);
+
+    x = startPhase;
 
     lfoelapsed = 0.0f;
     incrnd = nextincrnd = 1.0f;
@@ -100,6 +112,12 @@ inline void LFO::Recompute(void)
     lfotype = lfopars->PLFOtype;
     freqrndenabled = (lfopars->Pfreqrand != 0);
     computenextincrnd();
+
+    if (lfopars->Pcontinous != 0 && lfopars->Pbpm != 0)
+        // When we are BPM synced to the host, it's nice to have direct feedback
+        // when changing phase. This works because we reset the phase completely
+        // on every cycle.
+        startPhase = fmodf((((int)lfopars->Pstartphase - 64) / 127.0f + 1.0f), 1.0f);
 }
 
 inline void LFO::RecomputeFreq(void)
@@ -108,15 +126,11 @@ inline void LFO::RecomputeFreq(void)
         powf(basefreq / 440.0f, (float)((int)lfopars->Pstretch - 64) / 63.0f); // max 2x/octave
 
     float lfofreq = lfopars->Pfreq * lfostretch;
-    incx = fabsf(lfofreq) * synth->fixed_sample_step_f;
-
-    // Limit the Frequency (or else...)
-    if (incx > 0.49999999f)
-        incx = 0.49999999f;
+    incx = fabsf(lfofreq) / synth->samplerate_f;
 }
 
 // LFO out
-float LFO::lfoout(void)
+float LFO::lfoout()
 {
     if (lfoUpdate.checkUpdated())
         Recompute();
@@ -223,33 +237,63 @@ float LFO::lfoout(void)
         out *= lfointensity * (amp1 + x * (amp2 - amp1));
     else
         out *= lfointensity * amp2;
+
     float lfodelay = lfopars->Pdelay / 127.0f * 4.0f; // 0..4 sec
     if (lfoelapsed >= lfodelay)
     {
-        if (!freqrndenabled)
-            x += incx;
+        if (lfopars->Pbpm == 0)
+        {
+            float incxMult = incx * synth->sent_buffersize_f;
+            // Limit the Frequency (or else...)
+            if (incxMult > 0.49999999f)
+                incxMult = 0.49999999f;
+
+            if (!freqrndenabled)
+                x += incxMult;
+            else
+            {
+                float tmp = (incrnd * (1.0f - x) + nextincrnd * x);
+                tmp = (tmp > 1.0f) ? 1.0f : tmp;
+                x += incxMult * tmp;
+            }
+            if (x >= 1)
+            {
+                x = fmodf(x, 1.0f);
+                amp1 = amp2;
+                amp2 = (1 - lfornd) + lfornd * synth->numRandom();
+                computenextincrnd();
+            }
+        }
         else
         {
-            float tmp = (incrnd * (1.0f - x) + nextincrnd * x);
-            tmp = (tmp > 1.0f) ? 1.0f : tmp;
-            x += incx * tmp;
-        }
-        if (x >= 1)
-        {
-            x = fmodf(x, 1.0f);
-            amp1 = amp2;
-            amp2 = (1 - lfornd) + lfornd * synth->numRandom();
-            computenextincrnd();
+            std::pair<float, float> frac = getBpmFrac();
+            float newBeat;
+            if (lfopars->Pcontinous == 0)
+            {
+                if (frac != prevBpmFrac)
+                {
+                    // Since we reset the phase on every cycle, if the BPM
+                    // fraction changes we need to adapt startPhase or we will
+                    // get an abrupt phase change.
+                    startPhase = remainderf(x - prevMonotonicBeat * frac.first / frac.second, 1.0f);
+                    prevBpmFrac = frac;
+                }
+                newBeat = synth->getMonotonicBeat();
+                prevMonotonicBeat = newBeat;
+            }
+            else
+                newBeat = synth->getSongBeat();
+            x = fmodf(newBeat * frac.first / frac.second + startPhase, 1.0f);
         }
     } else
-        lfoelapsed += synth->fixed_sample_step_f;
+        lfoelapsed += synth->sent_buffersize_f / synth->samplerate_f;
 
     return out;
 }
 
 
 // LFO out (for amplitude)
-float LFO::amplfoout(void)
+float LFO::amplfoout()
 {
     float out;
     out = 1.0f - lfointensity + lfoout();

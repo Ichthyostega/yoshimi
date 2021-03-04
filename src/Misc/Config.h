@@ -131,8 +131,8 @@ class Config
         int           Interpolation;
         string        presetsDirlist[MAX_PRESETS];
         std::list<string> lastfileseen;
-        bool          sessionSeen[TOPLEVEL::XML::MLearn + 1];
-        bool          historyLock[TOPLEVEL::XML::MLearn + 1];
+        bool          sessionSeen[TOPLEVEL::XML::ScalaMap + 1];
+        bool          historyLock[TOPLEVEL::XML::ScalaMap + 1];
         bool          checksynthengines;
         int           xmlType;
         unsigned char instrumentFormat;
@@ -269,12 +269,6 @@ private:
 public:
     enum
     {
-        UpdateMaster = 0,
-        UpdateConfig,
-        UpdatePaths,
-        UpdatePart,
-        RefreshCurBank,
-        GuiCheck,
         NewSynthEngine,
         UNDEFINED = 9999
     };

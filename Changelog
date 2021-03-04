@@ -1,6 +1,283 @@
-yoshimi 1.7.4
+yoshimi 2.0
 
-2020-01-05 Will
+2021-3-1 Will
+* Master window stays in view with resolution changes.
+* Added extra error check in CLI BPM ratio entry.
+* Added extra comments in various files.
+* Final doc updates.
+* Set release version 2.0
+
+2021-2-27 Will
+* Enabled LFO BPM ratios in CLI.
+* Unified CLI and GUI BPM reporting.
+* Allowed delay in scripts up to 30 seconds.
+* Made filer window location independent of source.
+
+2021-2-25 Will (additional)
+* Fixed regression: Named instrument load shows time again.
+* Swapped order of filerfave and fileradd
+* Doc updates
+* Set version as 2.0 rc5
+
+2021-2-25 Will
+* Now includes new filer updates and additions.
+* Removed Miscellany/Images directory.
+  It's redundant. All images appear in usr guide.
+  Significant ones are also on the website.
+* Set version as 2.0 rc4
+
+2021-2-19 Will
+* A few more instrument type changes.
+
+2021-2-17 Will
+* Had to revert some bank changes.
+  This was resulting in multiple copies with
+  slightly different filenames :(
+* Refinements to instrument types.
+
+2021-2-16 Will
+* Revised all remaining banks.
+  Internal/file names consistent
+  Many now properly typed.
+
+* Small improvement to patchset instrument names.
+  Now keeps a copy of the source file leafname
+  stored in the info section.
+* Doc updates.
+* Set version as 2.0 rc2.
+
+2021-2-15 Will
+* Cleaned out a lot of redundant code.
+  Mostly commented out test print.
+* More doc updates
+* set version as 2.0 rc1.
+
+2021-2-14 Will
+* Increased MIDI-learn list limit to 400 lines.
+  Added 10mS sleeps every 32 lines on loading.
+  Still less than 1S for a full list and estimate
+  less than 200uS for actioning ones at the end.
+* Doc updates.
+* Moved audio/midi defaults from CMakeLists.txt to globals.h
+* Changed both defaults to Alsa.
+
+2021-2-13 Will
+* Aftertouch saved in Yoshi instruments and patchsets.
+* Panning law saved in patchsets and states.
+* Disabled automatically pushing main window to top.
+  It hid startup warning messages.
+* Disabled printing of tooltip sizes 'tipset'.
+* Echo exit warnings to CLI if set for console window.
+* Started updating docs.
+* Set min config to 2.0
+* Set version as 2.0 prev
+
+2021-2-12 Will
+* Revised GUI for AddSynth Voice.
+* BugFix: Generating new bank root not updating GUI.
+
+2021-2-11 Will
+* Disabled call toe Gui thread messages in UI/MiscGui
+  Now redundant
+* BugFix: AddSynthModuator gui state of sync.
+* Further work on completely new bank roots.
+  Still not updating Gui till rebooted.
+
+2021-2-9 Will
+* All remaining 'SetSystemValues' made non threadmessage type.
+
+2021-2-8 Will
+* Revised messaging for bank root add/remove.
+* Started changing 'SetSystemValues' to non threadmessage type.
+* Reinstated and updated list in docs 'NRPN_System_Settings.txt
+  Corrected control numbers.
+  It hasn't supported list displays for some time.
+
+2021-2-7 Will
+* Improved search for user guide.
+* BugFix: new GUI files not copied to LV2 cmake.txt
+
+2021-2-6 Will
+* CLI no longer directly handles bank removal.
+* CLI no longer uses gui thread message for bank root access.
+* Improved handling of missing bank roots.
+
+2021-2-4 Will
+* Properly integrated adding a new bank.
+
+2021-2-2 Will
+* Another attempt to resolve standalone lock up issue.
+
+* Removed (commented out) engine colour enable code.
+  This is now *required* for other functions.
+  Also updated file dates.
+
+2021-2-1 Will
+* BugFix: Panel window not handling part group changes
+* Commented out some redundant routines.
+  These will be removed once sure they are redundant.
+* Small simplification in new checkbox resize.
+
+* Properly integrated adding root paths.
+  still not quite correct for empty dirs
+
+2021-1-30 Will
+* recoded formatTextLines() in FormatFuncs.h
+  can now handle embedded newlines correctly.
+* Revised the following banks:
+    Will_Godfrey_Collection
+    Will_Godfrey_Companion
+* Improved layout of part Edit window.
+
+*Merged improved FLTK widgets from Jesper
+ and adjusted to fit laterst build
+
+
+2021-1-29 Will
+* aftertouch window can be opened from part edit window
+  right click close reopens correct parent.
+
+2021-1-28 Will
+* Another attempt to resolve LV2/Main conflicts.
+
+2021-1-27 Will
+* Reverted startup to threadmessage style.
+
+2021-1-26 Will
+* Converted logging various switches to report on/off.
+
+2021-1-25 Will
+* Swapped masterU wincheck() and read_updates().
+
+2021-1-24 Will
+* Moved process messages from LV2 and main to misc_gui
+* 1st trial of direct instance start from main.
+
+2021-1-23 Will
+* BugFix: used invalid type offset (-1)
+  goes into endless loop
+* Moved console log read from LV2 and main to misc_gui
+  also cleaned up code
+* Disabled some redundant threadmessage code.
+
+2021-1-23 Will
+* Revised the following instrument banks:
+    Choir and Voice
+    Misc
+    Plucked
+* Modified main->GUI refreshes.
+  corrects high GUI CPU load from previous change.
+
+2021-1-21 Will
+* Small code cleanups
+
+2021-1-20 Will
+* BugFix: failed to check CLI after code change!
+* Revised timing for GUI updates.
+  Should resolve LV2 crash.
+* Moved GUI process messages in main to be per instance.
+  seems to resolve long-standing VU corruption
+* Unified CLI instrument type lists.
+* GUI unified for instrument type lists.
+* Instrument types are now extendable.
+  added following types:
+    Bells and Chimes
+    Single Voice
+    Choir
+    Wind (other)
+    Warm Pad
+
+2021-1-19 Will
+* Improved end of text lists ID.
+* Revised CLI and Data2text for BPI reporting.
+  Setting CLI input as ratio still to do.
+* CLI code for setting ratios in place (disabled)
+  Don't yet know how to convert to actual value
+
+2021-1-18 Will
+* Merged in MIDI LFO sync from Kristian.
+* GUI: Small Adsynth voice adjustments.
+* GUI: Voice resonance enable now resizes.
+  it had been completely forgotten :(
+* BugFix: no LFO delay.
+  lfoelapsed increment too big
+* Further work on handling occasional LV2 crash
+
+2021-1-17 Will
+* Cleaned up ConsoleUI
+* Disabled YoshiWin code
+* Possible fix for LV2 first startup crash
+
+2021-1-16 Will
+* Merged in new denormal code.
+* BugFix: attempt to access nonexistent window.
+  DynFilter internal filter window
+
+2021-1-15 Will
+* Revised the following instrument banks:
+    Pads
+    Strings
+    Synth
+  Internal & filenames match
+  Instrument type specified
+
+2021-1-14 Will
+* Revised the following instrument banks:
+    Bass
+    Brass
+    Drums
+    Guitar
+    Organ
+    Reed and Wind
+    Rhodes
+  Internal & filenames match
+  Instrument type specified
+* Made instrument/ban list frames bigger.
+  clicking near edges not always recognised
+
+2021-1-13 Will
+* Minor update to GUI.
+* Updates to docs.
+
+2021-1-12 Will
+* Started revision of part effects window.
+  Now uses sanity check
+* GUI part effects dynfilter fully integrated.
+  Nothing now uses YoshiWin, but if the header link
+  is removed from ConsoleUI it fails to compile.
+  I have no idea why!
+
+2021-1-10 Will
+* BugFix: GUI Part effects text not resizing
+  when changing effect type
+* BugFix: GUI oscsize/bufsize not seeing lowest setting.
+  As these are always powers of 2 it was simpler to
+  just use bitFindHigh and make an offset adjustment.
+
+2021-1-10 Will
+* Removed ring mod sideband code.
+  Proved to be unnecessary.
+* Fixed spelling errors!
+
+2021-1-7 Will
+* Improved GUI sanity check.
+* Removed some redundant code from Interchange.
+  it was doing nothing but still being processed
+
+2021-1-6 Will
+* Unison Invert made dynamic.
+* Oscil phase random now label resizes.
+  missed these earlier :(
+* Small AddSynth position adjustments.
+* Suppressed invalid history group warning.
+  called as filer opens but don't know how
+* Stop Preset dirs creating just '/'
+
+2021-1-5 Will
+* Merged in resize branch
+* Corrected date below
+
+2021-1-5 Will
 Temporarily disabled ring mod sideband feature.
 Skipped over missing build numbers.
 Set release version 1.7.4
