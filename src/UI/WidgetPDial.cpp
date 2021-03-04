@@ -6,7 +6,7 @@
     Copyright 2009-2010, Alan Calvert
     Copyright 2016 Will Godfrey
     Copyright 2017 Jesper Lloyd
-    Coyright 2018, Will Godfrey & others
+    Coyright 2020, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -64,7 +64,7 @@ void WidgetPDial::setGraphicsType(ValueType type_)
 
 void WidgetPDial::tooltip(const char * tip)
 {
-    if(tip)
+    if (tip)
         dyntip->setTooltipText(tip);
 }
 
@@ -96,20 +96,10 @@ int WidgetPDial::handle(int event)
     {
     case FL_PUSH:
     case FL_DRAG: // done this way to suppress warnings
-        if(event == FL_PUSH)
+        if (event == FL_PUSH)
         {
             Fl::belowmouse(this); /* Ensures other widgets receive FL_RELEASE */
-            /*if (home > -0.5f && Fl::event_button() == 3)
-            {
-                value(home);
-                value_damage();
-                if (this->when() != 0)
-                    do_callback();
-                res = 1;
-                break;
-            }*/
-            //if (this->when() != 0 && Fl::event_button() == 3) // only effects knobs need this
-                do_callback();
+            do_callback();
             oldvalue = value();
         }
         my = -((Fl::event_y() - y()) * 2 - h());
@@ -117,7 +107,7 @@ int WidgetPDial::handle(int event)
         my = (my + mx);
 
         dragsize = 200.0;
-        if(Fl::event_state(FL_CTRL) != 0)
+        if (Fl::event_state(FL_CTRL) != 0)
             dragsize *= 10;
         else if (Fl::event_button() == 2)
             dragsize *= 3;
@@ -139,11 +129,11 @@ int WidgetPDial::handle(int event)
         }
         my = - Fl::event_dy();
         dragsize = 25.0f;
-        if(Fl::event_state(FL_CTRL) != 0)
+        if (Fl::event_state(FL_CTRL) != 0)
             dragsize *= 10;
         value(limit(value() + my / dragsize * (max - min), min, max));
         value_damage();
-        if(this->when() != 0)
+        if (this->when() != 0)
             do_callback();
         res = 1;
         break;
@@ -172,7 +162,7 @@ void WidgetPDial::drawgradient(int cx,int cy,int sx,double m1,double m2)
 {
     for (int i = (int)(m1 * sx); i < (int)(m2 * sx); ++i)
     {
-        double tmp = 1.0 - powf( i * 1.0 / sx, 2.0);
+        double tmp = 1.0 - powf(i * 1.0 / sx, 2.0);
         pdialcolor(140 + (int) (tmp * 90), 140 + (int)(tmp * 90), 140 + (int)(tmp * 100));
         fl_arc(cx + sx / 2 - i / 2, cy + sx / 2 - i / 2, i, i, 0, 360);
     }
@@ -222,13 +212,16 @@ void WidgetPDial::draw()
     cairo_arc(cr,0,0,d*rCint,0,2*M_PI);
     cairo_fill(cr);
     //drawing the "light" circle:
+    int linewidth = int(2.0f * sx / 30);
+    if (linewidth < 2)
+        linewidth = 2;
     if (active_r())
     {
         cairo_set_source_rgb(cr,0,197.0/255,245.0/255); //light blue
     } else {
         cairo_set_source_rgb(cr,0.6,0.7,0.8);
     }
-    cairo_set_line_width (cr, 2);
+    cairo_set_line_width (cr, linewidth);
     cairo_new_sub_path(cr);
     cairo_arc(cr,0,0,d*rGear,0.75*M_PI,+val*1.5*M_PI+0.75*M_PI);
     cairo_stroke(cr);
@@ -240,7 +233,7 @@ void WidgetPDial::draw()
         cairo_set_source_rgb(cr,111.0/255,111.0/255,111.0/255);
     }
     cairo_rotate(cr,val*3/2*M_PI+0.25*M_PI);
-    cairo_set_line_width (cr, 2.3);
+    cairo_set_line_width (cr, linewidth);
     cairo_move_to(cr,0,0);
     cairo_line_to(cr,0,d*rHand);
     cairo_set_line_cap (cr, CAIRO_LINE_CAP_ROUND);

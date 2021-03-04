@@ -58,12 +58,12 @@ MusicClient *MusicClient::newMusicClient(SynthEngine *_synth)
     music_clients c7 = {6, no_audio, no_midi}; //this one always will do the work :)
     clSet.insert(c7);
 
-    for(std::set<music_clients>::iterator it = clSet.begin(); it != clSet.end(); ++it)
+    for (std::set<music_clients>::iterator it = clSet.begin(); it != clSet.end(); ++it)
     {
         MusicClient *client = new MusicClient(_synth, it->audioDrv, it->midiDrv);
-        if(client)
+        if (client)
         {
-            if(client->Open()) //found working client combination
+            if (client->Open()) //found working client combination
             {
                 if (it != clSet.begin())
                     _synth->getRuntime().configChanged = true;
@@ -86,7 +86,7 @@ void *MusicClient::timerThread_fn(void *arg)
     MusicClient *nmc = (MusicClient *)arg;
     useconds_t sleepInterval = (useconds_t)(1000000.0f * (double)nmc->synth->getRuntime().Buffersize / nmc->synth->getRuntime().Samplerate);//(double)NMC_SRATE);
     nmc->timerWorking = true;
-    while(nmc->timerWorking)
+    while (nmc->timerWorking)
     {
         nmc->synth->MasterAudio(nmc->buffersL, nmc->buffersR);
         usleep(sleepInterval);
@@ -99,28 +99,33 @@ MusicClient::MusicClient(SynthEngine *_synth, audio_drivers _audioDrv, midi_driv
     :synth(_synth), timerThreadId(0), timerWorking(false),
     audioDrv(_audioDrv), midiDrv(_midiDrv), audioIO(0), midiIO(0)
 {
-    for(int i = 0; i < NUM_MIDI_PARTS + 1; i++)
+    for (int i = 0; i < NUM_MIDI_PARTS + 1; i++)
     {
         buffersL [i] = new float [synth->getRuntime().Buffersize];
-        if(buffersL [i] == 0)
+        if (buffersL [i] == 0)
         {
             abort();
         }
         buffersR [i] = new float [synth->getRuntime().Buffersize];
-        if(buffersL [i] == 0)
+        if (buffersL [i] == 0)
         {
             abort();
         }
     }
 
+    if (audioDrv == jack_audio && midiDrv == jack_midi)
+        beatTracker = new SinglethreadedBeatTracker;
+    else
+        beatTracker = new MultithreadedBeatTracker;
+
     switch(audioDrv)
     {
         case jack_audio:
-            audioIO = new JackEngine(synth);
+            audioIO = new JackEngine(synth, beatTracker);
             break;
 #if defined(HAVE_ALSA)
         case alsa_audio:
-            audioIO = new AlsaEngine(synth);
+            audioIO = new AlsaEngine(synth, beatTracker);
             break;
 #endif
 
@@ -131,12 +136,21 @@ MusicClient::MusicClient(SynthEngine *_synth, audio_drivers _audioDrv, midi_driv
     switch(midiDrv)
     {
         case jack_midi:
-            if (audioDrv != jack_audio)
-                midiIO = new JackEngine(synth);
+            if (audioDrv == jack_audio)
+            {
+                midiIO = audioIO;
+            }
+            else
+                midiIO = new JackEngine(synth, beatTracker);
             break;
 #if defined(HAVE_ALSA)
         case alsa_midi:
-            midiIO = new AlsaEngine(synth);
+            if (audioDrv == alsa_audio)
+            {
+                midiIO = audioIO;
+            }
+            else
+                midiIO = new AlsaEngine(synth, beatTracker);
             break;
 #endif
 
@@ -144,16 +158,16 @@ MusicClient::MusicClient(SynthEngine *_synth, audio_drivers _audioDrv, midi_driv
             break;
     }
 
-    if(audioDrv != no_audio)
+    if (audioDrv != no_audio)
     {
-        if(!audioIO)
+        if (!audioIO)
         {
             abort();
         }
     }
-    if(midiDrv != no_midi)
+    if (midiDrv != no_midi)
     {
-        if(!midiIO && audioDrv != jack_audio)
+        if (!midiIO)
         {
             abort();
         }
@@ -164,19 +178,22 @@ MusicClient::MusicClient(SynthEngine *_synth, audio_drivers _audioDrv, midi_driv
 MusicClient::~MusicClient()
 {
     Close();
-    if(audioIO)
+    if (audioIO)
     {
-        delete audioIO;
+        if (audioIO != midiIO)
+            delete audioIO;
         audioIO = 0;
     }
 
-    if(midiIO)
+    if (midiIO)
     {
         delete midiIO;
         midiIO = 0;
     }
 
-    for(int i = 0; i < NUM_MIDI_PARTS + 1; i++)
+    delete beatTracker;
+
+    for (int i = 0; i < NUM_MIDI_PARTS + 1; i++)
     {
         delete [] buffersL [i];
         delete [] buffersR [i];
@@ -188,19 +205,15 @@ bool MusicClient::Open()
 {
     bool bAudio = true;
     bool bMidi = true;
-    if(audioIO)
+    if (audioIO)
     {
         bAudio = audioIO->openAudio();
     }
-    if(midiIO)
+    if (midiIO)
     {
         bMidi = midiIO->openMidi();
     }
-    else if (audioDrv == jack_audio)
-    {
-        bMidi = audioIO->openMidi();
-    }
-    if(bAudio && bMidi)
+    if (bAudio && bMidi)
     {
         synth->getRuntime().audioEngine = audioDrv;
         synth->getRuntime().midiEngine = midiDrv;
@@ -215,20 +228,20 @@ bool MusicClient::Start()
     bool bAudio = true;
     bool bMidi = true;
 
-    if(audioIO)
+    if (audioIO)
     {
         bAudio = audioIO->Start();
     }
     else
     {
-        if(timerThreadId != 0 || timerWorking)
+        if (timerThreadId != 0 || timerWorking)
         {
             return true;
         }
         bAudio = synth->getRuntime().startThread(&timerThreadId, MusicClient::timerThread_fn, this, false, 0, "Timer?");
     }
 
-    if(midiIO)
+    if (midiIO && midiIO != audioIO)
     {
         bMidi = midiIO->Start();
     }
@@ -238,18 +251,18 @@ bool MusicClient::Start()
 
 void MusicClient::Close()
 {
-    if(midiIO)
+    if (midiIO && midiIO != audioIO)
     {
         midiIO->Close();
     }
 
-    if(audioIO)
+    if (audioIO)
     {
         audioIO->Close();
     }
     else
     {
-        if(timerThreadId == 0 || timerWorking == false)
+        if (timerThreadId == 0 || timerWorking == false)
             return;
         timerWorking = false;
         void *ret = 0;
@@ -261,7 +274,7 @@ void MusicClient::Close()
 
 unsigned int MusicClient::getSamplerate()
 {
-    if(audioIO)
+    if (audioIO)
     {
         return audioIO->getSamplerate();
     }
@@ -271,7 +284,7 @@ unsigned int MusicClient::getSamplerate()
 
 int MusicClient::getBuffersize()
 {
-    if(audioIO)
+    if (audioIO)
     {
         return audioIO->getBuffersize();
     }
@@ -282,7 +295,7 @@ int MusicClient::getBuffersize()
 
 std::string MusicClient::audioClientName()
 {
-    if(audioIO)
+    if (audioIO)
     {
         return audioIO->audioClientName();
     }
@@ -293,7 +306,7 @@ std::string MusicClient::audioClientName()
 
 std::string MusicClient::midiClientName()
 {
-    if(midiIO)
+    if (midiIO)
     {
         return midiIO->midiClientName();
     }
@@ -303,7 +316,7 @@ std::string MusicClient::midiClientName()
 
 int MusicClient::audioClientId()
 {
-    if(audioIO)
+    if (audioIO)
     {
         return audioIO->audioClientId();
     }
@@ -314,7 +327,7 @@ int MusicClient::audioClientId()
 
 int MusicClient::midiClientId()
 {
-    if(midiIO)
+    if (midiIO)
     {
         return midiIO->midiClientId();
     }
@@ -325,7 +338,7 @@ int MusicClient::midiClientId()
 
 void MusicClient::registerAudioPort(int portnum)
 {
-    if(audioIO)
+    if (audioIO)
     {
         audioIO->registerAudioPort(portnum);
     }

@@ -87,7 +87,6 @@ class CmdInterpreter
         int effectsList(Parser& input, bool presets = false);
         int effects(Parser& input, unsigned char controlType);
         int midiControllers(Parser& input, unsigned char controlType);
-        int partCommonControls(Parser& input, unsigned char controlType);
         int LFOselect(Parser& input, unsigned char controlType);
         int filterSelect(Parser& input, unsigned char controlType);
         int envelopeSelect(Parser& input, unsigned char controlType);
@@ -107,7 +106,7 @@ class CmdInterpreter
         int waveform(Parser& input, unsigned char controlType);
         int commandPart(Parser& input, unsigned char controlType);
         int commandReadnSet(Parser& input, unsigned char controlType);
-        Reply processSrcriptFile(string filename);
+        Reply processSrcriptFile(const string& filename);
 
     private:
         std::list<std::string>  instrumentGroup;

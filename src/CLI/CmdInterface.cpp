@@ -54,7 +54,6 @@ using cli::readControl;
 
 extern SynthEngine *firstSynth;
 
-
 CmdInterface::CmdInterface() :
     interpreter{}
 { }
@@ -65,7 +64,7 @@ Config& CmdInterface::getRuntime()
     return interpreter.synth->getRuntime();
 }
 
-void CmdInterface::Log(const string &msg, char toStderr)
+void CmdInterface::Log(const string& msg, char toStderr)
 {
     getRuntime().Log(msg, toStderr);
 }
@@ -85,12 +84,12 @@ void CmdInterface::cmdIfaceCommandLoop()
     parser.setHistoryFile(hist_filename);
     interpreter.synth = firstSynth;
     bool exit = false;
-    while(!exit)
+    while (!exit)
     {
         parser.readline();
         if (parser.isTooLarge())
             std::cout << "*** Error: line too long" << std::endl;
-        else if(parser.isValid())
+        else if (parser.isValid())
         {
             // in case it's been changed from elsewhere
             interpreter.synth = firstSynth->getSynthFromId(interpreter.currentInstance);

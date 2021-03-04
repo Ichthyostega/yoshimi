@@ -38,6 +38,9 @@ decl {\#include "UI/MiscGui.h"} {public local
 decl {\#include "UI/WidgetPDial.h"} {public local
 }
 
+decl {\#include "UI/WidgetCheckButton.h"} {public local
+}
+
 decl {\#include "UI/WidgetMWSlider.h"} {public local
 }
 
@@ -48,6 +51,9 @@ decl {\#include "FilterUI.h"} {public local
 }
 
 decl {\#include "PresetsUI.h"} {public local
+}
+
+decl {\#include "OscilGenUI.h"} {public local
 }
 
 decl {\#include "Params/SUBnoteParameters.h"} {public local
@@ -65,61 +71,49 @@ decl {\#include "Misc/SynthHelper.h"
 
 class SUBnoteharmonic {: {public Fl_Group}
 } {
-  Function {make_window()} {private
-  } {
+  Function {make_window()} {} {
     Fl_Window harmonic {
-      xywh {801 500 50 300} type Double box NO_BOX hide
+      xywh {800 500 50 300} type Double box NO_BOX hide resizable
       class Fl_Group
     } {
       Fl_Slider mag {
         callback {//
         int x = 0;
         if (Fl::event_button() != 3)
-            x = 127 - lrint(o->value());
+            x = lrint(o->value());
         else
         {
             if (n == 0)
                 x = 127;
-            o->value(127 - x);
+            o->value(x);
         }
 
-        send_data(0, TOPLEVEL::insert::harmonicAmplitude, n, x, TOPLEVEL::type::Integer);
-
-        if (x == 0)
-            o->selection_color(0);
-        else
-            o->selection_color(222);}
-        tooltip {Harmonic's magnitude} xywh {0 2 15 131} type {Vert Knob} box FLAT_BOX selection_color 222 maximum 127 step 1 value 127
-        code0 {o->value(127-pars->Phmag[n]);}
-        code1 {if (pars->Phmag[n]==0) o->selection_color(0);}
-        class mwheel_slider
+        send_data(0, TOPLEVEL::insert::harmonicAmplitude, n, x, TOPLEVEL::type::Integer);}
+        tooltip {Harmonic's magnitude} xywh {0 2 15 131} type {Vert Knob} box FLAT_BOX minimum 127 maximum 0 step 1 value 127
+        code0 {o->value(pars->Phmag[n]);}
+        code1 {o->setValueType(VC_SubHarmonicMagnitude); o->useCustomTip(true);}
+        class PSlider
       }
       Fl_Slider bw {
         callback {//
         int x = 64;
         if (Fl::event_button() != 3)
-            x = 127 - lrint(o->value());
+            x = 64 + lrint(o->value());
         else
-            o->value(x - 1);
+            o->value(0);
 
-        send_data(0, TOPLEVEL::insert::harmonicPhaseBandwidth, n, x, TOPLEVEL::type::Integer);
-
-        if (x == 64)
-            o->selection_color(0);
-        else
-            o->selection_color(222);}
-        tooltip {Harmonic's bandwidth multiplier} xywh {0 166 15 126} type {Vert Knob} box FLAT_BOX selection_color 222 maximum 127 step 1 value 63
+        send_data(0, TOPLEVEL::insert::harmonicPhaseBandwidth, n, x, TOPLEVEL::type::Integer);}
+        tooltip {Harmonic's bandwidth multiplier} xywh {0 166 15 128} type {Vert Knob} box FLAT_BOX minimum 63 maximum -64 step 1
         code0 {o->setValueType(VC_SubBandwidthRel);}
         code1 {o->useCustomTip(true);}
-        code2 {o->value(127-pars->Phrelbw[n]);}
-        code3 {if (pars->Phrelbw[n]==64) o->selection_color(0);}
-        class mwheel_slider
+        code2 {o->value(pars->Phrelbw[n] - 64);}
+        class PSlider
       }
-      Fl_Box {} {
-        xywh {15 228 5 3} box FLAT_BOX color 39
+      Fl_Box h_dash {
+        xywh {16 227 10 3} box FLAT_BOX color 39
         code0 {if (n+1==MAX_SUB_HARMONICS) o->hide();}
       }
-      Fl_Box {} {
+      Fl_Box h_num {
         label 01
         xywh {0 142 15 15} labelfont 1 labelsize 12 align 16
         code0 {char tmp[12];snprintf(tmp,12,"%d",n+1);o->label(strdup(tmp));}
@@ -132,7 +126,7 @@ class SUBnoteharmonic {: {public Fl_Group}
   Function {send_data(int action, int insert, int control, float value, int type)} {} {
     code {//
         type |= TOPLEVEL::type::Write;
-        collect_data(synth, value, action, (Fl::event_button() | type), control, npart, kititem, 1, insert);} {}
+        collect_data(synth, value, action, type, control, npart, kititem, 1, insert);} {}
   }
   Function {init(SUBnoteParameters *pars_, int n_, int npart_, int kititem_)} {} {
     code {//
@@ -147,9 +141,8 @@ class SUBnoteharmonic {: {public Fl_Group}
   }
   Function {refresh()} {} {
     code {//
-    mag->value(127-pars->Phmag[n]);
-    if (pars->Phmag[n]==0) mag->selection_color(0);
-        bw->value(127-pars->Phrelbw[n]);} {}
+    mag->value(pars->Phmag[n]);
+    bw->value(pars->Phrelbw[n] - 64);} {}
   }
   Function {~SUBnoteharmonic()} {} {
     code {//
@@ -171,53 +164,51 @@ class SUBnoteharmonic {: {public Fl_Group}
 class SUBnoteUI {: {public PresetsUI_}
 } {
   Function {make_window()} {} {
+    comment {randompan MUST be placed after panwidth} {in_source in_header
+    }
     Fl_Window SUBparameters {
       label {SUBsynth Parameters}
-      xywh {1 21 735 470} type Double hide
+      callback {//
+    if (subSeen)
+        saveWin(synth,o->w(), SUBparameters->h(),o->x(), o->y(), false, "SubSynth");
+    subSeen = false;
+    o->hide();}
+      xywh {354 26 735 470} type Double hide resizable
       code0 {o->copy_label(synth->getGuiMaster()->setPartWindowTitle("SubSynth").c_str());}
-      code1 {int fetchX, fetchY, fetchO;loadWin(synth, fetchX, fetchY, fetchO, "sub");o->position(fetchX, fetchY);}
+      code1 {subDW = o->w();subDH=o->h();}
+      code2 {SUBparameters->size_range(subDW, subDH, 0, 0, 0, 0, 1);}
     } {
-      Fl_Scroll {} {
+      Fl_Scroll frame {
         xywh {5 140 435 326} type HORIZONTAL box THIN_UP_BOX when 1
       } {
         Fl_Pack harmonics {
-          xywh {5 148 435 290} type HORIZONTAL
+          xywh {4 148 435 290} type HORIZONTAL resizable
           code0 {new Fl_Box(0,0,9,o->h());}
           code1 {for (int i=0;i<MAX_SUB_HARMONICS;i++){h[i]=new SUBnoteharmonic(0,0,20,o->h(),"");h[i]->init(pars, i, npart, kititem);}}
           code2 {new Fl_Box(0,0,3,o->h());}
         } {}
       }
-      Fl_Button {} {
-        label Close
-        callback {//
-        SUBparameters->hide();
-        if ((Fl::event_button() == 3))
-        {
-            if (synth->getGuiMaster()->partui->partKitOn)
-                synth->getGuiMaster()->partui->instrumentkitlist->show();
-            else
-                synth->getGuiMaster()->partui->instrumenteditwindow->show();
-        }}
-        tooltip {Right click: also reopen previous} xywh {625 446 105 20} box THIN_UP_BOX labelfont 1 labelsize 11
+      Fl_Box {} {
+        xywh {10 6 205 60} box PLASTIC_THIN_UP_BOX color 223
       }
-      Fl_Group {} {
+      Fl_Group ampgrp {
         label AMPLITUDE
-        xywh {5 5 215 135} box THIN_UP_FRAME labelfont 1 labelsize 12 align 17
+        xywh {5 5 215 135} box THIN_UP_FRAME labelfont 1 labelsize 11 align 17
       } {
         Fl_Dial vol {
           label Volume
           callback {//
           send_data (0, SUBSYNTH::control::volume, o->value(), TOPLEVEL::type::Integer);}
-          tooltip Volume xywh {37 20 29 29} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          tooltip Volume xywh {20 20 29 29} box ROUND_UP_BOX labelsize 10 align 10 maximum 127 step 1
           code0 {o->setValueType(VC_InstrumentVolume);}
           code1 {o->value(pars->PVolume);}
           class WidgetPDial
         }
         Fl_Dial vsns {
-          label {Veloc Sens}
+          label {Vel Sens}
           callback {//
           send_data (0, SUBSYNTH::control::velocitySense, o->value(), TOPLEVEL::type::Integer);}
-          tooltip {Velocity sensing} xywh {98 20 29 29} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          tooltip {Velocity sensing} xywh {66 20 29 29} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
           code0 {o->value(pars->PAmpVelocityScaleFunction);}
           code2 {o->setValueType(VC_AmpVelocitySense);}
           class WidgetPDial
@@ -225,21 +216,11 @@ class SUBnoteUI {: {public PresetsUI_}
         Fl_Dial pan {
           label Pan
           callback {//
-          randompan->value(o->value() < 1);
           send_data (0, SUBSYNTH::control::panning, o->value(), TOPLEVEL::type::Integer);}
-          tooltip {Panning - zero/leftmost is Random} xywh {157 20 29 29} box ROUND_UP_BOX labelsize 10 align 6 maximum 127 step 1
-          code0 {o->setValueType(VC_PanningRandom);}
+          tooltip Panning xywh {118 20 29 29} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          code0 {o->setValueType(VC_PanningStd);}
           code1 {o->value(pars->PPanning);}
           class WidgetPDial
-        }
-        Fl_Light_Button randompan {
-          label Rand
-          callback {//
-          pan->value(0);
-          o->value(1);
-          send_data (0, SUBSYNTH::control::panning, 0, TOPLEVEL::type::Integer);}
-          xywh {179 49 7 13} box NO_BOX color 35 selection_color 88 labelsize 10 align 8
-          code0 {o->value(pars->randomPan());}
         }
         Fl_Group ampenv {
           label {SUBsynth - Amplitude Envelope}
@@ -247,69 +228,36 @@ class SUBnoteUI {: {public PresetsUI_}
           code0 {o->init(pars->AmpEnvelope, npart, kititem, 1, 0);}
           class EnvelopeUI
         } {}
-      }
-      Fl_Group {} {
-        xywh {504 406 226 35} box THIN_UP_FRAME
-      } {
-        Fl_Counter filterstages {
-          label {Filter Stages}
+        Fl_Dial panwidth {
+          label Width
           callback {//
-          send_data (0, SUBSYNTH::control::filterStages, o->value(), TOPLEVEL::type::Integer);}
-          tooltip {How many times the noise is filtered} xywh {520 421 45 15} type Simple labelfont 1 labelsize 10 align 1 minimum 1 maximum 5 step 1 value 1 textsize 10
-          code0 {o->value(pars->Pnumstages);}
+          send_data (0, SUBSYNTH::control::randomWidth, o->value(), TOPLEVEL::type::Integer);}
+          tooltip {Random Width} xywh {178 20 29 29} box ROUND_UP_BOX labelsize 10 maximum 63 step 1 value 63
+          code0 {o->setValueType(VC_PanningRandom);}
+          code1 {o->value(pars->PWidth);}
+          class WidgetPDial
         }
-        Fl_Choice magtype {
-          label {Mag.Type}
+        Fl_Check_Button randompan {
+          class Fl_Check_Button2
+          label Rand
           callback {//
-          send_data (0, SUBSYNTH::control::magType, o->value(), TOPLEVEL::type::Integer);}
-          xywh {590 421 65 15} down_box BORDER_BOX labelfont 1 labelsize 10 align 1 textsize 11
-          code0 {o->value(pars->Phmagtype);}
-        } {
-          MenuItem {} {
-            label Linear
-            xywh {20 20 100 20} labelfont 1 labelsize 11
-          }
-          MenuItem {} {
-            label {-40dB}
-            xywh {30 30 100 20} labelfont 1 labelsize 11
-          }
-          MenuItem {} {
-            label {-60dB}
-            xywh {40 40 100 20} labelfont 1 labelsize 11
-          }
-          MenuItem {} {
-            label {-80dB}
-            xywh {50 50 100 20} labelfont 1 labelsize 11
-          }
-          MenuItem {} {
-            label {-100dB}
-            xywh {60 60 100 20} labelfont 1 labelsize 11
-          }
+        int tmp = o->value();
+        if (tmp == 0)
+            panwidth->deactivate();
+        else
+            panwidth->activate();
+        send_data(0, SUBSYNTH::control::enableRandomPan, tmp, TOPLEVEL::type::Integer);}
+          tooltip {Enable random panning} xywh {155 31 15 15} down_box DOWN_BOX color 48 labelsize 11 align 1
+          code0 {o->value(pars->PRandom);}
+          code1 {if (o->value() == 0) panwidth->deactivate(); else panwidth->activate();}
         }
-        Fl_Choice start {
-          label Start
-          callback {//
-          send_data (0, SUBSYNTH::control::startPosition, o->value(), TOPLEVEL::type::Integer);}
-          xywh {670 421 50 15} down_box BORDER_BOX labelfont 1 labelsize 10 align 1 textsize 11
-          code0 {o->value(pars->Pstart);}
-        } {
-          MenuItem {} {
-            label Zero
-            xywh {30 30 100 20} labelfont 1 labelsize 11
-          }
-          MenuItem {} {
-            label RND
-            xywh {40 40 100 20} labelfont 1 labelsize 11
-          }
-          MenuItem {} {
-            label {Max.}
-            xywh {50 50 100 20} labelfont 1 labelsize 11
-          }
+        Fl_Box {} {
+          xywh {108 22 4 37} box THIN_DOWN_FRAME
         }
       }
       Fl_Group freqsettingsui {
         label FREQUENCY
-        xywh {440 5 290 135} box THIN_UP_FRAME labelfont 1 labelsize 12 align 17
+        xywh {440 5 290 135} box THIN_UP_FRAME labelfont 1 labelsize 11 align 17
       } {
         Fl_Group freqenvelopegroup {
           label {SUBsynth - Frequency Envelope}
@@ -319,6 +267,7 @@ class SUBnoteUI {: {public PresetsUI_}
           class EnvelopeUI
         } {}
         Fl_Check_Button freqee {
+          class Fl_Check_Button2
           label On
           callback {//
           if (o->value() == 0)
@@ -339,34 +288,26 @@ class SUBnoteUI {: {public PresetsUI_}
           code0 {int k=pars->PCoarseDetune/1024;if (k>=8) k-=16;}
           code2 {o->value(k);}
         }
-        Fl_Counter coarsedet {
-          label {Coarse Det.}
+        Fl_Dial bend {
+          label Bend
           callback {//
-          int k = (int) o->value();
-          if (k < 0)
-              k += 1024;
-
-          send_data (0, SUBSYNTH::control::coarseDetune, k, TOPLEVEL::type::Integer);}
-          tooltip {Coarse Detune} xywh {658 111 60 20} labelsize 10 align 1 minimum -64 maximum 63 step 1 textfont 1 textsize 11
-          code0 {int k=pars->PCoarseDetune%1024;if (k>=512) k-=1024;}
-          code2 {o->value(k);}
-          code3 {o->lstep(10);}
+          send_data(0, SUBSYNTH::control::pitchBendAdjustment, o->value(), TOPLEVEL::type::Integer);}
+          tooltip {Pitch bend range scaling} xywh {500 21 20 20} box ROUND_UP_BOX labelsize 10 align 8 maximum 127 step 1
+          code0 {o->value(pars->PBendAdjust);}
+          code1 {o->setValueType(VC_PitchBend);}
+          class WidgetPDial
         }
-        Fl_Slider detune {
+        Fl_Dial offset {
+          label Offset
           callback {//
-          send_data (TOPLEVEL::action::forceUpdate, SUBSYNTH::control::detuneFrequency, o->value(), TOPLEVEL::type::Integer);}
-          tooltip {Fine Detune (cents)} xywh {491 47 234 15} type {Horz Knob} box THIN_DOWN_BOX minimum -8192 maximum 8191 step 1
-          code0 {o->value(pars->PDetune-8192);}
-          class mwheel_slider_rev
-        }
-        Fl_Value_Output detunevalueoutput {
-          label Detune
-          callback {o->value(getDetune(pars->PDetuneType,0,pars->PDetune));}
-          xywh {445 47 45 15} labelsize 10 align 5 minimum -5000 maximum 5000 textfont 1 textsize 10
-          code0 {o->step(0.01, 1);}
-          code1 {o->value(getDetune(pars->PDetuneType,0,pars->PDetune));}
+          send_data(0, SUBSYNTH::control::pitchBendOffset, o->value(), TOPLEVEL::type::Integer);}
+          tooltip {Offset of the frequency in Hz.} xywh {558 21 20 20} box ROUND_UP_BOX labelsize 10 align 8 maximum 127 step 1
+          code0 {o->value(pars->POffsetHz);}
+          code1 {o->setValueType(VC_FreqOffsetHz);}
+          class WidgetPDial
         }
         Fl_Check_Button hz440 {
+          class Fl_Check_Button2
           label 440Hz
           callback {//
           int x = (int) o->value();
@@ -389,6 +330,20 @@ class SUBnoteUI {: {public PresetsUI_}
           code2 {o->setValueType(VC_FixedFreqET);}
           class WidgetPDial
         }
+        Fl_Slider detune {
+          callback {//
+          send_data (TOPLEVEL::action::forceUpdate, SUBSYNTH::control::detuneFrequency, o->value(), TOPLEVEL::type::Integer);}
+          tooltip {Fine Detune (cents)} xywh {491 47 234 15} type {Horz Knob} box THIN_DOWN_BOX minimum -8192 maximum 8191 step 1
+          code0 {o->value(pars->PDetune-8192);}
+          class mwheel_slider_rev
+        }
+        Fl_Value_Output detunevalueoutput {
+          label Detune
+          callback {o->value(getDetune(pars->PDetuneType,0,pars->PDetune));}
+          xywh {445 47 45 15} labelsize 10 align 5 minimum -5000 maximum 5000 textfont 1 textsize 10
+          code0 {o->step(0.01, 1);}
+          code1 {o->value(getDetune(pars->PDetuneType,0,pars->PDetune));}
+        }
         Fl_Choice detunetype {
           label {Detune Type}
           callback {//
@@ -398,57 +353,26 @@ class SUBnoteUI {: {public PresetsUI_}
           code0 {o->add("L35cents");o->add("L10cents");o->add("E100cents");o->add("E1200cents");}
           code1 {o->value(pars->PDetuneType - 1);}
         } {}
-        Fl_Dial bend {
-          label Bend
+        Fl_Counter coarsedet {
+          label {Coarse Det.}
           callback {//
-          send_data(0, SUBSYNTH::control::pitchBendAdjustment, o->value(), TOPLEVEL::type::Integer);}
-          tooltip {Pitch bend range scaling} xywh {500 21 20 20} box ROUND_UP_BOX labelsize 10 align 8 maximum 127 step 1
-          code0 {o->value(pars->PBendAdjust);}
-          code1 {o->setValueType(VC_PitchBend);}
-          class WidgetPDial
-        }
-        Fl_Dial offset {
-          label Offset
-          callback {//
-          send_data(0, SUBSYNTH::control::pitchBendOffset, o->value(), TOPLEVEL::type::Integer);}
-          tooltip {Offset of the frequency in Hz.} xywh {558 21 20 20} box ROUND_UP_BOX labelsize 10 align 8 maximum 127 step 1
-          code0 {o->value(pars->POffsetHz);}
-          code1 {o->setValueType(VC_FreqOffsetHz);}
-          class WidgetPDial
+          int k = (int) o->value();
+          if (k < 0)
+              k += 1024;
+
+          send_data (0, SUBSYNTH::control::coarseDetune, k, TOPLEVEL::type::Integer);}
+          tooltip {Coarse Detune} xywh {658 111 60 20} labelsize 10 align 1 minimum -64 maximum 63 step 1 textfont 1 textsize 11
+          code0 {int k=pars->PCoarseDetune%1024;if (k>=512) k-=1024;}
+          code2 {o->value(k);}
+          code3 {o->lstep(10);}
         }
       }
       Fl_Box {} {
-        xywh {440 406 64 35} box THIN_UP_FRAME
-      }
-      Fl_Check_Button stereo {
-        label { Stereo}
-        callback {//
-        send_data (0, SUBSYNTH::control::stereo, o->value(), TOPLEVEL::type::Integer);}
-        xywh {444 415 17 15} box THIN_UP_BOX down_box DOWN_BOX color 237 labelfont 1 labelsize 10
-        code0 {o->value(pars->Pstereo);}
-      }
-      Fl_Button {} {
-        label Clear
-        callback {//
-        for (int i = 0; i < MAX_SUB_HARMONICS; i++)
-        {
-            h[i]->mag->value(127);
-            h[i]->mag->selection_color(0);
-            pars->Phmag[i] = 0;
-            h[i]->bw->value(64);
-            h[i]->bw->selection_color(0);
-            pars->Phrelbw[i] = 64;
-        }
-
-        h[0]->mag->selection_color(222);
-        h[0]->mag->value(0);
-        SUBparameters->redraw();
-        send_data (0, SUBSYNTH::control::clearHarmonics, o->value(), TOPLEVEL::type::Integer);}
-        tooltip {Clear the harmonics} xywh {445 446 70 20} box THIN_UP_BOX labelfont 1 labelsize 11
+        xywh {440 406 65 35} box THIN_UP_FRAME
       }
       Fl_Group bandwidthsettingsui {
         label BANDWIDTH
-        xywh {220 5 220 135} box THIN_UP_FRAME labelfont 1 labelsize 12 align 17
+        xywh {220 5 220 135} box THIN_UP_FRAME labelfont 1 labelsize 11 align 17
       } {
         Fl_Group bandwidthenvelopegroup {
           label {SUBsynth - BandWidth Envelope}
@@ -458,6 +382,7 @@ class SUBnoteUI {: {public PresetsUI_}
           class EnvelopeUI
         } {}
         Fl_Check_Button bwee {
+          class Fl_Check_Button2
           label On
           callback {//
           if (o->value() == 0)
@@ -471,7 +396,7 @@ class SUBnoteUI {: {public PresetsUI_}
           code0 {o->value(pars->PBandWidthEnvelopeEnabled);}
         }
         Fl_Value_Slider bandwidth {
-          label {Band Width}
+          label Bandwidth
           callback {//
           send_data (0, SUBSYNTH::control::bandwidth, o->value(), TOPLEVEL::type::Integer);}
           tooltip {Base bandwidth, approximate} xywh {225 40 115 15} type {Horz Knob} box THIN_DOWN_BOX labelsize 10 align 1 maximum 127 step 1
@@ -481,7 +406,7 @@ class SUBnoteUI {: {public PresetsUI_}
           class mwheel_val_slider_rev
         }
         Fl_Value_Slider bwidthscale {
-          label {B.Width Scale}
+          label {Bandwidth Scale}
           callback {//
           send_data (0, SUBSYNTH::control::bandwidthScale, o->value(), TOPLEVEL::type::Integer);}
           tooltip {Freq-dep. bw. scaling} xywh {344 40 90 15} type {Horz Knob} box THIN_DOWN_BOX labelsize 10 align 1 minimum -64 maximum 63 step 1
@@ -491,50 +416,9 @@ class SUBnoteUI {: {public PresetsUI_}
           class mwheel_val_slider_rev
         }
       }
-      Fl_Group globalfiltergroup {
-        label { FILTER }
-        xywh {440 221 290 185} box THIN_UP_FRAME labelfont 1 labelsize 12 align 17
-        code0 {if (pars->PGlobalFilterEnabled==0) o->deactivate();}
-      } {
-        Fl_Group filterenv {
-          label {SUBsynth - Filter Envelope}
-          xywh {447 328 275 70} box FLAT_BOX color 51 align 144
-          code0 {o->init(pars->GlobalFilterEnvelope, npart, kititem, 1, 2);}
-          class EnvelopeUI
-        } {}
-        Fl_Group filterui {
-          label {SUBsynth - Filter}
-          xywh {447 246 275 75} box FLAT_BOX color 50 align 144
-          code0 {o->init(pars->GlobalFilter,&pars->PGlobalFilterVelocityScale,&pars->PGlobalFilterVelocityScaleFunction, npart, kititem, 1);}
-          class FilterUI
-        } {}
-      }
-      Fl_Check_Button filtere {
-        label On
-        callback {//
-        if (o->value() == 0)
-            globalfiltergroup->deactivate();
-        else
-            globalfiltergroup->activate();
-        o->show();
-        globalfiltergroup->redraw();
-        send_data (0, SUBSYNTH::control::enableFilter, o->value(), TOPLEVEL::type::Integer);}
-        xywh {446 227 36 13} box THIN_UP_BOX down_box DOWN_BOX color 237 labelfont 1 labelsize 11
-        code0 {o->value(pars->PGlobalFilterEnabled);}
-      }
-      Fl_Button {} {
-        label C
-        callback {synth->getGuiMaster()->getPresetsUi()->copy(pars);}
-        xywh {540 449 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 7
-      }
-      Fl_Button {} {
-        label P
-        callback {synth->getGuiMaster()->getPresetsUi()->paste(pars,this);}
-        xywh {576 449 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 7
-      }
       Fl_Group spreadGroup {
         label OVERTONES
-        xywh {440 140 290 81} box THIN_UP_FRAME labelfont 1 labelsize 12 align 17
+        xywh {440 140 290 81} box THIN_UP_FRAME labelfont 1 labelsize 11 align 17
       } {
         Fl_Dial spreadpar1 {
           label Par1
@@ -566,42 +450,121 @@ class SUBnoteUI {: {public PresetsUI_}
         label {Overtone Positions}
         callback {//
           send_data (TOPLEVEL::action::forceUpdate, SUBSYNTH::control::overtonePosition, o->value(), TOPLEVEL::type::Integer);}
-        xywh {460 171 87 20} down_box BORDER_BOX labelsize 10 align 2 textsize 10
-        code0 {o->value(pars->POvertoneSpread.type);}
-        code1 {if (o->value() > 0) spreadGroup->activate(); else spreadGroup->deactivate();}
+        xywh {460 171 87 20} down_box BORDER_BOX labelsize 11 align 2 textfont 1 textsize 11
+        code0 {o->add("Harmonic");o->add("ShiftU");o->add("ShiftL");o->add("PowerU");o->add("PowerL");o->add("Sine");o->add("Power");o->add("Shift");}
+        code1 {o->value(pars->POvertoneSpread.type);}
+        code2 {if (_SYS_::F2B(o->value())) spreadGroup->activate(); else spreadGroup->deactivate();}
+      } {}
+      Fl_Group globalfiltergroup {
+        label { FILTER }
+        xywh {440 221 290 185} box THIN_UP_FRAME labelfont 1 labelsize 11 align 17
+        code0 {if (pars->PGlobalFilterEnabled==0) o->deactivate();}
       } {
-        MenuItem {} {
-          label Harmonic
-          xywh {15 15 34 20} labelfont 1 labelsize 11
+        Fl_Group filterenv {
+          label {SUBsynth - Filter Envelope}
+          xywh {447 328 275 70} box FLAT_BOX color 51 align 144
+          code0 {o->init(pars->GlobalFilterEnvelope, npart, kititem, 1, 2);}
+          class EnvelopeUI
+        } {}
+        Fl_Group filterui {
+          label {SUBsynth - Filter}
+          xywh {447 246 275 75} box FLAT_BOX color 50 align 144
+          code0 {o->init(pars->GlobalFilter,&pars->PGlobalFilterVelocityScale,&pars->PGlobalFilterVelocityScaleFunction, npart, kititem, 1);}
+          class FilterUI
+        } {}
+      }
+      Fl_Check_Button filtere {
+        class Fl_Check_Button2
+        label On
+        callback {//
+        if (o->value() == 0)
+            globalfiltergroup->deactivate();
+        else
+            globalfiltergroup->activate();
+        o->show();
+        globalfiltergroup->redraw();
+        send_data (0, SUBSYNTH::control::enableFilter, o->value(), TOPLEVEL::type::Integer);}
+        xywh {446 227 36 13} box THIN_UP_BOX down_box DOWN_BOX color 237 labelfont 1 labelsize 10
+        code0 {o->value(pars->PGlobalFilterEnabled);}
+      }
+      Fl_Group {} {
+        xywh {504 406 226 35} box THIN_UP_FRAME
+      } {
+        Fl_Counter filterstages {
+          label {Filter Stages}
+          callback {//
+          send_data (0, SUBSYNTH::control::filterStages, o->value(), TOPLEVEL::type::Integer);}
+          tooltip {How many times the noise is filtered} xywh {520 421 45 15} type Simple labelfont 1 labelsize 10 align 1 minimum 1 maximum 5 step 1 value 1 textsize 10
+          code0 {o->value(pars->Pnumstages);}
         }
-        MenuItem {} {
-          label ShiftU
-          xywh {25 25 34 20} labelfont 1 labelsize 11
+        Fl_Choice magtype {
+          label {Mag.Type}
+          callback {//
+          send_data (0, SUBSYNTH::control::magType, o->value(), TOPLEVEL::type::Integer);}
+          xywh {590 421 65 15} down_box BORDER_BOX labelfont 1 labelsize 10 align 1 textfont 1 textsize 11
+          code0 {o->add("Linear");o->add("-40dB");o->add("-60dB");o->add("-80dB");o->add("-100dB");}
+          code1 {o->value(pars->Phmagtype);}
+        } {}
+        Fl_Choice start {
+          label Start
+          callback {//
+          send_data (0, SUBSYNTH::control::startPosition, o->value(), TOPLEVEL::type::Integer);}
+          xywh {670 421 50 15} down_box BORDER_BOX labelfont 1 labelsize 10 align 1 textfont 1 textsize 11
+          code0 {o->add("Zero");o->add("Rnd");o->add("Max.");}
+          code1 {o->value(pars->Pstart);}
+        } {}
+      }
+      Fl_Box {} {
+        xywh {441 414 16 17} box THIN_UP_BOX color 237
+      }
+      Fl_Check_Button stereo {
+        class Fl_Check_Button2
+        label { Stereo}
+        callback {//
+        send_data (0, SUBSYNTH::control::stereo, o->value(), TOPLEVEL::type::Integer);}
+        xywh {442 415 59 15} down_box DOWN_BOX color 237 labelfont 1 labelsize 10
+        code0 {o->value(pars->Pstereo);}
+      }
+      Fl_Button subClear {
+        label Clear
+        callback {//
+        for (int i = 0; i < MAX_SUB_HARMONICS; i++)
+        {
+            h[i]->mag->value(0);
+            pars->Phmag[i] = 0;
+            h[i]->bw->value(0);
+            pars->Phrelbw[i] = 64;
         }
-        MenuItem {} {
-          label ShiftL
-          xywh {35 35 34 20} labelfont 1 labelsize 11
-        }
-        MenuItem {} {
-          label PowerU
-          xywh {35 35 34 20} labelfont 1 labelsize 11
-        }
-        MenuItem {} {
-          label PowerL
-          xywh {45 45 34 20} labelfont 1 labelsize 11
-        }
-        MenuItem {} {
-          label Sine
-          xywh {55 55 34 20} labelfont 1 labelsize 11
-        }
-        MenuItem {} {
-          label Power
-          xywh {65 65 34 20} labelfont 1 labelsize 11
-        }
-        MenuItem {} {
-          label Shift
-          xywh {35 35 34 20} labelfont 1 labelsize 11
-        }
+
+        h[0]->mag->value(127);
+        SUBparameters->redraw();
+        send_data (0, SUBSYNTH::control::clearHarmonics, o->value(), TOPLEVEL::type::Integer);}
+        tooltip {Clear the harmonics} xywh {445 446 70 20} box THIN_UP_BOX labelfont 1 labelsize 11
+      }
+      Fl_Button subCopy {
+        label C
+        callback {synth->getGuiMaster()->getPresetsUi()->copy(pars);}
+        xywh {540 449 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 7
+      }
+      Fl_Button subPaste {
+        label P
+        callback {synth->getGuiMaster()->getPresetsUi()->paste(pars,this);}
+        xywh {576 449 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 7
+      }
+      Fl_Button subClose {
+        label Close
+        callback {//
+        saveWin(synth, SUBparameters->w(), SUBparameters->h(), SUBparameters->x(), SUBparameters->y(), false, "SubSynth");
+        subSeen = false;
+        SUBparameters->hide();
+        if ((Fl::event_button() == 3))
+        {
+            if (synth->getGuiMaster()->partui->partKitOn)
+                synth->getGuiMaster()->partui->instrumentkitlist->show();
+            else
+                synth->getGuiMaster()->partui->instrumenteditwindow->show();
+        }}
+        tooltip {Right click: also reopen previous} xywh {625 446 105 20} box THIN_UP_BOX labelfont 1 labelsize 11
       }
     }
   }
@@ -668,25 +631,137 @@ class SUBnoteUI {: {public PresetsUI_}
     filterui->refresh();
     filterenv->refresh();} {}
   }
+  Function {Showsub()} {} {
+    code {//
+    int fetchW, fetchH, fetchX, fetchY, fetchO;
+    loadWin(synth, fetchW, fetchH, fetchX, fetchY, fetchO, "SubSynth");
+    if (fetchW < subDW || fetchH < subDH)
+    {
+        fetchW = subDW;
+        fetchH = subDH;
+    }
+    checkSane(fetchX, fetchY, fetchW, fetchH, subDW, subDH);
+
+    SUBparameters->resize(fetchX, fetchY, fetchW, fetchH);
+    SUBparameters->show();
+    lastsubW = 0;
+    subSeen = true;} {}
+  }
+  Function {subRtext()} {} {
+    code {//
+    ampenv->wincheck();
+    bandwidthenvelopegroup->wincheck();
+    filterenv->wincheck();
+    freqenvelopegroup->wincheck();
+
+    if (filterui->formantparswindow->visible())
+        filterui->formantRtext();
+
+    if (!SUBparameters->visible())
+        return;
+
+    if(SUBparameters->w() == lastsubW)
+         return;
+
+    lastsubW = SUBparameters->w();
+
+    float dScale = SUBparameters->w() / float(subDW);
+    if (dScale < 0.2f)
+        dScale = 0.2f;
+
+    ampenv->envRtext(dScale);
+    bandwidthenvelopegroup->envRtext(dScale);
+    filterenv->envRtext(dScale);
+    freqenvelopegroup->envRtext(dScale);
+
+    filterui->filterRtext(dScale);
+
+    int size = int(10 * dScale);
+    int size11 = int(11 * dScale);
+    frame->scroll_to(0, 0);
+    frame->size(int(435 * dScale), int(326 * dScale));
+    frame->scrollbar_size(12 * dScale);
+    harmonics->size(int(435 * dScale), int(275 * dScale * 1.1));
+
+    for (int i=0;i<MAX_SUB_HARMONICS;i++)
+    {
+        h[i]->size(20 * dScale, 275 * dScale * 1.1);
+        h[i]->h_num->labelsize(int(12 * dScale));
+        h[i]->h_dash->size(int(10 * dScale), int(3 * dScale));
+    }
+
+    ampgrp->labelsize(size11);
+    vol->labelsize(size);
+    vsns->labelsize(size);
+    pan->labelsize(size);
+    panwidth->labelsize(size);
+    randompan->labelsize(size11);
+
+    freqsettingsui->labelsize(size11);
+    freqee->labelsize(size);
+    octave->labelsize(size);
+        octave->textsize(size11);
+    bend->labelsize(size);
+    offset->labelsize(size);
+    hz440->labelsize(size);
+    fixedfreqetdial->labelsize(size);
+    detunevalueoutput->labelsize(size);
+        detunevalueoutput->textsize(size);
+    detunetype->labelsize(size);
+        detunetype->textsize(size);
+    coarsedet->labelsize(size);
+        coarsedet->textsize(size11);
+
+    bandwidthsettingsui->labelsize(size11);
+    bwee->labelsize(size);
+    bandwidth->labelsize(size);
+         bandwidth->textsize(size);
+    bwidthscale->labelsize(size);
+        bwidthscale->textsize(size);
+
+    spreadGroup->labelsize(size11);
+    spreadpar1->labelsize(size);
+    spreadpar2->labelsize(size);
+    spreadpar3->labelsize(size);
+    spreadtype->labelsize(size11);
+        spreadtype->textsize(size11);
+
+    globalfiltergroup->labelsize(size11);
+    filtere->labelsize(size);
+    filterstages->labelsize(size);
+        filterstages->textsize(size11);
+    magtype->labelsize(size);
+        magtype->textsize(size11);
+    start->labelsize(size);
+        start->textsize(size11);
+
+    stereo->labelsize(size);
+    subClear->labelsize(size11);
+    subCopy->labelsize(size11);
+    subPaste->labelsize(size11);
+    subClose->labelsize(size11);
+
+    SUBparameters->redraw();} {}
+  }
   Function {send_data(int action, int control, float value, int type)} {} {
     code {//
         type |= TOPLEVEL::type::Write;
-        collect_data(synth, value, action, (Fl::event_button() | type), control, npart, kititem, 1);} {}
+        collect_data(synth, value, action, type, control, npart, kititem, 1);} {}
   }
   Function {returns_update(CommandBlock *getData)} {} {
     code {//
-    float value = getData->data.value.F;
+    float value = getData->data.value;
     unsigned char control = getData->data.control;
     unsigned char insert = getData->data.insert;
-    bool val_bool = YOSH::F2B(value);
+    bool val_bool = _SYS_::F2B(value);
     if (insert == TOPLEVEL::insert::harmonicAmplitude)
     {
-        h[control]->mag->value(127 - (int) value);
+        h[control]->mag->value((int) value);
         return;
     }
     if (insert == TOPLEVEL::insert::harmonicPhaseBandwidth)
     {
-        h[control]->bw->value(127 - (int) value);
+        h[control]->bw->value((int)value - 64);
         return;
     }
 
@@ -702,7 +777,16 @@ class SUBnoteUI {: {public PresetsUI_}
 
         case SUBSYNTH::control::panning:
             pan->value(value);
-            randompan->value(value == 0);
+            break;
+        case SUBSYNTH::control::enableRandomPan:
+            randompan->value(val_bool);
+            if (val_bool)
+                panwidth->activate();
+            else
+                panwidth->deactivate();
+            break;
+        case SUBSYNTH::control::randomWidth:
+            panwidth->value(value);
             break;
 
         case SUBSYNTH::control::bandwidth:
@@ -732,7 +816,7 @@ class SUBnoteUI {: {public PresetsUI_}
             break;
 
         case SUBSYNTH::control::baseFrequencyAs440Hz:
-            hz440->value(YOSH::F2B(value));
+            hz440->value(_SYS_::F2B(value));
             if (value == 0)
                 fixedfreqetdial->deactivate();
             else
@@ -811,13 +895,10 @@ class SUBnoteUI {: {public PresetsUI_}
         case SUBSYNTH::control::clearHarmonics:
             for (int i = 0; i < MAX_SUB_HARMONICS; i++)
             {
-                h[i]->mag->value(127);
-                h[i]->mag->selection_color(0);
-                h[i]->bw->value(64);
-                h[i]->bw->selection_color(0);
+                h[i]->mag->value(0);
+                h[i]->bw->value(0);
             }
-            h[0]->mag->selection_color(222);
-            h[0]->mag->value(0);
+            h[0]->mag->value(127);
             break;
 
         case SUBSYNTH::control::stereo:
@@ -831,12 +912,16 @@ class SUBnoteUI {: {public PresetsUI_}
     synth = pars->getSynthEngine();
     npart = npart_;
     kititem = kititem_;
+    lastsubW = 0;
+    subSeen = false;
     make_window();} {}
   }
   Function {~SUBnoteUI()} {return_type virtual
   } {
     code {//
-    saveWin(synth, SUBparameters->x(),SUBparameters->y(), SUBparameters->visible(), "sub");
+    if (subSeen)
+        saveWin(synth, SUBparameters->w(), SUBparameters->h(), SUBparameters->x(), SUBparameters->y(),  true, "SubSynth");
+    subSeen = false;
     SUBparameters->hide();
     delete(SUBparameters);} {}
   }
@@ -849,5 +934,13 @@ class SUBnoteUI {: {public PresetsUI_}
   decl {int npart;} {private local
   }
   decl {int kititem;} {private local
+  }
+  decl {float subDW;} {private local
+  }
+  decl {float subDH;} {private local
+  }
+  decl {bool subSeen;} {private local
+  }
+  decl {int lastsubW;} {private local
   }
 }

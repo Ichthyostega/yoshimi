@@ -81,7 +81,7 @@ Reverb::Reverb(bool insertion_, float *efxoutl_, float *efxoutr_, SynthEngine *_
     Plohidamp(80),
     Ptype(1),
     Proomsize(64),
-    Pbandwidth(30),
+    Pbandwidth(20),
     roomsize(1.0f),
     rs(1.0f),
     bandwidth(NULL),
@@ -212,7 +212,7 @@ void Reverb::out(float *smps_l, float *smps_r)
     int i;
     for (i = 0; i < synth->sent_buffersize; ++i)
     {
-        inputbuf[i] = (smps_l[i] + smps_r[i]) / 2.0f;
+        inputbuf[i] = float(1e-20) + ((smps_l[i] + smps_r[i]) / 2.0f); // includes anti-denormal
         // Initial delay r
         if (idelay)
         {
@@ -553,6 +553,8 @@ void Reverb::changepar(int npar, unsigned char value)
             break;
         case 10:
             settype(value);
+            if (value == 2)
+                setbandwidth(20); // TODO use defaults
             break;
         case 11:
             setroomsize(value);
@@ -593,7 +595,7 @@ unsigned char Reverb::getpar(int npar)
 
 float Revlimit::getlimits(CommandBlock *getData)
 {
-    int value = getData->data.value.F;
+    int value = getData->data.value;
     int control = getData->data.control;
     int request = getData->data.type & 3; // clear upper bits
     int npart = getData->data.part;
@@ -648,9 +650,9 @@ float Revlimit::getlimits(CommandBlock *getData)
     switch (request)
     {
         case TOPLEVEL::type::Adjust:
-            if(value < min)
+            if (value < min)
                 value = min;
-            else if(value > max)
+            else if (value > max)
                 value = max;
             break;
         case TOPLEVEL::type::Minimum:

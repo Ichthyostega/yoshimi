@@ -2,6 +2,7 @@
 #   CMakeLists.txt (LV2)
 #
 #   Copyright 2014, Andrew Deryabin <andrewderyabin@gmail.com>
+#   Copyright 2018-2020 Will Godfrey & others
 #
 #   This file is part of yoshimi, which is free software: you can
 #   redistribute it and/or modify it under the terms of the GNU General
@@ -103,9 +104,13 @@ set (FltkUI_sources
     ../UI/DynamicTooltip.cpp
     ../UI/WidgetPDial.cpp
     ../UI/WidgetMWSlider.cpp
+    ../UI/WidgetCheckButton.cpp
+    ../UI/WidgetSpinner.cpp
+    ../UI/YoshiWin.cpp
 )
 
 add_definitions (-DYOSHIMI_LV2_PLUGIN=1)
+add_definitions (-fvisibility=hidden)
 
 add_library (yoshimi_lv2 MODULE
             ${yoshimi_lv2_plugin_files}
@@ -141,7 +146,6 @@ target_link_libraries(yoshimi_lv2
                       ${LIBSNDFILE_LIBRARIES}
                       ${FFTW3F_LIBRARIES}
                       ${LIBCAIRO_LIBRARIES}
-                      ${JACK_LIBRARIES}
                       z
                       ${LIBDL_LINUX_LIBS}
 )

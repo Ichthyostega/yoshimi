@@ -1,7 +1,7 @@
 /*
     MidiLearn.cpp
 
-    Copyright 2016-2020 Will Godfrey
+    Copyright 2016-2021 Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -32,7 +32,9 @@
 #include <vector>
 #include <string>
 #include <unistd.h>  // for usleep()
-//#include <iostream>
+#include <iostream>
+
+//#include <sys/time.h>
 
 using file::isRegularFile;
 using file::make_legit_filename;
@@ -154,8 +156,8 @@ bool MidiLearn::runMidiLearn(int _value, unsigned short int CC, unsigned char ch
             value += minOut;
 
         CommandBlock putData;
-        putData.data.value.F = value;
-        putData.data.type = 0x40 | (foundEntry.data.type & 0x80);
+        putData.data.value = value;
+        putData.data.type = TOPLEVEL::type::Write | (foundEntry.data.type & TOPLEVEL::type::Integer);
         // write command from midi with original integer / float type
         putData.data.source = TOPLEVEL::action::toAll;
         putData.data.control = foundEntry.data.control;
@@ -387,7 +389,7 @@ bool MidiLearn::remove(int itemNumber)
 
 void MidiLearn::generalOperations(CommandBlock *getData)
 {
-    int value = getData->data.value.F;
+    int value = getData->data.value;
     unsigned char type = getData->data.type;
     unsigned char control = getData->data.control;
 //    unsigned char part = getData->data.part;
@@ -472,7 +474,7 @@ void MidiLearn::generalOperations(CommandBlock *getData)
     list<LearnBlock>::iterator it = midi_list.begin();
     it = midi_list.begin();
 
-    while(lineNo < value && it != midi_list.end())
+    while (lineNo < value && it != midi_list.end())
     {
         ++ it;
         ++lineNo;
@@ -602,7 +604,7 @@ void MidiLearn::generalOperations(CommandBlock *getData)
         CommandBlock putData;
         memset(&putData.bytes, 255, sizeof(putData));
         // need to work on this more
-        putData.data.value.F = value;
+        putData.data.value = value;
         putData.data.type = type;
         putData.data.control = MIDILEARN::control::ignoreMove;
         putData.data.kit = kit;
@@ -637,12 +639,12 @@ void MidiLearn::generalOperations(CommandBlock *getData)
         int lineNo = 0;
         if (midi_list.size() > 0)
         { // CC is priority
-            while(CC > it->CC && it != midi_list.end())
+            while (CC > it->CC && it != midi_list.end())
             { // find start of group
                 ++it;
                 ++lineNo;
             }
-            while(CC == it->CC && chan >= it->chan && it != midi_list.end())
+            while (CC == it->CC && chan >= it->chan && it != midi_list.end())
             { // insert at end of same channel
                 ++it;
                 ++lineNo;
@@ -665,7 +667,7 @@ void MidiLearn::generalOperations(CommandBlock *getData)
 string MidiLearn::findName(list<LearnBlock>::iterator it)
 {
     CommandBlock putData;
-    putData.data.value.I = 0;
+    putData.data.value = 0;
     putData.data.source = 0;
 
     putData.data.type = it->data.type;
@@ -691,9 +693,9 @@ void MidiLearn::insertLine(unsigned short int CC, unsigned char chan)
         CommandBlock putData;
         int putSize = sizeof(putData);
         memset(&putData, 0xff, putSize);
-        putData.data.value.F = 0;
+        putData.data.value = 0;
         putData.data.source = TOPLEVEL::action::toAll;
-        putData.data.type = 0xc8;
+        putData.data.type = TOPLEVEL::type::Write | TOPLEVEL::type::Integer;
         putData.data.control = TOPLEVEL::control::textMessage;
         putData.data.part = TOPLEVEL::section::midiIn;
         putData.data.parameter = 0x80;
@@ -739,12 +741,12 @@ void MidiLearn::insertLine(unsigned short int CC, unsigned char chan)
     int lineNo = 0;
     if (midi_list.size() > 0)
     { // CC is priority
-        while(CC > it->CC && it != midi_list.end()) // CC is priority
+        while (CC > it->CC && it != midi_list.end()) // CC is priority
         { // find start of group
             ++it;
             ++lineNo;
         }
-        while(CC == it->CC && chan >= it->chan && it != midi_list.end())
+        while (CC == it->CC && chan >= it->chan && it != midi_list.end())
         { // insert at end of same channel
             ++it;
             ++lineNo;
@@ -785,7 +787,7 @@ void MidiLearn::writeToGui(CommandBlock *putData)
     }
     while (!ok && tries < 3);
 
-    if(!ok)
+    if (!ok)
         synth->getRuntime().Log("toGui buffer full!", 2);
 }
 
@@ -817,7 +819,7 @@ void MidiLearn::updateGui(int opp)
         if (opp == MIDILEARN::control::hideGUI)
             return;
     }
-    putData.data.value.F = 0;
+    putData.data.value = 0;
     writeToGui(&putData);
 
     if (opp >= MIDILEARN::control::hideGUI) // just sending back gui message
@@ -826,10 +828,14 @@ void MidiLearn::updateGui(int opp)
     int lineNo = 0;
     list<LearnBlock>::iterator it;
     it = midi_list.begin();
+/*
+    struct timeval tv1, tv2;
+    gettimeofday(&tv1, NULL);
+*/
     while (it != midi_list.end())
     {
         unsigned short int newCC = (it->CC) & MIDI::CC::maxNRPN;
-        putData.data.value.F = lineNo;
+        putData.data.value = lineNo;
         putData.data.type = it->status;
         putData.data.source = TOPLEVEL::action::toAll;
         putData.data.control = MIDILEARN::control::CCorChannel;
@@ -847,7 +853,19 @@ void MidiLearn::updateGui(int opp)
         }
         ++it;
         ++lineNo;
+        if (lineNo & 32)
+            usleep(10); // allow message list to clear a bit
     }
+/*
+    gettimeofday(&tv2, NULL);
+    if (tv1.tv_usec > tv2.tv_usec)
+    {
+        tv2.tv_sec--;
+        tv2.tv_usec += 1000000;
+    }
+    int actual = (tv2.tv_sec - tv1.tv_sec) *1000000 + (tv2.tv_usec - tv1.tv_usec);
+    std::cout << "Delay " << to_string(actual) << "uS" << std::endl;
+*/
     if (synth->getRuntime().showLearnedCC == true && !midi_list.empty()) // open the gui editing window
     {
         putData.data.control = MIDILEARN::control::sendRefreshRequest;
@@ -856,7 +874,7 @@ void MidiLearn::updateGui(int opp)
 }
 
 
-bool MidiLearn::saveList(string name)
+bool MidiLearn::saveList(const string& name)
 {
     if (name.empty())
     {
@@ -943,7 +961,7 @@ bool MidiLearn::insertMidiListData(XMLwrapper *xml)
 }
 
 
-bool MidiLearn::loadList(string name)
+bool MidiLearn::loadList(const string& name)
 {
     if (name.empty())
     {

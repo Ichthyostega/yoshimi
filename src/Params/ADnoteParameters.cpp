@@ -5,7 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
     Copyright 2017-2019 Will Godfrey
-    Copyright 2020 Kristian Amlie, Will Godfrey
+    Copyright 2020-2021 Kristian Amlie, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -79,6 +79,8 @@ void ADnoteParameters::defaults(void)
     GlobalPar.PVolume = 90;
     setGlobalPan(GlobalPar.PPanning = 64, synth->getRuntime().panLaw); // center
     GlobalPar.PAmpVelocityScaleFunction = 64;
+    GlobalPar.PRandom = false;
+    GlobalPar.PWidth = 63;
     GlobalPar.AmpEnvelope->defaults();
     GlobalPar.AmpLfo->defaults();
     GlobalPar.Fadein_adjustment = FADEIN_ADJUSTMENT_SCALE;
@@ -131,6 +133,8 @@ void ADnoteParameters::defaults(int n)
     VoicePar[nvoice].PVolume = 100;
     VoicePar[nvoice].PVolumeminus = 0;
     setVoicePan(nvoice, VoicePar[nvoice].PPanning = 64, synth->getRuntime().panLaw); // center
+    VoicePar[nvoice].PRandom = false;
+    VoicePar[nvoice].PWidth = 63;
     VoicePar[nvoice].PDetune = 8192; // 8192 = 0
     VoicePar[nvoice].PCoarseDetune = 0;
     VoicePar[nvoice].PDetuneType = 0;
@@ -145,6 +149,8 @@ void ADnoteParameters::defaults(int n)
     VoicePar[nvoice].PFilterVelocityScale = 0;
     VoicePar[nvoice].PFilterVelocityScaleFunction = 64;
     VoicePar[nvoice].PFMEnabled = 0;
+    VoicePar[nvoice].PFMEnabled = 0;
+    VoicePar[nvoice].PFMringToSide = false;
     VoicePar[nvoice].PFMFixedFreq = false;
 
     // I use the internal oscillator (-1)
@@ -267,13 +273,8 @@ ADnoteParameters::~ADnoteParameters()
 void ADnoteParameters::setGlobalPan(char pan, unsigned char panLaw)
 {
     GlobalPar.PPanning = pan;
-    if (!randomGlobalPan())
-    {
-        //float t = (float)(GlobalPar.PPanning - 1) / 126.0f;
-        //GlobalPar.pangainL = cosf(t * HALFPI);
-        //GlobalPar.pangainR = cosf((1.0f - t) * HALFPI);
+    if (!GlobalPar.PRandom)
         setAllPan(GlobalPar.PPanning, GlobalPar.pangainL, GlobalPar.pangainR, panLaw);
-    }
     else
         GlobalPar.pangainL = GlobalPar.pangainR = 0.7f;
 }
@@ -282,13 +283,8 @@ void ADnoteParameters::setGlobalPan(char pan, unsigned char panLaw)
 void ADnoteParameters::setVoicePan(int nvoice, char pan, unsigned char panLaw)
 {
     VoicePar[nvoice].PPanning = pan;
-    if (!randomVoicePan(nvoice))
-    {
-        //float t = (float)(VoicePar[nvoice].PPanning - 1) / 126.0f;
-        //VoicePar[nvoice].pangainL = cosf(t * HALFPI);
-        //VoicePar[nvoice].pangainR = cosf((1.0f - t) * HALFPI);
+    if (!VoicePar[nvoice].PRandom)
         setAllPan(VoicePar[nvoice].PPanning, VoicePar[nvoice].pangainL, VoicePar[nvoice].pangainR, panLaw);
-    }
     else
         VoicePar[nvoice].pangainL = VoicePar[nvoice].pangainR = 0.7f;
 }
@@ -300,6 +296,8 @@ void ADnoteParameters::add2XMLsection(XMLwrapper *xml, int n)
     if (nvoice >= NUM_VOICES)
         return;
 
+    // currently not used
+    // bool yoshiFormat = synth->usingYoshiType;
     int oscilused = 0, fmoscilused = 0; // if the oscil or fmoscil are used by another voice
 
     for (int i = 0; i < NUM_VOICES; ++i)
@@ -345,7 +343,17 @@ void ADnoteParameters::add2XMLsection(XMLwrapper *xml, int n)
 
 
     xml->beginbranch("AMPLITUDE_PARAMETERS");
-        xml->addpar("panning", VoicePar[nvoice].PPanning);
+        // new yoshi type
+        xml->addpar("pan_pos", VoicePar[nvoice].PPanning);
+        xml->addparbool("random_pan", VoicePar[nvoice].PRandom);
+        xml->addpar("random_width", VoicePar[nvoice].PWidth);
+
+        // legacy
+        if (VoicePar[nvoice].PRandom)
+            xml->addpar("panning", 0);
+        else
+            xml->addpar("panning", VoicePar[nvoice].PPanning);
+
         xml->addpar("volume", VoicePar[nvoice].PVolume);
         xml->addparbool("volume_minus", VoicePar[nvoice].PVolumeminus);
         xml->addpar("velocity_sensing", VoicePar[nvoice].PAmpVelocityScaleFunction);
@@ -460,13 +468,25 @@ void ADnoteParameters::add2XMLsection(XMLwrapper *xml, int n)
 
 void ADnoteParameters::add2XML(XMLwrapper *xml)
 {
+    // currently not used
+    // bool yoshiFormat = synth->usingYoshiType;
     xml->information.ADDsynth_used = 1;
 
     xml->addparbool("stereo", GlobalPar.PStereo);
 
     xml->beginbranch("AMPLITUDE_PARAMETERS");
         xml->addpar("volume", GlobalPar.PVolume);
-        xml->addpar("panning", GlobalPar.PPanning);
+        // new yoshi type
+        xml->addpar("pan_pos", GlobalPar.PPanning);
+        xml->addparbool("random_pan", GlobalPar.PRandom);
+        xml->addpar("random_width", GlobalPar.PWidth);
+
+        // legacy
+        if (GlobalPar.PRandom)
+            xml->addpar("panning", 0);
+        else
+            xml->addpar("panning", GlobalPar.PPanning);
+
         xml->addpar("velocity_sensing", GlobalPar.PAmpVelocityScaleFunction);
         xml->addpar("fadein_adjustment", GlobalPar.Fadein_adjustment);
         xml->addpar("punch_strength", GlobalPar.PPunchStrength);
@@ -539,7 +559,27 @@ void ADnoteParameters::getfromXML(XMLwrapper *xml)
     if (xml->enterbranch("AMPLITUDE_PARAMETERS"))
     {
         GlobalPar.PVolume = xml->getpar127("volume", GlobalPar.PVolume);
-        setGlobalPan(xml->getpar127("panning", GlobalPar.PPanning), synth->getRuntime().panLaw);
+        int test = xml->getpar127("random_width", UNUSED);
+        if (test < 64) // new Yoshi type
+        {
+            GlobalPar.PWidth = test;
+            setGlobalPan(xml->getpar127("pan_pos", GlobalPar.PPanning), synth->getRuntime().panLaw);
+            GlobalPar.PRandom = xml->getparbool("random_pan", GlobalPar.PRandom);
+        }
+        else // legacy
+        {
+            setGlobalPan(xml->getpar127("panning", GlobalPar.PPanning), synth->getRuntime().panLaw);
+
+            if (GlobalPar.PPanning == 0)
+            {
+                GlobalPar.PPanning = 64;
+                GlobalPar.PRandom = true;
+                GlobalPar.PWidth = 63;
+            }
+            else
+                GlobalPar.PRandom = false;
+        }
+
         GlobalPar.PAmpVelocityScaleFunction =
             xml->getpar127("velocity_sensing", GlobalPar.PAmpVelocityScaleFunction);
         GlobalPar.Fadein_adjustment = xml->getpar127("fadein_adjustment", GlobalPar.Fadein_adjustment);
@@ -629,8 +669,8 @@ void ADnoteParameters::getfromXML(XMLwrapper *xml)
 
 void ADnoteParameters::getfromXMLsection(XMLwrapper *xml, int n)
 {
-    int nvoice=n;
-    if (nvoice>=NUM_VOICES) return;
+    int nvoice = n;
+    if (nvoice >= NUM_VOICES) return;
 
     VoicePar[nvoice].Enabled = xml->getparbool("enabled", 0);
 
@@ -678,7 +718,24 @@ void ADnoteParameters::getfromXMLsection(XMLwrapper *xml, int n)
 
     if (xml->enterbranch("AMPLITUDE_PARAMETERS"))
     {
-        setVoicePan(nvoice, xml->getpar127("panning", VoicePar[nvoice].PPanning), synth->getRuntime().panLaw);
+        int test = xml->getpar127("random_width", UNUSED);
+        if (test < 64) // new Yoshi type
+        {
+            VoicePar[nvoice].PWidth = test;
+            setVoicePan(nvoice, xml->getpar127("pan_pos", VoicePar[nvoice].PPanning), synth->getRuntime().panLaw);
+            VoicePar[nvoice].PRandom = xml->getparbool("random_pan", VoicePar[nvoice].PRandom);
+        }
+        else  // legacy
+        {
+            setVoicePan(nvoice, xml->getpar127("panning", VoicePar[nvoice].PPanning), synth->getRuntime().panLaw);
+            if (VoicePar[nvoice].PPanning == 0)
+            {
+                VoicePar[nvoice].PPanning = 64;
+                VoicePar[nvoice].PRandom = true;
+                VoicePar[nvoice].PWidth = 63;
+            }
+        }
+
         VoicePar[nvoice].PVolume = xml->getpar127("volume", VoicePar[nvoice].PVolume);
         VoicePar[nvoice].PVolumeminus =
             xml->getparbool("volume_minus", VoicePar[nvoice].PVolumeminus);
@@ -861,7 +918,7 @@ void ADnoteParameters::getfromXMLsection(XMLwrapper *xml, int n)
 
 float ADnoteParameters::getLimits(CommandBlock *getData)
 {
-    float value = getData->data.value.F;
+    float value = getData->data.value;
     int request = int(getData->data.type & TOPLEVEL::type::Default);
     int control = getData->data.control;
     int engine = getData->data.engine;
@@ -894,10 +951,13 @@ float ADnoteParameters::getLimits(CommandBlock *getData)
                 def = 64;
                 break;
 
-            case ADDSYNTH::control::enable:
-                type |= learnable;
-                def = 1;
+            case ADDSYNTH::control::enableRandomPan:
                 max = 1;
+                break;
+
+            case ADDSYNTH::control::randomWidth:
+                def = 63;
+                max = 63;
                 break;
 
             case ADDSYNTH::control::detuneFrequency:
@@ -966,9 +1026,9 @@ float ADnoteParameters::getLimits(CommandBlock *getData)
         switch (request)
         {
             case TOPLEVEL::type::Adjust:
-                if(value < min)
+                if (value < min)
                     value = min;
-                else if(value > max)
+                else if (value > max)
                     value = max;
             break;
             case TOPLEVEL::type::Minimum:
@@ -999,6 +1059,14 @@ float ADnoteParameters::getLimits(CommandBlock *getData)
         case ADDVOICE::control::panning:
             type |= learnable;
             def = 64;
+            break;
+        case ADDVOICE::control::enableRandomPan:
+            max = 1;
+            break;
+
+        case ADDVOICE::control::randomWidth:
+            def = 63;
+            max = 63;
             break;
 
         case ADDVOICE::control::invertPhase:
@@ -1233,9 +1301,9 @@ float ADnoteParameters::getLimits(CommandBlock *getData)
     switch (request)
     {
         case TOPLEVEL::type::Adjust:
-            if(value < min)
+            if (value < min)
                 value = min;
-            else if(value > max)
+            else if (value > max)
                 value = max;
         break;
         case TOPLEVEL::type::Minimum:

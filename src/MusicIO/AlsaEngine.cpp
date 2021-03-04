@@ -30,7 +30,8 @@
 using func::asString;
 
 
-AlsaEngine::AlsaEngine(SynthEngine *_synth) :MusicIO(_synth)
+AlsaEngine::AlsaEngine(SynthEngine *_synth, BeatTracker *_beatTracker) :
+    MusicIO(_synth, _beatTracker)
 {
     audio.handle = NULL;
     audio.period_count = 0; // re-used as number of periods
@@ -42,8 +43,13 @@ AlsaEngine::AlsaEngine(SynthEngine *_synth) :MusicIO(_synth)
     audio.pThread = 0;
 
     midi.handle = NULL;
+    midi.addr.client = 0;
+    midi.addr.port = 0;
     midi.alsaId = -1;
     midi.pThread = 0;
+    midi.lastDivSongBeat = 0;
+    midi.lastDivMonotonicBeat = 0;
+    midi.clockCount = 0;
     little_endian = synth->getRuntime().isLittleEndian;
 }
 
@@ -142,6 +148,8 @@ bool AlsaEngine::openMidi(void)
     snd_seq_client_info_event_filter_add(seq_info, SND_SEQ_EVENT_NONREGPARAM);
     snd_seq_client_info_event_filter_add(seq_info, SND_SEQ_EVENT_REGPARAM);
     snd_seq_client_info_event_filter_add(seq_info, SND_SEQ_EVENT_RESET);
+    snd_seq_client_info_event_filter_add(seq_info, SND_SEQ_EVENT_SONGPOS);
+    snd_seq_client_info_event_filter_add(seq_info, SND_SEQ_EVENT_CLOCK);
     snd_seq_client_info_event_filter_add(seq_info, SND_SEQ_EVENT_PORT_SUBSCRIBED);
     snd_seq_client_info_event_filter_add(seq_info, SND_SEQ_EVENT_PORT_UNSUBSCRIBED);
     if (0 > snd_seq_set_client_info(midi.handle, seq_info))
@@ -218,19 +226,19 @@ bool AlsaEngine::openMidi(void)
 
 void AlsaEngine::Close(void)
 {
-    if(synth->getRuntime().runSynth)
+    if (synth->getRuntime().runSynth)
     {
         synth->getRuntime().runSynth = false;
     }
 
-    if(midi.pThread != 0) //wait for midi thread to finish
+    if (midi.pThread != 0) //wait for midi thread to finish
     {
         void *ret = NULL;
         pthread_join(midi.pThread, &ret);
         midi.pThread = 0;
     }
 
-    if(audio.pThread != 0) //wait for audio thread to finish
+    if (audio.pThread != 0) //wait for audio thread to finish
     {
         void *ret = NULL;
         pthread_join(audio.pThread, &ret);
@@ -263,7 +271,7 @@ std::string AlsaEngine::midiClientName(void)
     //Andrew Deryabin: for multi-instance support add unique id to
     //instances other then default (0)
     unsigned int synthUniqueId = synth->getUniqueId();
-    if(synthUniqueId > 0)
+    if (synthUniqueId > 0)
     {
         char sUniqueId [256];
         memset(sUniqueId, 0, sizeof(sUniqueId));
@@ -488,6 +496,9 @@ void *AlsaEngine::AudioThread(void)
     alsaBad(snd_pcm_start(audio.handle), "alsa audio pcm start failed");
     while (synth->getRuntime().runSynth)
     {
+        std::pair<float, float> beats(beatTracker->getBeatValues());
+        synth->setBeatValues(beats.first, beats.second);
+
         audio.pcm_state = snd_pcm_state(audio.handle);
         if (audio.pcm_state != SND_PCM_STATE_RUNNING)
         {
@@ -738,6 +749,18 @@ void *AlsaEngine::MidiThread(void)
                     synth->getRuntime().Log("Alsa midi port disconnected");
                     sendit = false;
                     break;
+
+                case SND_SEQ_EVENT_SONGPOS:
+                    handleSongPos((float)event->data.control.value
+                        / (float)MIDI_SONGPOS_BEAT_DIVISION);
+                    sendit = false;
+                    break;
+
+                case SND_SEQ_EVENT_CLOCK:
+                    handleMidiClock();
+                    sendit = false;
+                    break;
+
                 default:
                     sendit = false;// commented out some progs spam us :(
                     /* synth->getRuntime().Log("Other non-handled midi event, type: "
@@ -749,7 +772,7 @@ void *AlsaEngine::MidiThread(void)
             snd_seq_free_event(event);
         }
 ;
-        if(chk < 0)
+        if (chk < 0)
         {
             usleep(1024);
         }
@@ -765,6 +788,44 @@ bool AlsaEngine::alsaBad(int op_result, std::string err_msg)
         synth->getRuntime().Log("Error, alsa audio: " +err_msg + ": "
                      + std::string(snd_strerror(op_result)));
     return isbad;
+}
+
+void AlsaEngine::handleSongPos(float beat)
+{
+    const float subDiv = 1.0f / (float)(MIDI_CLOCKS_PER_BEAT / MIDI_CLOCK_DIVISION);
+
+    // The next MIDI clock should trigger this beat.
+    midi.lastDivSongBeat = beat - subDiv;
+
+    // Possibly adjust the monotonic beat backwards to avoid accumulating too
+    // many beats when we adjust clockCount below.
+    midi.lastDivMonotonicBeat -= (MIDI_CLOCK_DIVISION - midi.clockCount - 1) * subDiv;
+
+    // Force next clock tick to be a clean beat, on zero.
+    midi.clockCount = MIDI_CLOCK_DIVISION - 1;
+
+    // Tempting to call this here, but it is actually the next MIDI clock which
+    // signals the next beat.
+    //beatTracker->setBeatValues(beats);
+}
+
+void AlsaEngine::handleMidiClock()
+{
+    midi.clockCount++;
+
+    float inc = midi.clockCount / (float)MIDI_CLOCKS_PER_BEAT;
+
+    std::pair<float, float> beats(midi.lastDivSongBeat + inc, midi.lastDivMonotonicBeat + inc);
+
+    beats = beatTracker->setBeatValues(beats);
+
+    if (midi.clockCount >= MIDI_CLOCK_DIVISION) {
+        // Possibly preserve wrapped around beat values, if we are on the start
+        // of a clock division.
+        midi.lastDivSongBeat = beats.first;
+        midi.lastDivMonotonicBeat = beats.second;
+        midi.clockCount = 0;
+    }
 }
 
 #endif

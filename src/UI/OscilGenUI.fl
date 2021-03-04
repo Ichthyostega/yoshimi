@@ -11,7 +11,7 @@ comment {OscilgenUI.cc} {in_source not_in_header
 comment {Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009-2010, Alan Calvert
-Copyright 2016-2020 Will Godfrey and others.
+Copyright 2016-2021 Will Godfrey and others.
 
 This file is part of yoshimi, which is free software: you can redistribute
 it and/or modify it under the terms of the GNU Library General Public
@@ -48,6 +48,9 @@ decl {\#include <cmath>} {private local
 }
 
 decl {\#include "UI/MiscGui.h"} {public local
+}
+
+decl {\#include "UI/WidgetCheckButton.h"} {public local
 }
 
 decl {\#include "UI/WidgetPDial.h"} {public local
@@ -102,12 +105,12 @@ class OscilSpectrum {: {public Fl_Box}
     int oy = y();
     int lx = w();
     int ly = h();
+    //fl_line_style(0, int(1 * ly / 50.0f));
     const int maxdb = 60; // must be multiple of 10
     int GX = 2;
     int n = lx / GX - 1;
     if (n > synth->halfoscilsize)
         n = synth->halfoscilsize;
-
     float x;
     float* spc = new float[n];
     for (int i = 0; i < n; ++i)
@@ -183,14 +186,30 @@ class PSlider {: {public mwheel_slider}
   Function {PSlider(int x,int y, int w, int h, const char *label=0):mwheel_slider(x,y,w,h,label)} {} {
     code {;} {}
   }
+  Function {update_selection_color(int new_value)} {return_type void
+  } {
+    code {const int default_val = 0; // Turn into member variable if needed
+    selection_color(new_value == default_val ? 0 : 222);} {}
+  }
+  Function {value()} {return_type double
+  } {
+    code {return mwheel_slider::value();} {}
+  }
+  Function {value(double val)} {return_type int
+  } {
+    code {update_selection_color((int) val);
+    return mwheel_slider::value(val);} {}
+  }
   Function {handle(int event)} {return_type int
   } {
     code {int X=x(),Y=y(),W=w(),H=h();
 
-    if ((!Fl::event_buttons())|| (event==0)||(Fl::event_shift()==0))
-        return(mwheel_slider::handle(event));
+    int rval = 1;
 
-    if (!Fl::event_inside(X,Y,W,H))
+    if ((!Fl::event_buttons())|| (event==0)||(Fl::event_shift()==0))
+        rval = mwheel_slider::handle(event);
+
+    else if (!Fl::event_inside(X,Y,W,H))
     {
         if (event==FL_DRAG)
         {
@@ -198,11 +217,10 @@ class PSlider {: {public mwheel_slider}
             mwheel_slider::handle(FL_LEAVE);
             deactivate();
             activate();
-            return(1);
         }
         else
         {
-            return(mwheel_slider::handle(event));
+            rval = mwheel_slider::handle(event);
         }
     }
     else
@@ -210,17 +228,19 @@ class PSlider {: {public mwheel_slider}
         mwheel_slider::handle(FL_PUSH);
     }
 
-    return(1);} {}
+    update_selection_color((int) value());
+    return rval;} {}
   }
 }
 
 class Oscilloscope {: {public Fl_Box}
 } {
-  Function {Oscilloscope(int x,int y, int w, int h, const char *label=0):Fl_Box(x,y,w,h,label)} {} {
+  Function {Oscilloscope(int x,int y, int w, int h, int frame_, const char *label=0):Fl_Box(x,y,w,h,label)} {} {
     code {//
     oscilSmp=NULL;
     phase=64;
-    oscbase=0;} {}
+    oscbase=0;
+    frame = frame_;} {}
   }
   Function {init(OscilGen *oscilSmp_, SynthEngine *_synth)} {} {
     code {//
@@ -246,13 +266,14 @@ class Oscilloscope {: {public Fl_Box}
     int oy = y();
     int lx = w();
     int ly = h() - 1;
+    fl_line_style(0, int(1 * ly / float(frame)));
     float smps[synth->oscilsize];
     if (oscbase == 0)
         oscilSmp->get(smps, -1.0);
     else
         oscilSmp->getcurrentbasefunction(smps);
 
-    if (damage( )!= 1)
+    if (damage() != 1)
     {
         fl_color(0, 0, 0);
         fl_rectf(ox, oy, lx, ly);
@@ -270,27 +291,30 @@ class Oscilloscope {: {public Fl_Box}
     max = -max * 1.05;
 
     // draw
-    if (this->active_r())
-        fl_color(this->parent()->labelcolor());
-    else
-        fl_color(this->parent()->color());
-    int GX = 16;
-    if (lx < GX * 3)
-        GX = -1;
-    for (int i = 1; i < GX; i++)
+    if (frame > 20)
     {
-        int tmp = int(lx / (float)GX * i);
-        fl_line(ox + tmp, oy + 2, ox + tmp, oy + ly - 2);
+        if (this->active_r())
+            fl_color(this->parent()->labelcolor());
+        else
+            fl_color(this->parent()->color());
+        int GX = 16;
+        if (lx < GX * 3)
+            GX = -1;
+        for (int i = 1; i < GX; i++)
+        {
+            int tmp = int(lx / (float)GX * i);
+            fl_line(ox + tmp, oy + 2, ox + tmp, oy + ly - 2);
+        }
+        int GY = 8;
+        if (ly < GY * 3)
+            GY = -1;
+        for (int i = 1; i < GY; i++)
+        {
+            int tmp = int(ly / (float)GY * i);
+            fl_line(ox + 2, oy + tmp, ox + lx - 2, oy + tmp);
+        }
     }
-    int GY = 8;
-    if (ly < GY * 3)
-        GY = -1;
-    for (int i = 1; i < GY; i++)
-    {
-        int tmp = int(ly / (float)GY * i);
-        fl_line(ox + 2, oy + tmp, ox + lx - 2, oy + tmp);
-    }
-
+    fl_line_style(0, int(2 * ly / float(frame)));
     // draw the function
     fl_line(ox + 2, oy + ly / 2, ox + lx - 2, oy + ly / 2);
     if (this->active_r())
@@ -298,21 +322,29 @@ class Oscilloscope {: {public Fl_Box}
     else
         fl_color(this->parent()->labelcolor());
     int ph = int((phase - 64.0) / 128.0 * synth->oscilsize_f + synth->oscilsize_f);
+    int lastx, lasty, nextx, nexty;
     for (int i = 1; i < lx; ++i)
     {
-        int k1 = int(synth->oscilsize_f * (i - 1) / lx) + ph;
-        int k2 = int(synth->oscilsize_f * i / lx) + ph;
-        float y1 = smps[k1 % synth->oscilsize] / max;
-        float y2 = smps[k2 % synth->oscilsize] / max;
-        fl_line(i - 1 + ox, int(y1 * ly / 2.0) + oy + ly / 2, i + ox,
-                int(y2 * ly / 2.0) + oy + ly / 2);
-            }} {}
+        int k = int(synth->oscilsize_f * (i - 1) / lx) + ph;
+        float y = smps[k % synth->oscilsize] / max;
+        nextx = i + ox;
+        nexty = int(y * ly / 2.0) + oy + ly / 2;
+        if (i == 1)
+            fl_line(nextx - 1, int(y * ly / 2.0) + oy + ly / 2, nextx, nexty);
+        else
+            fl_line(lastx, lasty, nextx, nexty);
+        lastx = nextx;
+        lasty = nexty;
+    }
+    fl_line_style(0, 1);} {}
   }
   decl {OscilGen *oscilSmp;} {private local
   }
   decl {int oscbase;} {private local
   }
   decl {int phase;} {public local
+  }
+  decl {int frame;} {public local
   }
   decl {SynthEngine *synth;} {private local
   }
@@ -323,58 +355,48 @@ class Oscilharmonic {: {public Fl_Group}
   Function {make_window()} {private
   } {
     Fl_Window harmonic {
-      private xywh {329 192 50 225} type Double box NO_BOX labelsize 10 hide
+      private xywh {329 192 25 225} type Double box NO_BOX labelsize 10 hide
       class Fl_Group
     } {
       Fl_Slider mag {
         callback {//
-        int x=64;
+        int x = 64;
         if (Fl::event_button3())
         {
             if (n == 0)
                 x = 127;
-            o->value(127 - x);
+            o->value(64 - x);
         }
         else
-            x = 127 - (int)o->value();
-
-        if (x==64)
-            o->selection_color(0);
-        else
-            o->selection_color(222);
+            x = 64 - (int)o->value();
 
         send_data(TOPLEVEL::action::forceUpdate, TOPLEVEL::insert::harmonicAmplitude, n, x, TOPLEVEL::type::Integer);}
-        xywh {0 1 15 122} type {Vert Knob} box FLAT_BOX selection_color 222 maximum 127 step 1 value 64
-        code0 {o->value(127-oscil->Phmag[n]);}
-        code1 {if (oscil->Phmag[n]==64) o->selection_color(0);}
+        xywh {0 1 15 122} type {Vert Knob} box FLAT_BOX minimum -63 maximum 64 step 1
+        code0 {o->value(64 - oscil->Phmag[n]);}
+        code1 {o->setValueType(VC_WaveHarmonicMagnitude); o->useCustomTip(true);}
         class PSlider
       }
       Fl_Slider phase {
         callback {//
         int x = 64;
         if (Fl::event_button3())
-            o->value(x);
+            o->value(0);
         else
-            x = (int)o->value();
+            x = 64 - (int)o->value();
 
-        if (x == 64)
-            o->selection_color(0);
-        else
-            o->selection_color(222);
-
-        send_data(TOPLEVEL::action::forceUpdate, TOPLEVEL::insert::harmonicPhaseBandwidth, n, 127 - x, TOPLEVEL::type::Integer);}
-        xywh {0 140 15 82} type {Vert Knob} box FLAT_BOX selection_color 222 maximum 127 step 1 value 64
-        code0 {o->value(oscil->Phphase[n]);}
-        code1 {if (oscil->Phphase[n]==64) o->selection_color(0);}
+        send_data(TOPLEVEL::action::forceUpdate, TOPLEVEL::insert::harmonicPhaseBandwidth, n, x, TOPLEVEL::type::Integer);}
+        xywh {0 140 15 82} type {Vert Knob} box FLAT_BOX minimum 64 maximum -63 step 1
+        code0 {o->value(64 - oscil->Phphase[n]);}
+        code1 {o->setValueType(VC_PhaseOffset); o->useCustomTip(true);}
         class PSlider
       }
-      Fl_Box {} {
+      Fl_Box magblock {
         xywh {15 60 5 5} box FLAT_BOX color 39
       }
-      Fl_Box {} {
+      Fl_Box phaseblock {
         xywh {15 178 5 5} box FLAT_BOX color 39
       }
-      Fl_Box {} {
+      Fl_Box number {
         xywh {-4 124 36 15} labelfont 1 labelsize 12 align 20
         code0 {if (n < 99 || (n & 1) == 0) {char tmp[12]; snprintf(tmp, 12, "%d", n + 1); o->label(strdup(tmp));}}
       }
@@ -391,7 +413,7 @@ class Oscilharmonic {: {public Fl_Group}
   Function {send_data(int action, int insert, int control, float value, int type)} {} {
     code {//
         type |= TOPLEVEL::type::Write;
-        collect_data(synth, value, action, (Fl::event_button() | type), control, npart, kititem, engine, insert);} {}
+        collect_data(synth, value, action, type, control, npart, kititem, engine, insert);} {}
   }
   Function {init(OscilParameters *oscil_,int n_,Fl_Group *display_,Fl_Widget *oldosc_,Fl_Widget *cbwidget_,Fl_Widget *applybutton_, SynthEngine *_synth, int npart_, int kititem_, int engine_)} {} {
     code {//
@@ -411,18 +433,8 @@ class Oscilharmonic {: {public Fl_Group}
   }
   Function {refresh()} {} {
     code {//
-    mag->value(127-oscil->Phmag[n]);
-    phase->value(oscil->Phphase[n]);
-
-    if (oscil->Phmag[n]==64)
-        mag->selection_color(0);
-    else
-        mag->selection_color(222);
-
-    if (oscil->Phphase[n]==64)
-        phase->selection_color(0);
-    else
-        phase->selection_color(222);} {}
+    mag->value(64 - oscil->Phmag[n]);
+    phase->value(64 - oscil->Phphase[n]);} {}
   }
   Function {~Oscilharmonic()} {} {
     code {//
@@ -451,9 +463,14 @@ class OscilEditor {: {public PresetsUI_}
   Function {make_window()} {} {
     Fl_Window osceditUI {
       label {ADsynth Oscillator Editor}
-      xywh {4 48 735 595} type Double hide
+      callback {saveWin(synth, osceditUI->w(), osceditUI->h(), osceditUI->x(), osceditUI->y(), false, "Waveform " + to_string(waveType));
+OSCseen = false;
+o->hide();}
+      xywh {11 26 735 595} type Double hide resizable
       code0 {string tname;}
       code1 {setWindowTitle();}
+      code2 {waveDW = o->w() * 9 / 10; waveDH = o->h() * 9 / 10;}
+      code3 {o->size_range(waveDW, waveDH, 0, 0, 0, 0, 1);}
     } {
       Fl_Button applybutton {
         label Apply
@@ -467,7 +484,7 @@ class OscilEditor {: {public PresetsUI_}
       } {
         Fl_Group waveformgroup {
           xywh {10 85 350 190} box THIN_DOWN_BOX color 32 selection_color 71 labelcolor 179
-          code0 {Oscilloscope *osc=new Oscilloscope(o->x(),o->y(),o->w(),o->h(),"");}
+          code0 {Oscilloscope *osc=new Oscilloscope(o->x(),o->y(),o->w(),o->h(), 170,"");}
           code1 {osc->init(oscilSmp, synth);}
         } {}
         Fl_Group harmonicgroup {
@@ -483,21 +500,9 @@ class OscilEditor {: {public PresetsUI_}
             label {H.rnd}
             callback {//
             send_data(TOPLEVEL::action::forceUpdate, OSCILLATOR::control::harmonicRandomnessType, o->value(), TOPLEVEL::type::Integer);}
-            tooltip {Harmonic Amplitude Randomness} xywh {281 282 50 15} down_box BORDER_BOX labelsize 10 textsize 10
-          } {
-            MenuItem {} {
-              label None
-              xywh {60 60 100 20} labelfont 1 labelsize 10
-            }
-            MenuItem {} {
-              label Pow
-              xywh {70 70 100 20} labelfont 1 labelsize 10
-            }
-            MenuItem {} {
-              label Sin
-              xywh {80 80 100 20} labelfont 1 labelsize 10
-            }
-          }
+            tooltip {Harmonic Amplitude Randomness} xywh {281 282 50 15} down_box BORDER_BOX labelsize 10 textfont 1 textsize 10
+            code0 {o->add("None");o->add("Powr");o->add("Sine");}
+          } {}
           Fl_Dial hrnddial {
             callback {//
             send_data(0, OSCILLATOR::control::harmonicAmplitudeRandomness, o->value(), TOPLEVEL::type::Integer);}
@@ -506,7 +511,7 @@ class OscilEditor {: {public PresetsUI_}
           }
         }
       }
-      Fl_Box {} {
+      Fl_Box oscilname {
         label Oscillator
         xywh {120 10 110 20} labelfont 1 labelsize 12
       }
@@ -517,7 +522,7 @@ class OscilEditor {: {public PresetsUI_}
               o->value(0);
 
           send_data(0, OSCILLATOR::control::phaseRandomness, o->value(), TOPLEVEL::type::Integer);}
-        tooltip {Oscilator Phase Randomness: smaller than 0 is "group", larger than 0 is for each harmonic} xywh {140 285 100 15} type {Horz Knob} box THIN_DOWN_BOX labelsize 10 align 1 minimum -64 maximum 63 step 1
+        tooltip {Oscilator Phase Randomness: smaller than 0 is "group", larger than 0 is for each harmonic} xywh {140 287 100 14} type {Horz Knob} box THIN_DOWN_BOX labelsize 10 align 1 minimum -64 maximum 63 step 1 textfont 1 textsize 11
         code0 {if (oscil->ADvsPAD) o->hide();}
         class mwheel_val_slider_rev
       }
@@ -526,7 +531,7 @@ class OscilEditor {: {public PresetsUI_}
       } {
         Fl_Group basewave {
           xywh {370 85 350 190} box THIN_DOWN_BOX color 32 selection_color 71 labelcolor 179
-          code0 {Oscilloscope *osc=new Oscilloscope(o->x(),o->y(),o->w(),o->h(),"");}
+          code0 {Oscilloscope *osc=new Oscilloscope(o->x(),o->y(),o->w(),o->h(), 170,"");}
           code1 {osc->init(oscilSmp,1, synth);}
         } {}
         Fl_Dial bfslider {
@@ -539,82 +544,10 @@ class OscilEditor {: {public PresetsUI_}
           label {Base Function}
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, OSCILLATOR::control::baseFunctionType, o->value(), TOPLEVEL::type::Integer);}
-          xywh {370 285 90 15} down_box BORDER_BOX labelsize 10 align 1 textsize 11
-        } {
-          MenuItem {} {
-            label Sine
-            xywh {10 10 100 20} labelfont 1 labelsize 11
-          }
-          MenuItem {} {
-            label Triangle
-            xywh {20 20 100 20} labelfont 1 labelsize 11
-          }
-          MenuItem {} {
-            label Pulse
-            xywh {30 30 100 20} labelfont 1 labelsize 11
-          }
-          MenuItem {} {
-            label Saw
-            xywh {40 40 100 20} labelfont 1 labelsize 11
-          }
-          MenuItem {} {
-            label Power
-            xywh {50 50 100 20} labelfont 1 labelsize 11
-          }
-          MenuItem {} {
-            label Gauss
-            xywh {50 50 100 20} labelfont 1 labelsize 11
-          }
-          MenuItem {} {
-            label Diode
-            xywh {60 60 100 20} labelfont 1 labelsize 11
-          }
-          MenuItem {} {
-            label AbsSine
-            xywh {70 70 100 20} labelfont 1 labelsize 11
-          }
-          MenuItem {} {
-            label PulseSine
-            xywh {80 80 100 20} labelfont 1 labelsize 11
-          }
-          MenuItem {} {
-            label StrchSine
-            xywh {90 90 100 20} labelfont 1 labelsize 11
-          }
-          MenuItem {} {
-            label Chirp
-            xywh {100 100 100 20} labelfont 1 labelsize 11
-          }
-          MenuItem {} {
-            label AbsStrSine
-            xywh {102 102 100 20} labelfont 1 labelsize 11
-          }
-          MenuItem {} {
-            label Chebyshev
-            xywh {112 112 100 20} labelfont 1 labelsize 11
-          }
-          MenuItem {} {
-            label Sqr
-            xywh {122 122 100 20} labelfont 1 labelsize 11
-          }
-          MenuItem {} {
-            label Spike
-            xywh {122 132 100 20} labelfont 1 labelsize 11
-          }
-          MenuItem {} {
-            label Circle
-            xywh {122 142 100 20} labelfont 1 labelsize 11
-          }
-          MenuItem {} {
-            label HyperpSec
-            xywh {0 0 36 21} labelfont 1 labelsize 11
-          }
-          MenuItem {} {
-            label User
-            xywh {122 152 100 20} labelfont 1 labelsize 11 hide
-          }
-        }
-        Fl_Box {} {
+          xywh {370 285 90 15} down_box BORDER_BOX labelsize 10 align 1 textfont 1 textsize 11
+          code0 {o->add("Sine");o->add("Triangle");o->add("Pulse");o->add("Saw");o->add("Power");o->add("Gauss");o->add("Diode");o->add("AbsSine");o->add("PulseSine");o->add("StrchSine");o->add("Chirp");o->add("AbsStrSine");o->add("Chebyshev");o->add("Square");o->add("Spike");o->add("Circle");o->add("HyperSec");o->add("User");}
+        } {}
+        Fl_Box basename {
           label {Base Function}
           xywh {480 10 110 20} box FLAT_BOX labelfont 1 labelsize 12
         }
@@ -623,12 +556,12 @@ class OscilEditor {: {public PresetsUI_}
           code0 {OscilSpectrum *spc=new OscilSpectrum (o->x(),o->y(),o->w(),o->h(),"");}
           code1 {spc->init(oscilSmp,1, synth);}
         } {}
-        Fl_Box {} {
+        Fl_Box parname {
           label {Par.}
           xywh {460 285 30 16} box FLAT_BOX labelsize 11
         }
         Fl_Value_Output bfparval {
-          xywh {490 285 28 15} labelsize 12 align 20 minimum -63 maximum 63 step 1
+          xywh {490 285 28 15} labelsize 12 align 20 minimum -63 maximum 63 step 1 textfont 1 textsize 12
         }
         Fl_Group basefuncmodulation {
           xywh {550 276 169 25} box ENGRAVED_BOX
@@ -660,25 +593,9 @@ class OscilEditor {: {public PresetsUI_}
             label {B.F.Mod.}
             callback {//
             send_data(TOPLEVEL::action::forceUpdate, OSCILLATOR::control::baseModulationType, o->value(), TOPLEVEL::type::Integer);}
-            tooltip {Base function modulation} xywh {599 281 50 15} down_box BORDER_BOX labelsize 10 textsize 10
-          } {
-            MenuItem {} {
-              label None
-              xywh {50 50 100 20} labelfont 1 labelsize 10
-            }
-            MenuItem {} {
-              label Rev
-              xywh {60 60 100 20} labelfont 1 labelsize 10
-            }
-            MenuItem {} {
-              label Sine
-              xywh {70 70 100 20} labelfont 1 labelsize 10
-            }
-            MenuItem {} {
-              label Pow
-              xywh {80 80 100 20} labelfont 1 labelsize 10
-            }
-          }
+            tooltip {Base function modulation} xywh {599 281 50 15} down_box BORDER_BOX labelsize 10 textfont 1 textsize 10
+            code0 {o->add("None");o->add("Rev");o->add("Sine");o->add("Powr");}
+          } {}
         }
       }
       Fl_Output Warning {
@@ -688,38 +605,20 @@ class OscilEditor {: {public PresetsUI_}
         label {Mag.Type}
         callback {//
         send_data(TOPLEVEL::action::forceUpdate, OSCILLATOR::control::magType, o->value(), TOPLEVEL::type::Integer);}
-        xywh {70 280 65 20} down_box BORDER_BOX labelsize 11 textsize 11
-      } {
-        MenuItem {} {
-          label Linear
-          xywh {0 0 100 20} labelfont 1 labelsize 11
-        }
-        MenuItem {} {
-          label {-40dB}
-          xywh {10 10 100 20} labelfont 1 labelsize 11
-        }
-        MenuItem {} {
-          label {-60dB}
-          xywh {20 20 100 20} labelfont 1 labelsize 11
-        }
-        MenuItem {} {
-          label {-80dB}
-          xywh {30 30 100 20} labelfont 1 labelsize 11
-        }
-        MenuItem {} {
-          label {-100dB}
-          xywh {40 40 100 20} labelfont 1 labelsize 11
-        }
-      }
-      Fl_Button {} {
+        xywh {70 280 65 20} down_box BORDER_BOX labelsize 11 textfont 1 textsize 11
+        code0 {o->add("Linear");o->add("-40dB");o->add("-60dB");o->add("-80dB");o->add("-100dB");}
+      } {}
+      Fl_Button useasbase {
         label {Use as base}
         callback {//
         send_data(TOPLEVEL::action::forceUpdate, OSCILLATOR::control::useAsBaseFunction, autoclearbutton->value() > 0, TOPLEVEL::type::Integer);}
         tooltip {Use this Oscillator as base function} xywh {5 313 85 20} box THIN_UP_BOX labelfont 1 labelsize 11
       }
-      Fl_Button {} {
+      Fl_Button oscilClose {
         label Close
         callback {//
+        saveWin(synth, osceditUI->w(), osceditUI->h(), osceditUI->x(), osceditUI->y(), false, "Waveform " + to_string(waveType));
+        OSCseen = false;
         osceditUI->hide();
         if ((Fl::event_button() == 3))
         {
@@ -733,7 +632,7 @@ class OscilEditor {: {public PresetsUI_}
       Fl_Button clearHarm {
         label Clear
         callback {//
-        if (fl_choice("Clear the harmonics settings?", NULL,"No","Yes") < 2)
+        if (choice(synth, "", "Yes", "No", "Clear the harmonics settings?") < 2)
             return;
         send_data(TOPLEVEL::action::forceUpdate, OSCILLATOR::control::clearHarmonics, o->value(), TOPLEVEL::type::Integer);}
         xywh {670 505 55 15} box THIN_UP_BOX labelfont 1 labelsize 11
@@ -745,69 +644,9 @@ class OscilEditor {: {public PresetsUI_}
           label {Wsh.}
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, OSCILLATOR::control::waveshapeType, o->value(), TOPLEVEL::type::Integer);}
-          tooltip {Waveshaping function} xywh {165 313 55 20} down_box BORDER_BOX labelsize 10 textsize 10
-        } {
-          MenuItem {} {
-            label None
-            xywh {25 25 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label Atan
-            xywh {35 35 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label Asym1
-            xywh {45 45 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label Pow
-            xywh {55 55 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label Sine
-            xywh {65 65 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label Qnts
-            xywh {75 75 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label Zigzg
-            xywh {85 85 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label Lmt
-            xywh {95 95 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label LmtU
-            xywh {105 105 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label LmtL
-            xywh {115 115 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label ILmt
-            xywh {127 127 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label Clip
-            xywh {137 137 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label Asym2
-            xywh {85 85 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label Pow2
-            xywh {95 95 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label Sgm
-            xywh {90 90 100 20} labelfont 1 labelsize 10
-          }
-        }
+          tooltip {Waveshaping function} xywh {165 313 55 20} down_box BORDER_BOX labelsize 10 textfont 1 textsize 10
+          code0 {o->add("None");o->add("Atan");o->add("Asym1");o->add("Powr");o->add("Sine");o->add("Qnts");o->add("Zigzg");o->add("Limt");o->add("LimtU");o->add("");o->add("ILimt");o->add("Clip");o->add("Asym2");o->add("Powr2");o->add("Sgm");}
+        } {}
         Fl_Dial wshpar {
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, OSCILLATOR::control::waveshapeParameter, o->value(), TOPLEVEL::type::Integer);}
@@ -835,6 +674,7 @@ class OscilEditor {: {public PresetsUI_}
           class WidgetPDial
         }
         Fl_Check_Button filterpref {
+          class Fl_Check_Button2
           label F
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, OSCILLATOR::control::filterBeforeWaveshape, o->value(), TOPLEVEL::type::Integer);}
@@ -851,65 +691,9 @@ class OscilEditor {: {public PresetsUI_}
         label Filter
         callback {//
           send_data(TOPLEVEL::action::forceUpdate, OSCILLATOR::control::filterType, o->value(), TOPLEVEL::type::Integer);}
-        tooltip {Oscillator's filter type} xywh {315 313 50 20} down_box BORDER_BOX labelsize 10 textsize 10
-      } {
-        MenuItem {} {
-          label None
-          xywh {45 45 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label LP1
-          xywh {55 55 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label HP1a
-          xywh {65 65 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label HP1b
-          xywh {75 75 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label BP1
-          xywh {85 85 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label BS1
-          xywh {95 95 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label LP2
-          xywh {65 65 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label HP2
-          xywh {75 75 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label BP2
-          xywh {75 75 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label BS2
-          xywh {85 85 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label Cos
-          xywh {85 85 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label Sin
-          xywh {95 95 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label LSh
-          xywh {105 105 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label S
-          xywh {115 115 100 20} labelfont 1 labelsize 10
-        }
-      }
+        tooltip {Oscillator's filter type} xywh {315 313 50 20} down_box BORDER_BOX labelsize 10 textfont 1 textsize 10
+        code0 {o->add("None");o->add("LP1");o->add("HP1a");o->add("BP1");o->add("BS1");o->add("LP2");o->add("HP2");o->add("BP2");o->add("BS2");o->add("Cosn");o->add("Sine");o->add("LSh");o->add("S");}
+      } {}
       Fl_Group {} {
         xywh {594 308 136 30} box ENGRAVED_BOX
       } {
@@ -917,25 +701,9 @@ class OscilEditor {: {public PresetsUI_}
           label {Sp.adj.}
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, OSCILLATOR::control::spectrumAdjustType, o->value(), TOPLEVEL::type::Integer);}
-          tooltip {Oscillator's spectrum adjust} xywh {634 313 60 20} down_box BORDER_BOX labelsize 10 textsize 10
-        } {
-          MenuItem {} {
-            label None
-            xywh {55 55 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label Pow
-            xywh {65 65 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label ThrsD
-            xywh {75 75 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label ThrsU
-            xywh {85 85 100 20} labelfont 1 labelsize 10
-          }
-        }
+          tooltip {Oscillator's spectrum adjust} xywh {634 313 60 20} down_box BORDER_BOX labelsize 10 textfont 1 textsize 10
+          code0 {o->add("None");o->add("Pow");o->add("ThrsD");o->add("ThrsU");}
+        } {}
         Fl_Dial sadjpar {
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, OSCILLATOR::control::spectrumAdjustParameter, o->value(), TOPLEVEL::type::Integer);}
@@ -953,6 +721,7 @@ class OscilEditor {: {public PresetsUI_}
           xywh {670 365 55 15} type Simple labelsize 10 align 129 minimum -64 maximum 64 step 1 textfont 1 textsize 10
         }
         Fl_Check_Button harmonicshiftpre {
+          class Fl_Check_Button2
           label {Shift 1st}
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, OSCILLATOR::control::shiftBeforeWaveshapeAndFilter, o->value(), TOPLEVEL::type::Integer);}
@@ -990,45 +759,9 @@ class OscilEditor {: {public PresetsUI_}
         label {Adpt.Harm.}
         callback {//
           send_data(TOPLEVEL::action::forceUpdate, OSCILLATOR::control::adaptiveHarmonicsType, o->value(), TOPLEVEL::type::Integer);}
-        tooltip {The type of the addaptive harmonics} xywh {670 425 55 15} down_box BORDER_BOX labelsize 10 align 129 when 6 textsize 10
-      } {
-        MenuItem {} {
-          label OFF
-          xywh {90 90 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label ON
-          xywh {100 100 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label Square
-          xywh {110 110 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label 2xSub
-          xywh {120 120 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label 2xAdd
-          xywh {130 130 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label 3xSub
-          xywh {130 130 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label 3xAdd
-          xywh {140 140 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label 4xSub
-          xywh {140 140 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label 4xAdd
-          xywh {150 150 100 20} labelfont 1 labelsize 10
-        }
-      }
+        tooltip {The type of the addaptive harmonics} xywh {670 425 55 15} down_box BORDER_BOX labelsize 10 align 129 when 6 textfont 1 textsize 10
+        code0 {o->add("OFF");o->add("ON");o->add("Square");o->add("2xSub");o->add("2xAdd");o->add("3xSub");o->add("3xAdd");o->add("4xSub");o->add("4xAdd");}
+      } {}
       Fl_Group modulationGroup {
         xywh {440 308 154 30} box ENGRAVED_BOX
       } {
@@ -1055,50 +788,34 @@ class OscilEditor {: {public PresetsUI_}
         label {Mod.}
         callback {//
           send_data(TOPLEVEL::action::forceUpdate, OSCILLATOR::control::modulationType, o->value(), TOPLEVEL::type::Integer);}
-        tooltip modulation xywh {470 315 50 15} down_box BORDER_BOX labelsize 10 textsize 10
-      } {
-        MenuItem {} {
-          label None
-          xywh {70 70 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label Rev
-          xywh {80 80 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label Sine
-          xywh {90 90 100 20} labelfont 1 labelsize 10
-        }
-        MenuItem {} {
-          label Pow
-          xywh {100 100 100 20} labelfont 1 labelsize 10
-        }
-      }
-      Fl_Button {} {
+        tooltip modulation xywh {470 315 50 15} down_box BORDER_BOX labelsize 10 textfont 1 textsize 10
+        code0 {o->add("None");o->add("Rev");o->add("Sine");o->add("Powr");}
+      } {}
+      Fl_Button tosine {
         label Sine
         callback {//
-        if (fl_choice("Convert to SINE?",NULL, "No","Yes") < 2)
+        if (choice(synth, "", "Yes", "No", "Convert to SINE?") < 2)
             return;
 
         send_data(TOPLEVEL::action::forceUpdate, OSCILLATOR::control::convertToSine, o->value(), TOPLEVEL::type::Integer);}
         xywh {670 525 55 15} box THIN_UP_BOX labelfont 1 labelsize 11
       }
-      Fl_Button {} {
+      Fl_Button oscilC {
         label C
         callback {synth->getGuiMaster()->getPresetsUi()->copy(oscil);}
         xywh {670 545 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 7
       }
-      Fl_Button {} {
+      Fl_Button oscilP {
         label P
         callback {synth->getGuiMaster()->getPresetsUi()->paste(oscil,this);}
         xywh {700 545 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 7
       }
-      Fl_Scroll _this_has_to_be_the_last {
+      Fl_Scroll frame {
         xywh {5 340 660 250} type HORIZONTAL box ENGRAVED_FRAME
       } {
         Fl_Pack harmonics {
           xywh {10 345 650 225} type HORIZONTAL
-          code0 {for (int i=0;i<MAX_AD_HARMONICS;i++){h[i]=new Oscilharmonic(0,0,20,o->h(),"");h[i]->init(oscil,i,oscildisplaygroup,oldosc,cbwidget,applybutton, synth, npart, kititem, engine);}}
+          code0 {for (int i=0; i<MAX_AD_HARMONICS; ++i){h[i]=new Oscilharmonic(0,0,20,o->h(),"");h[i]->init(oscil,i,oscildisplaygroup,oldosc,cbwidget,applybutton, synth, npart, kititem, engine);}}
         } {}
       }
     }
@@ -1109,11 +826,11 @@ class OscilEditor {: {public PresetsUI_}
         if (control == PART::control::padsynthParameters)
             insert = UNUSED;
         type |= TOPLEVEL::type::Write;
-        collect_data(synth, value, action, (Fl::event_button() | type), control, npart, kititem, engine, insert);} {}
+        collect_data(synth, value, action, type, control, npart, kititem, engine, insert);} {}
   }
   Function {returns_update(CommandBlock *getData)} {} {
     code {//
-    float value = getData->data.value.F;
+    float value = getData->data.value;
     unsigned char control = getData->data.control;
     unsigned char eng = getData->data.engine;
     unsigned char insert = getData->data.insert;
@@ -1126,20 +843,12 @@ class OscilEditor {: {public PresetsUI_}
     bool baseSet = false;
     if (insert == TOPLEVEL::insert::harmonicAmplitude)
     {
-        h[control]->mag->value(127 - value);
-        if (value == 64)
-            h[control]->mag->selection_color(0);
-        else
-            h[control]->mag->selection_color(222);
+        h[control]->mag->value(64 - value);
     }
 
     else if (insert == TOPLEVEL::insert::harmonicPhaseBandwidth)
     {
-        h[control]->phase->value(127 - value);
-        if (value == 64)
-            h[control]->phase->selection_color(0);
-        else
-            h[control]->phase->selection_color(222);
+        h[control]->phase->value(64 - value);
     }
 
     else
@@ -1174,14 +883,16 @@ class OscilEditor {: {public PresetsUI_}
 
             case OSCILLATOR::control::baseFunctionType:
                 bftype->value(value);
-                if (value < OSCILLATOR::wave::triangle)
+                if (value < OSCILLATOR::wave::triangle || oscil->Pcurrentbasefunc > OSCILLATOR::wave::hyperSec)
+                {
                     bfslider->deactivate();
-                else
-                    bfslider->activate();
-                if ((oscil->Pcurrentbasefunc == OSCILLATOR::wave::triangle)||(oscil->Pcurrentbasefunc > OSCILLATOR::wave::hyperSec))
                     basefuncmodulation->deactivate();
+                }
                 else
+                {
+                    bfslider->activate();
                     basefuncmodulation->activate();
+                }
                 baseSet = true;
                 break;
 
@@ -1221,27 +932,14 @@ class OscilEditor {: {public PresetsUI_}
                 {
                     for (int i = 0; i<MAX_AD_HARMONICS; ++i)
                     {
-                        h[i]->mag->value(64);;
-                        h[i]->phase->value(64);
+                        h[i]->mag->value(0);
+                        h[i]->phase->value(0);
                     }
-                    h[0]->mag->value(127);
                     harmonicshiftcounter->value(0);
                     h[0]->mag->value(0);
                     wshbutton->value(0);
                     fltbutton->value(0);
                     sabutton->value(0);
-                }
-                for (int i = 0; i<MAX_AD_HARMONICS; ++i)
-                {
-                    if (h[i]->mag->value() == 64)
-                        h[i]->mag->selection_color(0);
-                    else
-                        h[i]->mag->selection_color(222);
-
-                    if (h[i]->phase->value() == 64)
-                        h[i]->phase->selection_color(0);
-                    else
-                        h[i]->phase->selection_color(222);
                 }
                 baseSet = true;
                 set = false;
@@ -1347,13 +1045,10 @@ class OscilEditor {: {public PresetsUI_}
             case OSCILLATOR::control::clearHarmonics:
                 for (int i = 0; i < MAX_AD_HARMONICS; ++i)
                 {
-                    h[i]->mag->value(64);
-                    h[i]->mag->selection_color(0);
-                    h[i]->phase->value(64);
-                    h[i]->phase->selection_color(0);
+                    h[i]->mag->value(0);
+                    h[i]->phase->value(0);
                 }
                 h[0]->mag->value(0);
-                h[0]->mag->selection_color(222);
                 break;
 
             case OSCILLATOR::control::convertToSine:
@@ -1404,11 +1099,30 @@ class OscilEditor {: {public PresetsUI_}
     cbapplywidget=cbapplywidget_;
     make_window();
     refresh();
-    osceditUI->show();} {}
+    if (engine == PART::engine::padSynth)
+        waveType = 2;
+    else
+        waveType = 0;
+
+    int fetchW, fetchH, fetchX, fetchY, fetchO;
+    loadWin(synth, fetchW, fetchH, fetchX, fetchY, fetchO, "Waveform " + to_string(waveType));
+    if (fetchW < waveDW || fetchH < waveDH)
+    {
+        fetchW = waveDW;
+        fetchH = waveDH;
+    }
+    checkSane(fetchX, fetchY, fetchW, fetchH, waveDW, waveDH);
+    osceditUI->resize(fetchX, fetchY, fetchW, fetchH);
+
+    osceditUI->show();
+    OSCseen = true;} {}
   }
   Function {~OscilEditor()} {return_type virtual
   } {
-    code {osceditUI->hide();
+    code {//
+    if (OSCseen)
+        saveWin(synth, osceditUI->w(), osceditUI->h(), osceditUI->x(), osceditUI->y(), true, "Waveform " + to_string(waveType));
+    osceditUI->hide();
     delete (osceditUI);
     delete oscilSmp;
     delete fft;} {}
@@ -1551,6 +1265,76 @@ class OscilEditor {: {public PresetsUI_}
         applybutton->redraw();
 };} {}
   }
+  Function {waveRtext()} {} {
+    code {//
+        float dScale = osceditUI->w() / float(waveDW * 10 / 9);
+        // waveDW factor adjusted because we allow the
+        //  window to be smaller than designed
+
+        int size = int(10 * dScale);
+        int size11 = int(11 * dScale);
+        int size12 = int(12 * dScale);
+        int size14 = int(14 * dScale);
+
+        applybutton->labelsize(size14);
+        hrndtype->labelsize(size);
+            hrndtype->textsize(size);
+        oscilname->labelsize(size12);
+        rndslider->labelsize(size);
+            rndslider->textsize(size11);
+
+        bftype->labelsize(size);
+            bftype->textsize(size11);
+        basename->labelsize(size12);
+        parname->labelsize(size11);
+            bfparval->textsize(size12);
+        bfmodtype->labelsize(size);
+            bfmodtype->textsize(size);
+
+        Warning->textsize(size14);
+        magtype->labelsize(size11);
+            magtype->textsize(size11);
+
+        useasbase->labelsize(size11);
+        oscilClose->labelsize(size14);
+        clearHarm->labelsize(size11);
+
+        wshbutton->labelsize(size);
+            wshbutton->textsize(size);
+            wsparval->textsize(size12);
+        autoclearbutton->labelsize(size);
+        filterpref->labelsize(size);
+        fltbutton->labelsize(size);
+            fltbutton->textsize(size);
+        sabutton->labelsize(size);
+            sabutton->textsize(size);
+        harmonicshiftcounter->labelsize(size);
+            harmonicshiftcounter->textsize(size);
+        harmonicshiftpre->labelsize(size);
+
+        adhrpow->labelsize(size);
+        adhrbf->labelsize(size);
+        adhrpar->textsize(size);
+        adhrtype->labelsize(size);
+            adhrtype->textsize(size);
+
+        modtype->labelsize(size);
+            modtype->textsize(size);
+
+        tosine->labelsize(size11);
+        oscilC->labelsize(size);
+        oscilP->labelsize(size);
+        frame->scroll_to(0, 0);
+        frame->scrollbar_size(12 * dScale);
+        harmonics->size(650 * dScale, 235 * dScale);
+        for (int i= 0; i < MAX_AD_HARMONICS; i++)
+        {
+            h[i]->size(20 * dScale, 225 * dScale);
+            h[i]->number->labelsize(size11);
+        }
+
+        osceditUI->redraw();} {}
+  }
   decl {OscilParameters *oscil;} {private local
   }
   decl {FFTwrapper *fft;} {private local
@@ -1566,6 +1350,14 @@ class OscilEditor {: {public PresetsUI_}
   decl {int kititem;} {private local
   }
   decl {int engine;} {private local
+  }
+  decl {int waveDW;} {private local
+  }
+  decl {int waveDH;} {private local
+  }
+  decl {int waveType;} {private local
+  }
+  decl {bool OSCseen;} {private local
   }
   decl {SynthEngine *synth;} {private local
   }

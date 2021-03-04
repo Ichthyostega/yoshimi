@@ -137,6 +137,8 @@ void PADnoteParameters::defaults(void)
     PVolume = 90;
     setPan(PPanning = 64, synth->getRuntime().panLaw); // center
     PAmpVelocityScaleFunction = 64;
+    PRandom = false;
+    PWidth = 63;
     AmpEnvelope->defaults();
     AmpLfo->defaults();
     Fadein_adjustment = FADEIN_ADJUSTMENT_SCALE;
@@ -228,8 +230,7 @@ float PADnoteParameters::getprofile(float *smp, int size)
         x *= freqmult;
 
         // do the modulation of the profile
-        //x += sinf(x_before_freq_mult * 3.1415926f * modfreq) * modpar1;
-        x += sinf(x_before_freq_mult * PI * modfreq) * modpar1; // should be the same
+        x += sinf(x_before_freq_mult * PI * modfreq) * modpar1;
 
         x = fmodf(x + 1000.0f, 1.0f) * 2.0f - 1.0f;
         // this is the base function of the profile
@@ -407,8 +408,6 @@ void PADnoteParameters::generatespectrum_bandwidthMode(float *spectrum,
                                                        int profilesize,
                                                        float bwadjust)
 {
-    //for (int i = 0; i < size; ++i)
-    //    spectrum[i] = 0.0;
     memset(spectrum, 0, sizeof(float) * size);
 
     //float harmonics[synth->getOscilsize() / 2];
@@ -521,8 +520,6 @@ void PADnoteParameters::generatespectrum_otherModes(float *spectrum,
                                                     int size,
                                                     float basefreq)
 {
-    //for (int i = 0; i < size; ++i)
-    //    spectrum[i] = 0.0;
     memset(spectrum, 0, sizeof(float) * size);
 
     float harmonics[synth->halfoscilsize];
@@ -683,13 +680,8 @@ void PADnoteParameters::applyparameters()
 void PADnoteParameters::setPan(char pan, unsigned char panLaw)
 {
     PPanning = pan;
-    if (!randomPan())
-    {
-        //float t = (float)(PPanning - 1) / 126.0f;
-        //pangainL = cosf(t * HALFPI);
-        //pangainR = cosf((1.0f - t) * HALFPI);
+    if (!PRandom)
         setAllPan(PPanning, pangainL, pangainR, panLaw);
-    }
     else
         pangainL = pangainR = 0.7f;
 }
@@ -703,14 +695,14 @@ bool PADnoteParameters::export2wav(std::string basefilename)
     else
         type = "RIFX";
 
-    basefilename += "_PADsynth_";
+    basefilename += "--sample-";
     bool isOK = true;
-    for(int k = 0; k < PAD_MAX_SAMPLES; ++k)
+    for (int k = 0; k < PAD_MAX_SAMPLES; ++k)
     {
-        if(sample[k].smp == NULL)
+        if (sample[k].smp == NULL)
             continue;
         char tmpstr[20];
-        snprintf(tmpstr, 20, "_%02d", k + 1);
+        snprintf(tmpstr, 20, "-%02d", k + 1);
         string filename = basefilename + string(tmpstr) + EXTEN::MSwave;
         int nsmps = sample[k].size;
         unsigned int block;
@@ -745,7 +737,7 @@ bool PADnoteParameters::export2wav(std::string basefilename)
         strcpy(buffer + 36, temp.c_str());
         block = nsmps * 2; // data size
         memcpy(buffer + 40, &block, 4);
-        for(int i = 0; i < nsmps; ++i)
+        for (int i = 0; i < nsmps; ++i)
         {
             sBlock = (sample[k].smp[i] * 32767.0f);
             buffer [44 + i * 2] = sBlock & 0xff;
@@ -767,6 +759,8 @@ bool PADnoteParameters::export2wav(std::string basefilename)
 
 void PADnoteParameters::add2XML(XMLwrapper *xml)
 {
+    // currently not used
+    // bool yoshiFormat = synth->usingYoshiType;
     xml->information.PADsynth_used = 1;
 
     xml->addparbool("stereo", PStereo);
@@ -813,7 +807,17 @@ void PADnoteParameters::add2XML(XMLwrapper *xml)
 
     xml->beginbranch("AMPLITUDE_PARAMETERS");
         xml->addpar("volume",PVolume);
-        xml->addpar("panning",PPanning);
+        // new yoshi type
+        xml->addpar("pan_pos", PPanning);
+        xml->addparbool("random_pan", PRandom);
+        xml->addpar("random_width", PWidth);
+
+        // legacy
+        if (PRandom)
+            xml->addpar("panning", 0);
+        else
+            xml->addpar("panning",PPanning);
+
         xml->addpar("velocity_sensing",PAmpVelocityScaleFunction);
         xml->addpar("fadein_adjustment", Fadein_adjustment);
         xml->addpar("punch_strength",PPunchStrength);
@@ -923,7 +927,24 @@ void PADnoteParameters::getfromXML(XMLwrapper *xml)
     if (xml->enterbranch("AMPLITUDE_PARAMETERS"))
     {
         PVolume=xml->getpar127("volume",PVolume);
-        setPan(xml->getpar127("panning",PPanning), synth->getRuntime().panLaw);
+        int test = xml->getpar127("random_width", UNUSED);
+        if (test < 64) // new Yoshi type
+        {
+            PWidth = test;
+            setPan(xml->getpar127("pan_pos",PPanning), synth->getRuntime().panLaw);
+            PRandom = xml->getparbool("random_pan", PRandom);
+        }
+        else // legacy
+        {
+            setPan(xml->getpar127("panning",PPanning), synth->getRuntime().panLaw);
+            if (PPanning == 0)
+            {
+                PPanning = 64;
+                PRandom = true;
+                PWidth = 63;
+            }
+        }
+
         PAmpVelocityScaleFunction=xml->getpar127("velocity_sensing",PAmpVelocityScaleFunction);
         Fadein_adjustment = xml->getpar127("fadein_adjustment", Fadein_adjustment);
         PPunchStrength=xml->getpar127("punch_strength",PPunchStrength);
@@ -988,7 +1009,7 @@ void PADnoteParameters::getfromXML(XMLwrapper *xml)
 
 float PADnoteParameters::getLimits(CommandBlock *getData)
 {
-    float value = getData->data.value.F;
+    float value = getData->data.value;
     int request = int(getData->data.type & TOPLEVEL::type::Default);
     int control = getData->data.control;
 
@@ -1016,10 +1037,13 @@ float PADnoteParameters::getLimits(CommandBlock *getData)
             type |= learnable;
             break;
 
-        case PADSYNTH::control::enable:
-            type |= learnable;
-            def = 0;
+        case PADSYNTH::control::enableRandomPan:
             max = 1;
+            break;
+
+        case PADSYNTH::control::randomWidth:
+            def = 63;
+            max = 63;
             break;
 
         case PADSYNTH::control::bandwidth:
@@ -1229,9 +1253,9 @@ float PADnoteParameters::getLimits(CommandBlock *getData)
     switch (request)
     {
         case TOPLEVEL::type::Adjust:
-            if(value < min)
+            if (value < min)
                 value = min;
-            else if(value > max)
+            else if (value > max)
                 value = max;
         break;
         case TOPLEVEL::type::Minimum:
