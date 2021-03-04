@@ -1,3 +1,11 @@
+yoshimi (2.0~dfsg0-1) UNRELEASED; urgency=medium
+
+  * New upstream version 2.0~dfsg0
+  * Remove unnecessary ldflags from d/rules
+  * Bump d/copyright year
+
+ -- Dennis Braun <d_braun@kabelmail.de>  Thu, 04 Mar 2021 20:38:56 +0100
+
 yoshimi (1.7.4~dfsg0-1) unstable; urgency=medium
 
   * New upstream version 1.7.4~dfsg0
