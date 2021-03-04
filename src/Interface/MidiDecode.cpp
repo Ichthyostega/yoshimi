@@ -1,7 +1,7 @@
 /*
     MidiDecode.cpp
 
-    Copyright 2017-2020 Will Godfrey
+    Copyright 2017-2021 Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -26,6 +26,7 @@
 #include <string>
 #include <unistd.h>
 
+//#include <sys/time.h>
 
 #include "Interface/MidiDecode.h"
 #include "Interface/InterChange.h"
@@ -183,9 +184,22 @@ void MidiDecode::setMidiController(unsigned char ch, int ctrl, int param, bool i
      * Some controller values are >= 640 so they will be ignored by
      * later calls, but are passed as 128+ for this call.
      */
+/*
+    struct timeval tv1, tv2;
+    gettimeofday(&tv1, NULL);
+*/
     if (synth->midilearn.runMidiLearn(param, ctrl & 0xff, ch, in_place))
         return; // blocking while learning
-
+/*
+    gettimeofday(&tv2, NULL);
+    if (tv1.tv_usec > tv2.tv_usec)
+    {
+        tv2.tv_sec--;
+        tv2.tv_usec += 1000000;
+    }
+    int actual = (tv2.tv_sec - tv1.tv_sec) *1000000 + (tv2.tv_usec - tv1.tv_usec);
+    std::cout << "Delay " << std::to_string(actual) << "uS" << std::endl;
+*/
     /*
     * This is done here instead of in 'setMidi' so MidiLearn
     * handles all 14 bit values the same.
@@ -214,10 +228,10 @@ void MidiDecode::sendMidiCC(bool inSync, unsigned char chan, int type, short int
     //std::cout << "CC buffered" << std::endl;
     CommandBlock putData;
     memset(&putData, 0xff, sizeof(putData));
-    putData.data.value.F = par;
-    putData.data.type = 0xc0;
+    putData.data.value = par;
+    putData.data.type = TOPLEVEL::type::Write | TOPLEVEL::type::Integer;
     putData.data.source = TOPLEVEL::action::toAll;
-    putData.data.control = 2;
+    putData.data.control = MIDI::control::controller;
     putData.data.part = TOPLEVEL::section::midiIn;
     putData.data.kit = chan;
     putData.data.engine = type;
@@ -240,51 +254,43 @@ bool MidiDecode::nrpnDecode(unsigned char ch, int ctrl, int param, bool in_place
     {
         if (ctrl == MIDI::CC::nrpnLSB)
         {
-            if (synth->getRuntime().nrpnL != param)
-            {
-                synth->getRuntime().nrpnL = param;
-                unsigned char type = synth->getRuntime().nrpnH;
-                if (type >= 0x41 && type <= 0x43)
-                { // shortform
-
-                    if (param > 0x77) // disable it
-                    {
-                        synth->getRuntime().channelSwitchType = 0;
-                        synth->getRuntime().channelSwitchCC = 0x80;
-                    }
-                    else
-                    {
-                        synth->getRuntime().channelSwitchType = type & 3; // row/column/loop
-                        synth->getRuntime().channelSwitchCC = param;
-                    }
-                    return true;
-                }
-                if (type == 0x44 && (param == 0x44 || param == 0x45))
-                {
-                    if (param == 0x45)
-                        synth->getRuntime().exitType = FORCED_EXIT;
-                    synth->getRuntime().runSynth = false;
-                    return true; // bye bye everyone
-                }
-                //synth->getRuntime().Log("Set nrpn LSB to " + asString(param));
-            }
-            nLow = param;
             nHigh = synth->getRuntime().nrpnH;
+            nLow = param;
+            synth->getRuntime().nrpnL = nLow;
+            if (nHigh == 0x44 && (nLow == 0x44 || nLow == 0x45)) // shutdown controls
+            {
+                if (nLow == 0x45)
+                    synth->getRuntime().exitType = FORCED_EXIT;
+                synth->getRuntime().runSynth = false;
+                return true; // bye bye everyone
+            }
+            if (nHigh == 0x41 || nHigh == 0x42) // Solo controls
+            {
+                if (nHigh == 0x41) // type - must set this first
+                {
+                    if (nLow > MIDI::SoloType::Channel)
+                        nLow = MIDI::SoloType::Disabled;
+                    synth->getRuntime().channelSwitchType = nLow; // row/column/loop/channel
+                }
+                else // CC
+                {
+                    if (nLow < MIDI::CC::allSoundOff)
+                        synth->getRuntime().channelSwitchCC = nLow;
+                }
+                return true;
+            }
         }
         else // MSB
         {
-            if (synth->getRuntime().nrpnH != param)
-            {
-                synth->getRuntime().nrpnH = param;
-                //synth->getRuntime().Log("Set nrpn MSB to " + asString(param));
-            if (param == 0x41) // set shortform
+            nHigh = param;
+            nLow = synth->getRuntime().nrpnL;
+            synth->getRuntime().nrpnH = nHigh;
+            //synth->getRuntime().Log("Set nrpn MSB to " + asString(nHigh));
+            if (nHigh >= 0x41 && nHigh <= 0x44) // set shortform
             {
                 synth->getRuntime().nrpnL = 0x7f;
                 return true;
             }
-            }
-            nHigh = param;
-            nLow = synth->getRuntime().nrpnL;
         }
         synth->getRuntime().dataL = 0x80; //  we've changed the NRPN
         synth->getRuntime().dataH = 0x80; //  so these are now invalid
@@ -571,14 +577,14 @@ void MidiDecode::nrpnDirectPart(int dHigh, int par)
             break;
 
         case 4: // Set part's channel number
-            putData.data.value.F = par;
+            putData.data.value = par;
             putData.data.control = 5;
             putData.data.part = synth->getRuntime().vectordata.Part;
             break;
 
         case 5: // Set part's audio destination
             if (par > 0 and par < 4)
-            putData.data.value.F = par;
+            putData.data.value = par;
             putData.data.control = 120;
             putData.data.part = synth->getRuntime().vectordata.Part;
             putData.data.parameter = 192;
@@ -590,7 +596,7 @@ void MidiDecode::nrpnDirectPart(int dHigh, int par)
                 par = MIN_KEY_SHIFT;
             else if (par > MAX_KEY_SHIFT)
                 par = MAX_KEY_SHIFT;
-            putData.data.value.F = par;
+            putData.data.value = par;
             putData.data.control = 35;
             putData.data.part = synth->getRuntime().vectordata.Part;
             break;
@@ -601,7 +607,7 @@ void MidiDecode::nrpnDirectPart(int dHigh, int par)
     if (dHigh < 4)
         return;
     //std::cout << "part " << int(putData.data.part) << "  Chan " << int(par) << std::endl;
-    putData.data.type = 0xc0;
+    putData.data.type = TOPLEVEL::type::Write | TOPLEVEL::type::Integer;
     putData.data.source = TOPLEVEL::action::toAll;
     synth->midilearn.writeMidi(&putData, false);
 }
@@ -669,8 +675,8 @@ void MidiDecode::setMidiBankOrRootDir(unsigned int bank_or_root_num, bool in_pla
 
     CommandBlock putData;
     memset(&putData, 0xff, sizeof(putData));
-    putData.data.value.F = 0xff;
-    putData.data.type = 0xc0;
+    putData.data.value = 0xff;
+    putData.data.type = TOPLEVEL::type::Write | TOPLEVEL::type::Integer;
     putData.data.source = TOPLEVEL::action::toAll;
     putData.data.control = MIDI::control::bankChange;
     putData.data.part = TOPLEVEL::section::midiIn;
@@ -696,8 +702,8 @@ void MidiDecode::setMidiProgram(unsigned char ch, int prg, bool in_place)
 
     CommandBlock putData;
     memset(&putData, 0xff, sizeof(putData));
-    putData.data.value.F = prg;
-    putData.data.type = 0xc0;
+    putData.data.value = prg;
+    putData.data.type = TOPLEVEL::type::Write | TOPLEVEL::type::Integer;
     putData.data.source = TOPLEVEL::action::toAll;
     putData.data.control = MIDI::control::instrument;
     putData.data.part = TOPLEVEL::section::midiIn;

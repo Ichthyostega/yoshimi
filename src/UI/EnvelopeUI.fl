@@ -11,7 +11,7 @@ comment {Envelope.cc} {in_source not_in_header
 comment {Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009, Alan Calvert
-Copyright 2016-2019 Will Godfrey
+Copyright 2016-2020 Will Godfrey
 
 This file is part of yoshimi, which is free software: you can redistribute
 it and/or modify it under the terms of the GNU Library General Public
@@ -33,6 +33,9 @@ This file is a derivative of the ZynAddSubFX original.
 }
 
 decl {\#include "UI/MiscGui.h"} {public local
+}
+
+decl {\#include "UI/WidgetCheckButton.h"} {public local
 }
 
 decl {\#include "UI/WidgetPDial.h"} {public local
@@ -71,7 +74,7 @@ pair=NULL;} {}
   Function {send_data(int action, int control, int offset, float value, int type)} {} {
     code {//
         type |= TOPLEVEL::type::Write;
-        collect_data(synth, value, action, (Fl::event_button() | type), control, npart, kititem, engine, TOPLEVEL::insert::envelopePointChange, group, offset);} {}
+        collect_data(synth, value, action, type, control, npart, kititem, engine, TOPLEVEL::insert::envelopePointChange, group, offset);} {}
   }
   Function {init(EnvelopeParams *env_, int npart_, int kititem_, int engine_, int group_)} {} {
     code {//
@@ -135,6 +138,8 @@ return(nearestpoint);} {}
     int ox = x();
     int oy = y();
     int lx = w();
+    float scale = lx / 500.0f;
+    fl_line_style(0, int(1 * scale));
     int ly = h();
     if (env->Pfreemode==0)
         env->converttofree();
@@ -158,6 +163,7 @@ return(nearestpoint);} {}
     fl_line(ox + 2, oy + ly / 2, ox + lx - 2, oy + ly / 2);
 
     //draws the evelope points and lines
+    fl_line_style(0, int(2 *scale));
     Fl_Color alb = FL_WHITE;
     if (!active_r())
         alb = fl_rgb_color(180,180,180);
@@ -182,6 +188,7 @@ return(nearestpoint);} {}
     };
 
     //draw the last moved point point (if exists)
+    fl_line_style(0, int(1 * scale));
     if (lastpoint>=0)
     {
         fl_color(FL_CYAN);
@@ -197,7 +204,7 @@ return(nearestpoint);} {}
     };
 
     //Show the envelope duration and the current line duration
-    fl_font(FL_HELVETICA|FL_BOLD,10);
+    fl_font(FL_HELVETICA|FL_BOLD,10 * scale);
     float time = 0.0;
     if (currentpoint <= 0)
     {
@@ -215,28 +222,28 @@ return(nearestpoint);} {}
         snprintf((char *)&tmpstr, 40, "%.1fms", time);
     else
         snprintf((char *)&tmpstr, 40, "%.2fs", time / 1000.0);
-    fl_draw(tmpstr, ox + lx - 20, oy + ly - 10, 20, 10, FL_ALIGN_RIGHT, NULL, 0);
+    fl_draw(tmpstr, ox + lx - 20 * scale, oy + ly - 10 * scale, 20 * scale, 10 * scale, FL_ALIGN_RIGHT, NULL, 0);
 
     //Draw formatted point value in the top right corner when dragging points
-    if(currentpoint >= 0)
+    if (currentpoint >= 0)
     {
         string valDesc;
         float val = (float) env->Penvval[currentpoint];
         switch(env->Envmode){
-            case ENVMODE::amplitudeLin: //linear amplitude
-            case ENVMODE::amplitudeLog: //db amplitude
-                if(env->Plinearenvelope)
+            case PART::envelope::groupmode::amplitudeLin: //linear amplitude
+            case PART::envelope::groupmode::amplitudeLog: //db amplitude
+                if (env->Plinearenvelope)
                     valDesc = convert_value(VC_EnvelopeLinAmpSusVal, val);
                 else
                     valDesc = convert_value(VC_EnvelopeAmpSusVal, val);
                 break;
-            case ENVMODE::frequency: //frequency offset
+            case PART::envelope::groupmode::frequency: //frequency offset
                 valDesc = convert_value(VC_EnvelopeFreqVal, val);
                 break;
-            case ENVMODE::filter: //filter frequency offset
+            case PART::envelope::groupmode::filter: //filter frequency offset
                 valDesc = convert_value(VC_EnvelopeFilterVal, val);
                 break;
-            case ENVMODE::bandwidth: //bandwidth offset (unformatted)
+            case PART::envelope::groupmode::bandwidth: //bandwidth offset (unformatted)
                 valDesc = convert_value(VC_EnvelopeBandwidthVal, val);
                 break;
             default:
@@ -245,7 +252,8 @@ return(nearestpoint);} {}
         strcpy(tmpstr, valDesc.c_str());
         fl_color(FL_CYAN);
         fl_draw(tmpstr, ox + lx - 30, oy, 30, 25, FL_ALIGN_RIGHT, NULL, 0);
-}} {}
+}
+fl_line_style(0,1);} {}
   }
   Function {handle(int event)} {return_type int
   } {
@@ -277,7 +285,7 @@ return(nearestpoint);} {}
         int ny = 127 - (int) (y_ * 127.0 / h());
         if (ny < 0)
             ny = 0;
-        if ( ny> 127)
+        if (ny> 127)
             ny = 127;
 
         int dx = (int)((x_- cpx) * 0.1);
@@ -327,21 +335,43 @@ class EnvelopeUI {: {public Fl_Group,PresetsUI_}
     envfree=NULL;} {}
   }
   Function {~EnvelopeUI()} {} {
-    code {envwindow->hide();
-hide();
-freemodeeditwindow->hide();
-delete (freemodeeditwindow);} {}
+    code {//
+	if (freemodeeditwindow->x() > 4)
+            saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwindow->x(), freemodeeditwindow->y(),freemodeeditwindow->visible(), "xEnvelope-free " + to_string(engine) + " " + to_string(group));
+        freemodeeditwindow->hide();
+        delete (freemodeeditwindow);
+        envwindow->hide();
+        hide();} {}
   }
   Function {make_freemode_edit_window()} {} {
     Fl_Window freemodeeditwindow {
       label Envelope
-      xywh {795 68 575 180} type Double hide
+      callback {freeClose->do_callback();}
+      xywh {614 158 575 180} type Double hide resizable
+      code0 {freeDW = o->w(); freeDH = o->h();}
+      code1 {o->size_range(freeDW, freeDH, 0, 0, 0, 0, 1);}
     } {
       Fl_Box freeedit {
         label Envelope
         xywh {5 5 565 145} box FLAT_BOX color 0
         code0 {o->init(env, npart, kititem, engine, group);}
         class EnvelopeFreeEdit
+      }
+      Fl_Light_Button freemodebutton {
+        label FreeMode
+        callback {//
+        if (env->Pfreemode != 0)
+        {
+            bool answer = choice(synth, "", "Yes", "No", "Disable the free mode of the Envelope?") > 1;
+            if (!answer)
+            {
+                o->value(1); // back as it was
+                return;
+            }
+        }
+
+        send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::enableFreeMode, o->value(), TOPLEVEL::type::Write);}
+        tooltip {Enable or disable the freemode} xywh {10 154 95 22} box PLASTIC_UP_BOX labelsize 11
       }
       Fl_Button addpoint {
         label {Add point}
@@ -356,7 +386,7 @@ delete (freemodeeditwindow);} {}
         int offset = env->Penvdt[curpoint];
 
         send_data(TOPLEVEL::action::forceUpdate, group, curpoint, value, TOPLEVEL::type::Write, TOPLEVEL::insert::envelopePoints, offset);}
-        xywh {115 155 80 20} box THIN_UP_BOX labelsize 11
+        xywh {112 155 80 20} box THIN_UP_BOX labelsize 11
         code0 {if (env->Pfreemode==0) o->hide();}
       }
       Fl_Button deletepoint {
@@ -374,29 +404,14 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
         xywh {200 155 80 20} box THIN_UP_BOX labelsize 11
         code0 {if (env->Pfreemode==0) o->hide();}
       }
-      Fl_Light_Button freemodebutton {
-        label FreeMode
+      Fl_Counter sustaincounter {
+        label Sust
         callback {//
-        if (env->Pfreemode != 0)
-        {
-            bool answer = fl_choice("Disable the free mode of the Envelope?", NULL, "No", "Yes") > 1;
-            if (!answer)
-            {
-                o->value(1); // back as it was
-                return;
-            }
-        }
-
-        send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::enableFreeMode, o->value(), TOPLEVEL::type::Write);}
-        tooltip {Enable or disable the freemode} xywh {10 154 95 22} box PLASTIC_UP_BOX labelsize 11
-      }
-      Fl_Check_Button forcedreleasecheck {
-        label frcR
-        callback {//
-        send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::forcedRelease, o->value(), TOPLEVEL::type::Write);}
-        tooltip {Forced Release} xywh {410 165 40 15} down_box DOWN_BOX labelsize 10
-        code0 {o->value(env->Pforcedrelease);}
+        send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::sustainPoint, o->value(), TOPLEVEL::type::Write);}
+        tooltip {Sustain (0 is disabled)} xywh {315 158 40 15} type Simple labelsize 11 align 4 minimum 0 maximum 127 step 1 textfont 1 textsize 12
+        code0 {o->value(env->Penvsustain);}
         code1 {if (env->Pfreemode==0) o->hide();}
+        code2 {o->maximum(env->Penvpoints-2);}
       }
       Fl_Dial envstretchdial {
         label {Str.}
@@ -408,46 +423,48 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
         code2 {o->setValueType(VC_EnvStretch);}
         class WidgetPDial
       }
-      Fl_Button {} {
-        label Close
-        callback {freemodeeditwindow->hide();}
-        xywh {519 155 44 20} box THIN_UP_BOX labelsize 12
-      }
       Fl_Check_Button linearenvelopecheck {
+        class Fl_Check_Button2
         label L
         callback {//
         send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::linearEnvelope, o->value(), TOPLEVEL::type::Write);}
-        tooltip {Linear Envelope} xywh {410 151 30 15} down_box DOWN_BOX labelsize 10
+        tooltip {Linear Envelope} xywh {415 151 30 15} down_box DOWN_BOX labelsize 10
         code0 {o->value(env->Plinearenvelope);}
         code1 {if ((env->Pfreemode==0)||(env->Envmode>2)) o->hide();}
       }
-      Fl_Counter sustaincounter {
-        label Sust
+      Fl_Check_Button forcedreleasecheck {
+        class Fl_Check_Button2
+        label frcR
         callback {//
-        send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::sustainPoint, o->value(), TOPLEVEL::type::Write);}
-        tooltip {Sustain (0 is disabled)} xywh {315 155 40 15} type Simple labelsize 11 align 4 minimum 0 maximum 127 step 1
-        code0 {o->value(env->Penvsustain);}
+        send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::forcedRelease, o->value(), TOPLEVEL::type::Write);}
+        tooltip {Forced Release} xywh {415 165 40 15} down_box DOWN_BOX labelsize 10
+        code0 {o->value(env->Pforcedrelease);}
         code1 {if (env->Pfreemode==0) o->hide();}
-        code2 {o->maximum(env->Penvpoints-2);}
       }
-      Fl_Button {} {
+      Fl_Button freecopy {
         label C
         callback {synth->getGuiMaster()->getPresetsUi()->copy(env);}
-        xywh {465 160 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
+        xywh {465 158 16 16} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
       }
-      Fl_Button {} {
+      Fl_Button freepaste {
         label P
         callback {synth->getGuiMaster()->getPresetsUi()->paste(env,this);}
-        xywh {482 160 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
+        xywh {486 158 16 16} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
+      }
+      Fl_Button freeClose {
+        label Close
+        callback {freemodeeditwindow->hide();
+saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwindow->x(), freemodeeditwindow->y(), false, "xEnvelope-free " + to_string(engine) + " " + to_string(group));}
+        xywh {519 155 44 20} box THIN_UP_BOX labelsize 12
       }
     }
   }
   Function {make_ADSR_window()} {} {
-    Fl_Window envADSR {open
+    Fl_Window envADSR {
       xywh {1185 87 205 70} type Double color 50 labelfont 1 hide
       class Fl_Group
     } {
-      Fl_Group {} {
+      Fl_Group e1name {
         label {Amplitude Env}
         xywh {0 0 205 70} box PLASTIC_UP_BOX color 223 labelfont 1 labelsize 10 align 17
       } {
@@ -488,6 +505,7 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
           class WidgetPDial
         }
         Fl_Check_Button e1forcedrelease {
+          class Fl_Check_Button2
           label frcR
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::forcedRelease, o->value(), TOPLEVEL::type::Write);}
@@ -503,26 +521,28 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
           code1 {o->setValueType(VC_EnvStretch);}
           class WidgetPDial
         }
-        Fl_Button {} {
+        Fl_Button e1E {
           label E
-          callback {freemodeeditwindow->show();
+          callback {//
+          showfree();
           send_data(0, group, ENVELOPEINSERT::control::edit, o->value(), TOPLEVEL::type::Write);}
           tooltip {Envelope window} xywh {185 5 15 15} box PLASTIC_UP_BOX labelfont 1 labelsize 10
         }
         Fl_Check_Button e1linearenvelope {
+          class Fl_Check_Button2
           label L
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::linearEnvelope, o->value(), TOPLEVEL::type::Write);}
           tooltip {The envelope is linear} xywh {180 20 15 15} down_box DOWN_BOX labelsize 10 align 4
           code0 {o->value(env->Plinearenvelope);}
         }
-        Fl_Button {} {
+        Fl_Button e1C {
           label C
           callback {//
           synth->getGuiMaster()->getPresetsUi()->copy(env);}
           xywh {150 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
         }
-        Fl_Button {} {
+        Fl_Button e1P {
           label P
           callback {synth->getGuiMaster()->getPresetsUi()->paste(env,this);}
           xywh {167 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
@@ -535,7 +555,7 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
       xywh {1183 190 210 70} type Double hide
       class Fl_Group
     } {
-      Fl_Group {} {
+      Fl_Group e2name {
         label {Frequency Env}
         xywh {0 0 210 70} box PLASTIC_UP_BOX color 223 labelfont 1 labelsize 10 align 17
       } {
@@ -585,27 +605,29 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
           class WidgetPDial
         }
         Fl_Check_Button e2forcedrelease {
+          class Fl_Check_Button2
           label frcR
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::forcedRelease, o->value(), TOPLEVEL::type::Write);}
           tooltip {Forced release} xywh {180 25 15 25} down_box DOWN_BOX labelsize 10 align 6
           code0 {o->value(env->Pforcedrelease);}
         }
-        Fl_Button {} {
+        Fl_Button e2C {
           label C
           callback {synth->getGuiMaster()->getPresetsUi()->copy(env);}
           xywh {155 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
         }
-        Fl_Button {} {
+        Fl_Button e2P {
           label P
           callback {synth->getGuiMaster()->getPresetsUi()->paste(env,this);}
           xywh {172 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
         }
       }
-      Fl_Button {} {
+      Fl_Button e2E {
         label E
-        callback {freemodeeditwindow->show();
-        send_data(0, group, ENVELOPEINSERT::control::edit, o->value(), TOPLEVEL::type::Write);}
+        callback {//
+      showfree();
+      send_data(0, group, ENVELOPEINSERT::control::edit, o->value(), TOPLEVEL::type::Write);}
         tooltip {Envelope window} xywh {190 5 15 15} box PLASTIC_UP_BOX labelfont 1 labelsize 10
       }
     }
@@ -615,7 +637,7 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
       xywh {1121 294 275 70} type Double color 50 labelfont 1 hide
       class Fl_Group
     } {
-      Fl_Group {} {
+      Fl_Group e3name {
         label {Filter Envelope}
         xywh {0 0 275 70} box PLASTIC_UP_BOX color 223 labelfont 1 labelsize 10 align 17
       } {
@@ -683,25 +705,26 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
           class WidgetPDial
         }
         Fl_Check_Button e3forcedrelease {
+          class Fl_Check_Button2
           label frcR
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::forcedRelease, o->value(), TOPLEVEL::type::Write);}
           tooltip {Forced Release} xywh {250 30 15 20} down_box DOWN_BOX labelsize 10 align 6
           code0 {o->value(env->Pforcedrelease);}
         }
-        Fl_Button {} {
+        Fl_Button e3E {
           label E
           callback {//
-          freemodeeditwindow->show();
+          showfree();
           send_data(0, group, ENVELOPEINSERT::control::edit, o->value(), TOPLEVEL::type::Write);}
           xywh {255 5 15 15} box PLASTIC_UP_BOX labelfont 1 labelsize 10
         }
-        Fl_Button {} {
+        Fl_Button e3C {
           label C
           callback {synth->getGuiMaster()->getPresetsUi()->copy(env);}
           xywh {220 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
         }
-        Fl_Button {} {
+        Fl_Button e3P {
           label P
           callback {synth->getGuiMaster()->getPresetsUi()->paste(env,this);}
           xywh {237 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
@@ -714,7 +737,7 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
       xywh {1209 649 210 70} type Double hide
       class Fl_Group
     } {
-      Fl_Group {} {
+      Fl_Group e4name {
         label {BandWidth Env}
         xywh {0 0 210 70} box PLASTIC_UP_BOX color 223 labelfont 1 labelsize 10 align 17
       } {
@@ -764,26 +787,28 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
           class WidgetPDial
         }
         Fl_Check_Button e4forcedrelease {
+          class Fl_Check_Button2
           label frcR
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::forcedRelease, o->value(), TOPLEVEL::type::Write);}
           tooltip {Forced release} xywh {185 25 15 25} down_box DOWN_BOX labelsize 10 align 6
           code0 {o->value(env->Pforcedrelease);}
         }
-        Fl_Button {} {
+        Fl_Button e4C {
           label C
           callback {synth->getGuiMaster()->getPresetsUi()->copy(env);}
           xywh {155 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
         }
-        Fl_Button {} {
+        Fl_Button e4P {
           label P
           callback {synth->getGuiMaster()->getPresetsUi()->paste(env,this);}
           xywh {172 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
         }
       }
-      Fl_Button {} {
+      Fl_Button e4E {
         label E
-        callback {freemodeeditwindow->show();
+        callback {//
+        showfree();
         send_data(0, group, ENVELOPEINSERT::control::edit, o->value(), TOPLEVEL::type::Write);}
         xywh {190 5 15 15} box PLASTIC_UP_BOX labelfont 1 labelsize 10
       }
@@ -805,42 +830,42 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
           code0 {o->init(env, npart, kititem, engine, group);}
           class EnvelopeFreeEdit
         }
-        Fl_Button {} {
-          label E
-          callback {freemodeeditwindow->show();
+      }
+      Fl_Button efC {
+        label C
+        callback {synth->getGuiMaster()->getPresetsUi()->copy(env);}
+        xywh {150 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
+      }
+      Fl_Button efP {
+        label P
+        callback {synth->getGuiMaster()->getPresetsUi()->paste(env,this);}
+        xywh {168 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
+      }
+      Fl_Button efE {
+        label E
+        callback {showfree();
           send_data(0, group, ENVELOPEINSERT::control::edit, o->value(), TOPLEVEL::type::Write);}
-          xywh {185 5 15 15} box PLASTIC_UP_BOX labelfont 1 labelsize 10
-        }
-        Fl_Button {} {
-          label C
-          callback {synth->getGuiMaster()->getPresetsUi()->copy(env);}
-          xywh {150 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
-        }
-        Fl_Button {} {
-          label P
-          callback {synth->getGuiMaster()->getPresetsUi()->paste(env,this);}
-          xywh {167 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
-        }
+        xywh {185 5 15 15} box PLASTIC_UP_BOX labelfont 1 labelsize 10
       }
     }
   }
   Function {send_data(int action, int group, int control, float value, int type, int insert = TOPLEVEL::insert::envelopeGroup, int offset = UNUSED)} {} {
     code {//
-    collect_data(synth, value, action, (Fl::event_button() | type), control, npart, kititem, engine, insert, group, offset);} {}
+    collect_data(synth, value, action, type, control, npart, kititem, engine, insert, group, offset);} {}
   }
   Function {returns_update(CommandBlock *getData)} {} {
     code {//
-    float value = getData->data.value.F;
+    float value = getData->data.value;
     unsigned char control = getData->data.control;
     unsigned char part = getData->data.part;
     unsigned char eng = getData->data.engine;
     unsigned char insert = getData->data.insert;
-    unsigned char par = getData->data.parameter;
+    unsigned char param = getData->data.parameter;
     unsigned char offset = getData->data.offset;
 
     int value_int = lrint(value);
-    bool value_bool = (value > 0.5);
-    bool isFreemode = (freemodebutton->value() > 0.5);
+    bool value_bool = _SYS_::F2B(value);
+    bool isFreemode = _SYS_::F2B(freemodebutton->value());
     bool NotUs = ((getData->data.source & TOPLEVEL::action::noAction) != TOPLEVEL::action::fromGUI || (getData->data.source & TOPLEVEL::action::forceUpdate));
 
     if (part != npart || (eng >= 128 && eng != engine))
@@ -867,7 +892,7 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
         case ENVELOPEINSERT::control::attackLevel:
             if (NotUs)
             {
-                switch (par)
+                switch (param)
                 {
                     case TOPLEVEL::insertType::frequency:
                         e2aval->value(value);
@@ -885,7 +910,7 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
         case ENVELOPEINSERT::control::attackTime:
             if (NotUs)
             {
-                switch (par)
+                switch (param)
                 {
                     case TOPLEVEL::insertType::amplitude:
                         e1adt->value(value);
@@ -904,14 +929,14 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
             break;
 
         case ENVELOPEINSERT::control::decayLevel:
-            if (par == TOPLEVEL::insertType::filter && NotUs)
+            if (param == TOPLEVEL::insertType::filter && NotUs)
                 e3dval->value(value);
             break;
 
         case ENVELOPEINSERT::control::decayTime:
             if (NotUs)
             {
-                switch (par)
+                switch (param)
                 {
                     case TOPLEVEL::insertType::amplitude:
                         e1ddt->value(value);
@@ -924,14 +949,14 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
             break;
 
         case ENVELOPEINSERT::control::sustainLevel:
-            if (par == TOPLEVEL::insertType::amplitude && NotUs)
+            if (param == TOPLEVEL::insertType::amplitude && NotUs)
                 e1sval->value(value);
             break;
 
         case ENVELOPEINSERT::control::releaseTime:
-            if(NotUs)
+            if (NotUs)
             {
-                switch (par)
+                switch (param)
                 {
                     case TOPLEVEL::insertType::amplitude:
                         e1rdt->value(value);
@@ -950,9 +975,9 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
             break;
 
         case ENVELOPEINSERT::control::releaseLevel:
-            if(NotUs)
+            if (NotUs)
             {
-                switch (par)
+                switch (param)
                 {
                     case TOPLEVEL::insertType::frequency:
                         e2rval->value(value);
@@ -968,7 +993,7 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
             break;
 
         case ENVELOPEINSERT::control::stretch:
-            switch (par)
+            switch (param)
             {
                 case TOPLEVEL::insertType::amplitude:
                     e1envstretch->value(value);
@@ -988,7 +1013,7 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
             break;
 
         case ENVELOPEINSERT::control::forcedRelease:
-            switch (par)
+            switch (param)
             {
                 case TOPLEVEL::insertType::amplitude:
                     e1forcedrelease->value(value_bool);
@@ -1008,7 +1033,7 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
             break;
 
         case ENVELOPEINSERT::control::linearEnvelope:
-            if (par == TOPLEVEL::insertType::amplitude)
+            if (param == TOPLEVEL::insertType::amplitude)
             {
                 e1linearenvelope->value(value_bool);
                 linearenvelopecheck->value(value_bool);
@@ -1036,6 +1061,7 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
     kititem = kititem_;
     engine = engine_;
     group = group_;
+    lastfreeX = lastfreeY = lastfreeW = 0xffff;
     make_ADSR_window();
     make_ASR_window();
     make_ADSRfilter_window();
@@ -1045,34 +1071,17 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
 
     envwindow=NULL;
 
-    if (env->Envmode == ENVMODE::frequency) envfreegroup->label("Frequency Env");
-    if (env->Envmode == ENVMODE::filter) envfreegroup->label("Filter Envelope");
-    if (env->Envmode == ENVMODE::bandwidth) envfreegroup->label("Bandwidth Env");
+    if (env->Envmode == PART::envelope::groupmode::frequency) envfreegroup->label("Frequency Env");
+    if (env->Envmode == PART::envelope::groupmode::filter) envfreegroup->label("Filter Envelope");
+    if (env->Envmode == PART::envelope::groupmode::bandwidth) envfreegroup->label("Bandwidth Env");
 
     freemodeeditwindow->label(this->label());
+    freemodeeditwindow->hide();
 
     freeeditsmall->setpair(freeedit);
     freeedit->setpair(freeeditsmall);
 
     refresh();} {}
-  }
-  Function {reinit()} {} {
-    code {//
-    if (env->Pfreemode != 0)
-    {
-        bool answer = fl_choice("Disable the free mode of the Envelope?", NULL, "No", "Yes") > 1;
-        if (!answer)
-        {
-            freemodebutton->value(1); // back as it was
-            return;
-        }
-    }
-
-    if (env->Pfreemode == 0)
-        env->Pfreemode = 1;
-    else
-        env->Pfreemode = 0;
-    reinitcore(env->Pfreemode);} {}
   }
   Function {reinitcore(bool freemode)} {} {
     code {//
@@ -1082,10 +1091,10 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
         freemodebutton->value(0);
 
     hide();
-    int winx = freemodeeditwindow->x();
-    int winy = freemodeeditwindow->y();
+    //int winx = freemodeeditwindow->x();
+    //int winy = freemodeeditwindow->y();
 
-    freemodeeditwindow->hide();
+    //freemodeeditwindow->hide();
 
     envwindow->hide();
     Fl_Group *par = envwindow->parent();
@@ -1097,8 +1106,8 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
 
     par->show();
     show();
-    freemodeeditwindow->position(winx, winy);
-    freemodeeditwindow->show();
+    //freemodeeditwindow->position(winx, winy);
+    //freemodeeditwindow->show();
 
     if (freemode)
     {
@@ -1148,8 +1157,8 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
     {
         switch(env->Envmode)
         {
-            case(ENVMODE::amplitudeLin):
-            case(ENVMODE::amplitudeLog):
+            case(PART::envelope::groupmode::amplitudeLin):
+            case(PART::envelope::groupmode::amplitudeLog):
                 e1adt->value(env->PA_dt);
                 e1ddt->value(env->PD_dt);
                 e1sval->value(env->PS_val);
@@ -1159,7 +1168,7 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
                 e1linearenvelope->value(env->Plinearenvelope);
                 e1forcedrelease->value(env->Pforcedrelease);
                 break;
-            case(ENVMODE::frequency):
+            case(PART::envelope::groupmode::frequency):
                 e2aval->value(env->PA_val);
                 e2adt->value(env->PA_dt);
                 e2rdt->value(env->PR_dt);
@@ -1167,7 +1176,7 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
                 e2envstretch->value(env->Penvstretch);
                 e2forcedrelease->value(env->Pforcedrelease);
                 break;
-            case(ENVMODE::filter):
+            case(PART::envelope::groupmode::filter):
                 e3aval->value(env->PA_val);
                 e3adt->value(env->PA_dt);
                 e3dval->value(env->PD_val);
@@ -1177,7 +1186,7 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
                 e3envstretch->value(env->Penvstretch);
                 e3forcedrelease->value(env->Pforcedrelease);
                 break;
-            case(ENVMODE::bandwidth):
+            case(PART::envelope::groupmode::bandwidth):
                 e4aval->value(env->PA_val);
                 e4adt->value(env->PA_dt);
                 e4rdt->value(env->PR_dt);
@@ -1190,50 +1199,180 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
         }
     }
     else
-    {
         envfree->redraw();
-    }
 
     envADSR->hide();
     envASR->hide();
     envADSRfilter->hide();
     envASRbw->hide();
     envfree->hide();
-
-    if (env->Pfreemode==0)
+/*
+    We now always initialse and position related groups as well as the freemode one
+    This is to ensure that resizing will have the correct starting size and position
+    even if a part was loaded specifying the freemode form.
+*/
+    //if (env->Pfreemode==0)
     {
         switch(env->Envmode)
         {
-            case(ENVMODE::amplitudeLin):
-            case(ENVMODE::amplitudeLog):
+            case(PART::envelope::groupmode::amplitudeLin):
+            case(PART::envelope::groupmode::amplitudeLog):
                 envwindow=envADSR;
                 break;
-            case(ENVMODE::frequency):
+            case(PART::envelope::groupmode::frequency):
                 envwindow=envASR;
                 break;
-            case(ENVMODE::filter):
+            case(PART::envelope::groupmode::filter):
                 envwindow=envADSRfilter;
                 break;
-            case(ENVMODE::bandwidth):
+            case(PART::envelope::groupmode::bandwidth):
                 envwindow=envASRbw;
                 break;
             default:
                 break;
         }
+        envwindow->resize(this->x(),this->y(),this->w(),this->h());
     }
-    else
+    //else
+    if (env->Pfreemode)
     {
         envwindow=envfree;
+        envwindow->resize(this->x(),this->y(),this->w(),this->h());
     }
 
-    envwindow->resize(this->x(),this->y(),this->w(),this->h());
+    //envwindow->resize(this->x(),this->y(),this->w(),this->h());
 
     envwindow->show();} {}
+  }
+  Function {showfree()} {} {
+    code {//
+    int fetchW, fetchH, fetchX, fetchY, fetchO;
+    loadWin(synth, fetchW, fetchH, fetchX, fetchY, fetchO, "xEnvelope-free " + to_string(engine) + " " + to_string(group));
+
+    if (fetchW < freeDW || fetchH < freeDH)
+    {
+        fetchW = freeDW;
+        fetchH = freeDH;
+    }
+    checkSane(fetchX, fetchY, fetchW, fetchH, freeDW, freeDH);
+
+    freemodeeditwindow->resize(fetchX, fetchY, fetchW, fetchH);
+    freemodeeditwindow->show();
+    envfreeRtext();} {}
+  }
+  Function {wincheck()} {} {
+    code {//
+    if (!freemodeeditwindow->visible())
+        return;
+    if (freemodeeditwindow->x() == lastfreeX && freemodeeditwindow->y() == lastfreeY && freemodeeditwindow->w() == lastfreeW)
+        return;
+    envfreeRtext();
+    lastfreeX = freemodeeditwindow->x();
+    lastfreeY = freemodeeditwindow->y();
+    lastfreeW = freemodeeditwindow->w();} {}
+  }
+  Function {envfreeRtext()} {} {
+    code {//
+        int w = freemodeeditwindow->w();
+        int h = freemodeeditwindow->h();
+        float defW = 575;
+        float defH = 180;
+        float dW = w / defW;
+        float dH = h / defH;
+        float dScale;
+        if (dW < dH)
+            dScale = dW;
+        else
+            dScale = dH;
+        if (dScale < 0.2f)
+            dScale = 0.2f;
+
+        int size = int(10 * dScale);
+        int size11 = int(11 * dScale);
+        int size12 = int(12 * dScale);
+
+        freemodebutton->labelsize(size11);
+        addpoint->labelsize(size11);
+        deletepoint->labelsize(size11);
+        sustaincounter->labelsize(size11);
+            sustaincounter->textsize(size12);
+        envstretchdial->labelsize(size);
+        linearenvelopecheck->labelsize(size);
+        forcedreleasecheck->labelsize(size);
+        freecopy->labelsize(size);
+        freepaste->labelsize(size);
+        freeClose->labelsize(size12);} {}
+  }
+  Function {envRtext(float dScale)} {} {
+    code {//
+        int X = this->x();
+        int Y = this->y();
+        int W = this->w();
+        int H = this->h();
+
+        int size = int(dScale * 10);
+
+
+        e1name->labelsize(size);
+        e1adt->labelsize(size);
+        e1ddt->labelsize(size);
+        e1rdt->labelsize(size);
+        e1sval->labelsize(size);
+        e1forcedrelease->labelsize(size);
+        e1envstretch->labelsize(size);
+        e1E->labelsize(size);
+        e1linearenvelope->labelsize(size);
+        e1C->labelsize(size);
+        e1P->labelsize(size);
+
+        e2name->labelsize(size);
+        e2aval->labelsize(size);
+        e2adt->labelsize(size);
+        e2rval->labelsize(size);
+        e2rdt->labelsize(size);
+        e2envstretch->labelsize(size);
+        e2forcedrelease->labelsize(size);
+        e2C->labelsize(size);
+        e2P->labelsize(size);
+        e2E->labelsize(size);
+
+        e3name->labelsize(size);
+        e3aval->labelsize(size);
+        e3adt->labelsize(size);
+        e3dval->labelsize(size);
+        e3ddt->labelsize(size);
+        e3rval->labelsize(size);
+        e3rdt->labelsize(size);
+        e3envstretch->labelsize(size);
+        e3forcedrelease->labelsize(size);
+        e3C->labelsize(size);
+        e3P->labelsize(size);
+        e3E->labelsize(size);
+
+        e4name->labelsize(size);
+        e4aval->labelsize(size);
+        e4adt->labelsize(size);
+        e4rval->labelsize(size);
+        e4rdt->labelsize(size);
+        e4envstretch->labelsize(size);
+        e4forcedrelease->labelsize(size);
+        e4C->labelsize(size);
+        e4P->labelsize(size);
+        e4E->labelsize(size);
+
+        envfreegroup->labelsize(size);
+        efC->labelsize(size);
+        efP->labelsize(size);
+        efE->labelsize(size);
+
+        envfree->resize(X, Y, W, H);
+
+        freeeditsmall->resize(int(X + 5*dScale), int(Y + 20*dScale), int(W - 9*dScale), int(H - 25*dScale));} {}
   }
   Function {setAmpSusVType(bool linear)} {return_type void
   } {
     code {//
-    if(linear)
+    if (linear)
         e1sval->setValueType(VC_EnvelopeLinAmpSusVal);
     else
         e1sval->setValueType(VC_EnvelopeAmpSusVal);} {}
@@ -1251,5 +1390,15 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
   decl {int engine;} {private local
   }
   decl {int group;} {private local
+  }
+  decl {int lastfreeX;} {private local
+  }
+  decl {int lastfreeY;} {private local
+  }
+  decl {int lastfreeW;} {private local
+  }
+  decl {int freeDW;} {private local
+  }
+  decl {int freeDH;} {private local
   }
 }

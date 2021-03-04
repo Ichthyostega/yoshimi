@@ -1,7 +1,7 @@
 /*
     globals.h - general static definitions
 
-    Copyright 2018-2020, Will Godfrey
+    Copyright 2018-2021, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -46,130 +46,110 @@
 #define Fmul2I 1073741823
 #define Cshift2I 23
 
-/*
- * proposed conversions from float to hi res int
- * multiplier is 1000000
- *
- * for LFO freq turns actual value 85.25 into 85250000
- * current step size 0.06 becomes 6000
- *
- * scales reference frequency 440Hz becomes 440000000
- * At 20Hz resolution is still better than 1/1000 cent
- * Assumed detectable interval is 5 cents
- *
- * also use for integers that need higher resolution
- * such as unspecified 0-127 integers
-*/
-
 // many of the following are for convenience and consistency
 // changing them is likely to have unpredicable consequences
 
 // sizes
-const unsigned char COMMAND_SIZE = 252;
-const unsigned char MAX_HISTORY = 25;
-const int MAX_PRESETS = 1000;
-const unsigned char MAX_PRESET_DIRS = 128;
-const unsigned char MAX_BANK_ROOT_DIRS = 128;
-const unsigned char MAX_BANKS_IN_ROOT = 128;
-const unsigned char MAX_INSTRUMENTS_IN_BANK = 160;
-const unsigned char MAX_AD_HARMONICS = 128;
-const unsigned char MAX_SUB_HARMONICS = 64;
-const unsigned char PAD_MAX_SAMPLES = 96;
-const unsigned char NUM_MIDI_PARTS = 64;
-const unsigned char PART_NORMAL = 0;
-const unsigned char PART_MONO = 1;
-const unsigned char PART_LEGATO = 2;
-const unsigned char MIDI_NOT_LEGATO = 3;
-const unsigned char MIDI_LEGATO = 4;
-const unsigned char NUM_MIDI_CHANNELS = 16;
-const unsigned char MIDI_LEARN_BLOCK = 200;
-const int MAX_ENVELOPE_POINTS = 40;
-const int MIN_ENVELOPE_DB = -60;
-const int MAX_RESONANCE_POINTS = 256;
-const int MAX_KEY_SHIFT = 36;
-const int MIN_KEY_SHIFT = -36;
-const float A_MIN = 30.0f;
-const float A_DEF = 440.0f;
-const float A_MAX = 1100.0f;
+#define COMMAND_SIZE 252
+#define MAX_HISTORY 25
+#define MAX_PRESETS 1000
+#define MAX_PRESET_DIRS 128
+#define MAX_BANK_ROOT_DIRS 128
+#define MAX_BANKS_IN_ROOT 128
+#define MAX_INSTRUMENTS_IN_BANK 160
+#define MAX_AD_HARMONICS 128
+#define MAX_SUB_HARMONICS 64
+#define PAD_MAX_SAMPLES 96
+#define NUM_MIDI_PARTS 64
+#define PART_NORMAL 0
+#define PART_MONO 1
+#define PART_LEGATO 2
+#define MIDI_NOT_LEGATO 3
+#define MIDI_LEGATO 4
+#define NUM_MIDI_CHANNELS 16
+#define MIDI_LEARN_BLOCK 400
+#define MAX_ENVELOPE_POINTS 40
+#define MIN_ENVELOPE_DB -60
+#define MAX_RESONANCE_POINTS 256
+#define MAX_KEY_SHIFT 36
+#define MIN_KEY_SHIFT -36
+#define A_MIN 30.0f
+#define A_DEF 440.0f
+#define A_MAX 1100.0f
 
+// The number of discrete steps we use for the LFO BPM frequency. Make sure to
+// update LFO_BPM_LCM as well, if this is updated.
+#define LFO_BPM_STEPS 33
+// The Least Common Multiple of all the possible LFO fractions.
+#define LFO_BPM_LCM 720720
 
-const unsigned int MIN_OSCIL_SIZE = 256; // MAX_AD_HARMONICS * 2
-const unsigned int MAX_OSCIL_SIZE = 16384;
-const unsigned int MIN_BUFFER_SIZE = 16;
-const unsigned int MAX_BUFFER_SIZE = 8192;
-const unsigned char NO_MSG = 255; // these two may become different
-const unsigned char UNUSED = 255;
+#define MIN_OSCIL_SIZE 256 // MAX_AD_HARMONICS * 2
+#define MAX_OSCIL_SIZE 16384
+#define MIN_BUFFER_SIZE 16
+#define MAX_BUFFER_SIZE 8192
+#define NO_MSG 255 // these two may become different
+#define UNUSED 255
 
 // GUI colours
-const unsigned int ADD_COLOUR = 0xdfafbf00;
-const unsigned int BASE_COLOUR = 0xbfbfbf00;
-const unsigned int SUB_COLOUR = 0xafcfdf00;
-const unsigned int PAD_COLOUR = 0xcfdfaf00;
-const unsigned int YOSHI_COLOUR = 0x0000e100;
-const unsigned int EXTOSC_COLOUR = 0x8fbfdf00;
-const unsigned int EXTVOICE_COLOUR = 0x9fdf8f00;
-const unsigned int MODOFF_COLOUR = 0x80808000;
+#define ADD_COLOUR 0xdfafbf00
+#define BASE_COLOUR 0xbfbfbf00
+#define SUB_COLOUR 0xafcfdf00
+#define PAD_COLOUR 0xcfdfaf00
+#define YOSHI_COLOUR 0x0000e100
+#define EXTOSC_COLOUR 0x8fbfdf00
+#define EXTVOICE_COLOUR 0x9fdf8f00
+#define MODOFF_COLOUR 0x80808000
 
 // these were previously (pointlessly) user configurable
-const unsigned char NUM_VOICES = 8;
-const unsigned char POLIPHONY = 80;
-const unsigned char PART_POLIPHONY = 60;
-const unsigned char PART_DEFAULT_LIMIT = 20;
-const unsigned char NUM_SYS_EFX = 4;
-const unsigned char NUM_INS_EFX = 8;
-const unsigned char NUM_PART_EFX = 3;
-const unsigned char NUM_KIT_ITEMS = 16;
-const float VELOCITY_MAX_SCALE = 8.0f;
-const unsigned char FADEIN_ADJUSTMENT_SCALE = 20;
-const unsigned char MAX_EQ_BANDS = 8;  // MAX_EQ_BANDS must be less than 20
-const unsigned char MAX_FILTER_STAGES = 5;
-const unsigned char FF_MAX_VOWELS = 6;
-const unsigned char FF_MAX_FORMANTS = 12;
-const unsigned char FF_MAX_SEQUENCE = 8;
-const unsigned char MAX_PHASER_STAGES = 12;
-const unsigned char MAX_ALIENWAH_DELAY = 100;
+#define NUM_VOICES 8
+#define POLIPHONY 60
+#define PART_DEFAULT_LIMIT 20
+#define NUM_SYS_EFX 4
+#define NUM_INS_EFX 8
+#define NUM_PART_EFX 3
+#define NUM_KIT_ITEMS 16
+#define FADEIN_ADJUSTMENT_SCALE 20
+#define MAX_EQ_BANDS 8  // MAX_EQ_BANDS must be less than 20
+#define MAX_FILTER_STAGES 5
+#define FF_MAX_VOWELS 6
+#define FF_MAX_FORMANTS 12
+#define FF_MAX_SEQUENCE 8
 
-const std::string DEFAULT_NAME = "Simple Sound";
-const std::string UNTITLED = "No Title";
+#define DEFAULT_NAME "Simple Sound"
+#define UNTITLED "No Title"
 
-const unsigned char FORCED_EXIT = 16;
+#define DEFAULT_AUDIO alsa_audio
+#define DEFAULT_MIDI alsa_midi
 
+#define FORCED_EXIT 16
 
-enum muteState {Idle, Pending, Fading, Active, Complete, Request, Immediate};
-
-enum Session : unsigned char {
-    Normal = 0,
-    Default,
-    JackFirst,
-    JackSecond,
-    StartupFirst,
-    StartupSecond,
-    InProgram,
-    RestoreConf
-};
-
-namespace YOSH
+namespace _SYS_
 {
     // float to bool done this way to ensure consistency
     // we are always using positive values
     inline bool F2B(float value) {return value > 0.5f;}
+
+    enum mute {Idle, Pending, Fading, Active, Complete, Request, Immediate};
+
+    enum type {Normal, Default, JackFirst, JackSecond, StartupFirst, StartupSecond, InProgram, RestoreConf};
 }
 
 /*
  * for many of the following, where they are in groups the
  * group order must not change, but the actual values can
  * and new entries can be added between the group ends
+ *
+ * *** WARNING ***
+ *
+ * The above is no longer completely true!
+ * Controller numbers in particular must not change if
+ * these might be recorded in MIDI-learn files. The same
+ * applies to voice numbers in 'engine' - use existing
+ * gaps for new controls instead.
+ *
+ * Generally any controls/features that can't be learned
+ * should be safe to move.
  */
-
-
-namespace ENVMODE
-{
-    const unsigned char amplitudeLin = 1;
-    const unsigned char amplitudeLog = 2;
-    const unsigned char frequency = 3;
-    const unsigned char filter = 4;
-    const unsigned char bandwidth = 5;
-}
 
 namespace TOPLEVEL // usage TOPLEVEL::section::vector
 {
@@ -190,38 +170,45 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
     };
 
     namespace type {
-        // bits 0, 1
-        const unsigned char Adjust = 0; // return value adjusted within limits
-        const unsigned char Read = 0; // i.e. !write
-        const unsigned char Minimum = 1; // return this value
-        const unsigned char Maximum = 2; // return this value
-        const unsigned char Default = 3; // return this value
-        // remaining used bit-wise
-        const unsigned char Limits = 4; // read above limits
-        const unsigned char Error = 8;
-        const unsigned char LearnRequest = 16;
-        const unsigned char Learnable = 32;
-        const unsigned char Write = 64;
-        const unsigned char Integer = 128; // false = float
+        enum {
+            // bits 0, 1 as values
+            Adjust = 0, // return value adjusted within limits
+            Minimum, // return this value
+            Maximum, // return this value
+            Default, // return this value
+            // remaining used bit-wise
+            Limits, // read limits shown above
+            Error = 8,
+            LearnRequest = 16,
+            Learnable = 32,
+            Write = 64,
+            Integer = 128 // false = float
+        };
     }
 
     namespace action {
-        // bits 0 to 3
-        const unsigned char toAll = 0; // except MIDI
-        const unsigned char fromMIDI = 1;
-        const unsigned char fromCLI = 2;
-        const unsigned char fromGUI = 3;
-        // space for any other sources
-        const unsigned char noAction = 15; // internal use
-        // remaining used bit-wise
-        const unsigned char forceUpdate = 32;
-        const unsigned char loop = 64; // internal use
-        const unsigned char lowPrio = 128;
-        const unsigned char muteAndLoop = 192;
+        enum {
+            // bits 0 to 3
+            toAll = 0, // except MIDI
+            fromMIDI,
+            fromCLI,
+            fromGUI,
+            // space for any other sources
+            noAction = 15, // internal use
+            // remaining used bit-wise
+            forceUpdate = 32,
+            loop = 64, // internal use
+            lowPrio = 128,
+            muteAndLoop = 192
+        };
     }
 
     enum control : unsigned char {
         // insert any new entries here
+
+        /*
+         * the following values must never appear in any other sections
+         */
         textMessage = 254, // FE
         forceExit // this is effective from *any* section!
     };
@@ -262,16 +249,24 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
     enum XML : unsigned char { // file and history types
         Instrument = 0, // individual externally sourced Instruments
         Patch, //      full instrument Patch Sets
+        Presets, //    parts of instruments or effects
         Scale, //      complete Microtonal settings
         State, //      entire system State
         Vector, //     per channel Vector settings
         // insert any new lists here
         MLearn, //     learned MIDI CC lists
-        Config, // only file types from here onwards
+
+        // not XML but there for consistency
+        PadSample,
+        ScalaTune,
+        ScalaMap,
+        Dir, // for filer, any directory request
+
+        // only file types from here onwards
+        Config,
         MasterConfig,
-        Presets,
         Bank,
-        History,
+        History
     };
 }
 
@@ -285,7 +280,6 @@ namespace CONFIG // usage CONFIG::control::oscillatorSize
         XMLcompressionLevel,
         reportsDestination,
         savedInstrumentFormat,
-        showEnginesTypes,
         defaultStateStart = 16,
         hideNonFatalErrors,
         showSplash,
@@ -296,6 +290,7 @@ namespace CONFIG // usage CONFIG::control::oscillatorSize
         enableCLI,
         enableAutoInstance,
         enableSinglePath,
+        enableHighlight, // in banks
         historyLock,
         exposeStatus, // CLI only
 
@@ -311,6 +306,7 @@ namespace CONFIG // usage CONFIG::control::oscillatorSize
         alsaAudioDevice,
         alsaPreferredAudio,
         alsaSampleRate,
+
         // end of engine controls
         addPresetRootDir = 60,
         removePresetRootDir,
@@ -340,11 +336,13 @@ namespace BANK // usage BANK::control::
         deleteInstrument, // from bank
         selectFirstInstrumentToSwap,
         selectSecondInstrumentAndSwap,
+        lastSeenInBank,
 
         selectBank = 16, // in root, by ID or read ID + name
         renameBank, // or read just the name
-        createBank, // not yet - currently 'add' at top level
+        createBank,
         deleteBank, // not yet - currently 'remove' at top level
+        findBankSize,
         selectFirstBankToSwap,
         selectSecondBankAndSwap,
         importBank, // not yet (currently done in main)
@@ -352,8 +350,8 @@ namespace BANK // usage BANK::control::
 
         selectRoot = 32, // by ID - also reads the current one
         changeRootId, // change ID of current root
-        addNamedRoot, // not yet - currently add at top level
-        deselectRoot, // not yet - currently remove at top level
+        addNamedRoot, // link or create if not already there
+        deselectRoot, // remove reference, but don't touch contents
         installBanks,
         refreshDefaults
     };
@@ -462,6 +460,8 @@ namespace MIDI // usage MIDI::control::noteOn
         pitchWheelInner = 128,
         channelPressureInner,
         keyPressureInner,
+        soloType,
+        soloCC,
 
         pitchWheel = 640,
         channelPressure,
@@ -487,12 +487,13 @@ namespace MIDI // usage MIDI::control::noteOn
 namespace SCALES // usage SCALES::control::refFrequency
 {
     enum control : unsigned char {
-        refFrequency = 0,
+        enableMicrotonal = 0,
+        refFrequency,
         refNote,
         invertScale,
         invertedScaleCenter,
         scaleShift,
-        enableMicrotonal = 8,
+
         enableKeyboardMap = 16,
         lowKey,
         middleKey,
@@ -511,13 +512,13 @@ namespace SCALES // usage SCALES::control::refFrequency
 namespace MAIN // usage MAIN::control::volume
 {
     enum control : unsigned char {
-        volume = 0,
+        mono = 0,
+        volume,
         partNumber = 14,
         availableParts,
         panLawType,
         detune = 32,
         keyShift = 35,
-        mono,
         soloType = 48,
         soloCC,
 
@@ -536,10 +537,11 @@ namespace MAIN // usage MAIN::control::volume
         saveNamedScale,
         loadNamedState = 92,
         saveNamedState,
+        readLastSeen,
         loadFileFromList,
+        defaultPart,
         exportPadSynthSamples,
-
-        masterReset = 96,
+        masterReset,
         masterResetAndMlearn,
         openManualPDF = 100,
         startInstance = 104,
@@ -561,18 +563,22 @@ namespace MAIN // usage MAIN::control::volume
 namespace PART // usage PART::control::volume
 {
     enum control : unsigned char {
-        volume = 0,
+        enable = 0,
+        enableAdd,
+        enableSub,
+        enablePad,
+        enableKitLine,
+        volume,
         velocitySense,
         panning,
-        velocityOffset = 4,
+        velocityOffset,
         midiChannel,
         keyMode,
         channelATset,
         keyATset,
         portamento,
-        enable,
         kitItemMute,
-        minNote = 16,
+        minNote,
         maxNote,
         minToLastKey,
         maxToLastKey,
@@ -592,7 +598,6 @@ namespace PART // usage PART::control::volume
         effectType,
         effectDestination,
         effectBypass,
-        defaultInstrument = 96,
         padsynthParameters = 104,
         audioDestination = 120,
 
@@ -632,6 +637,9 @@ namespace PART // usage PART::control::volume
         midiFilterQ,
         midiFilterCutoff,
         midiBandwidth,
+        midiFMamp,
+        midiResonanceCenter,
+        midiResonanceBandwidth,
     // end of midi controls
 
         instrumentCopyright = 220,
@@ -674,16 +682,29 @@ namespace PART // usage PART::control::volume
         addMod8
     };
 
-    namespace aftertouchType { // all powers of 2 handled bit-wise
-        const unsigned int off = 0;
-        const unsigned int filterCutoff = 1;
-        const unsigned int filterCutoffDown = 2;
-        const unsigned int filterQ = 4;
-        const unsigned int filterQdown = 8;
-        const unsigned int pitchBend = 16;
-        const unsigned int pitchBendDown = 32;
-        const unsigned int volume = 64;
-        const unsigned int modulation = 128; // this must be highest bit
+    namespace aftertouchType {
+        enum {  // all powers of 2 handled bit-wise
+            off = 0,
+            filterCutoff,
+            filterCutoffDown,
+            filterQ = 4,
+            filterQdown = 8,
+            pitchBend = 16,
+            pitchBendDown = 32,
+            volume = 64,
+            modulation = 128 // this MUST be the highest bit
+        };
+    }
+
+    namespace envelope
+    {
+        enum groupmode : int {
+            amplitudeLin = 1,
+            amplitudeLog,
+            frequency,
+            filter,
+            bandwidth
+        };
     }
 }
 
@@ -693,8 +714,8 @@ namespace ADDSYNTH // usage ADDSYNTH::control::volume
         volume = 0,
         velocitySense,
         panning,
-
-        enable = 8,
+        enableRandomPan,
+        randomWidth,
 
         detuneFrequency = 32,
         octave = 35,
@@ -716,12 +737,14 @@ namespace ADDSYNTH // usage ADDSYNTH::control::volume
 namespace ADDVOICE // usage ADDVOICE::control::volume
 {
     enum control : unsigned char {
-        volume = 0,
+        enableVoice = 0,
+        volume,
         velocitySense,
         panning,
-        invertPhase = 4,
-        enableAmplitudeEnvelope = 7,
-        enableVoice,
+        enableRandomPan,
+        randomWidth,
+        invertPhase,
+        enableAmplitudeEnvelope,
         enableAmplitudeLFO,
 
         modulatorType = 16, // Off, Morph, Ring, PM, FM, PWM
@@ -782,8 +805,8 @@ namespace SUBSYNTH // usage SUBSYNTH::control::volume
         volume = 0,
         velocitySense,
         panning,
-
-        enable = 8,
+        enableRandomPan,
+        randomWidth,
 
         bandwidth = 16,
         bandwidthScale,
@@ -820,8 +843,8 @@ namespace PADSYNTH // usage PADSYNTH::control::volume
         volume = 0,
         velocitySense,
         panning,
-
-        enable = 8,
+        enableRandomPan,
+        randomWidth,
 
         bandwidth = 16,
         bandwidthScale,
@@ -914,32 +937,33 @@ namespace OSCILLATOR // usage OSCILLATOR::control::phaseRandomness
     enum wave : unsigned char {
         sine = 0,
         triangle,
-         pulse,
-         saw,
-         power,
-         gauss,
-         diode,
-         absSine,
-         pulseSine,
-         stretchSine,
-         chirp,
-         absStretchSine,
-         chebyshev,
-         square,
-         spike,
-         circle,
-         hyperSec,
-         user
+        pulse,
+        saw,
+        power,
+        gauss,
+        diode,
+        absSine,
+        pulseSine,
+        stretchSine,
+        chirp,
+        absStretchSine,
+        chebyshev,
+        square,
+        spike,
+        circle,
+        hyperSec,
+        user
     };
 }
 
 namespace RESONANCE // usage RESONANCE::control::maxDb
 {
     enum control : unsigned char {
-        maxDb = 0,
+        enableResonance = 0,
+        maxDb,
         centerFrequency,
         octaves,
-        enableResonance = 8,
+
         randomType = 10, // coarse, medium, fine
         interpolatePeaks = 20, // smooth, linear
         protectFundamental,
@@ -959,6 +983,7 @@ namespace LFOINSERT // usage LFOINSERT::control::speed
         amplitudeRandomness,
         type, // Sine, Tri, Sqr, R.up, R.dn, E1dn, E2dn
         continuous,
+        bpm,
         frequencyRandomness,
         stretch
     };
@@ -1051,12 +1076,12 @@ namespace EFFECT // usage EFFECT::type::none
     };
 }
 
+/*
+ * it is ESSENTIAL that the size is a power of 2
+ */
 union CommandBlock{
     struct{
-        union{
-            float F;
-            int32_t I;
-        } value;
+        float value;
         unsigned char type;
         unsigned char source;
         unsigned char control;
@@ -1072,9 +1097,5 @@ union CommandBlock{
     } data;
     char bytes [sizeof(data)];
 };
-/*
- * it is ESSENTIAL that this is a power of 2
- */
-const size_t commandBlockSize = sizeof(CommandBlock);
 
 #endif

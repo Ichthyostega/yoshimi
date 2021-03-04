@@ -1,7 +1,7 @@
 /*
     FileMgr.h - all file operations
 
-    Copyright 2019-2020 Will Godfrey and others.
+    Copyright 2019-2021 Will Godfrey and others.
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -32,6 +32,7 @@
 #include <fstream>
 #include <dirent.h>
 #include <unistd.h>
+#include <stdio.h>
 #include <zlib.h>
 
 #include "globals.h"
@@ -49,13 +50,13 @@ const string yoshInst =      ".xiy";
 const string anyInst =       ".xi*";
 const string patchset =      ".xmz";
 const string state =         ".state";
+const string presets =       ".xpz";
 const string scale =         ".xsz";
 const string scalaTuning =   ".scl";
 const string scalaKeymap =   ".kbm";
 const string vector =        ".xvy";
 const string mlearn =        ".xly";
 const string MSwave=         ".wav";
-const string window =        ".windows";
 
 }//(End)namespace EXTEN
 
@@ -100,7 +101,27 @@ inline void make_legit_pathname(string& fname)
 }
 
 
-inline bool isRegularFile(string chkpath)
+/*
+ * tries to find build time doc directory
+ * currently only used to find the latest user guide
+ */
+inline string localPath(void)
+{
+    char *tmpath;
+    tmpath = (char*) malloc(PATH_MAX);
+    getcwd (tmpath, PATH_MAX);
+    string path = string(tmpath);
+    free(tmpath);
+    size_t found = path.rfind("/");
+    if (found != string::npos)
+        path = path.substr(0, found + 1) + "doc";
+    else
+        path = "";
+    return path;
+}
+
+
+inline bool isRegularFile(const string& chkpath)
 {
     struct stat st;
     if (!stat(chkpath.c_str(), &st))
@@ -110,7 +131,7 @@ inline bool isRegularFile(string chkpath)
 }
 
 
-inline bool isDirectory(string chkpath)
+inline bool isDirectory(const string& chkpath)
 {
     struct stat st;
     if (!stat(chkpath.c_str(), &st))
@@ -127,7 +148,7 @@ inline bool isDirectory(string chkpath)
  * and to known locations, so buffer size should be adequate
  * and it avoids dependency on unreliable macros.
  */
-inline string findFile(string path, string filename, string extension)
+inline string findFile(const string& path, const string& filename, string extension)
 {
     if (extension.at(0) != '.')
         extension = "." + extension;
@@ -152,7 +173,7 @@ inline string findFile(string path, string filename, string extension)
 }
 
 
-inline string findLeafName(string name)
+inline string findLeafName(const string& name)
 {
     unsigned int name_start;
     unsigned int name_end;
@@ -162,7 +183,7 @@ inline string findLeafName(string name)
     return name.substr(name_start + 1, name_end - name_start - 1);
 }
 
-inline string findExtension(string name)
+inline string findExtension(const string& name)
 {
     size_t point = name.rfind('.');
     if (point == string::npos)
@@ -172,7 +193,7 @@ inline string findExtension(string name)
 
 
 // adds or replaces wrong extension with the right one.
-inline string setExtension(string fname, string ext)
+inline string setExtension(const string& fname, string ext)
 {
     if (ext.at(0) != '.')
         ext = "." + ext;
@@ -217,21 +238,28 @@ inline string setExtension(string fname, string ext)
 }
 
 
-inline bool copyFile(string source, string destination, char option)
+inline bool copyFile(const string& source, const string& destination, char option)
 {
     // options
-    // 0 = always write / overwrite
-    // 1 = only write if not already present
+    // 0 = only write if not already present
+    // 1 = always write / overwrite
     // 2 = only write if newer
 
-    if (option == 0 && isRegularFile(destination))
+    if (option == 0)
     {
-        //std::cout << "Writing " << destination << std::endl;
-        return 0; // counts as a successful write
+        if(isRegularFile(destination))
+        {
+            //std::cout << "Not writing " << destination << std::endl;
+            return 0; // counts as a successful write
+        }
+        else
+        {
+            ;//std::cout << "Writing " << destination << std::endl;
+        }
     }
 
-    //if (option == 1 && isRegularFile(destination))
-        //std::cout << "Exists " << destination << std::endl;
+    if (false)//option != 0 && isRegularFile(destination))
+        std::cout << "Exists " << destination << std::endl;
 
 
     struct stat sourceInfo;
@@ -266,7 +294,7 @@ inline bool copyFile(string source, string destination, char option)
     outfile.close();
     delete[] memblock;
 
-    if(option == 2)
+    if (option == 2)
     {
         struct timespec ts[2];
         ts[1].tv_sec = (sourceInfo.st_mtime % 10000000000);
@@ -277,7 +305,7 @@ inline bool copyFile(string source, string destination, char option)
 }
 
 
-inline uint32_t copyDir(string source, string destination, char option)
+inline uint32_t copyDir(const string& source, const string& destination, char option)
 {
     //std::cout << "source dir " << source << "  to " << destination << std::endl;
     DIR *dir = opendir(source.c_str());
@@ -303,8 +331,11 @@ inline uint32_t copyDir(string source, string destination, char option)
     return count | (missing << 16);
 }
 
-
-inline int listDir(std::list<string>* dirList, string dirName)
+/*
+ * this fills the given list with all contents removing the
+ * directory management from the calling functions.
+ */
+inline int listDir(std::list<string>* dirList, const string& dirName)
 {
     DIR *dir = opendir(dirName.c_str());
     if (dir == NULL)
@@ -324,8 +355,104 @@ inline int listDir(std::list<string>* dirList, string dirName)
     return count;
 }
 
+/*
+ * we return the contents as sorted, sequential lists in directories
+ * and file of the required type as a series of leaf names (as the
+ * root directory is already known). This reduces the size of the
+ * string to a manageable length.
+ * Directories are prefixed to make them easier to identify.
+ */
+inline void dir2string(string &wanted, string currentDir, string exten, int opt = 0)
+{
+    // options
+    // &1 allow hidden dirs
+    // &2 allow hidden files
+    // &4 allow wildcards
+    // &8 hide all subdirectories
+    // &16 hide files (just looking for dirs)
+    std::list<string> build;
+    wanted = "";
+    uint32_t found = listDir(&build, currentDir);
+    if (found == 0xffffffff)
+        return;
 
-inline string saveGzipped(char *data, string filename, int compression)
+    if (build.size() > 1)
+        build.sort();
+   if(currentDir.back() != '/')
+        currentDir += '/';
+    string line;
+    if (!(opt & 8))
+    {
+        for (std::list<string>::iterator it = build.begin(); it != build.end(); ++it)
+        { // get directories
+            if ((opt & 1) || string(*it).front() != '.') // no hidden dirs
+            {
+                line = *it;
+                if (line.back() != '/')
+                    line += '/';
+                if (isDirectory(currentDir + line))
+                    wanted += ("Dir: " + line + "\n");
+            }
+        }
+    }
+    if (opt & 16)
+    {
+        build.clear();
+        return;
+    }
+    bool instype = ((exten == ".xiz") | (exten == ".xiy")  | (exten == ".xi*"));
+    string last;
+    last.clear();
+    for (std::list<string>::iterator it = build.begin(); it != build.end(); ++it)
+    { // get files
+        if ((opt & 2) || string(*it).front() != '.') // no hidden files
+        {
+            string next;
+            line = currentDir + *it;
+            if (isRegularFile(line))
+            {
+                next.clear();
+                if ((opt & 4))
+                {
+                    next = *it;
+                    if (!next.empty())
+                        wanted += (next + "\n");
+                }
+                else
+                {
+                    if (instype)
+                    {
+                        if (findExtension(line) == ".xiy" || findExtension(line) == ".xiz")
+                            next = *it;
+                    }
+                    else
+                    {
+                    if (findExtension(line) == exten)
+                        next = *it;
+                    }
+
+                    // remove the extension, the source knows what it is
+                    // and it must exist to have been found!
+                    if (!next.empty())
+                    {
+                        size_t pos = next.rfind('.');
+                        next = next.substr(0, pos);
+                        // also remove instrument type duplicates
+                        if (next != last)
+                        {
+                            last = next;
+                            wanted += (next + "\n");
+                        }
+                    }
+                }
+            }
+        }
+    }
+    build.clear();
+}
+
+
+inline string saveGzipped(char *data, const string& filename, int compression)
 {
     char options[10];
     snprintf(options, 10, "wb%d", compression);
@@ -340,7 +467,7 @@ inline string saveGzipped(char *data, string filename, int compression)
 }
 
 
-inline ssize_t saveData(char *buff, size_t bytes, string filename)
+inline ssize_t saveData(char *buff, size_t bytes, const string& filename)
 {
     //std::cout << "filename " << filename << std::endl;
     int writefile = open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC,
@@ -356,7 +483,7 @@ inline ssize_t saveData(char *buff, size_t bytes, string filename)
 }
 
 
-inline bool saveText(string text, string filename)
+inline bool saveText(const string& text, const string& filename)
 {
     FILE *writefile = fopen(filename.c_str(), "w");
     if (!writefile)
@@ -368,7 +495,7 @@ inline bool saveText(string text, string filename)
 }
 
 
-inline char * loadGzipped(string _filename, string * report)
+inline char * loadGzipped(const string& _filename, string * report)
 {
     string filename = _filename;
     char *data = NULL;
@@ -421,7 +548,7 @@ inline char * loadGzipped(string _filename, string * report)
  * then be split up by the receiving functions without needing a file
  * handle, or any knowledge of the file system.
  */
-inline string loadText(string filename)
+inline string loadText(const string& filename)
 {
     FILE *readfile = fopen(filename.c_str(), "r");
     if (!readfile)
@@ -432,7 +559,7 @@ inline string loadText(string filename)
     // no Yoshimi text lines should get anywhere near this!
     while (!feof(readfile))
     {
-        if(fgets(line , 1024 , readfile))
+        if (fgets(line , 1024 , readfile))
             text += string(line);
     }
     fclose (readfile);
@@ -441,7 +568,7 @@ inline string loadText(string filename)
 }
 
 
-inline bool createEmptyFile(string filename)
+inline bool createEmptyFile(const string& filename)
 { // not currently used now
     std::fstream file;
     file.open(filename, std::ios::out);
@@ -452,7 +579,7 @@ inline bool createEmptyFile(string filename)
 }
 
 
-inline bool createDir(string dirname)
+inline bool createDir(const string& dirname)
 {
     if (isDirectory(dirname))
         return false; // don't waste time. it's already here!
@@ -483,14 +610,14 @@ inline bool createDir(string dirname)
  * linux but that may not always be true nor possibly other
  * OSs/filers, so you should always use the correct one.
  */
-inline bool deleteFile(string filename)
+inline bool deleteFile(const string& filename)
 {
     bool isOk = remove(filename.c_str()) == 0;
     return isOk;
 }
 
 
-inline bool deleteDir(string filename)
+inline bool deleteDir(const string& filename)
 {
     bool isOk = remove(filename.c_str()) == 0;
     return isOk;
@@ -502,14 +629,14 @@ inline bool deleteDir(string filename)
  * linux but that may not always be true nor possibly other
  * OSs/filers, so you should always use the correct one.
  */
-inline bool renameFile(string oldname, string newname)
+inline bool renameFile(const string& oldname, const string& newname)
 {
     bool isOk = rename(oldname.c_str(), newname.c_str()) == 0;
     return isOk;
 }
 
 
-inline bool renameDir(string oldname, string newname)
+inline bool renameDir(const string& oldname, const string& newname)
 {
     bool isOk = rename(oldname.c_str(), newname.c_str()) == 0;
     return isOk;
@@ -517,13 +644,13 @@ inline bool renameDir(string oldname, string newname)
 
 // replace build directory with a different
 // one in the compilation directory
-inline string extendLocalPath(string leaf)
+inline string extendLocalPath(const string& leaf)
 {
     char *tmpath = getcwd (NULL, 0);
     if (tmpath == NULL)
        return "";
 
-    string path = (string) tmpath;
+    string path(tmpath);
     free(tmpath);
     size_t found = path.rfind("yoshimi");
     if (found == string::npos)

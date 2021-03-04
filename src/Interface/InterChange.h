@@ -1,7 +1,7 @@
 /*
     InterChange.h - General communications
 
-    Copyright 2016-2020 Will Godfrey
+    Copyright 2016-2021 Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -38,7 +38,6 @@ class DataText;
 
 // used by main.cpp and SynthEngine.cpp
 extern std::string singlePath;
-extern std::string runGui;
 extern int startInstance;
 
 
@@ -86,14 +85,24 @@ class InterChange : private DataText
         static void *_sortResultsThread(void *arg);
         pthread_t  sortResultsThreadHandle;
         void muteQueueWrite(CommandBlock *getData);
+        std::string manualSearch(std::string dir2search, std::string path2match);
         void indirectTransfers(CommandBlock *getData, bool noForward = false);
+        int indirectVector(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text);
+        int indirectMidi(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text);
+        int indirectScales(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text);
+        int indirectMain(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text);
+        int indirectBank(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text);
+        int indirectConfig(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text);
+        int indirectPart(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text);
         std::string formatScales(std::string text);
-
-        unsigned int lockTime;
 
         unsigned int swapRoot1;
         unsigned int swapBank1;
         unsigned int swapInstrument1;
+        bool processAdd(CommandBlock *getData, SynthEngine *synth);
+        bool processVoice(CommandBlock *getData, SynthEngine *synth);
+        bool processSub(CommandBlock *getData, SynthEngine *synth);
+        bool processPad(CommandBlock *getData, SynthEngine *synth);
 
         void commandMidi(CommandBlock *getData);
         void vectorClear(int Nvector);
@@ -127,6 +136,11 @@ class InterChange : private DataText
 
     private:
         bool commandSendReal(CommandBlock *getData);
+
+        int searchInst;
+        int searchBank;
+        int searchRoot;
+        const size_t commandBlockSize = sizeof(CommandBlock);
 };
 
 #endif

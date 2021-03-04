@@ -11,7 +11,7 @@ comment {LFOUI.cc} {in_source not_in_header
 comment {Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009, Alan Calvert
-Copyright 2017-2019, Will Godfrey & others
+Copyright 2017-2020, Will Godfrey & others
 
 This file is part of yoshimi, which is free software: you can redistribute
 it and/or modify it under the terms of the GNU Library General Public
@@ -35,10 +35,10 @@ This file is a derivative of the ZynAddSubFX original
 decl {\#include <iostream>} {public local
 }
 
-decl {\#include "UI/MiscGui.h"} {public local
+decl {\#include "UI/WidgetPDial.h"} {public local
 }
 
-decl {\#include "UI/WidgetPDial.h"} {public local
+decl {\#include "UI/WidgetCheckButton.h"} {public local
 }
 
 decl {\#include <FL/Fl_Group.H>} {public local
@@ -77,18 +77,35 @@ pars=NULL;} {}
   }
   Function {make_window()} {} {
     Fl_Window lfoui {
-      xywh {228 588 230 70} type Double color 50 labelfont 1 labelsize 12 hide
+      xywh {916 422 275 70} type Double color 50 labelfont 1 labelsize 12 hide resizable
       class Fl_Group
     } {
       Fl_Group lfoparamswindow {
-        xywh {0 0 230 70} box PLASTIC_UP_BOX color 223 labelfont 1 labelsize 10 align 17
+        label LFO
+        xywh {0 0 275 70} box PLASTIC_UP_BOX color 223 labelfont 1 labelsize 10 align 17
       } {
+        Fl_Check_Button bpm {
+          label BPM
+          callback {send_data(0, group, LFOINSERT::control::bpm, o->value(), TOPLEVEL::type::Integer);
+updateLFOFreqType();
+updateRandFreq();}
+          tooltip {Lock LFO frequency to a multiple of the BPM.} xywh {230 5 45 15} down_box DOWN_BOX labelsize 10
+          class Fl_Check_Button2
+        }
+        Fl_Check_Button continous {
+          label {Cont.}
+          callback {//
+          send_data(0, group, LFOINSERT::control::continuous, o->value(), TOPLEVEL::type::Integer);}
+          tooltip {Continuous LFO
+
+Run the LFO continuously even when the sound is not playing. If BPM is on, then the LFO phase will be locked to the song position.} xywh {230 20 15 15} down_box DOWN_BOX labelsize 10
+          class Fl_Check_Button2
+        }
         Fl_Dial freq {
           label {Freq.}
           callback {//
           send_data(0, group, LFOINSERT::control::speed, o->value(), 0);}
           tooltip {LFO Frequency} xywh {5 20 30 30} box ROUND_UP_BOX labelsize 10 step 1e-05
-          code0 {o->setValueType(VC_LFOfreq);}
           class WidgetPDial
         }
         Fl_Dial intensity {
@@ -118,60 +135,26 @@ pars=NULL;} {}
           code0 {o->setValueType(VC_LFOstartphase);}
           class WidgetPDial
         }
-        Fl_Dial randomness {
-          label {A.R.}
-          callback {//
-          send_data(0, group, LFOINSERT::control::amplitudeRandomness, o->value(), TOPLEVEL::type::Integer);}
-          tooltip {LFO Amplitude Randomness} xywh {180 7 20 20} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
-          code1 {o->setValueType(VC_percent127);}
-          class WidgetPDial
-        }
         Fl_Choice LFOtype {
           label Type
           callback {//
           send_data(0, group, LFOINSERT::control::type, o->value(), TOPLEVEL::type::Integer);}
-          tooltip {LFO function} xywh {180 40 45 15} down_box BORDER_BOX labelsize 10 align 2 textsize 8
-        } {
-          MenuItem {} {
-            label SINE
-            xywh {20 20 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label TRI
-            xywh {30 30 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label SQR
-            xywh {30 30 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label {R.up}
-            xywh {40 40 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label {R.dn}
-            xywh {50 50 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label E1dn
-            xywh {60 60 100 20} labelfont 1 labelsize 10
-          }
-          MenuItem {} {
-            label E2dn
-            xywh {70 70 100 20} labelfont 1 labelsize 10
-          }
-        }
-        Fl_Check_Button continous {
-          label {C.}
+          tooltip {LFO function} xywh {220 50 50 15} down_box BORDER_BOX labelsize 9 align 1 textfont 1 textsize 10
+          code0 {o->add("Sine");o->add("Tri");o->add("Squr");o->add("R.up");o->add("R.dn");o->add("E1dn");o->add("E2dn");o->add("S&&H");o->add("RSqU");o->add("RSqD");}
+        } {}
+        Fl_Dial randomness {
+          label {Amp.}
           callback {//
-          send_data(0, group, LFOINSERT::control::continuous, o->value(), TOPLEVEL::type::Integer);}
-          tooltip {Continuous LFO} xywh {165 35 15 15} down_box DOWN_BOX labelsize 10 align 2
+          send_data(0, group, LFOINSERT::control::amplitudeRandomness, o->value(), TOPLEVEL::type::Integer);}
+          tooltip {LFO Amplitude Randomness} xywh {145 30 20 20} box ROUND_UP_BOX labelsize 10 align 1 maximum 127 step 1
+          code1 {o->setValueType(VC_percent127);}
+          class WidgetPDial
         }
         Fl_Dial freqrand {
-          label {F.R.}
+          label {Freq.}
           callback {//
           send_data(0, group, LFOINSERT::control::frequencyRandomness, o->value(), TOPLEVEL::type::Integer);}
-          tooltip {LFO Frequency Randomness} xywh {205 7 20 20} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          tooltip {LFO Frequency Randomness} xywh {170 30 20 20} box ROUND_UP_BOX labelsize 10 align 1 maximum 127 step 1
           code1 {o->setValueType(VC_percent127);}
           class WidgetPDial
         }
@@ -179,26 +162,26 @@ pars=NULL;} {}
           label {Str.}
           callback {//
           send_data(0, group, LFOINSERT::control::stretch, o->value(), TOPLEVEL::type::Integer);}
-          tooltip {LFO frequency stretch} xywh {144 30 20 20} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          tooltip {LFO frequency stretch} xywh {200 30 20 20} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
           code1 {o->setValueType(VC_LFOStretch);}
           class WidgetPDial
         }
-        Fl_Button {} {
+        Fl_Button lfoC {
           label C
           callback {//
           synth->getGuiMaster()->getPresetsUi()->copy(pars);}
-          xywh {145 10 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
+          xywh {195 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
         }
-        Fl_Button {} {
+        Fl_Button lfoP {
           label P
           callback {//
           synth->getGuiMaster()->getPresetsUi()->paste(pars,this);}
-          xywh {162 10 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
+          xywh {212 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
         }
-        Fl_Box lfotype {
-          label LFO
-          xywh {58 5 100 11} labelfont 1 labelsize 10
-        }
+        Fl_Group randgroup {
+          label {Rand.}
+          xywh {140 49 55 15} labelsize 11 align 16
+        } {}
       }
     }
   }
@@ -209,19 +192,47 @@ pars=NULL;} {}
     startphase->value(pars->Pstartphase);
     delay->value(pars->Pdelay);
     continous->value(pars->Pcontinous);
+    bpm->value(pars->Pbpm);
     stretch->value(pars->Pstretch);
     randomness->value(pars->Prandomness);
     freqrand->value(pars->Pfreqrand);
-    LFOtype->value(pars->PLFOtype);} {}
+    LFOtype->value(pars->PLFOtype);
+
+    updateLFOFreqType();
+    updateRandFreq();} {}
+  }
+  Function {lfoRtext(float dScale)} {} {
+    code {//
+    int size = int(dScale * 10);
+    lfoparamswindow->labelsize(size);
+    freq->labelsize(size);
+    intensity->labelsize(size);
+    delay->labelsize(size);
+    startphase->labelsize(size);
+    randomness->labelsize(size);
+    freqrand->labelsize(size);
+    stretch->labelsize(size);
+    randgroup->labelsize(size);
+
+    LFOtype->labelsize(int(9 * dScale));
+        LFOtype->textsize(size);
+
+    lfoC->labelsize(size);
+    lfoP->labelsize(size);
+
+    continous->labelsize(size);
+    bpm->labelsize(size);
+
+    lfoui->redraw();} {}
   }
   Function {send_data(int action, int group, int control, float value, int type)} {} {
     code {//
         type |= TOPLEVEL::type::Write;
-        collect_data(synth, value, action, (Fl::event_button() | type), control, npart, kititem, engine, TOPLEVEL::insert::LFOgroup, group);} {}
+        collect_data(synth, value, action, type, control, npart, kititem, engine, TOPLEVEL::insert::LFOgroup, group);} {}
   }
   Function {returns_update(CommandBlock *getData)} {} {
     code {//
-    float value = getData->data.value.F;
+    float value = getData->data.value;
     unsigned char control = getData->data.control;
     unsigned char part = getData->data.part;
     unsigned char eng = getData->data.engine;
@@ -262,6 +273,12 @@ pars=NULL;} {}
             continous->value(value != 0);
             break;
 
+        case LFOINSERT::control::bpm:
+            bpm->value(value != 0);
+            updateLFOFreqType();
+            updateRandFreq();
+            break;
+
         case LFOINSERT::control::frequencyRandomness:
             freqrand->value(value);
             break;
@@ -285,7 +302,18 @@ pars=NULL;} {}
     refresh();
 
     lfoui->resize(this->x(),this->y(),this->w(),this->h());
-    lfotype->label(this->label());} {}
+    lfoparamswindow->label(this->label());} {}
+  }
+  Function {updateLFOFreqType()} {return_type void
+  } {
+    code {freq->setValueType(getLFOFreqType(bpm->value()));} {}
+  }
+  Function {updateRandFreq()} {return_type void
+  } {
+    code {if (bpm->value() == 0)
+    freqrand->activate();
+else
+    freqrand->deactivate();} {}
   }
   decl {LFOParams *pars;} {private local
   }

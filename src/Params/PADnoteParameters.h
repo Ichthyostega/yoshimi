@@ -5,7 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
     Copyright 2017-2018, Will Godfrey
-    Copyright 2020 Kristian Amlie
+    Copyright 2020 Kristian Amlie & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -49,7 +49,6 @@ class PADnoteParameters : public Presets
 
         void defaults(void);
         void setPan(char pan, unsigned char panLaw);
-        bool randomPan(void) { return !PPanning; }
 
         void add2XML(XMLwrapper *xml);
         void getfromXML(XMLwrapper *xml);
@@ -126,7 +125,9 @@ class PADnoteParameters : public Presets
 
         // Amplitude parameters
         unsigned char PStereo;
-        unsigned char PPanning;  // 0 random, 64 center, 127 right
+        unsigned char PPanning;  // 1 left, 64 center, 127 right
+        bool  PRandom;
+        char  PWidth;
         float         pangainL;  // derived from PPanning
         float         pangainR;  // ^^
         unsigned char PVolume;

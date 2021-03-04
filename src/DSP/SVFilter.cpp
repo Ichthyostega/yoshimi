@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2009 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2020 Kristian Amlie
+    Copyright 2020-2021 Kristian Amlie, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -182,7 +182,7 @@ void SVFilter::singlefilterout(float *smp, fstage &x, parameters &par)
         x.high = par.q_sqrt * smp[i] - x.low - par.q * x.band;
         x.band = par.f * x.high + x.band;
         x.notch = x.high + x.low;
-        smp[i] = *out;
+        smp[i] = (*out);
     }
 }
 

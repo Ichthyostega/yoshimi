@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2018-2019, Will Godfrey
+    Copyright 2018-2021, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -117,13 +117,13 @@ Phaser::~Phaser()
     if (oldr != NULL)
         delete [] oldr;
 
-    if(xn1l)
+    if (xn1l)
         delete[] xn1l;
-    if(yn1l)
+    if (yn1l)
         delete[] yn1l;
-    if(xn1r)
+    if (xn1r)
         delete[] xn1r;
-    if(yn1r)
+    if (yn1r)
         delete[] yn1r;
 }
 
@@ -131,7 +131,7 @@ Phaser::~Phaser()
 // Effect output
 void Phaser::out(float *smpsl, float *smpsr)
 {
-    if(Panalog)
+    if (Panalog)
         AnalogPhase(smpsl, smpsr);
     else
         NormalPhase(smpsl, smpsr);
@@ -156,7 +156,7 @@ void Phaser::AnalogPhase(float *smpsl, float *smpsr)
     modl = limit(modl, ZERO_, ONE_);
     modr = limit(modr, ZERO_, ONE_);
 
-    if(Phyper)
+    if (Phyper)
     {
         // Triangle wave squared is approximately sine on bottom, triangle on top
         // Result is exponential sweep more akin to filter in synth with
@@ -177,7 +177,7 @@ void Phaser::AnalogPhase(float *smpsl, float *smpsr)
     oldlgain = modl;
     oldrgain = modr;
 
-   for(int i = 0; i < synth->sent_buffersize; ++i)
+   for (int i = 0; i < synth->sent_buffersize; ++i)
    {
         gl += diffl; // Linear interpolation between LFO samples
         gr += diffr;
@@ -185,7 +185,7 @@ void Phaser::AnalogPhase(float *smpsl, float *smpsr)
         float xnl(smpsl[i] * pangainL.getAndAdvanceValue());
         float xnr(smpsr[i] * pangainR.getAndAdvanceValue());
 
-        if(barber)
+        if (barber)
         {
             gl = fmodf((gl + 0.25f), ONE_);
             gr = fmodf((gr + 0.25f), ONE_);
@@ -201,7 +201,7 @@ void Phaser::AnalogPhase(float *smpsl, float *smpsr)
         efxoutr[i] = xnr;
     }
 
-    if(Poutsub)
+    if (Poutsub)
     {
         invSignal(efxoutl, synth->sent_buffersize);
         invSignal(efxoutr, synth->sent_buffersize);
@@ -212,7 +212,7 @@ void Phaser::AnalogPhase(float *smpsl, float *smpsr)
 float Phaser::applyPhase(float x, float g, float fb,
                          float &hpf, float *yn1, float *xn1)
 {
-    for(int j = 0; j < Pstages; ++j)
+    for (int j = 0; j < Pstages; ++j)
     { //Phasing routine
         mis = 1.0f + offsetpct * offset[j];
 
@@ -225,7 +225,7 @@ float Phaser::applyPhase(float x, float g, float fb,
         // This is 1/R. R is being modulated to control filter fc.
         float b    = (Rconst - g) / (d * Rmin);
         float gain = (CFs - b) / (CFs + b);
-        yn1[j] = gain * (x + yn1[j]) - xn1[j];
+        yn1[j] = (gain * (x + yn1[j]) - xn1[j]) + 1e-12; // anti-denormal
 
         // high pass filter:
         // Distortion depends on the high-pass part of the AP stage.
@@ -233,7 +233,7 @@ float Phaser::applyPhase(float x, float g, float fb,
 
         xn1[j] = x;
         x = yn1[j];
-        if(j == 1)
+        if (j == 1)
             x += fb; // Insert feedback after first phase stage
     }
     return x;
@@ -272,11 +272,11 @@ void Phaser::NormalPhase(float *smpsl, float *smpsr)
             // Left channel
             tmp = oldl[j];
             oldl[j] = gl * tmp + inl;
-            inl = tmp - gl * oldl[j];
+            inl = (tmp - gl * oldl[j]) + 1e-12; // anti-denormal
             // Right channel
             tmp = oldr[j];
             oldr[j] = gr * tmp + inr;
-            inr = tmp - gr * oldr[j];
+            inr = (tmp - gr * oldr[j]) + 1e-12; // anti-denormal
         }
 
         // Left/Right crossing
@@ -363,18 +363,18 @@ void Phaser::setstages(unsigned char Pstages_)
 {
     if (oldl != NULL)
         delete [] oldl;
-    if(xn1l)
+    if (xn1l)
         delete[] xn1l;
-    if(yn1l)
+    if (yn1l)
         delete[] yn1l;
     if (oldr != NULL)
         delete [] oldr;
-    if(xn1r)
+    if (xn1r)
         delete[] xn1r;
-    if(yn1r)
+    if (yn1r)
         delete[] yn1r;
 
-    Pstages = (Pstages_ >= MAX_PHASER_STAGES) ? MAX_PHASER_STAGES - 1 : Pstages_;
+    Pstages = Pstages_;
     oldl = new float[Pstages * 2];
     oldr = new float[Pstages * 2];
     xn1l = new float[Pstages];
@@ -524,7 +524,7 @@ unsigned char Phaser::getpar(int npar)
 
 float Phaserlimit::getlimits(CommandBlock *getData)
 {
-    int value = getData->data.value.F;
+    int value = getData->data.value;
     int control = getData->data.control;
     int request = getData->data.type & 3; // clear upper bits
     int presetNum = getData->data.engine;
@@ -590,9 +590,9 @@ float Phaserlimit::getlimits(CommandBlock *getData)
     switch (request)
     {
         case TOPLEVEL::type::Adjust:
-            if(value < min)
+            if (value < min)
                 value = min;
-            else if(value > max)
+            else if (value > max)
                 value = max;
             break;
         case TOPLEVEL::type::Minimum:

@@ -34,7 +34,10 @@ using func::asString;
 using func::asHexString;
 
 
-JackEngine::JackEngine(SynthEngine *_synth) : MusicIO(_synth), jackClient(NULL)
+JackEngine::JackEngine(SynthEngine *_synth, BeatTracker *_beatTracker) :
+    MusicIO(_synth, _beatTracker),
+    jackClient(NULL),
+    bpm(120)
 {
     audio.jackSamplerate = 0;
     audio.jackNframes = 0;
@@ -83,7 +86,7 @@ bool JackEngine::openJackClient(std::string server)
     //Andrew Deryabin: for multi-instance support add unique id to
     //instances other then default (0)
     unsigned int synthUniqueId = synth->getUniqueId();
-    if(synthUniqueId > 0)
+    if (synthUniqueId > 0)
     {
         char sUniqueId [256];
         memset(sUniqueId, 0, sizeof(sUniqueId));
@@ -178,7 +181,7 @@ bool JackEngine::Start(void)
       && !synth->getRuntime().midiDevice.empty()
       && synth->getRuntime().midiDevice != "default")
     {
-        if(jack_connect(jackClient, synth->getRuntime().midiDevice.c_str(), jack_port_name(midi.port)))
+        if (jack_connect(jackClient, synth->getRuntime().midiDevice.c_str(), jack_port_name(midi.port)))
         {
             synth->getRuntime().Log("Didn't find jack MIDI source '"
             + synth->getRuntime().midiDevice + "'", 1);
@@ -195,7 +198,7 @@ bail_out:
 
 void JackEngine::Close(void)
 {
-    if(synth->getRuntime().runSynth)
+    if (synth->getRuntime().runSynth)
     {
         synth->getRuntime().runSynth = false;
     }
@@ -227,9 +230,9 @@ void JackEngine::Close(void)
 void JackEngine::registerAudioPort(int partnum)
 {
     int portnum = partnum * 2;
-    if(partnum >=0 && partnum < NUM_MIDI_PARTS)
+    if (partnum >=0 && partnum < NUM_MIDI_PARTS)
     {
-        if(audio.ports [portnum] != NULL)
+        if (audio.ports [portnum] != NULL)
         {
             synth->getRuntime().Log("Jack port " + asString(partnum) + " already registered!", 2);
             return;
@@ -239,14 +242,14 @@ void JackEngine::registerAudioPort(int partnum)
          * direct O/P.
          */
         std::string portName;
-        if(synth->part [partnum] && synth->partonoffRead(partnum) && (synth->part [partnum]->Paudiodest > 1))
+        if (synth->part [partnum] && synth->partonoffRead(partnum) && (synth->part [partnum]->Paudiodest > 1))
         {
             portName = "track_" + asString(partnum + 1) + "_l";
             audio.ports[portnum] = jack_port_register(jackClient, portName.c_str(), JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
             portName = "track_" + asString(partnum + 1) + "_r";
             audio.ports[portnum + 1] = jack_port_register(jackClient, portName.c_str(), JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
 
-            if(audio.ports [portnum])
+            if (audio.ports [portnum])
             {
                 synth->getRuntime().Log("Registered jack port " + asString(partnum + 1));
             }
@@ -261,9 +264,9 @@ void JackEngine::registerAudioPort(int partnum)
 
 bool JackEngine::openAudio(void)
 {
-    if(jackClient == 0)
+    if (jackClient == 0)
     {
-        if(!connectServer(synth->getRuntime().audioDevice))
+        if (!connectServer(synth->getRuntime().audioDevice))
         {
             return false;
         }
@@ -287,9 +290,9 @@ bool JackEngine::openAudio(void)
 
 bool JackEngine::openMidi(void)
 {
-    if(jackClient == 0)
+    if (jackClient == 0)
     {
-        if(!connectServer(synth->getRuntime().midiDevice))
+        if (!connectServer(synth->getRuntime().midiDevice))
         {
             return false;
         }
@@ -306,7 +309,7 @@ bool JackEngine::openMidi(void)
     }
 
     std::cout << "client " << jackClient<< "  device " << synth->getRuntime().midiDevice << "  port " << jack_port_name(midi.port) << std::endl;
-    if(jack_connect(jackClient, synth->getRuntime().midiDevice.c_str(), jack_port_name(midi.port)))
+    if (jack_connect(jackClient, synth->getRuntime().midiDevice.c_str(), jack_port_name(midi.port)))
         {
             synth->getRuntime().Log("Didn't find jack MIDI source '"
             + synth->getRuntime().midiDevice + "'");
@@ -332,7 +335,7 @@ bool JackEngine::connectJackPorts(void)
         const char *port_name = jack_port_name(audio.ports[port + NUM_MIDI_PARTS * 2]);
         if ((ret = jack_connect(jackClient, port_name, playback_ports[port])))
         {
-            if(ret == EEXIST)
+            if (ret == EEXIST)
             {
             synth->getRuntime().Log(std::string(port_name)
                         + " is already connected to jack port " + std::string(playback_ports[port])
@@ -381,9 +384,11 @@ int JackEngine::processCallback(jack_nframes_t nframes)
     bool okaudio = true;
     bool okmidi = true;
 
-    if (midi.port)
+    if (midi.port) {
         // input exists, using jack midi
+        handleBeatValues(nframes);
         okmidi = processMidi(nframes);
+    }
     if (audio.ports[NUM_MIDI_PARTS * 2] && audio.ports[NUM_MIDI_PARTS * 2 + 1])
         // (at least) main outputs exist, using jack audio
         okaudio = processAudio(nframes);
@@ -393,10 +398,13 @@ int JackEngine::processCallback(jack_nframes_t nframes)
 
 bool JackEngine::processAudio(jack_nframes_t nframes)
 {
+    std::pair<float, float> beats(beatTracker->getBeatValues());
+    synth->setBeatValues(beats.first, beats.second);
+
     // Part buffers
     for (int port = 0; port < 2 * NUM_MIDI_PARTS; ++port)
     {
-        if(audio.ports [port])
+        if (audio.ports [port])
         {
             audio.portBuffs[port] =
                     (float*)jack_port_get_buffer(audio.ports[port], nframes);
@@ -447,7 +455,7 @@ void JackEngine::sendAudio(int framesize, unsigned int offset)
     int currentmax = synth->getRuntime().NumAvailableParts;
     for (int port = 0, idx = 0; idx < 2 * NUM_MIDI_PARTS; port++ , idx += 2)
     {
-        if(audio.ports [idx])
+        if (audio.ports [idx])
         {
             if (jack_port_connected(audio.ports[idx])) // just a few % improvement.
             {
@@ -487,9 +495,9 @@ bool JackEngine::processMidi(jack_nframes_t nframes)
     jack_midi_event_t jEvent;
     jack_nframes_t eventCount = jack_midi_get_event_count(portBuf);
 
-    for(idx = 0; idx < eventCount; ++idx)
+    for (idx = 0; idx < eventCount; ++idx)
     {
-        if(!jack_midi_event_get(&jEvent, portBuf, idx))
+        if (!jack_midi_event_get(&jEvent, portBuf, idx))
         {
             if (jEvent.size >= 1 && jEvent.size <= 4) // no interest in zero sized or long events
             {
@@ -499,6 +507,35 @@ bool JackEngine::processMidi(jack_nframes_t nframes)
         }
     }
     return true;
+}
+
+void JackEngine::handleBeatValues(jack_nframes_t nframes)
+{
+    jack_position_t pos;
+    jack_transport_state_t state = jack_transport_query(jackClient, &pos);
+
+    std::pair<float, float> beats(beatTracker->getBeatValues());
+
+    if (pos.valid & JackPositionBBT)
+        bpm = pos.beats_per_minute;
+
+    float bpmInc = (float)nframes * bpm
+        / ((float)audio.jackSamplerate * 60.0f);
+
+    beats.second += bpmInc;
+
+    if (!(pos.valid & JackPositionBBT) || state == JackTransportStopped)
+        // If stopped, keep oscillating.
+        beats.first += bpmInc;
+    else
+    {
+        // If rolling, sync to exact beat.
+        beats.first = (float)pos.tick / (float)pos.ticks_per_beat;
+        beats.first += pos.beat - 1;
+        beats.first += (pos.bar - 1) * pos.beats_per_bar;
+    }
+
+    beatTracker->setBeatValues(beats);
 }
 
 

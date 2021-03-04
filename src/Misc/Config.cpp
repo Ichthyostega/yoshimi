@@ -5,7 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
     Copyright 2013, Nikita Zlobin
-    Copyright 2014-2020, Will Godfrey & others
+    Copyright 2014-2021, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -137,7 +137,7 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
     alsaAudioDevice("default"),
     alsaMidiDevice("default"),
     loadDefaultState(false),
-    sessionStage(Session::Normal),
+    sessionStage(_SYS_::type::Normal),
     Interpolation(0),
     checksynthengines(1),
     xmlType(0),
@@ -177,6 +177,8 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
     currentPart(0),
     currentBank(0),
     currentRoot(0),
+    bankHighlight(false),
+    lastBankPart(UNUSED),
     currentPreset(0),
     tempBank(0),
     tempRoot(0),
@@ -190,7 +192,7 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
     sigIntActive(0),
     ladi1IntActive(0),
     sse_level(0),
-    programcommand(string("yoshimi")),
+    programcommand("yoshimi"),
     synth(_synth),
     bRuntimeSetupCompleted(false),
     exitType(EXIT_SUCCESS)
@@ -220,7 +222,7 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
 
 bool Config::Setup(int argc, char **argv)
 {
-    AntiDenormals(true);
+    //AntiDenormals(true); // see note below
     if (!synth->getIsLV2Plugin())
         loadCmdArgs(argc, argv);
     if (!loadConfig())
@@ -282,9 +284,7 @@ bool Config::Setup(int argc, char **argv)
 
 
 Config::~Config()
-{
-    AntiDenormals(false);
-}
+{;}
 
 
 void Config::flushLog(void)
@@ -293,7 +293,7 @@ void Config::flushLog(void)
     {
         while (LogList.size())
         {
-            std::cerr << LogList.front() << std::endl;
+            std::cout << LogList.front() << std::endl;
             LogList.pop_front();
         }
     }
@@ -309,7 +309,6 @@ void Config::clearPresetsDirlist(void)
 
 bool Config::loadConfig(void)
 {
-    //std::cout << "here load config" << std::endl;
     string cmd;
     string homedir = string(getenv("HOME"));
     if (homedir.empty() || !isDirectory(homedir))
@@ -344,7 +343,7 @@ bool Config::loadConfig(void)
     int thisInstance = synth->getUniqueId();
     defaultSession = defaultStateName + "-" + asString(thisInstance) + EXTEN::state;
     yoshimi += ("-" + asString(thisInstance));
-    if (thisInstance == 0 && sessionStage != Session::RestoreConf)
+    if (thisInstance == 0 && sessionStage != _SYS_::type::RestoreConf)
     {
         TextMsgBuffer::instance().init(); // sneaked it in here so it's early
 
@@ -366,25 +365,17 @@ bool Config::loadConfig(void)
                 }
             }
         }
-        //cout << presetDir << endl;
         definedBankRoot = localDir + "/found/";
         if (!isDirectory(definedBankRoot))
         { // only ever want to do this once
             if (createDir(definedBankRoot))
-            {
                 Log("Failed to create root directory '" + definedBankRoot + "'");
-            }
-            else
-            {
-                ;
-            }
-        //cout << definedBankRoot << endl;
         }
     }
 
     ConfigFile = ConfigDir + yoshimi;
 
-    if (thisInstance == 0 && sessionStage != Session::RestoreConf)
+    if (thisInstance == 0 && sessionStage != _SYS_::type::RestoreConf)
     {
         string newInstance0 = ConfigDir + yoshimi + EXTEN::instance;
         if (isRegularFile(baseConfig) && !isRegularFile(newInstance0), 0)
@@ -393,7 +384,7 @@ bool Config::loadConfig(void)
             Log("Reorganising config files.");
             if (isRegularFile(defaultStateName + EXTEN::state))
             {
-                if(!isRegularFile(defaultSession))
+                if (!isRegularFile(defaultSession))
                 {
                     renameFile(defaultStateName + EXTEN::state, defaultSession);
                     Log("Moving default state file.");
@@ -446,9 +437,11 @@ bool Config::loadConfig(void)
                     delete xml;
                 }
             }
-            if (thisInstance == 0 && sessionStage != Session::RestoreConf)
+            if (thisInstance == 0 && sessionStage != _SYS_::type::RestoreConf)
             {
-                if (lastXMLmajor < MIN_CONFIG_MAJOR || lastXMLminor < MIN_CONFIG_MINOR)
+                int currentVersion = lastXMLmajor * 10 + lastXMLminor;
+                int storedVersion = MIN_CONFIG_MAJOR * 10 + MIN_CONFIG_MINOR;
+                if (currentVersion < storedVersion)
                     oldConfig = true;
                 else
                     oldConfig = false;
@@ -458,10 +451,10 @@ bool Config::loadConfig(void)
 
     //std::cout << "Session Stage " << sessionStage << std::endl;
 
-    if(sessionStage == Session::RestoreConf)
+    if (sessionStage == _SYS_::type::RestoreConf)
         return true;
 
-    if (sessionStage != Session::Normal)
+    if (sessionStage != _SYS_::type::Normal)
     {
         XMLwrapper *xml = new XMLwrapper(synth, true);
         if (!xml)
@@ -471,10 +464,10 @@ bool Config::loadConfig(void)
             isok = xml->loadXMLfile(StateFile);
             if (isok)
             {
-                if (sessionStage == Session::StartupFirst)
-                    sessionStage = Session::StartupSecond;
-                else if (sessionStage == Session::JackFirst)
-                    sessionStage = Session::JackSecond;
+                if (sessionStage == _SYS_::type::StartupFirst)
+                    sessionStage = _SYS_::type::StartupSecond;
+                else if (sessionStage == _SYS_::type::JackFirst)
+                    sessionStage = _SYS_::type::JackSecond;
                 isok = extractConfigData(xml);
             }
             else
@@ -490,7 +483,7 @@ void Config::restoreConfig(SynthEngine *_synth)
     size_t tmpRoot = _synth->ReadBankRoot();
     size_t tmpBank = _synth->ReadBank();
     int tmpChanged = configChanged;
-    sessionStage = Session::RestoreConf;
+    sessionStage = _SYS_::type::RestoreConf;
 
     // restore old settings
     loadConfig();
@@ -517,11 +510,11 @@ void Config::defaultPresets(void)
         "/usr/share/zynaddsubfx/presets",
         "/usr/local/share/zynaddsubfx/presets",
         */
-        "end"
+        "@end"
     };
     int i = 0;
     int actual = 0;
-    while (presetdirs[i] != "end")
+    while (presetdirs[i] != "@end")
     {
         if (isDirectory(presetdirs[i]))
         {
@@ -536,7 +529,6 @@ void Config::defaultPresets(void)
 
 bool Config::extractBaseParameters(XMLwrapper *xml)
 {
-    //std::cout << "here load base" << std::endl;
     if (synth->getUniqueId() != 0)
         return true;
 
@@ -591,7 +583,7 @@ bool Config::extractBaseParameters(XMLwrapper *xml)
     }
 
     // the following three retained here for compatibility with old config type
-    if(!rateChanged)
+    if (!rateChanged)
         Samplerate = xml->getpar("sample_rate", Samplerate, 44100, 192000);
     if (!bufferChanged)
         Buffersize = xml->getpar("sound_buffer_size", Buffersize, MIN_BUFFER_SIZE, MAX_BUFFER_SIZE);
@@ -605,7 +597,6 @@ bool Config::extractBaseParameters(XMLwrapper *xml)
 
 bool Config::extractConfigData(XMLwrapper *xml)
 {
-    //std::cout << "Session Stage " << sessionStage << std::endl;
     if (!xml)
     {
         Log("extractConfigData on NULL");
@@ -621,24 +612,24 @@ bool Config::extractConfigData(XMLwrapper *xml)
      * default state must be first test as we need to abort
      * and fetch this instead
      */
-    if (sessionStage == Session::Normal)
+    if (sessionStage == _SYS_::type::Normal)
     {
         loadDefaultState = xml->getpar("defaultState", loadDefaultState, 0, 1);
         if (loadDefaultState)
         {
             xml->exitbranch(); // CONFIGURATION
             configChanged = true;
-            sessionStage = Session::Default;
+            sessionStage = _SYS_::type::Default;
             StateFile = defaultSession;
             Log("Loading default state");
             return true;
         }
     }
 
-    if (sessionStage != Session::InProgram)
+    if (sessionStage != _SYS_::type::InProgram)
     {
 
-        if(!rateChanged)
+        if (!rateChanged)
             Samplerate = xml->getpar("sample_rate", Samplerate, 44100, 192000);
         if (!bufferChanged)
             Buffersize = xml->getpar("sound_buffer_size", Buffersize, MIN_BUFFER_SIZE, MAX_BUFFER_SIZE);
@@ -668,12 +659,14 @@ bool Config::extractConfigData(XMLwrapper *xml)
             }
         }
 
+        bankHighlight = xml->getparbool("bank_highlight", bankHighlight);
+
         currentPreset = xml->getpar("presetsCurrentRootID", currentPreset, 0, MAX_PRESETS);
 
         Interpolation = xml->getpar("interpolation", Interpolation, 0, 1);
 
         // engines
-        if(!engineChanged)
+        if (!engineChanged)
             audioEngine = (audio_drivers)xml->getpar("audio_engine", audioEngine, no_audio, alsa_audio);
         if (!midiChanged)
             midiEngine = (midi_drivers)xml->getpar("midi_engine", midiEngine, no_midi, alsa_midi);
@@ -686,7 +679,7 @@ bool Config::extractConfigData(XMLwrapper *xml)
         // jack settings
         jackServer = xml->getparstr("linux_jack_server");
         jackMidiDevice = xml->getparstr("linux_jack_midi_dev");
-        if(!connectJackChanged)
+        if (!connectJackChanged)
             connectJackaudio = xml->getpar("connect_jack_audio", connectJackaudio, 0, 1);
 
         // midi options
@@ -701,9 +694,6 @@ bool Config::extractConfigData(XMLwrapper *xml)
         monitorCCin = xml->getparbool("monitor-incoming_CCs", monitorCCin);
         showLearnedCC = xml->getparbool("open_editor_on_learned_CC", showLearnedCC);
     }
-
-    //misc
-    //checksynthengines = xml->getpar("check_pad_synth", checksynthengines, 0, 1);
     if (tempRoot == 0)
         tempRoot = xml->getpar("root_current_ID", 0, 0, 127);
 
@@ -779,6 +769,8 @@ void Config::addConfigXML(XMLwrapper *xml)
     xml->addpar("virtual_keyboard_layout", VirKeybLayout + 1);
     xml->addpar("full_parameters", xmlmax);
 
+    xml->addparbool("bank_highlight", bankHighlight);
+
     xml->addpar("presetsCurrentRootID", currentPreset);
 
     xml->addpar("interpolation", Interpolation);
@@ -805,8 +797,8 @@ void Config::addConfigXML(XMLwrapper *xml)
     xml->addparbool("monitor-incoming_CCs", monitorCCin);
     xml->addparbool("open_editor_on_learned_CC",showLearnedCC);
     xml->addpar("check_pad_synth", checksynthengines);
-    xml->addpar(string("root_current_ID"), synth->ReadBankRoot());
-    xml->addpar(string("bank_current_ID"), synth->ReadBank());
+    xml->addpar("root_current_ID", synth->ReadBankRoot());
+    xml->addpar("bank_current_ID", synth->ReadBank());
     xml->endbranch(); // CONFIGURATION
 }
 
@@ -889,7 +881,7 @@ end_game:
 }
 
 
-void Config::Log(const string &msg, char tostderr)
+void Config::Log(const string& msg, char tostderr)
 {
     if ((tostderr & 2) && hideErrors)
         return;
@@ -907,7 +899,7 @@ void Config::LogError(const string &msg)
     Log("[ERROR] " + msg, 1);
 }
 
-void Config::StartupReport(string clientName)
+void Config::StartupReport(const string& clientName)
 {
     bool fullInfo = (synth->getUniqueId() == 0);
     if (fullInfo)
@@ -968,7 +960,7 @@ void Config::setRtprio(int prio)
 
 // general thread start service
 bool Config::startThread(pthread_t *pth, void *(*thread_fn)(void*), void *arg,
-                         bool schedfifo, char priodec, string name)
+                         bool schedfifo, char priodec, const string& name)
 {
     pthread_attr_t attr;
     int chk;
@@ -1104,7 +1096,7 @@ bool Config::restoreJsession(void)
 }
 
 
-void Config::setJackSessionSave(int event_type, string session_file)
+void Config::setJackSessionSave(int event_type, const string& session_file)
 {
     jackSessionFile = session_file;
     __sync_and_and_fetch(&jsessionSave, 0);
@@ -1269,9 +1261,15 @@ int Config::SSEcapability(void)
     #endif
 }
 
+/*
+ * The code below has been replaced with specific anti-denormal code where needed.
+ * Although the new code is slightly less efficient it is compatible across platforms,
+ * where as the 'daz' processor code is not available on platforms such as ARM.
+ */
 
-void Config::AntiDenormals(bool set_daz_ftz)
+/*void Config::AntiDenormals(bool set_daz_ftz)
 {
+    return;
     if (synth->getIsLV2Plugin())
     {
         return;// no need to set floating point rules for lv2 - host should control it.
@@ -1294,7 +1292,7 @@ void Config::AntiDenormals(bool set_daz_ftz)
             _mm_setcsr(_mm_getcsr() & ~(0x0030|0x8000|0x0040|0x6000));
         }
     #endif
-}
+}*/
 
 
 /**
@@ -1445,7 +1443,7 @@ static error_t parse_cmds (int key, char *arg, struct argp_state *state)
         case 'S':
             if (arg)
             {
-                settings->sessionStage = Session::StartupFirst;
+                settings->sessionStage = _SYS_::type::StartupFirst;
                 settings->configChanged = true;
                 settings->StateFile = string(arg);
             }
@@ -1455,7 +1453,7 @@ static error_t parse_cmds (int key, char *arg, struct argp_state *state)
         case 'u':
             if (arg)
             {
-                settings->sessionStage = Session::JackFirst;
+                settings->sessionStage = _SYS_::type::JackFirst;
                 settings->configChanged = true;
                 settings->StateFile = setExtension(string(arg), EXTEN::state);
             }
@@ -1508,43 +1506,6 @@ void GuiThreadMsg::processGuiMessages()
         {
             switch(msg->type)
             {
-
-                case GuiThreadMsg::UpdateMaster:
-                    guiMaster->refresh_master_ui(msg->index);
-                    break;
-
-                case GuiThreadMsg::UpdateConfig:
-                    if (guiMaster->configui)
-                        guiMaster->configui->update_config(msg->index);
-                    break;
-
-                case GuiThreadMsg::UpdatePaths:
-                    guiMaster->updatepaths(msg->index);
-                    break;
-
-                case GuiThreadMsg::UpdatePart:
-                    guiMaster->updatepart();
-                    guiMaster->updatepanel();
-                    break;
-
-                case GuiThreadMsg::RefreshCurBank:
-                    if (msg->data && guiMaster->bankui)
-                    {
-                        if (msg->index == 1)
-                        {
-                            // special case for first synth startup
-                            guiMaster->bankui->readbankcfg();
-                            guiMaster->bankui->rescan_for_banks();
-                        }
-                        guiMaster->bankui->set_bank_slot();
-                        guiMaster->bankui->refreshmainwindow();
-                    }
-                    break;
-
-                case GuiThreadMsg::GuiCheck:
-                    guiMaster->checkBuffer();
-                    break;
-
                 default:
                     break;
             }

@@ -1,25 +1,24 @@
-V1.7.1
+Version 2.0
 
-In brief:
+Highlights
+    Fully and independently resizeable (and remembered) windows.
+    Midi sync for engine LFOs.
 
-One instantly noticeable feature is a new 'Pan Law' entry in the main window.
+    More Instrument types available - and a request to set them!
+    Revised default instrument banks
+    Improved handling of instrument names.
+    Aftertouch values now saved
+    Pan Law setting now saved.
+    MIDI-learn entries increased to 400 lines.
+    Maximum delay time in CLI scripts increased to 30 seconds.
 
-There is a new channel based setting for Solo.
+    NRPN updates.
+    Improved CLI descriptions and reporting.
+    Documentation updated (New User guide in progress).
+    Data storage XDG compatible.
+    Improved LV2 performance.
 
-Another quite new development is both Channel and Key aftertouch.
-
-Legato performance has been improved and made smoother.
-
-There is a new waveform shape available to AddSynth and PadSynth.
-
-Storing and recovery of GUI window positioning has been improved.
-
-Instrument banks have also had a workover with added proctections.
-
-The underlying code continues to be refined and improved.
-
-More details are in /doc/Yoshimi_1.7.1_features.txt
-
+Further details in doc/Yoshimi_2.0_features.txt
 
 Yoshimi source code is available from either:
 https://sourceforge.net/projects/yoshimi

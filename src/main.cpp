@@ -2,7 +2,7 @@
     main.cpp
 
     Copyright 2009-2011, Alan Calvert
-    Copyright 2014-2020, Will Godfrey & others
+    Copyright 2014-2021, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -19,23 +19,14 @@
 
 */
 
-// approx timeout in seconds.
-#define SPLASH_TIME 3
-
-#include <sys/mman.h>
 #include <iostream>
 #include <string>
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <termios.h>
-#include <time.h>
-
-#include <map>
-#include <list>
 #include <pthread.h>
-#include <thread>
-#include <semaphore.h>
+
 #include <cstdio>
 #include <unistd.h>
 #include <readline/readline.h>
@@ -88,7 +79,7 @@ void newBlock()
     {
         if ((firstRuntime->activeInstance >> i) & 1)
         {
-            while(configuring)
+            while (configuring)
                 usleep(1000);
             // in case there is still an instance starting from elsewhere
             configuring = true;
@@ -125,7 +116,7 @@ void yoshimiSigHandler(int sig)
             sigaction(SIGUSR1, &yoshimiSigAction, NULL);
             break;
         case SIGUSR2: // start next instance
-            if(isSingleMaster)
+            if (isSingleMaster)
                 newInstance();
             sigaction(SIGUSR2, &yoshimiSigAction, NULL);
             break;
@@ -134,66 +125,70 @@ void yoshimiSigHandler(int sig)
     }
 }
 
-#ifdef GUI_FLTK
-void do_start(void)
-{
-    std::string startup = YOSHIMI_VERSION;
-    startup = "Yoshimi V " + startup + " is starting";
-    int w = 300;
-    int h = 36;
-    int sx = (Fl::w() - w) / 2;
-    int sy = (Fl::h() - h) / 2;
-    Fl_Window window(sx, sy, w, h, "yoshimi start");
-    Fl_Box box(2, 2, w-4, h-4, startup.c_str());
-    box.box(FL_EMBOSSED_FRAME);
-    box.labelsize(16);
-    box.labelfont(FL_BOLD);
-    box.labelcolor(YOSHI_COLOUR);
-    window.end();
-    window.border(false);
-
-    for (int i = 0; i < 10; ++i)
-    {
-        window.show();
-        usleep(10000);
-        Fl::check();
-    }
-}
-#endif
-
 static void *mainGuiThread(void *arg)
 {
     sem_post((sem_t *)arg);
     map<SynthEngine *, MusicClient *>::iterator it;
 
 #ifdef GUI_FLTK
-    static bool first = true;
-    if (first)
-    {
-        first = false;
-        Fl::lock();
-    }
+
+    Fl::lock();
     const int textHeight = 15;
     const int textY = 10;
     const unsigned char lred = 0xd7;
     const unsigned char lgreen = 0xf7;
     const unsigned char lblue = 0xff;
+    int winH, winW;
+    int LbX, LbY, LbW, LbH;
+    int timeout;
 
-    Fl_PNG_Image pix("splash_screen_png", splashPngData, splashPngLength);
-    Fl_Window winSplash(splashWidth, splashHeight, "yoshimi splash screen");
-    Fl_Box box(0, 0, splashWidth,splashHeight);
-    box.image(pix);
     std::string startup = YOSHIMI_VERSION;
-    startup = "V " + startup;
-    Fl_Box boxLb(0, splashHeight - textY - textHeight, splashWidth, textHeight, startup.c_str());
-    boxLb.box(FL_NO_BOX);
-    boxLb.align(FL_ALIGN_CENTER);
-    boxLb.labelsize(textHeight);
-    boxLb.labeltype(FL_NORMAL_LABEL);
-    boxLb.labelcolor(fl_rgb_color(lred, lgreen, lblue));
-    boxLb.labelfont(FL_HELVETICA | FL_BOLD);
+    if (showSplash)
+    {
+        startup = "V " + startup;
+        winH = splashHeight;
+        winW = splashWidth;
+        LbX = 0;
+        LbY = winH - textY - textHeight;
+        LbW = winW;
+        LbH = textHeight;
+        timeout = 5;
+    }
+    else
+    {
+        startup = "Yoshimi V " + startup + " is starting";
+        winH = 36;
+        winW = 300;
+        LbX = 2;
+        LbY = 2;
+        LbW = winW - 4;
+        LbH = winH -4;
+        timeout = 3;
+    }
+    Fl_PNG_Image pix("splash_screen_png", splashPngData, splashPngLength);
+    Fl_Window winSplash(winW, winH, "yoshimi splash screen");
+    Fl_Box box(0, 0, winW,winH);
+    Fl_Box boxLb(LbX, LbY, LbW, LbH, startup.c_str());
+
+    if (showSplash)
+    {
+        box.image(pix);
+        boxLb.box(FL_NO_BOX);
+        boxLb.align(FL_ALIGN_CENTER);
+        boxLb.labelsize(textHeight);
+        boxLb.labeltype(FL_NORMAL_LABEL);
+        boxLb.labelcolor(fl_rgb_color(lred, lgreen, lblue));
+        boxLb.labelfont(FL_HELVETICA | FL_BOLD);
+    }
+    else
+    {
+        boxLb.box(FL_EMBOSSED_FRAME);
+        boxLb.labelsize(16);
+        boxLb.labelfont(FL_BOLD);
+        boxLb.labelcolor(YOSHI_COLOUR);
+    }
     winSplash.border(false);
-    if (splashSet && bShowGui && showSplash)
+    if (splashSet && bShowGui)
     {
         winSplash.position((Fl::w() - winSplash.w()) / 2, (Fl::h() - winSplash.h()) / 2);
     }
@@ -201,36 +196,18 @@ static void *mainGuiThread(void *arg)
         splashSet = false;
     do
     {
-            usleep(33333);
+        winSplash.show();
+        usleep(33333);
     }
 #endif
     while (firstSynth == NULL); // just wait
 
-#ifdef GUI_FLTK
-    GuiThreadMsg::sendMessage(firstSynth, GuiThreadMsg::NewSynthEngine, 0);
-#endif
     if (firstRuntime->autoInstance)
         newBlock();
     while (firstRuntime->runSynth)
     {
         firstRuntime->signalCheck();
-#ifdef GUI_FLTK
-        if (bShowGui)
-        {
-            if (splashSet)
-            {
-                winSplash.show();
-                usleep(1000);
-                if(time(&here_and_now) < 0) // no time?
-                    here_and_now = old_father_time + SPLASH_TIME;
-                if ((here_and_now - old_father_time) >= SPLASH_TIME)
-                {
-                    splashSet = false;
-                    winSplash.hide();
-                }
-            }
-        }
-#endif
+
         for (it = synthInstances.begin(); it != synthInstances.end(); ++it)
         {
             SynthEngine *_synth = it->first;
@@ -264,14 +241,17 @@ static void *mainGuiThread(void *arg)
 #ifdef GUI_FLTK
             if (bShowGui)
             {
-                for (int i = 0; !_synth->getRuntime().LogList.empty() && i < 5; ++i)
+                MasterUI *guiMaster = _synth->getGuiMaster(false);
+                if (guiMaster)
                 {
-                    MasterUI *guiMaster = _synth->getGuiMaster(false);
-                    if (guiMaster)
-                    { guiMaster->Log(_synth->getRuntime().LogList.front());
-                        _synth->getRuntime().LogList.pop_front();
+                    if (guiMaster->masterwindow)
+                    {
+                        guiMaster->checkBuffer();
+                        Fl::check();
                     }
                 }
+                else
+                    GuiThreadMsg::processGuiMessages();
             }
 #endif
         }
@@ -290,8 +270,22 @@ static void *mainGuiThread(void *arg)
 #ifdef GUI_FLTK
             if (bShowGui)
             {
+                if (splashSet)
+                {
+                    if (showSplash)
+                    {
+                        winSplash.show(); // keeps it in front;
+                        usleep(1000);
+                    }
+                    if (time(&here_and_now) < 0) // no time?
+                        here_and_now = old_father_time + timeout;
+                    if ((here_and_now - old_father_time) >= timeout)
+                    {
+                        splashSet = false;
+                        winSplash.hide();
+                    }
+                }
                 Fl::wait(0.033333);
-                GuiThreadMsg::processGuiMessages();
             }
             else
 #endif
@@ -343,14 +337,14 @@ int mainCreateNewInstance(unsigned int forceId)
     if (synth->getRuntime().showGui)
     {
         synth->setWindowTitle(musicClient->midiClientName());
-        if(firstSynth != NULL) //FLTK is not ready yet - send this message later for first synth
-        {
+        if (firstSynth != NULL) //FLTK is not ready yet - send this message later for first synth
             GuiThreadMsg::sendMessage(synth, GuiThreadMsg::NewSynthEngine, 0);
-        }
+
+        // not too happy this is possible, maybe gui should be wrapped in a namespace
         if (synth->getRuntime().audioEngine < 1)
-            fl_alert("Yoshimi can't find an available sound system. Running with no Audio");
+            alert(synth, "Yoshimi can't find an available sound system. Running with no Audio");
         if (synth->getRuntime().midiEngine < 1)
-            fl_alert("Yoshimi can't find an input system. Running with no MIDI");
+            alert(synth, "Yoshimi can't find an input system. Running with no MIDI");
     }
     else
         synth->getRuntime().toConsole = false;
@@ -431,11 +425,9 @@ int main(int argc, char *argv[])
      */
     std::string Home = getenv("HOME");
     std::string Config = file::loadText(Home + "/.config/yoshimi/yoshimi.config");
-    bool runGui = false;
     if (Config.empty())
     {
         std::cout << "Not there" << std::endl;
-        runGui = true;
         showSplash = true;
     }
     else
@@ -445,15 +437,7 @@ int main(int argc, char *argv[])
         while (!Config.empty() && count < 16 && found < 3)
         { // no need to count beyond 16 lines!
             std::string line = func::nextLine(Config);
-            //std::cout << count << "  " << line  << std::endl;
             ++ count;
-
-            if (line.find("enable_gui") != std::string::npos)
-            {
-                ++ found;
-                if (line.find("yes") != std::string::npos)
-                    runGui = true;
-            }
             if (line.find("enable_splash") != std::string::npos)
             {
                 ++ found;
@@ -477,36 +461,15 @@ int main(int argc, char *argv[])
 
         if ((firstTime - secondTime) > 0)
         {
-                kill(firstpid, SIGUSR2); // this just sends a message
-                return 0;
+                kill(firstpid, SIGUSR2); // send message to 1st instance
+                return 0; // exit quietly
         }
     }
 #ifdef GUI_FLTK
-    bool useGui = false;
-    if (runGui)
-        useGui = true;
-    if (argc > 1)
-    {
-        for (int n = 1; n < argc; ++ n)
-            if (string(argv[n]) == "-i" || string(argv[n]) == "--no-gui" )
-            {
-                useGui = false; // overRide saved settings
-                break;
-            }
-            else if (string(argv[n]) == "-I" || string(argv[n]) == "--gui" )
-            {
-                useGui = true; // overRide saved settings
-                break;
-            }
-    }
-    if (useGui)
-        do_start();
-
     bool guiStarted = false;
     time(&old_father_time);
     here_and_now = old_father_time;
 #endif
-
 
     struct termios  oldTerm;
     tcgetattr(0, &oldTerm);
@@ -537,7 +500,7 @@ int main(int argc, char *argv[])
 
         std::cout << "\nExisting config older than " << MIN_CONFIG_MAJOR << "." << MIN_CONFIG_MINOR << "\nCheck settings, save and restart.\n"<< std::endl;
     }
-    if(sem_init(&semGui, 0, 0) == 0)
+    if (sem_init(&semGui, 0, 0) == 0)
     {
         if (pthread_attr_init(&attr) == 0)
         {
@@ -576,11 +539,14 @@ int main(int argc, char *argv[])
     // following moved here for faster first synth startup
     firstSynth->loadHistory();
     firstSynth->installBanks();
+#ifdef GUI_FLTK
+    GuiThreadMsg::sendMessage(firstSynth, GuiThreadMsg::NewSynthEngine, 0);
+#endif
 
     //create command line processing thread
     pthread_t cmdThr;
 
-    if(bShowCmdLine)
+    if (bShowCmdLine)
     {
         if (pthread_attr_init(&attr) == 0)
         {
@@ -594,7 +560,7 @@ int main(int argc, char *argv[])
 
     void *ret;
     pthread_join(thr, &ret);
-    if(ret == (void *)1)
+    if (ret == (void *)1)
     {
         goto bail_out;
     }
@@ -608,7 +574,7 @@ bail_out:
         SynthEngine *_synth = it->first;
         MusicClient *_client = it->second;
         _synth->getRuntime().runSynth = false;
-        if(!bExitSuccess)
+        if (!bExitSuccess)
         {
             _synth->getRuntime().Log("Bail: Yoshimi stages a strategic retreat :-(");
         }
@@ -625,7 +591,7 @@ bail_out:
             delete _synth;
         }
     }
-    if(bShowCmdLine)
+    if (bShowCmdLine)
         tcsetattr(0, TCSANOW, &oldTerm);
     if (bExitSuccess)
     {

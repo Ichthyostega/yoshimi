@@ -2,6 +2,7 @@
     YoshimiLV2Plugin
 
     Copyright 2014, Andrew Deryabin <andrewderyabin@gmail.com>
+    Copyright 2020 Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -26,6 +27,7 @@
 #include "lv2/lv2plug.in/ns/ext/atom/util.h"
 #include "lv2/lv2plug.in/ns/ext/midi/midi.h"
 #include "lv2/lv2plug.in/ns/ext/state/state.h"
+#include "lv2/lv2plug.in/ns/ext/time/time.h"
 #include "lv2/lv2plug.in/ns/ext/urid/urid.h"
 #include "lv2/lv2plug.in/ns/extensions/ui/ui.h"
 #include "lv2extui.h"
@@ -35,8 +37,6 @@
 #include <string>
 #include <vector>
 #include <semaphore.h>
-#include <jack/jack.h>
-//#include <jack/ringbuffer.h>
 
 #include "Misc/SynthEngine.h"
 #include "Interface/InterChange.h"
@@ -57,23 +57,32 @@ private:
    LV2_URID _midi_event_id;
    LV2_URID _yoshimi_state_id;
    LV2_URID _atom_string_id;
+   LV2_URID _atom_long;
+   LV2_URID _atom_float;
    LV2_URID _atom_type_chunk;
    LV2_URID _atom_type_sequence;
    LV2_URID _atom_state_changed;
    LV2_URID _atom_object;
+   LV2_URID _atom_blank;
    LV2_URID _atom_event_transfer;
+   LV2_URID _atom_position;
+   LV2_URID _atom_bpb;
+   LV2_URID _atom_bar;
+   LV2_URID _atom_bar_beat;
+   LV2_URID _atom_bpm;
    uint32_t _bufferPos;
    uint32_t _offsetPos;
    sem_t _midiSem;
 
    struct midi_event {
-       jack_nframes_t time;
+       uint32_t time;
        char data[4]; // all events of interest are <= 4bytes
    };
 
+   float _bpm;
+
    float *_bFreeWheel;
 
-   jack_ringbuffer_t *_midiRingBuf;
    pthread_t _pIdleThread;
 
    float *lv2Left [NUM_MIDI_PARTS + 1];
@@ -106,7 +115,7 @@ public:
    virtual void registerAudioPort(int) {}
 
    //static methods
-   static LV2_Handle	instantiate (const struct _LV2_Descriptor *, double sample_rate, const char *bundle_path, const LV2_Feature *const *features);
+   static LV2_Handle	instantiate (const LV2_Descriptor *, double sample_rate, const char *bundle_path, const LV2_Feature *const *features);
    static void connect_port(LV2_Handle instance, uint32_t port, void *data_location);
    static void activate(LV2_Handle instance);
    static void deactivate(LV2_Handle instance);
@@ -159,7 +168,7 @@ public:
     YoshimiLV2PluginUI(const char *, LV2UI_Write_Function, LV2UI_Controller, LV2UI_Widget *widget, const LV2_Feature *const *features);
     ~YoshimiLV2PluginUI();
     bool init();
-    static LV2UI_Handle	instantiate(const struct _LV2UI_Descriptor *descriptor, const char *plugin_uri, const char *bundle_path, LV2UI_Write_Function write_function, LV2UI_Controller controller, LV2UI_Widget *widget, const LV2_Feature *const *features);
+    static LV2UI_Handle	instantiate(const LV2UI_Descriptor *descriptor, const char *plugin_uri, const char *bundle_path, LV2UI_Write_Function write_function, LV2UI_Controller controller, LV2UI_Widget *widget, const LV2_Feature *const *features);
     static void cleanup(LV2UI_Handle ui);
     static void static_guiClosed(void *arg);
     void run();
