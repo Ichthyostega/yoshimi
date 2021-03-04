@@ -1,3 +1,18 @@
+yoshimi (2.0~dfsg0-1) UNRELEASED; urgency=medium
+
+  * New upstream version 2.0
+
+  [ Dennis Braun ]
+  * Remove unnecessary ldflags from d/rules
+  * Bump d/copyright year
+  * Bump Standards-Ver to 4.5.1, no changes needed
+  * Update lintian-overrides
+  * d/copyright: Update files and years
+    + Change license for desktop/metainfo/* and Util/YoshimiSplash.svg to CC-BY-4.0
+  * Fix license name of yoshimi.appdata.xml to make lintian happy
+
+ -- Dennis Braun <d_braun@kabelmail.de>  Sun, 22 Dec 2019 00:41:11 +0100
+
 yoshimi (1.7.1-1~buster) Lumiera-buster-tool; urgency=low
 
   * New upstream version 1.7.1
@@ -325,12 +340,6 @@ yoshimi (1.4.1-1~stretch) Lumiera-stretch-tools; urgency=low
   * build against jackd2
 
  -- Hermann Vosseler <deb@ichthyostega.de>  Fri, 04 May 2018 18:06:55 +0200
-
-yoshimi (1.4.1-1~bpo.jessie1) Lumiera-jessie-tools; urgency=low
-
-  * Backport to Jessie
-
- -- Hermann Vosseler <deb@ichthyostega.de>  Fri, 11 Nov 2016 22:41:44 +0100
 
 yoshimi (1.4.1-1) unstable; urgency=medium
 

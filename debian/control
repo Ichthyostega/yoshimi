@@ -2,8 +2,10 @@ Source: yoshimi
 Section: sound
 Priority: optional
 Maintainer: Debian Multimedia Maintainers <debian-multimedia@lists.debian.org>
-Uploaders: Jaromír Mikeš <mira.mikes@seznam.cz>,
-  Hermann Vosseler <deb@ichthyostega.de>
+Uploaders:
+ Dennis Braun <d_braun@kabelmail.de>,
+ Jaromír Mikeš <mira.mikes@seznam.cz>,
+ Hermann Vosseler <deb@ichthyostega.de>
 Build-Depends:
  cmake,
  debhelper (>= 10~),
@@ -27,7 +29,7 @@ Build-Depends:
  pkg-config,
  sharutils,
  zlib1g-dev
-Standards-Version: 4.4.5
+Standards-Version: 4.5.1
 Rules-Requires-Root: no
 Vcs-Git: https://github.com/Ichthyostega/yoshimi.git -d deb
 Homepage: https://yoshimi.sourceforge.io

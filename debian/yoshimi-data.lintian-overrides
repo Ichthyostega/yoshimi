@@ -1,0 +1,2 @@
+# This file describes content of the directory
+package-contains-documentation-outside-usr-share-doc usr/share/yoshimi/examples/*.txt
