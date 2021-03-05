@@ -1,17 +1,19 @@
-yoshimi (2.0~dfsg0-1) UNRELEASED; urgency=medium
+yoshimi (2.0-1~buster) Lumiera-buster-tool; urgency=low
 
   * New upstream version 2.0
+  * Rebuild/Backport for Debian/Buster(stable).
+  * unofficial DEB package by Ichthyostega
 
   [ Dennis Braun ]
   * Remove unnecessary ldflags from d/rules
   * Bump d/copyright year
   * Bump Standards-Ver to 4.5.1, no changes needed
   * Update lintian-overrides
-  * d/copyright: Update files and years
+  * debian/copyright: Update files and years
     + Change license for desktop/metainfo/* and Util/YoshimiSplash.svg to CC-BY-4.0
   * Fix license name of yoshimi.appdata.xml to make lintian happy
 
- -- Dennis Braun <d_braun@kabelmail.de>  Sun, 22 Dec 2019 00:41:11 +0100
+ -- Hermann Vosseler <deb@ichthyostega.de>  Fri, 05 Mar 2021 01:12:42 +0100
 
 yoshimi (1.7.1-1~buster) Lumiera-buster-tool; urgency=low
 
