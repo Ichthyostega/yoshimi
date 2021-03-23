@@ -11,7 +11,6 @@ Build-Depends:
  dssi-dev,
  fluid,
  libasound2-dev,
- libboost-dev,
  libcairo2-dev,
  libfftw3-dev,
  libfltk1.3-dev,
