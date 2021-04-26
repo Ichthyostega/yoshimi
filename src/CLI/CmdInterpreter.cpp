@@ -4841,10 +4841,15 @@ int CmdInterpreter::waveform(Parser& input, unsigned char controlType)
     {
         if (input.matchnMove(1, "type"))
         {
-            string name = string{input}.substr(0,3);
-            value = stringNumInList(name, filtertype, 3);
-            if (value == -1)
-                return REPLY::value_msg;
+            if (controlType != TOPLEVEL::type::Write)
+                value = 0; // dummy value
+            else
+            {
+                string name = string{input}.substr(0,3);
+                value = stringNumInList(name, filtertype, 3);
+                if (value == -1)
+                    return REPLY::value_msg;
+            }
             cmd = OSCILLATOR::control::filterType;
         }
         else if (input.matchnMove(1, "par"))
@@ -5080,6 +5085,13 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
         }
     }
 
+    if (input.matchnMove(2, "clear"))
+    {
+        if (controlType != TOPLEVEL::type::Write)
+            return REPLY::writeOnly_msg;
+        return sendNormal(synth, 0, npart, controlType, MAIN::control::defaultPart, TOPLEVEL::section::main);
+    }
+
     if (input.matchnMove(2, "program") || input.matchnMove(1, "instrument"))
     {
         if (controlType != TOPLEVEL::type::Write)
@@ -5087,11 +5099,7 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
             Runtime.Log("Part name is " + synth->part[npart]->Pname);
             return REPLY::done_msg;
         }
-        /*if (input.matchnMove(2, "clear"))
-        {
-            sendDirect(synth, 0, 0, controlType, MAIN::control::defaultPart, npart);
-            return REPLY::done_msg;
-        }*/
+
         if (!input.isAtEnd()) // force part not channel number
         {
             if (input.matchnMove(1, "group"))
@@ -5328,7 +5336,7 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
         return sendNormal(synth, 0, tmp, controlType, cmd, npart);
     }
 
-    if (input.matchnMove(1, "channel"))
+    if (input.matchnMove(2, "channel"))
     {
         tmp = string2int127(input);
         if (controlType == TOPLEVEL::type::Write && tmp < 1)

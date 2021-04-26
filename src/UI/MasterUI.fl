@@ -43,6 +43,9 @@ decl {\#define PANEL_DUAL_X 530} {public local
 decl {\#define PANEL_DUAL_Y 600} {public local
 }
 
+decl {\#define FILER_SIZE 1500} {public local
+}
+
 decl {\#include <FL/Fl_Tooltip.H>} {public local
 }
 
@@ -132,7 +135,7 @@ decl {int lineitem;} {public local
 class FilerLine {: {public Fl_Group}
 } {
   Function {make_window()} {} {
-    Fl_Window filerline {
+    Fl_Window filerlist {
       xywh {522 305 440 20} type Double color 7 hide
       class Fl_Group
     } {
@@ -184,23 +187,44 @@ lineitem = n;}
   Function {FilerLine(int x, int y, int w, int h, const char *label=0):Fl_Group(x,y,w,h,label)} {} {
     code {n = 0;} {}
   }
-  Function {init(SynthEngine *synth_, int n_)} {} {
+  Function {init(SynthEngine *synth_, int n_, bool isDir_, string typeName_, string title_)} {} {
     code {//
 
     synth = synth_;
     n = n_;
+    isDir = isDir_;
+    typeName = typeName_;
+    title = title_;
     make_window();
+    if (isDir)
+    {
+        dirIcon->show();
+        fileIcon->hide();
+    }
+    else
+    {
+        dirIcon->hide();
+        fileIcon->show();
+        type->copy_label(typeName.c_str());
+        name->copy_label(title.c_str());
+    }
     show();
     end();} {}
   }
   decl {int n;} {private local
   }
+  decl {bool isDir;} {private local
+  }
+  decl {string typeName;} {private local
+  }
+  decl {string title;} {private local
+  }
   decl {SynthEngine *synth;} {private local
   }
   Function {~FilerLine()} {} {
     code {//
-    filerline->hide();
-    delete (filerline);} {}
+    filerlist->hide();
+    delete (filerlist);} {}
   }
 }
 
@@ -208,11 +232,8 @@ class MasterUI {: {private GuiUpdates}
 } {
   Function {MasterUI(SynthEngine *_synth)} {} {
     code {//
-      for (int i = 0; i < MIDI_LEARN_BLOCK; ++i)
-      {
-          filerline[i] = NULL;//new FilerLine(0, 0, 440, 20, "");
-          //filerline[i]->init(synth, i);
-      }
+      for (int i = 0; i < FILER_SIZE; ++i)
+          filerlist[i] = NULL;
 
       synth = _synth;
       presetsui = NULL;
@@ -1523,7 +1544,7 @@ Alan Calvert started the project}
     filerback->activate();
     filerfave->activate();
     filerclose->activate();
-    filerlist->show();
+    filerscroll->show();
     favourites->hide();}
           tooltip {Cancel any selection and return to filer window} xywh {455 61 70 20} labelfont 1 labelsize 12
         }
@@ -1561,7 +1582,7 @@ Alan Calvert started the project}
           tooltip {Set the current path to the selected entry and exit} xywh {20 61 70 20} labelfont 1 labelsize 12
         }
       }
-      Fl_Scroll filerlist {
+      Fl_Scroll filerscroll {
         xywh {10 96 444 244} type VERTICAL color 7
       } {}
     }
@@ -1732,7 +1753,7 @@ Alan Calvert started the project}
         H = filerDH;
     }
     checkSane(X, Y, W, H, filerDW, filerDH);
-    filerwindow->size(W, H);
+    filerwindow->resize(X, Y, W, H);
 
     lastfilerW = 0;
     filerdone = false;
@@ -1824,49 +1845,36 @@ Alan Calvert started the project}
 
         file::dir2string(tofetch, filerpath, filerext, options);
 
-        filerlist->clear();
-        for (int i = 0; i < MIDI_LEARN_BLOCK; ++i)
-            filerline[i] = NULL;
+        filerscroll->clear();
         lineno = 0;
         //std::cout << "*** list start ***" << std::endl;
         while(!tofetch.empty())
         {
             size_t pos = tofetch.find("\\n");
             string next = tofetch.substr(0, pos);
-
-            filerline[lineno] = new FilerLine(0, 0, 390, 20);
-            filerline[lineno]->init(synth,lineno);
-
+            bool isDir = false;
+            filerlist[lineno] = new FilerLine(0, 0, 390, 20);
             if (next.find("Dir:") != std::string::npos)
             {
                 next = next.substr(5);
-                filerline[lineno]->dirIcon->show();
-                filerline[lineno]->fileIcon->hide();
+                isDir = true;
             }
-            else
-            {
-                filerline[lineno]->dirIcon->hide();
-                filerline[lineno]->fileIcon->show();
-                //std::cout << "type >" << type_name << "<" << std::endl;
-                filerline[lineno]->type->copy_label(type_name.c_str());
-            }
+            filerlist[lineno]->init(synth,lineno, isDir, type_name, next);
             //std::cout << "name >" << next << "<" << std::endl;
-            filerline[lineno]->name->copy_label(next.c_str());
-            filerlist->add(filerline[lineno]);
+            filerlist[lineno]->name->copy_label(next.c_str());
+            filerscroll->add(filerlist[lineno]);
             ++lineno;
-
-
             tofetch = tofetch.substr(pos + 1);
         }
-        filerlist->end();
-        filerlist->scroll_to(-10,-10);
+        filerscroll->end();
+        filerscroll->scroll_to(-10,-10);
         filerRtext();
         //std::cout << "list end " << lineno << std::endl;} {}
   }
   Function {filerselect(int item)} {} {
     code {//
-        string line = string(filerline[item]->name->label());
-        if (filerline[item]->dirIcon->visible())
+        string line = string(filerlist[item]->name->label());
+        if (filerlist[item]->dirIcon->visible())
         {
             //std::cout << "in dir" << std::endl;
             if (line.back() !='/')
@@ -1891,7 +1899,7 @@ Alan Calvert started the project}
     filerback->deactivate();
     filerfave->deactivate();
     filerclose->deactivate();
-    filerlist->hide();
+    filerscroll->hide();
     favourites->show();} {}
   }
   Function {loadfavourites()} {} {
@@ -1982,9 +1990,9 @@ Alan Calvert started the project}
         faveset->labelsize(size12);
         for (int i = 0; i < lineno; ++i)
         {
-            filerline[i]->resize(int(10 * dScale), int(((i * 20) + 96) * dScale), int(440 * dScale), int(20 * dScale));
-            filerline[i]->name->labelsize(size12);
-            filerline[i]->type->labelsize(int(4 * dScale));
+            filerlist[i]->resize(int(10 * dScale), int(((i * 20) + 96) * dScale), int(440 * dScale), int(20 * dScale));
+            filerlist[i]->name->labelsize(size12);
+            filerlist[i]->type->labelsize(int(4 * dScale));
         }
         filerwindow->redraw();} {}
   }
@@ -2057,6 +2065,7 @@ Alan Calvert started the project}
     code {//
     float value = getData->data.value;
     bool wasFromHere = ((getData->data.source & TOPLEVEL::action::noAction) == TOPLEVEL::action::fromGUI);
+    bool force = getData->data.source & TOPLEVEL::action::forceUpdate;
     unsigned char control = getData->data.control;
     unsigned char newpart = getData->data.part;
     unsigned char kititem = getData->data.kit;
@@ -2212,7 +2221,7 @@ Alan Calvert started the project}
     {
         if (insert == TOPLEVEL::insert::systemEffectSend)
         {
-            if (!wasFromHere)
+            if (!wasFromHere || force == true)
                 syseffsend[engine][control]->value(value);
         }
         else
@@ -3431,10 +3440,45 @@ Alan Calvert started the project}
   }
   Function {checkBuffer(void)} {} {
     code {//
-            if (lastmainW < 0)
+            if (lastmainW < 0) // not ready yet!
                 return;
             read_updates(synth);
             wincheck();} {}
+  }
+  Function {rescaleMain(void)} {} {
+    code {//
+            if (lastmainW < 0) // not ready yet!
+                return;
+            float ratio = Fl::w() / float(1024); // reference width
+            if (ratio < 1.0f)
+                ratio = 1.0f;
+
+
+            int x, y, w, h;
+            if (syseffSeen)
+            {
+                x = syseffsendwindow->x();
+                y = syseffsendwindow->y();
+                w = syseffDW * ratio;
+                h = syseffDH * ratio;
+                if ((x + w) > Fl::w())
+                    x = Fl::w() - w;
+                if ((y + h) > Fl::h())
+                    y = Fl::h() - h;
+                syseffsendwindow->resize(x, y, w, h);
+            }
+
+            // we always check the main window last
+            x = masterwindow->x();
+            y = masterwindow->y();
+            w = mainDW * ratio;
+            h = mainDH * ratio;
+            if ((x + w) > Fl::w())
+                x = Fl::w() - w;
+            if ((y + h) > Fl::h())
+                y = Fl::h() - h;
+            masterwindow->resize(x, y, w, h);
+            std::cout << "Screen ratio " << ratio << std::endl;} {}
   }
   Function {wincheck()} {} {
     code {//
@@ -3885,7 +3929,7 @@ Alan Calvert started the project}
   }
   decl {int fileruseX;} {private local
   }
-  decl {FilerLine *filerline[MIDI_LEARN_BLOCK];} {private local
+  decl {FilerLine *filerlist[FILER_SIZE];} {private local
   }
   decl {int lineno;} {private local
   }

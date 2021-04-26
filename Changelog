@@ -1,4 +1,107 @@
-yoshimi 2.0
+yoshimi 2.0.1
+
+2021-4-18 Will
+* Filter Q dial deactivated if analog and < Low2
+* Corrected reporting Zyn comatibility of Yoshi files.
+  We sometimes had V3.0 quoted, but are really only 2.4
+* Set release version 2.0.1
+
+2021-4-17 Will
+* Added Stick Hit patch the Drums.
+* Set Zyn patch compatiblity to version to 2.4.
+  There never was a 2.0.
+* Commented out direct key actions.
+  It's not ready for release.
+
+2021-4-14 Will
+* LV2 config cleanups.
+* Started per instance key only rescale to screen size.
+  Ctrl + Alt + 'R'
+
+2021-4-12 Will
+* Further refinements to GUI filer
+
+2021-4-11 Will
+* Suppressed missing argp warning in LV2 Config.cpp
+* Small cleanups in masterUI
+* Added Forced key exit if any window has focus.
+  Ctrl + Alt + 'H'
+
+2021-4-9 Will
+* Applied provisional fix for LV2 argp issue.
+
+2021-4-9 Will
+* Rationalised Config startup sequence.
+  LV2 now exits as early as possible.
+
+2021-4-8 Will
+* defined our own max size used only by manual search.
+  PATH_MAX not fully portable, and ill defined.
+* Improved tooltip in Scales - inverted centre.
+* Moved loadCmdArgs( below LV2 exit.
+
+2021-4-7 Will
+BugFix: Importing keymap not updating GUI Ref. Freq.
+
+Made small change to config initial sequence re argp.
+
+2021-4-6 Will
+* BugFix: Crash on oversize filer directory listing.
+  This is a provisional fix, increasing max size to
+  1000 entries, and ignoring any over that count.
+
+2021-4-3 Will
+* BugFix clearing part not clearing original name.
+* BugFix: history locks not marking config changed.
+* Re-enable CLI part level current instrument clear.
+
+2021-4-1 Will
+* Reenabled buffer size setting for LV2.
+  Also tooltip warning about buffersize V sound changes.
+
+2021-3-27 Will
+* BugFix: Filter correction (2021-3-9) altered settings.
+  When window opened wrote values instead of reading.
+
+* BugFix: GUI SysEff send-to not seeing set default.
+
+2021-3-21 Will
+* Made CLI wavform filter type show text to match input.
+  Was previously confusingly numeric output.
+
+2021-3-20 Will
+* BugFix: GUI out of sync on MIDI-learned mod type change.
+
+* BugFix: Right click on mixer Edit using wrong part entry.
+* Added 'Scaffold Pole' to Companion bank.
+
+2021-3-17 Will
+* A few spelling checks in the Gui.
+
+2021-3-11 Will
+* BugFix: crash when locking midilearn history from GUI.
+  Caused by placement of presets in the XML list.
+  Now moved after midilearn.
+
+2021-3-9 Will
+* Completed GUI filter frequency correction.
+* Clear changed original part name on reloads and resets.
+
+2021-3-7 Will
+* BugFix: GUI Filter frequency not showing correct value.
+* Added 3 new instruments to Companion bank.
+
+2021-3-3 Will
+* Added TextLists.h to Interchange.cpp
+  Fixes potential issue with GCC 10.2.0
+* Reapplied filer window location independence.
+  Got lost somehow :(
+* Phaser feedback control deactivated when analog.
+  It does nothing in that mode.
+* Set correct type to Companion/Hoover.
+* Reinstated Resonance to Companion/Hollow Ghost Ensemble.
+  Don't know how this got lost - makes a big difference!
+* Added Surf to Companion.
 
 2021-3-1 Will
 * Master window stays in view with resolution changes.
