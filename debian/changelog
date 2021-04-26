@@ -1,6 +1,13 @@
+yoshimi (2.0.1-1~buster) Lumiera-buster-tool; urgency=low
+
+  * New upstream bugfix release 2.0.1
+  * Rebuild/Backport for Debian/Buster(stable).
+  * unofficial DEB package by Ichthyostega
 
   [ Mattia Rizzolo ]
   * Remove unused build-dependency on liboost-dev.
+
+ -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 27 Apr 2021 00:31:05 +0200
 
 yoshimi (2.0-1~buster) Lumiera-buster-tool; urgency=low
 
