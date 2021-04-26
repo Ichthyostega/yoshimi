@@ -1,3 +1,7 @@
+
+  [ Mattia Rizzolo ]
+  * Remove unused build-dependency on liboost-dev.
+
 yoshimi (2.0-1~buster) Lumiera-buster-tool; urgency=low
 
   * New upstream version 2.0
