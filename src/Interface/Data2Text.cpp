@@ -2503,6 +2503,7 @@ string DataText::resolveOscillator(CommandBlock *getData, bool addValue)
     unsigned char engine = getData->data.engine;
     unsigned char insert = getData->data.insert;
     bool write = (type & TOPLEVEL::type::Write) > 0;
+    int value_int = int(value);
 
     string isPad = "";
     string eng_name;
@@ -2602,7 +2603,12 @@ string DataText::resolveOscillator(CommandBlock *getData, bool addValue)
             contstr = " Osc Filt B4 Waveshape";
             break;
         case OSCILLATOR::control::filterType:
-            contstr = " Osc Filt Type";
+            contstr = " Osc Filt Type ";
+            if (addValue)
+            {
+                showValue = false;
+                contstr += filtertype[value_int];
+            }
             break;
         case OSCILLATOR::control::modulationParameter1:
             contstr = " Osc Mod Par 1";
@@ -2901,7 +2907,7 @@ string DataText::resolveFilter(CommandBlock *getData, bool addValue)
             switch (value_int)
             {
                 case 0:
-                    contstr += "Anlog";
+                    contstr += "Analog";
                     break;
                 case 1:
                     contstr += "Form";
