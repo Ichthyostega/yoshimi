@@ -1,3 +1,13 @@
+yoshimi (2.0.1-1+hiv.old) UNRELEASED; urgency=low
+
+  * Ichthyo's private version for making music
+  * retain the old denormal handling code for now
+  * includes Bugfix for CLI startup option / state file loading
+  * otherwise identical to version 2.0.1
+  * Rebuild/Backport for Debian/Buster(stable).
+
+ -- Hermann Vosseler <deb@ichthyostega.de>  Wed, 28 Apr 2021 02:23:55 +0200
+
 yoshimi (2.0.1-1~buster) Lumiera-buster-tool; urgency=low
 
   * New upstream bugfix release 2.0.1

@@ -1,0 +1,24 @@
+From: Ichthyostega <prg@ichthyostega.de>
+Date: Mon, 8 Mar 2021 00:38:26 +0100
+Subject: Research: use a hard coded fixed seed for testing / analysis
+
+With a proper test setup, this might allow to produce a single note,
+which is 100% reproducible, given the Yoshimi instance was started anew,
+right before sending the test MIDI note event
+---
+ src/Misc/SynthEngine.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/Misc/SynthEngine.cpp b/src/Misc/SynthEngine.cpp
+index 11ca1b5..bee7714 100644
+--- a/src/Misc/SynthEngine.cpp
++++ b/src/Misc/SynthEngine.cpp
+@@ -171,7 +171,7 @@ SynthEngine::SynthEngine(int argc, char **argv, bool _isLV2Plugin, unsigned int
+         Runtime.historyLock[i] = false;
+ 
+     // seed the shared master random number generator
+-    prng.init(time(NULL));
++    prng.init(1);   //////////////////////////////////////// use a hard coded fixed seed for testing / analysis
+ }
+ 
+ 

@@ -1,0 +1,51 @@
+From: Ichthyostega <prg@ichthyostega.de>
+Date: Wed, 28 Apr 2021 01:37:48 +0200
+Subject: Bugfix: Lost CLI startup load options
+
+---
+ src/Misc/ConfBuild.h |  2 +-
+ src/Misc/Config.cpp  | 13 +++++++------
+ 2 files changed, 8 insertions(+), 7 deletions(-)
+
+diff --git a/src/Misc/ConfBuild.h b/src/Misc/ConfBuild.h
+index 25e02a2..6e750cc 100644
+--- a/src/Misc/ConfBuild.h
++++ b/src/Misc/ConfBuild.h
+@@ -2,4 +2,4 @@
+     ConfBuild.h
+ */
+ 
+-#define BUILD_NUMBER 1964
++#define BUILD_NUMBER 1965
+diff --git a/src/Misc/Config.cpp b/src/Misc/Config.cpp
+index 93d64be..1c71d7b 100644
+--- a/src/Misc/Config.cpp
++++ b/src/Misc/Config.cpp
+@@ -212,6 +212,13 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
+      */
+ 
+     std::cerr.precision(4);
++    bRuntimeSetupCompleted = Setup(argc, argv);
++}
++
++
++bool Config::Setup(int argc, char **argv)
++{
++    loadCmdArgs(argc, argv);
+ 
+     if (!loadConfig())
+     {
+@@ -219,13 +226,7 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
+         TextMsgBuffer::instance().push(message);
+         Log("\n\n" + message + "\n");
+     }
+-    bRuntimeSetupCompleted = Setup(argc, argv);
+-}
+-
+ 
+-bool Config::Setup(int argc, char **argv)
+-{
+-    loadCmdArgs(argc, argv);
+     switch (audioEngine)
+     {
+         case alsa_audio:

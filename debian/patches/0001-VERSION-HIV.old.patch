@@ -1,0 +1,30 @@
+From: Ichthyostega <prg@ichthyostega.de>
+Date: Wed, 28 Apr 2021 01:48:39 +0200
+Subject: [VERSION] HIV.old
+
+---
+ src/CMakeLists.txt | 2 +-
+ src/version.txt    | 1 +
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+ create mode 100644 src/version.txt
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 7c93735..b8a3c18 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -41,7 +41,7 @@ add_definitions(-Wall)
+ #add_definitions(-Wno-vla) # Nothing wrong with variable length arrays
+ # ^^^ comment these out on release pushes
+ 
+-set (YOSHIMI_VERSION "2.0.1")
++set (YOSHIMI_VERSION "2.0.1 HIV.old")
+ 
+ add_definitions (-DMIN_CONFIG_MAJOR=2)
+ add_definitions (-DMIN_CONFIG_MINOR=0)
+diff --git a/src/version.txt b/src/version.txt
+new file mode 100644
+index 0000000..32f7d3b
+--- /dev/null
++++ b/src/version.txt
+@@ -0,0 +1 @@
++2.0.1 HIV.old

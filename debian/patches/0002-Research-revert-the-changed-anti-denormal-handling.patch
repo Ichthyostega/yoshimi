@@ -1,0 +1,182 @@
+From: Ichthyostega <prg@ichthyostega.de>
+Date: Tue, 9 Mar 2021 03:48:21 +0100
+Subject: Research: revert the changed anti-denormal handling
+
+- adapted to 2.0.1 (4/21)
+---
+ src/DSP/AnalogFilter.cpp |  8 ++++----
+ src/DSP/SVFilter.cpp     |  2 +-
+ src/Effects/Alienwah.cpp |  5 -----
+ src/Effects/Echo.cpp     |  4 ++--
+ src/Effects/Phaser.cpp   |  6 +++---
+ src/Effects/Reverb.cpp   |  2 +-
+ src/Misc/Config.cpp      | 22 +++++++++++++++-------
+ 7 files changed, 26 insertions(+), 23 deletions(-)
+
+diff --git a/src/DSP/AnalogFilter.cpp b/src/DSP/AnalogFilter.cpp
+index 031841a..da14a45 100644
+--- a/src/DSP/AnalogFilter.cpp
++++ b/src/DSP/AnalogFilter.cpp
+@@ -429,8 +429,8 @@ void AnalogFilter::singlefilterout(float *smp, fstage &x, fstage &y, float *c, f
+     if (order == 1)
+     {   // First order filter
+         for (int i = 0; i < synth->sent_buffersize; ++i)
+-        { // anti-denormal added in here
+-            y0 = (smp[i] + float(1e-20)) * c[0] + x.c1 * c[1] + y.c1 * d[1];
++        {
++            y0 = smp[i] * c[0] + x.c1 * c[1] + y.c1 * d[1];
+             y.c1 = y0;
+             x.c1 = smp[i];
+             smp[i] = y0; // out it goes
+@@ -439,8 +439,8 @@ void AnalogFilter::singlefilterout(float *smp, fstage &x, fstage &y, float *c, f
+     if (order == 2)
+     { // Second order filter
+         for (int i = 0; i < synth->sent_buffersize; ++i)
+-        { // anti-denormal added in here
+-            y0 = (smp[i] + float(1e-20)) * c[0] + x.c1 * c[1] + x.c2 * c[2] + y.c1 * d[1] + y.c2 * d[2];
++        {
++            y0 = smp[i] * c[0] + x.c1 * c[1] + x.c2 * c[2] + y.c1 * d[1] + y.c2 * d[2];
+             y.c2 = y.c1;
+             y.c1 = y0;
+             x.c2 = x.c1;
+diff --git a/src/DSP/SVFilter.cpp b/src/DSP/SVFilter.cpp
+index c72e86e..adb7233 100644
+--- a/src/DSP/SVFilter.cpp
++++ b/src/DSP/SVFilter.cpp
+@@ -182,7 +182,7 @@ void SVFilter::singlefilterout(float *smp, fstage &x, parameters &par)
+         x.high = par.q_sqrt * smp[i] - x.low - par.q * x.band;
+         x.band = par.f * x.high + x.band;
+         x.notch = x.high + x.low;
+-        smp[i] = (*out);
++        smp[i] = *out;
+     }
+ }
+ 
+diff --git a/src/Effects/Alienwah.cpp b/src/Effects/Alienwah.cpp
+index 6d48318..cd3ce8c 100644
+--- a/src/Effects/Alienwah.cpp
++++ b/src/Effects/Alienwah.cpp
+@@ -69,11 +69,6 @@ Alienwah::~Alienwah()
+ // Apply the effect
+ void Alienwah::out(float *smpsl, float *smpsr)
+ {
+-    for (int i = 0; i < synth->sent_buffersize; ++i)
+-    {
+-            smpsl[i] += float(1e-20); // anti-denormal
+-            smpsr[i] += float(1e-20); // anti-denormal
+-    }
+     float lfol;
+     float lfor; // Left/Right LFOs
+     complex<float> clfol, clfor, out, tmp;
+diff --git a/src/Effects/Echo.cpp b/src/Effects/Echo.cpp
+index 3086fbc..c01e517 100644
+--- a/src/Effects/Echo.cpp
++++ b/src/Effects/Echo.cpp
+@@ -107,8 +107,8 @@ void Echo::out(float* smpsl, float* smpsr)
+     float rdl = rdelay[kr];
+     for (int i = 0; i < synth->sent_buffersize; ++i)
+     {
+-        ldl = ldelay[kl] + float(1e-20); // anti-denormal included
+-        rdl = rdelay[kr] + float(1e-20); // anti-denormal included
++        ldl = ldelay[kl];
++        rdl = rdelay[kr];
+         l = ldl * (1.0 - lrcross.getValue()) + rdl * lrcross.getValue();
+         r = rdl * (1.0 - lrcross.getValue()) + ldl * lrcross.getValue();
+         lrcross.advanceValue();
+diff --git a/src/Effects/Phaser.cpp b/src/Effects/Phaser.cpp
+index a7e63b6..0e48e3d 100644
+--- a/src/Effects/Phaser.cpp
++++ b/src/Effects/Phaser.cpp
+@@ -225,7 +225,7 @@ float Phaser::applyPhase(float x, float g, float fb,
+         // This is 1/R. R is being modulated to control filter fc.
+         float b    = (Rconst - g) / (d * Rmin);
+         float gain = (CFs - b) / (CFs + b);
+-        yn1[j] = (gain * (x + yn1[j]) - xn1[j]) + 1e-12; // anti-denormal
++        yn1[j] = gain * (x + yn1[j]) - xn1[j];
+ 
+         // high pass filter:
+         // Distortion depends on the high-pass part of the AP stage.
+@@ -272,11 +272,11 @@ void Phaser::NormalPhase(float *smpsl, float *smpsr)
+             // Left channel
+             tmp = oldl[j];
+             oldl[j] = gl * tmp + inl;
+-            inl = (tmp - gl * oldl[j]) + 1e-12; // anti-denormal
++            inl = tmp - gl * oldl[j];
+             // Right channel
+             tmp = oldr[j];
+             oldr[j] = gr * tmp + inr;
+-            inr = (tmp - gr * oldr[j]) + 1e-12; // anti-denormal
++            inr = tmp - gr * oldr[j];
+         }
+ 
+         // Left/Right crossing
+diff --git a/src/Effects/Reverb.cpp b/src/Effects/Reverb.cpp
+index 857f3a1..6184f8f 100644
+--- a/src/Effects/Reverb.cpp
++++ b/src/Effects/Reverb.cpp
+@@ -212,7 +212,7 @@ void Reverb::out(float *smps_l, float *smps_r)
+     int i;
+     for (i = 0; i < synth->sent_buffersize; ++i)
+     {
+-        inputbuf[i] = float(1e-20) + ((smps_l[i] + smps_r[i]) / 2.0f); // includes anti-denormal
++        inputbuf[i] = (smps_l[i] + smps_r[i]) / 2.0f;
+         // Initial delay r
+         if (idelay)
+         {
+diff --git a/src/Misc/Config.cpp b/src/Misc/Config.cpp
+index 1c71d7b..7160603 100644
+--- a/src/Misc/Config.cpp
++++ b/src/Misc/Config.cpp
+@@ -218,6 +218,10 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
+ 
+ bool Config::Setup(int argc, char **argv)
+ {
++///////////////////////////////////HIV: use old anti-denormal-handling
++    AntiDenormals(true);
++///////////////////////////////////HIV
++
+     loadCmdArgs(argc, argv);
+ 
+     if (!loadConfig())
+@@ -270,7 +274,11 @@ bool Config::Setup(int argc, char **argv)
+ 
+ 
+ Config::~Config()
+-{;}
++{
++///////////////////////////////////HIV: use old anti-denormal-handling
++    AntiDenormals(false);
++///////////////////////////////////HIV
++}
+ 
+ 
+ void Config::flushLog(void)
+@@ -1247,14 +1255,14 @@ int Config::SSEcapability(void)
+ }
+ 
+ /*
+- * The code below has been replaced with specific anti-denormal code where needed.
+- * Although the new code is slightly less efficient it is compatible across platforms,
+- * where as the 'daz' processor code is not available on platforms such as ARM.
++ * ////////////////////////////////////////////////////////////////////////////HIV
++ * Note(HIV): what follows is the old hardware-based anti-denormal handling.
++ * This special patched version still uses this old approach, because the new solution (in Yoshimi 2.0) causes a notable sonic change
++
+  */
+ 
+-/*void Config::AntiDenormals(bool set_daz_ftz)
++void Config::AntiDenormals(bool set_daz_ftz)
+ {
+-    return;
+     if (synth->getIsLV2Plugin())
+     {
+         return;// no need to set floating point rules for lv2 - host should control it.
+@@ -1277,7 +1285,7 @@ int Config::SSEcapability(void)
+             _mm_setcsr(_mm_getcsr() & ~(0x0030|0x8000|0x0040|0x6000));
+         }
+     #endif
+-}*/
++}
+ 
+ 
+ /**
