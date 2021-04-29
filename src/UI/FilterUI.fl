@@ -383,8 +383,9 @@ return Fl_Box::handle(event);} {}
 class FilterUI {: {public Fl_Group,PresetsUI_}
 } {
   Function {FilterUI(int x,int y, int w, int h, const char *label=0):Fl_Group(x,y,w,h,label)} {} {
-    code {synth = NULL;
-pars=NULL;
+    code {//
+        synth = NULL;
+        pars=NULL;
         velsnsamp=NULL;
         velsns=NULL;
         nvowel = 0;
@@ -428,15 +429,15 @@ pars=NULL;
           send_data(TOPLEVEL::action::forceUpdate, FILTERINSERT::control::baseType, o->value(), TOPLEVEL::type::Write);}
           tooltip {The Category of the Filter (Analog/Formantic/etc.)} xywh {5 10 66 15} down_box BORDER_BOX labelsize 10 align 6 textfont 1 textsize 10
           code0 {o->value(pars->Pcategory);}
-          code1 {o->add("Analog");o->add("Formant");o->add("StateVar");}
+          code1 {o->add("analog");o->add("formant");o->add("StVarF");}
         } {}
         Fl_Dial cfreqdial {
           label {C.Freq}
           callback {//
           send_data(0, FILTERINSERT::control::centerFrequency, o->value(), TOPLEVEL::type::Write);}
           tooltip {Center Frequency of the Filter or the base position in the vowel's sequence} xywh {65 28 30 30} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
-          code0 {o->setValueType(getFilterFreqType(filtertype->value()));}
-          code1 {o->value(pars->Pfreq);}
+          code0 {o->value(pars->Pfreq);}
+          code1 {o->setValueType(getFilterFreqType(filtertype->value()));}
           class WidgetPDial
         }
         Fl_Dial qdial {
@@ -527,11 +528,11 @@ pars=NULL;
         xywh {220 8 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
       }
       Fl_Check_Button freqtrackoffset {
-        class Fl_Check_Button2
         label {0 /+}
         callback {//
         send_data(TOPLEVEL::action::forceUpdate, FILTERINSERT::control::frequencyTrackingRange, o->value(), TOPLEVEL::type::Write);}
         tooltip {Set frequency tracking range to 0%-200%} xywh {238 10 33 16} down_box DOWN_BOX labelsize 10 align 24
+        class Fl_Check_Button2
       }
     }
   }
@@ -626,12 +627,12 @@ pars=NULL;
             code0 {o->bounds(0,FF_MAX_VOWELS-1);}
           }
           Fl_Check_Button neginput {
-            class Fl_Check_Button2
             label {Neg.Input}
             callback {//
           send_data(TOPLEVEL::action::forceUpdate, FILTERINSERT::control::negateInput, o->value(), TOPLEVEL::type::Write);}
             tooltip {Negate the input from LFO/envelopes/etc.} xywh {625 132 60 20} down_box DOWN_BOX labelsize 10
             code0 {o->value(pars->Psequencereversed);}
+            class Fl_Check_Button2
           }
           Fl_Dial strchdial {
             label Strch
@@ -760,13 +761,9 @@ pars=NULL;
     code {//
         update_formant_window();
         formantfiltergraph->redraw();
-
-        if (pars->Pcategory == 0)
-            svfiltertypechoice->value(pars->Ptype);
-        if (pars->Pcategory == 2)
-            analogfiltertypechoice->value(pars->Ptype);
-
-        filtertype->value(pars->Pcategory);
+        int categ = pars->Pcategory;
+        int parstype = pars->Ptype;
+        filtertype->value(categ);
         cfreqdial->value(pars->Pfreq);
         freqtrackoffset->value(pars->Pfreqtrackoffset);
         freqtrdial->setValueType(getFilterFreqTrackType(freqtrackoffset->value()));
@@ -774,19 +771,21 @@ pars=NULL;
         freqtrdial->value(pars->Pfreqtrack);
         gaindial->value(pars->Pgain);
         stcounter->value(fetchData(0, FILTERINSERT::control::stages, npart, kititem, engine, TOPLEVEL::insert::filterGroup) + 1);
-        int categ = pars->Pcategory;
 
-        if (categ == 0 || categ == 2)
+        qdial->activate();
+        if (categ != 1)
         {
             if (categ == 0)
             {
-                analogfiltertypechoice->value(pars->Ptype);
+                analogfiltertypechoice->value(parstype);
                 analogfiltertypechoice->show();
                 svfiltertypechoice->hide();
+                if (parstype < 2)
+                    qdial->deactivate();
             }
             else
             {
-                svfiltertypechoice->value(pars->Ptype);
+                svfiltertypechoice->value(parstype);
                 svfiltertypechoice->show();
                 analogfiltertypechoice->hide();
             }
@@ -920,6 +919,7 @@ pars=NULL;
            synth->getGuiMaster()->partui->inseffectui->UpdatePresetColour(1, EFFECT::type::dynFilter - EFFECT::type::none); // normal part effect
     }
 
+    qdial->activate();
     switch(control)
     {
         case FILTERINSERT::control::centerFrequency:
@@ -960,12 +960,15 @@ pars=NULL;
 
         case FILTERINSERT::control::baseType:
             filtertype->value(value_int);
+            cfreqdial->setValueType(getFilterFreqType(value_int));
             updateVCforQ();
             refresh();
             break;
 
         case FILTERINSERT::control::analogType:
             analogfiltertypechoice->value(value_int);
+            if (value_int < 2)
+                qdial->deactivate();
             updateVCforQ();
             break;
 
@@ -1086,25 +1089,14 @@ pars=NULL;
     }
     else
         vsnsdial->value(*velsns);
-    switchcategory(pars->Pcategory);
+    cfreqdial->setValueType(getFilterFreqType(pars->Pcategory));
+    updateVCforQ();
+
+    analogfiltertypechoice->value(0);
+    svfiltertypechoice->value(0);
     stcounter->value(fetchData(0, FILTERINSERT::control::stages, npart, kititem, engine, TOPLEVEL::insert::filterGroup) + 1);
     formantparswindow->label(this->label());
-    update_formant_window();} {}
-  }
-  Function {switchcategory(int newcat)} {} {
-    code {if (pars->Pcategory != newcat)
-        {
-            pars->Pgain = 64;
-            gaindial->value(64);
-            analogfiltertypechoice->value(0);
-            analogfiltertypechoice->do_callback();
-            svfiltertypechoice->value(0);
-            svfiltertypechoice->do_callback();
-        }
-        pars->Pcategory=newcat;
-        // Adjust GUI value conversion
-        cfreqdial->setValueType(getFilterFreqType(filtertype->value()));
-        refresh();} {}
+    refresh();} {}
   }
   Function {updateVCforQ()} {return_type void
   } {

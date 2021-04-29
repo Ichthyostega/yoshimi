@@ -29,6 +29,7 @@
 
 #include "Interface/InterChange.h"
 #include "Interface/Data2Text.h"
+#include "Interface/TextLists.h"
 #include "Misc/FileMgrFuncs.h"
 #include "Misc/NumericFuncs.h"
 #include "Misc/FormatFuncs.h"
@@ -1405,7 +1406,10 @@ int InterChange::indirectConfig(CommandBlock *getData, SynthEngine *synth, unsig
         case CONFIG::control::historyLock:
         {
             if (write)
+            {
                 synth->setHistoryLock(kititem, value);
+                synth->getRuntime().configChanged = true;
+            }
             else
                 value = synth->getHistoryLock(kititem);
             break;
@@ -4247,7 +4251,10 @@ void InterChange::commandAddVoice(CommandBlock *getData)
 
         case ADDVOICE::control::modulatorType:
             if (write)
+            {
                 pars->VoicePar[nvoice].PFMEnabled = value_int;
+                getData->data.value = value_int; // we have to do this otherwise GUI goes out of sync
+            }
             else
                 value = pars->VoicePar[nvoice].PFMEnabled;
             break;
