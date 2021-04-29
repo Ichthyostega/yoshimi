@@ -164,7 +164,7 @@ void Part::setNoteMap(int keyshift)
 void Part::defaultsinstrument(void)
 {
     Pname = DEFAULT_NAME;
-    std::string   Poriginal = "";
+    Poriginal = "";
     PyoshiType = 0;
     info.Ptype = 0;
     info.Pauthor.clear();
