@@ -8,7 +8,7 @@ Uploaders:
  Hermann Vosseler <deb@ichthyostega.de>
 Build-Depends:
  cmake,
- debhelper (>= 10~),
+ debhelper (>= 9~),
  dssi-dev,
  fluid,
  libasound2-dev,
