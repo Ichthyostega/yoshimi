@@ -2,7 +2,8 @@
     InterChange.cpp - General communications
 
     Copyright 2016-2019, Will Godfrey & others
-    Copyright 2020-2021 Kristian Amlie, Will Godfrey & others
+    Copyright 2020-2020, Kristian Amlie, Will Godfrey, & others
+    Copyright 2021, Will Godfrey, Rainer Hans Liffers, & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -80,15 +81,15 @@ int startInstance = 0;
 InterChange::InterChange(SynthEngine *_synth) :
     synth(_synth),
 #ifndef YOSHIMI_LV2_PLUGIN
-    fromCLI(NULL),
+    fromCLI(),
 #endif
-    decodeLoopback(NULL),
+    decodeLoopback(),
 #ifdef GUI_FLTK
-    fromGUI(NULL),
-    toGUI(NULL),
+    fromGUI(),
+    toGUI(),
 #endif
-    fromMIDI(NULL),
-    returnsBuffer(NULL),
+    fromMIDI(),
+    returnsBuffer(),
     syncWrite(false),
     lowPrioWrite(false),
     tick(0),
@@ -102,69 +103,26 @@ InterChange::InterChange(SynthEngine *_synth) :
 bool InterChange::Init()
 {
 #ifndef YOSHIMI_LV2_PLUGIN
-    fromCLI = new ringBuff(512, commandBlockSize);
+    fromCLI.init ();
 #endif
-    decodeLoopback = new ringBuff(1024, commandBlockSize);
+    decodeLoopback.init ();
 #ifdef GUI_FLTK
-    fromGUI = new ringBuff(1024, commandBlockSize);
-    toGUI = new ringBuff(2048, commandBlockSize);
+    fromGUI.init ();
+    toGUI.init ();
 #endif
-    fromMIDI = new ringBuff(1024, commandBlockSize);
-
-    returnsBuffer = new ringBuff(1024, commandBlockSize);
-
-    muteQueue = new ringBuff(16, commandBlockSize);
-
+    fromMIDI.init ();
+    returnsBuffer.init ();
+    muteQueue.init ();
     if (!synth->getRuntime().startThread(&sortResultsThreadHandle, _sortResultsThread, this, false, 0, "CLI"))
     {
         synth->getRuntime().Log("Failed to start CLI resolve thread");
-        goto bail_out;
+        return false;
     }
-    searchInst = searchBank = searchRoot = 0;
-    return true;
-
-
-bail_out:
-#ifndef YOSHIMI_LV2_PLUGIN
-    if (fromCLI)
+    else
     {
-        delete(fromCLI);
-        fromCLI = NULL;
+        searchInst = searchBank = searchRoot = 0;
+        return true;
     }
-#endif
-    if (decodeLoopback)
-    {
-        delete(decodeLoopback);
-        decodeLoopback = NULL;
-    }
-#ifdef GUI_FLTK
-    if (fromGUI)
-    {
-        delete(fromGUI);
-        fromGUI = NULL;
-    }
-    if (toGUI)
-    {
-        delete(toGUI);
-        toGUI = NULL;
-    }
-#endif
-    if (fromMIDI)
-    {
-        delete(fromMIDI);
-        fromMIDI = NULL;
-    }
-    if (returnsBuffer)
-    {
-        delete(returnsBuffer);
-        returnsBuffer = NULL;
-    }
-    if (muteQueue)
-    {
-        delete(muteQueue);
-        muteQueue = NULL;
-    }
-    return false;
 }
 
 
@@ -204,13 +162,13 @@ void *InterChange::sortResultsThread(void)
         while (synth->audioOut.load() == _SYS_::mute::Active)
         {
             //std::cout << "here fetching" << std:: endl;
-            if (muteQueue->read(getData.bytes))
+            if (muteQueue.read(getData.bytes))
                 indirectTransfers(&getData);
             else
                 synth->audioOut.store(_SYS_::mute::Complete);
         }
 
-        while (decodeLoopback->read(getData.bytes))
+        while (decodeLoopback.read(getData.bytes))
         {
             if (getData.data.part == TOPLEVEL::section::midiLearn)
                 synth->midilearn.generalOperations(&getData);
@@ -228,47 +186,13 @@ void *InterChange::sortResultsThread(void)
 InterChange::~InterChange()
 {
     if (sortResultsThreadHandle)
-        pthread_join(sortResultsThreadHandle, NULL);
-#ifndef YOSHIMI_LV2_PLUGIN
-    if (fromCLI)
-    {
-        delete(fromCLI);
-        fromCLI = NULL;
-    }
-#endif
-    if (decodeLoopback)
-    {
-        delete(decodeLoopback);
-        decodeLoopback = NULL;
-    }
-    if (muteQueue)
-    {
-        delete(muteQueue);
-        muteQueue = NULL;
-    }
-#ifdef GUI_FLTK
-    if (fromGUI)
-    {
-        delete(fromGUI);
-        fromGUI = NULL;
-    }
-    if (toGUI)
-    {
-        delete(toGUI);
-        toGUI = NULL;
-    }
-#endif
-    if (fromMIDI)
-    {
-        delete(fromMIDI);
-        fromMIDI = NULL;
-    }
+        pthread_join(sortResultsThreadHandle, 0);
 }
 
 
 void InterChange::muteQueueWrite(CommandBlock *getData)
 {
-    if (!muteQueue->write(getData->bytes))
+    if (!muteQueue.write(getData->bytes))
     {
         std::cout << "failed to write to muteQueue" << std::endl;
         return;
@@ -294,7 +218,8 @@ std::string InterChange::manualSearch(std::string dir2search, std::string path2m
     while (itr != wanted.rend())
     {
         std::string tmp = *itr;
-        if (tmp.find(path2match) != std::string::npos)
+        // some installs have a missing third digit so we trap it
+        if (tmp.find(path2match) != std::string::npos && tmp.rfind("2.0.pdf") == std::string::npos)
         {
             path = tmp;
             itr = wanted.rend();
@@ -452,16 +377,16 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
             getData->data.miscmsg = textMsgBuffer.push(text); // pass it on to GUI
         }
 #endif
-        bool ok = returnsBuffer->write(getData->bytes);
+        bool ok = returnsBuffer.write(getData->bytes);
 #ifdef GUI_FLTK
         if (synth->getRuntime().showGui && switchNum == TOPLEVEL::section::scales && control == SCALES::control::importScl)
         {   // loading a tuning includes a name and comment!
             getData->data.control = SCALES::control::name;
             getData->data.miscmsg = textMsgBuffer.push(synth->microtonal.Pname);
-            returnsBuffer->write(getData->bytes);
+            returnsBuffer.write(getData->bytes);
             getData->data.control = SCALES::control::comment;
             getData->data.miscmsg = textMsgBuffer.push(synth->microtonal.Pcomment);
-            ok &= returnsBuffer->write(getData->bytes);
+            ok &= returnsBuffer.write(getData->bytes);
         }
         if (synth->getRuntime().showGui && switchNum == TOPLEVEL::section::main && control == MAIN::control::loadNamedState)
             synth->midilearn.updateGui();
@@ -482,7 +407,7 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
             {
                 getData->data.control = TOPLEVEL::control::textMessage;
                 getData->data.miscmsg = textMsgBuffer.push("File from ZynAddSubFX 3.0 or later has parameter types changed incompatibly with earlier versions, and with Yoshimi. It may not perform correctly.");
-                returnsBuffer->write(getData->bytes);
+                returnsBuffer.write(getData->bytes);
             }
 #endif
         }
@@ -903,11 +828,13 @@ int InterChange::indirectMain(CommandBlock *getData, SynthEngine *synth, unsigne
             std::string found = "";
             std::string search = "/usr/share/doc/yoshimi";
             path = manualSearch(search, stub);
+            //std::cout << "name1 " << path << std::endl;
             found = path;
             lastdir = search;
 
             search = "/usr/local/share/doc/yoshimi";
             path = manualSearch(search, stub);
+            //std::cout << "name2 " << path << std::endl;
             if (path >= found)
             {
                 found = path;
@@ -918,6 +845,7 @@ int InterChange::indirectMain(CommandBlock *getData, SynthEngine *synth, unsigne
             if (!search.empty())
             {
                 path = manualSearch(search, stub);
+                //std::cout << "name3 " << path << std::endl;
                 if (path >= found)
                 {
                     found = path;
@@ -1743,7 +1671,7 @@ void InterChange::mediate()
     {
         more = false;
 #ifndef YOSHIMI_LV2_PLUGIN
-        if (fromCLI->read(getData.bytes))
+        if (fromCLI.read(getData.bytes))
         {
             more = true;
             if (getData.data.part != TOPLEVEL::section::midiLearn) // Not special midi-learn message
@@ -1753,7 +1681,7 @@ void InterChange::mediate()
 #endif
 #ifdef GUI_FLTK
 
-        if (fromGUI->read(getData.bytes))
+        if (fromGUI.read(getData.bytes))
         {
             more = true;
             if (getData.data.part != TOPLEVEL::section::midiLearn) // Not special midi-learn message
@@ -1761,7 +1689,7 @@ void InterChange::mediate()
             returns(&getData);
         }
 #endif
-        if (fromMIDI->read(getData.bytes))
+        if (fromMIDI.read(getData.bytes))
         {
             more = true;
             if (getData.data.part != TOPLEVEL::section::midiLearn)
@@ -1773,7 +1701,7 @@ void InterChange::mediate()
             }
 #ifdef GUI_FLTK
             else if (getData.data.control == MIDILEARN::control::reportActivity)
-                toGUI->write(getData.bytes);
+                toGUI.write(getData.bytes);
 #endif
         }
         else if (getData.data.control == TOPLEVEL::section::midiLearn)
@@ -1781,7 +1709,7 @@ void InterChange::mediate()
 //  we are looking at the MIDI learn control type that any section *except* MIDI can send.
             synth->mididecode.midiProcess(getData.data.kit, getData.data.engine, getData.data.insert, false);
         }
-        if (returnsBuffer->read(getData.bytes))
+        if (returnsBuffer.read(getData.bytes))
         {
             returns(&getData);
             more = true;
@@ -1793,6 +1721,7 @@ void InterChange::mediate()
         int effpar = synth->getRuntime().effectChange;
         if (effpar > 0xffff)
         {
+#ifdef GUI_FLTK
             CommandBlock effData;
             memset(&effData.bytes, 255, sizeof(effData));
             unsigned char npart = effpar & 0xff;
@@ -1816,7 +1745,8 @@ void InterChange::mediate()
             effData.data.value = efftype;
             effData.data.part = npart;
             effData.data.engine = effnum;
-            toGUI->write(effData.bytes);
+            toGUI.write(effData.bytes);
+#endif
             synth->getRuntime().effectChange = UNUSED;
         } // end of temporary fix
 
@@ -1872,10 +1802,10 @@ void InterChange::returns(CommandBlock *getData)
             tmp = TOPLEVEL::action::toAll;
 
         if ((type & TOPLEVEL::type::Write) && tmp != TOPLEVEL::action::fromGUI)
-            toGUI->write(getData->bytes);
+            toGUI.write(getData->bytes);
 #endif
     }
-    if (!decodeLoopback->write(getData->bytes))
+    if (!decodeLoopback.write(getData->bytes))
         synth->getRuntime().Log("Unable to write to decodeLoopback buffer");
 }
 
@@ -2247,6 +2177,8 @@ void InterChange::commandMidi(CommandBlock *getData)
     unsigned char chan = getData->data.kit;
     unsigned int char1 = getData->data.engine;
     unsigned char miscmsg = getData->data.miscmsg;
+
+    //std::cout << "here MIDI " << control << "  " << value_int << "  " << int(chan) << "  " << int(char1) << std::endl;
 
     if (control == MIDI::control::controller && char1 >= 0x80)
         char1 |= 0x200; // for 'specials'
@@ -3056,6 +2988,11 @@ void InterChange::commandMain(CommandBlock *getData)
                 value = synth->masterMono;
             break;
 
+        case MAIN::control::reseed:
+            synth->reseed(int(value));
+            // std::cout << "rnd " << synth->randomINT() << std::endl;
+            break;
+
         case MAIN::control::soloType:
             if (write && value_int <= MIDI::SoloType::Channel)
             {
@@ -3065,13 +3002,13 @@ void InterChange::commandMain(CommandBlock *getData)
                 switch (value_int)
                 {
                     case MIDI::SoloType::Disabled:
+                        for (int i = 0; i < NUM_MIDI_PARTS; ++i)
+                            synth->part[i]->Prcvchn = (i & (NUM_MIDI_CHANNELS - 1));
                         break;
 
                     case MIDI::SoloType::Row:
                         for (int i = 1; i < NUM_MIDI_CHANNELS; ++i)
-                        {
                             synth->part[i]->Prcvchn = NUM_MIDI_CHANNELS;
-                        }
                         synth->part[0]->Prcvchn = 0;
                         break;
 
@@ -6511,7 +6448,6 @@ void InterChange::testLimits(CommandBlock *getData)
 // more work needed here :(
 float InterChange::returnLimits(CommandBlock *getData)
 {
-    // intermediate bits of type are preserved so we know the source
     // bit 5 set is used to denote midi learnable
     // bit 7 set denotes the value is used as an integer
 
@@ -6524,9 +6460,9 @@ float InterChange::returnLimits(CommandBlock *getData)
     int miscmsg = (int) getData->data.miscmsg;
 
     float value = getData->data.value;
-    int request = int(getData->data.type & TOPLEVEL::type::Default); // catches Adj, Min, Max, Def
 
-    getData->data.type &= 0x1f; //  clear top bits
+    getData->data.type &= TOPLEVEL::type::Default; // clear all flags
+    int request = getData->data.type; // catches Adj, Min, Max, Def
     getData->data.type |= TOPLEVEL::type::Integer; // default is integer & not learnable
 
     if (npart == TOPLEVEL::section::config)
@@ -6783,7 +6719,7 @@ float InterChange::returnLimits(CommandBlock *getData)
             default:
                 def = 64;
         }
-        std::cout << "here " << int(def) << std::endl;
+        //std::cout << "here " << int(def) << std::endl;
 
 
         switch (request)
