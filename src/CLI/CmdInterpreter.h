@@ -106,7 +106,7 @@ class CmdInterpreter
         int waveform(Parser& input, unsigned char controlType);
         int commandPart(Parser& input, unsigned char controlType);
         int commandReadnSet(Parser& input, unsigned char controlType);
-        Reply processSrcriptFile(const string& filename);
+        Reply processSrcriptFile(const string& filename, bool toplevel = true);
 
     private:
         std::list<std::string>  instrumentGroup;
@@ -131,7 +131,9 @@ class CmdInterpreter
         int nFXeqBand;
         int nFX;
 
+        int filterSequenceSize;
         int filterVowelNumber;
+        int filterNumberOfFormants;
         int filterFormantNumber;
 
         int chan;

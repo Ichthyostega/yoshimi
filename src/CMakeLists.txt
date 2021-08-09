@@ -41,7 +41,7 @@ add_definitions(-Wall)
 #add_definitions(-Wno-vla) # Nothing wrong with variable length arrays
 # ^^^ comment these out on release pushes
 
-set (YOSHIMI_VERSION "2.0.1")
+set (YOSHIMI_VERSION "2.0.2")
 
 add_definitions (-DMIN_CONFIG_MAJOR=2)
 add_definitions (-DMIN_CONFIG_MINOR=0)
@@ -294,7 +294,7 @@ set (Interface_Sources
     Interface/Data2Text.cpp
     Interface/MidiLearn.cpp
     Interface/MidiDecode.cpp
-    Interface/RingBuffer.cpp
+    Interface/RingBuffer.h
     Interface/TextLists.h
 )
 
@@ -468,7 +468,7 @@ install (DIRECTORY ../banks DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/yoshimi
         WORLD_READ WORLD_EXECUTE
 )
 
-install (DIRECTORY ../examples DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/yoshimi
+install (DIRECTORY ../doc/examples DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/yoshimi
     FILE_PERMISSIONS
         OWNER_READ OWNER_WRITE
         GROUP_READ GROUP_WRITE

@@ -116,7 +116,9 @@ CmdInterpreter::CmdInterpreter() :
     nFXpreset{0},
     nFXeqBand{0},
     nFX{0},
+    filterSequenceSize{1},
     filterVowelNumber{0},
+    filterNumberOfFormants{1},
     filterFormantNumber{0},
     chan{0},
     axis{0},
@@ -430,7 +432,7 @@ string CmdInterpreter::buildPartStatus(bool showPartDetails)
     }
     else if (bitTest(context, LEVEL::Filter))
     {
-        int baseType = readControl(synth, 0, FILTERINSERT::control::baseType, npart, kitNumber, engine, TOPLEVEL::insert::filterGroup);
+        int baseType = readControl(synth, 0, FILTERINSERT::control::baseType, npart, kitNumber, engine + voiceNumber, TOPLEVEL::insert::filterGroup);
         result += ", Filter ";
         switch (baseType)
         {
@@ -438,6 +440,8 @@ string CmdInterpreter::buildPartStatus(bool showPartDetails)
                 result += "analog";
                 break;
             case 1:
+                filterSequenceSize = readControl(synth, 0, FILTERINSERT::control::sequenceSize, npart, kitNumber, engine + voiceNumber, TOPLEVEL::insert::filterGroup);
+                filterNumberOfFormants = readControl(synth, 0, FILTERINSERT::control::numberOfFormants, npart, kitNumber, engine + voiceNumber, TOPLEVEL::insert::filterGroup);
                 result += "formant V";
                 result += std::to_string(filterVowelNumber);
                 result += " F";
@@ -1823,6 +1827,11 @@ int CmdInterpreter::filterSelect(Parser& input, unsigned char controlType)
                 if (input.lineEnd(controlType))
                     return REPLY::value_msg;
                 value = string2int(input);
+                if (filterVowelNumber >= value)
+                {
+                    filterVowelNumber = value -1; // bring back into range
+                    filterFormantNumber = 0; // zero as size unknown
+                }
                 cmd = FILTERINSERT::control::sequenceSize;
             }
             else if (input.matchnMove(2, "count"))
@@ -1830,6 +1839,8 @@ int CmdInterpreter::filterSelect(Parser& input, unsigned char controlType)
                 if (input.lineEnd(controlType))
                     return REPLY::value_msg;
                 value = string2int(input);
+                if (filterFormantNumber >= value)
+                    filterFormantNumber = value -1; // bring back into range
                 cmd = FILTERINSERT::control::numberOfFormants;
             }
             else if (input.matchnMove(2, "vowel"))
@@ -1837,7 +1848,10 @@ int CmdInterpreter::filterSelect(Parser& input, unsigned char controlType)
                 if (input.lineEnd(controlType))
                     return REPLY::value_msg;
                 value = string2int(input);
-                filterVowelNumber = string2int(input);
+                int number = string2int(input);
+                if (number < 0 || number >= filterSequenceSize)
+                    return REPLY::range_msg;
+                filterVowelNumber = number;
                 filterFormantNumber = 0;
                 return REPLY::done_msg;
             }
@@ -1857,7 +1871,10 @@ int CmdInterpreter::filterSelect(Parser& input, unsigned char controlType)
             {
                 if (input.lineEnd(controlType))
                     return REPLY::value_msg;
-                filterFormantNumber = string2int(input);
+                int number = string2int(input);
+                if (number < 0 || number >= filterNumberOfFormants)
+                    return REPLY::range_msg;
+                filterFormantNumber = number;
                 return REPLY::done_msg;
             }
             else
@@ -5218,6 +5235,7 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
     if (input.matchnMove(3, "padsynth"))
     {
         bitSet(context, LEVEL::PadSynth);
+        voiceNumber = 0; // TODO find out what *realy* causes this to screw up!
         insertType = TOPLEVEL::insertType::amplitude;
         return padSynth(input, controlType);
     }
@@ -5542,6 +5560,48 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
         return REPLY::done_msg;
     }
 
+    if (input.matchnMove(4, "tone"))
+    {
+
+        if (controlType != TOPLEVEL::type::Write)
+            return REPLY::available_msg;
+        if (input.lineEnd(controlType))
+            return REPLY::value_msg;
+
+        int chan = string2int(input) - 1;
+        input.skipChars();
+        if (chan < 0 || chan > 15)
+            return REPLY::range_msg;
+
+        int pitch = string2int(input);
+        input.skipChars();
+        if (pitch < 0 || pitch > 127)
+            return REPLY::range_msg;
+
+        int velocity = string2int(input);
+        int control;
+        if (velocity > 0 && velocity <= 127)
+            control = MIDI::noteOn;
+        else
+            control = MIDI::noteOff;
+
+        sendDirect(synth, 0, velocity, controlType, control, TOPLEVEL::midiIn, chan, pitch);
+        return REPLY::done_msg;
+    }
+
+    if (input.matchnMove(4, "seed"))
+    {
+        if (controlType != TOPLEVEL::type::Write)
+            return REPLY::available_msg;
+        int seed = string2int(input);
+        if (seed < 0)
+            seed = 0;
+        else if (seed > 0xffffff)
+            seed = 0xffffff;
+        sendDirect(synth, 0, seed, controlType | TOPLEVEL::type::Integer, MAIN::control::reseed, TOPLEVEL::main);
+        return REPLY::done_msg;
+    }
+
     switch (bitFindHigh(context))
     {
         case LEVEL::Config:
@@ -5764,7 +5824,7 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
 }
 
 
-Reply CmdInterpreter::processSrcriptFile(const string& filename)
+Reply CmdInterpreter::processSrcriptFile(const string& filename, bool toplevel)
 {
     if (filename <= "!")
         return Reply::what("Exec");
@@ -5778,7 +5838,8 @@ Reply CmdInterpreter::processSrcriptFile(const string& filename)
     }
 
     cli::Parser scriptParser;
-    context = LEVEL::Top; // start from top level
+    if (toplevel)
+        context = LEVEL::Top; // start from top level
 
     string line;
     int lineNo = 0;
@@ -5935,6 +5996,12 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
     {
         input.skip(2);
         input.skipSpace();
+        if (bitFindHigh(context) == LEVEL::Filter)
+        {
+            filterVowelNumber = 0;
+            filterFormantNumber = 0;
+        }
+
         /*
          * kit mode is a pseudo context level so the code
          * below emulates normal 'back' actions
@@ -6005,10 +6072,10 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
         return Reply{commandList(input)};
     }
 
+    if (input.matchnMove(4, "runlocal"))
+        return processSrcriptFile(input, false);
     if (input.matchnMove(3, "run"))
-    {
         return processSrcriptFile(input);
-    }
 
     if (input.matchnMove(1, "set"))
     {

@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2009 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2018-2019, Will Godfrey
+    Copyright 2018-2021, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -74,8 +74,8 @@ Reverb::Reverb(bool insertion_, float *efxoutl_, float *efxoutr_, SynthEngine *_
     Ptime(64),
     Pidelay(40),
     Pidelayfb(0),
-    Prdelay(0),
-    Perbalance(64),
+//    Prdelay(0), // **** RHL ****
+//    Perbalance(64), // **** RHL ****
     Plpf(127),
     Phpf(0),
     Plohidamp(80),
@@ -597,7 +597,7 @@ float Revlimit::getlimits(CommandBlock *getData)
 {
     int value = getData->data.value;
     int control = getData->data.control;
-    int request = getData->data.type & 3; // clear upper bits
+    int request = getData->data.type & TOPLEVEL::type::Default; // clear flags
     int npart = getData->data.part;
     int presetNum = getData->data.engine;
     int min = 0;
