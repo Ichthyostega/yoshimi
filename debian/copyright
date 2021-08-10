@@ -23,7 +23,6 @@ Files: src/DSP/*
        src/Interface/MidiDecode.h
        src/Interface/MidiLearn.cpp
        src/Interface/MidiLearn.h
-       src/Interface/RingBuffer.cpp
        src/Interface/RingBuffer.h
        src/Misc/Bank.cpp
        src/Misc/Bank.h
