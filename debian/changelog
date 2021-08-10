@@ -1,3 +1,13 @@
+yoshimi (2.0.2~dfsg0-1) UNRELEASED; urgency=medium
+
+  * New upstream version 2.0.2~dfsg0
+  * Remove non-existent src/Interface/RingBuffer.cpp from d/copyright
+  * Update doc-base, use html manual instead of pdf
+  * Update lintian-overrides
+  * Remove the cc logo, to fix privacy breach in index.html of doc files
+
+ -- Dennis Braun <d_braun@kabelmail.de>  Tue, 10 Aug 2021 22:09:58 +0200
+
 yoshimi (2.0.1~dfsg0-1) experimental; urgency=medium
 
   * New upstream version 2.0.1~dfsg0
