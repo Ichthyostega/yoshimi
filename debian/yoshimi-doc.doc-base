@@ -4,5 +4,6 @@ Author: Will Godfrey <willgodfrey@musically.me.uk>
 Abstract: This is a manual for the yoshimi soft synthesiser.
 Section: Sound
 
-Format: pdf
-Files: /usr/share/doc/yoshimi/yoshimi-user-manual*.pdf.gz
+Format: HTML
+Index: /usr/share/doc/yoshimi/yoshimi_user_guide/index.html
+Files: /usr/share/doc/yoshimi/yoshimi_user_guide/*

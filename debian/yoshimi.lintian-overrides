@@ -1,7 +1,7 @@
 # I can't find these spelling errors in source code using grep tool.
 # So overriding them.
 spelling-error-in-binary usr/bin/yoshimi AfE Safe
-spelling-error-in-binary usr/bin/yoshimi controlL control
+spelling-error-in-binary usr/bin/yoshimi CONTROLL CONTROL
 spelling-error-in-binary usr/bin/yoshimi defaulH default
 spelling-error-in-binary usr/bin/yoshimi ment meant
 spelling-error-in-binary usr/bin/yoshimi pres press

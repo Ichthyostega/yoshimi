@@ -21,7 +21,6 @@ Files: src/DSP/*
        src/Interface/MidiDecode.h
        src/Interface/MidiLearn.cpp
        src/Interface/MidiLearn.h
-       src/Interface/RingBuffer.cpp
        src/Interface/RingBuffer.h
        src/Misc/Bank.cpp
        src/Misc/Bank.h
@@ -120,7 +119,7 @@ Copyright: 2014, Deryabin Andrew <andrewderyabin@gmail.com>
 License: ISC
 
 Files: desktop/metainfo/*
-Copyright: 2016-2020, Yoshimi project <willgodfrey@musically.me.uk>
+Copyright: 2016-2021, Yoshimi project <willgodfrey@musically.me.uk>
 License: CC-BY-4.0
 
 License: CC-BY-4.0
