@@ -56,6 +56,7 @@ namespace LEVEL{
         LFO, // amp/freq/filt
         Filter, // params only (slightly confused with env)
         Envelope, // amp/freq/filt/ (Sub only) band
+        Test, // special ops for Yoshimi-testsuite
     };
 }
 
@@ -116,7 +117,8 @@ namespace LISTS {
     list,
     bank,
     config,
-    mlearn
+    mlearn,
+    test,
     };
 }
 
@@ -155,6 +157,7 @@ static std::string toplist [] = {
     "  MLearn ...",             "enter editor context level",
     "  Bank ...",               "enter context level",
     "  COnfig ...",             "enter context level",
+    "  TESt ...",               "launch test calculations (for developers)",
     "  YOshimi <n>",            "read current instance or change to n",
     "  MONo <s>",               "main output mono/stereo (ON = mono, {other})",
     "  SYStem effects [n]",     "enter effects context level",
@@ -592,7 +595,7 @@ static std::string waveformlist [] = {
     "GAUss","",
     "DIOde","",
     "ABSsine","",
-    "PULsesine","",
+    "PSIne","",
     "STRetchsine","",
     "CHIrp","",
     "ASIne","",
@@ -644,7 +647,7 @@ static std::string LFOlist [] = {
     "Bpm <s>",               "sync frequency to MIDI clock (ON, {other})",
     "Continuous <s>",        "(ON, {other})",
     "AR <n>",                "amplitude randomness",
-    "FR <n>",                "frequency randomness",
+    "RR <n>",                "frequency randomness",
     "Type <s>",              "LFO oscillator shape",
     "","SIne, TRiangle, SQuare, RUp (ramp up), RDown (ramp down), E1down (exp. 1), E2down (exp. 1)",
     "","SH (sample/hold), RSU (rand square up), RSD (rand square down)",
@@ -766,6 +769,7 @@ static std::string echolist [] = {
     "CROssover <n>",    "left-right crossover",
     "FEEdback <n>",     "echo feedback",
     "DAMp <n>",         "feedback damping",
+    "BPM <s>",          "delay BPM sync (ON {other})",
     "@end"
 };
 
@@ -781,6 +785,8 @@ static std::string choruslist [] = {
     "FEEdback <n>",     "chorus feedback",
     "CROssover <n>",    "L/R routing",
     "SUBtract <s>",     "invert output (ON {other})",
+    "BPM <s>",          "LFO BPM sync (ON {other})",
+    "STArt <n>",        "LFO BPM phase start",
     "@end"
 };
 
@@ -800,6 +806,8 @@ static std::string phaserlist [] = {
     "HYPer <s>",        "hyper ?  (ON {other})",
     "OVErdrive <n>",    "distortion",
     "ANAlog <s>",       "analog emulation (ON {other})",
+    "BPM <s>",          "LFO BPM sync (ON {other})",
+    "STArt <n>",        "LFO BPM phase start",
     "@end"
 };
 
@@ -815,6 +823,8 @@ static std::string alienwahlist [] = {
     "DELay <n>",        "LFO delay",
     "CROssover <n>",    "L/R routing",
     "RELative <n>",     "relative phase",
+    "BPM <s>",          "LFO BPM sync (ON {other})",
+    "STArt <n>",        "LFO BPM phase start",
     "@end"
 };
 
@@ -858,6 +868,8 @@ static std::string dynfilterlist [] = {
     "INVert <s>",       "reverse effect of sensitivity (ON {other})",
     "RATe <n>",         "speed of filter change with amplitude",
     "FILter ...",       "enter dynamic filter context",
+    "BPM <s>",          "LFO BPM sync (ON {other})",
+    "STArt <n>",        "LFO BPM phase start",
     "@end"
 };
 
@@ -959,6 +971,20 @@ static std::string listlist [] = {
     "@end"
 };
 
+static std::string testlist [] = {
+    "NOte [n]",         "midi note to play for test",
+    "CHannel [n]",      "midi channel to use for the test note",
+    "VElocity [n]",     "velocity to use for note on/off",
+    "DUration [n]",     "overall duration for the test sound",
+    "HOldfraction [n]", "fraction of the duration to play sound before note off",
+    "REpetitions [n]",  "number of complete test cycles to play (minimum 1)",
+    "SCalestep [n]",    "semi-tones to move up/down when repeating a test note",
+    "BUffersize [n]",   "number of samples per Synth-call < global buffsize (=default)",
+    "TArget [s]",       "target file path to write sound data (empty: /dev/null)",
+    "EXEcute",          "actually trigger the test. Stops all other sound output.",
+    "@end"
+};
+
 static std::string replies [] = {
     "OK",
     "Done",
@@ -1041,15 +1067,15 @@ static std::string fx_presets [] = {
 
 // effect controls
 static std::string effreverb [] = {"LEV", "PAN", "TIM", "DEL", "FEE", "none5", "none6", "LOW", "HIG", "DAM", "TYP", "ROO", "BAN", "@end"};
-static std::string effecho [] = {"LEV", "PAN", "DEL", "LRD", "CRO", "FEE", "DAM",  "@end"};
-static std::string effchorus [] = {"LEV", "PAN", "FRE", "RAN", "WAV", "SHI", "DEP", "DEL", "FEE", "CRO", "none11", "SUB", "@end"};
-static std::string effphaser [] = {"LEV", "PAN", "FRE", "RAN", "WAV", "SHI", "DEP", "FEE", "STA", "CRO", "SUB", "REL", "HYP", "OVE", "ANA", "@end"};
-static std::string effalienwah [] = {"LEV", "PAN", "FRE", "RAN", "WAV", "SHI", "DEP", "FEE", "DEL", "CRO", "REL", "@end"};
+static std::string effecho [] = {"LEV", "PAN", "DEL", "LRD", "CRO", "FEE", "DAM", "none7", "none8", "none9", "none10", "none11", "none12", "none13", "none14", "none15", "none16", "BPM", "@end"};
+static std::string effchorus [] = {"LEV", "PAN", "FRE", "RAN", "WAV", "SHI", "DEP", "DEL", "FEE", "CRO", "none10", "SUB", "none12", "none13", "none14", "none15", "none16", "BPM", "@end"};
+static std::string effphaser [] = {"LEV", "PAN", "FRE", "RAN", "WAV", "SHI", "DEP", "FEE", "STA", "CRO", "SUB", "REL", "HYP", "OVE", "ANA", "none15", "none16", "BPM", "@end"};
+static std::string effalienwah [] = {"LEV", "PAN", "FRE", "RAN", "WAV", "SHI", "DEP", "FEE", "DEL", "CRO", "REL", "none11", "none12", "none13", "none14", "none15", "none16", "BPM", "@end"};
 static std::string effdistortion [] = {"LEV", "PAN", "MIX", "DRI", "OUT", "WAV", "INV", "LOW", "HIG", "STE", "FIL", "@end"};
 static std::string effdistypes [] = {"ATAn", "ASYm1", "POWer", "SINe", "QNTs", "ZIGzag", "LMT", "ULMt", "LLMt", "ILMt", "CLIp", "AS2", "PO2", "SGM", "@end"};
 static std::string effeq [] = {"LEV", "BAN", "FIL", "FRE", "GAI", "Q", "STA"};
 static std::string eqtypes [] = {"OFF", "LP1", "HP1", "LP2", "HP2", "BP2", "NOT", "PEAk", "LOW shelf", "HIGh shelf", "@end"};
-static std::string effdynamicfilter [] = {"LEV", "PAN", "FRE", "RAN", "WAV", "SHI", "DEP", "SEN", "INV", "RAT", "FIL", "@end"};
+static std::string effdynamicfilter [] = {"LEV", "PAN", "FRE", "RAN", "WAV", "SHI", "DEP", "SEN", "INV", "RAT", "FIL", "none11", "none12", "none13", "none14", "none15", "none16", "BPM", "@end"};
 
 // common controls
 static std::string detuneType [] = {"DEFault", "L35", "L10", "E100", "E1200", "@end"};

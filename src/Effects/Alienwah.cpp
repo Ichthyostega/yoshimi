@@ -43,11 +43,10 @@ static unsigned char presets[NUM_PRESETS][PRESET_SIZE] = {
 };
 
 Alienwah::Alienwah(bool insertion_, float *efxoutl_, float *efxoutr_, SynthEngine *_synth) :
-    Effect(insertion_, efxoutl_, efxoutr_, NULL, 0),
+    Effect(insertion_, efxoutl_, efxoutr_, NULL, 0, _synth),
     lfo(_synth),
     oldl(NULL),
-    oldr(NULL),
-    synth(_synth)
+    oldr(NULL)
 {
     setpreset(Ppreset);
     cleanup();
@@ -126,6 +125,7 @@ void Alienwah::cleanup(void)
         oldr[i] = complex<float>(0.0f, 0.0f);
     }
     oldk = 0;
+    lfo.resetState();
 }
 
 
@@ -190,6 +190,8 @@ void Alienwah::setpreset(unsigned char npreset)
             changepar(n, presets[npreset][n]);
         if (insertion)
             changepar(0, presets[npreset][0] / 2); // lower the volume if this is insertion effect
+        // All presets use no BPM syncing.
+        changepar(EFFECT::control::bpm, 0);
         Ppreset = npreset;
     }
     else
@@ -252,6 +254,12 @@ void Alienwah::changepar(int npar, unsigned char value)
         case 10:
             setphase(value);
             break;
+        case EFFECT::control::bpm:
+            lfo.Pbpm = value;
+            break;
+        case EFFECT::control::bpmStart:
+            lfo.PbpmStart = value;
+            break;
     }
     Pchanged = true;
 }
@@ -273,6 +281,8 @@ unsigned char Alienwah::getpar(int npar)
         case 8:  return Pdelay;
         case 9:  return Plrcross;
         case 10: return Pphase;
+        case EFFECT::control::bpm: return lfo.Pbpm;
+        case EFFECT::control::bpmStart: return lfo.PbpmStart;
         default: break;
     }
     return 0;
@@ -322,7 +332,13 @@ float Alienlimit::getlimits(CommandBlock *getData)
             break;
         case 10:
             break;
-        case 16:
+        case EFFECT::control::bpm:
+            max = 1;
+            canLearn = 0;
+            break;
+        case EFFECT::control::bpmStart:
+            break;
+        case EFFECT::control::preset:
             max = 3;
             canLearn = 0;
             break;
