@@ -27,9 +27,7 @@
 #include <sstream>
 #include <cstring>
 
-
 namespace func {
-
 
 inline std::string asString(int n)
 {
@@ -114,6 +112,17 @@ inline std::string asLongString(float n)
 }
 
 
+inline std::string asCompactString(float n)
+{
+   std::ostringstream oss;
+   oss.setf(std::ios_base::fixed, std::ios_base::floatfield);
+   oss.precision(1);
+   oss.width(1);
+   oss << n;
+   return oss.str();
+}
+
+
 inline std::string asHexString(int x)
 {
    std::ostringstream oss;
@@ -136,6 +145,17 @@ inline std::string asHexString(unsigned int x)
 }
 
 
+inline std::string asMidiNoteString(unsigned char n)
+{
+    static std::string note[] = {
+        "C","C#","D","D#","E","F","F#","G","G#","A","B","B#"
+    };
+    int octave = -1 + n/12;
+    int key   = n % 12;
+    return "("+note[key]+asString(octave)+")";
+}
+
+
 
 inline float string2float(std::string str)
 {
@@ -154,6 +174,16 @@ inline double string2double(std::string str)
     return dval;
 }
 
+
+inline bool isDigits(std::string str)
+{
+    if (str.empty())
+        return false;
+    char c = str.at(0);
+    if (c < '0' or c > '9')
+        return false;
+    return true;
+}
 
 inline int string2int(std::string str)
 {
@@ -186,7 +216,10 @@ inline unsigned int string2uint(std::string str)
     return intval;
 }
 
-
+/*
+ * turns the 1st count mumber to upper case
+ * all the rest to lower case
+ */
 inline string stringCaps(std::string str, int count)
 {
     int idx = 0;

@@ -31,6 +31,7 @@ using std::to_string;
 
 using func::string2int;
 using func::stringCaps;
+using func::bpm2text;
 
 DataText::DataText() :
     synth(nullptr),
@@ -611,14 +612,17 @@ string DataText::resolveConfig(CommandBlock *getData, bool addValue)
             if (addValue)
             {
                 if (value_bool)
-                    contstr += "console window";
+                    contstr += "Console window";
                 else
                     contstr += "stdout";
             }
             showValue = false;
             break;
+        case CONFIG::control::logTextSize:
+            contstr = "Console text size";
+            break;
         case CONFIG::control::savedInstrumentFormat:
-            contstr = "Saved Instrument Format ";
+            contstr = "Saved instrument format ";
             if (addValue)
             {
                 switch (value_int)
@@ -673,11 +677,11 @@ string DataText::resolveConfig(CommandBlock *getData, bool addValue)
             yesno = true;
             break;
         case CONFIG::control::enableAutoInstance:
-            contstr += "Enable Auto Instance";
+            contstr += "Enable auto instance";
             yesno = true;
             break;
         case CONFIG::control::enableHighlight:
-            contstr += "Enable Bank Highlight";
+            contstr += "Enable bank highlight";
             yesno = true;
             break;
         case CONFIG::control::historyLock:
@@ -1254,9 +1258,9 @@ string DataText::resolveMain(CommandBlock *getData, bool addValue)
             contstr = "Reset All including MIDI-learn";
             break;
 
-        case MAIN::control::openManualPDF:
+        case MAIN::control::openManual:
             showValue = false;
-            contstr = "Open manual in PDF reader " + textMsgBuffer.fetch(value_int);
+            contstr = "Open manual in reader " + textMsgBuffer.fetch(value_int);
             break;
 
         case MAIN::control::startInstance:
@@ -2806,10 +2810,10 @@ string DataText::resolveLFO(CommandBlock *getData, bool addValue)
     switch (control)
     {
         case LFOINSERT::control::speed:
-            if (getData->data.offset == 1)
+            if (getData->data.offset == 1 && addValue == true)
             {
                 float value = getData->data.value;
-                contstr = "BPM ratio " + LFObpm[int(roundf(value * (LFO_BPM_STEPS + 2)))];
+                contstr += bpm2text(value);
                 showValue = false;
             }
             else
@@ -3271,6 +3275,8 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
         contstr = ""; //" Control " + to_string(control + 1);
     string controlType = "";
     int ref = control; // we frequently modify this
+    bool isBPM = (ref == 2 && offset == 1);
+    //std::cout << "isbpm " << int(isBPM) << std::endl;
     switch (kititem)
     {
         case EFFECT::type::none:
@@ -3303,12 +3309,21 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
         }
         case EFFECT::type::echo:
             effname = " Echo ";
-            controlType = echolist[control * 2];
+            if (ref > 6) // there is no 7-16 in the list names
+                ref -= 10;
+            controlType = echolist[ref * 2];
+            if (addValue & isBPM)
+            {
+                showValue = false;
+                contstr += (" " + bpm2text(float(value) / 127.0f));
+            }
             break;
         case EFFECT::type::chorus:
         {
             effname = " Chorus ";
-            if (ref > 9) // there is no 10 in the list names
+            if (ref > 10) // there is no 11-16 in the list names
+                ref -= 6;
+            else if (ref > 9) // there is no 10 in the list names
                 ref --;
             controlType = choruslist[ref * 2];
             if (addValue == true && offset > 0)
@@ -3329,12 +3344,19 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
                     else
                         contstr+= " - off";
                 }
+                else if (addValue & isBPM)
+                {
+                    showValue = false;
+                    contstr += (" " + bpm2text(float(value) / 127.0f));
+                }
             }
             break;
         }
         case EFFECT::type::phaser:
             effname = " Phaser ";
-            controlType = phaserlist[control * 2];
+            if (ref > 14) // there is no 15-16 in the list names
+                ref -= 2;
+            controlType = phaserlist[ref * 2];
             if (addValue == true && offset > 0)
             {
                 switch (control)
@@ -3356,11 +3378,18 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
                         contstr = " - off";
                         break;
                 }
+                if (addValue & isBPM)
+                {
+                    showValue = false;
+                    contstr += (" " + bpm2text(float(value) / 127.0f));
+                }
             }
             break;
         case EFFECT::type::alienWah:
             effname = " AlienWah ";
-            controlType = alienwahlist[control * 2];
+            if (ref > 10) // there is no 11-16 in the list names
+                ref -= 6;
+            controlType = alienwahlist[ref * 2];
             if (control == 4 && addValue == true  && offset > 0)
             {
                 showValue = false;
@@ -3368,6 +3397,11 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
                     contstr = " Triangle";
                 else
                     contstr = " Sine";
+            }
+            if (addValue & isBPM)
+            {
+                showValue = false;
+                contstr += (" " + bpm2text(float(value) / 127.0f));
             }
             break;
         case EFFECT::type::distortion:
@@ -3432,7 +3466,9 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
         }
         case EFFECT::type::dynFilter:
             effname = " DynFilter ";
-            controlType = dynfilterlist[control * 2];
+            if (ref > 10) // there is no 11-16 in the list names
+                ref -= 6;
+            controlType = dynfilterlist[ref * 2];
             if (addValue == true && offset > 0)
             {
                 if (control == 4)
@@ -3452,6 +3488,11 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
                         contstr+= " - off";
                 }
             }
+            if (addValue & isBPM)
+            {
+                showValue = false;
+                contstr += (" " + bpm2text(float(value) / 127.0f));
+            }
             break;
 
         default:
@@ -3459,7 +3500,7 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
             contstr = " Unrecognised";
     }
     //std::cout << "control " << int(control) << std::endl;
-    if (control == 16 && kititem != EFFECT::type::eq)
+    if (control == EFFECT::control::preset && kititem != EFFECT::type::eq)
     {
         contstr = " Preset " + to_string (value + 1);
         showValue = false;

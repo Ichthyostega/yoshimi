@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html><html>
   <head>
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
@@ -14,17 +13,40 @@
     <p>
     We only show the amplitude LFO as all of these have identical controls.
     </p>
-
-    ..
-    <br>
-    ..
-    <br>
-    ..
-    <br>
-    ..
-    <br>
-    ..
-    <br>
+    <p>
+    <ul>
+    <li>
+    <b>Freq.</b> The frequency of the oscillator
+    </li>
+    <li>
+    <b>Depth</b> The amplitude variation applied
+    </li>
+    <li>
+    <b>Start</b> (phase) The LFO position when the note starts. This is locked to the incoming MIDI clock if both BPM mode and Continuous is set
+    </li>
+    <li>
+    <b>Delay</b> Time delay before the LFO comes in to effect
+    </li>
+    <li>
+    <b>Rand Amp.</b> (random amplitude) Degree of 'humanising' variation of LFO amplitude
+    </li>
+    <li>
+    <b>Rand Freq.</b> (random frequency) Degree of 'humanising' variation of LFO frequency. Disabled if BPM mode set.
+    </li>
+    <li>
+    <b>Str.</b> (stretch) Anticlockwise LFO is faster on lower pitch notes and vice-versa. If BPM is set the control does nothing
+    </li>
+    <li>
+    <b>BPM</b> When checked locks the delay control to the incoming MIDI clock
+    </li>
+    <li>
+    <b>Cont.</b> (continuous) Normally the LFO starts and stops with the notes, but when checked the LFO is free running independent of whether any notes are sounding, unless BPM mode is set
+    </li>
+    <li>
+    <b>Type</b> The shape of the LFO waveform
+    </li>
+    </ul>
+    </p>
     <!--<a href="../navigation/navigation.html">Next</a> (Navigation, Controls, Defaults)-->
   </body>
 </html>

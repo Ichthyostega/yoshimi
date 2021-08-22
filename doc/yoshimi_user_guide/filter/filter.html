@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html><html>
   <head>
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
@@ -12,45 +11,110 @@
     <h2 style="text-align: center">Filter Types</h2>
     <img src="images/filter.png" alt="Filter Window" class="image">
     <p>
-    These controls are identical across all engines and also available in the DynFilter effect (see <a href="../effects/effects.html">Effects</a>)
+    These controls are identical across all engines and also available in the <a href="../effects/effects.html#dynfilter">DynFilter</a> effect.
     </p>
-    <ul>
+    <p>
+      <ul>
       <li>
-          <b>Category</b>: Filter category: Analog, Formant or State Variable (StateVar)
+          <b>Category</b> Filter category: Analog, Formant or State Variable (StateVar)
       </li>
       <li>
-          <b>St.</b>: Filter stages (1 to 5)
+          <b>St.</b> Filter stages (1 to 5)
       </li>
       <li>
-          <b>Filter Type or Edit</b> This depends on the selected filter category. For Analog and StateVar various filters can be selected. For Formant a windows enabling to graphically edit the formants is opened
+          <b>Filter Type or Edit</b> This depends on the selected filter category. For Analog and StateVar various filters can be selected. For Formant a window enabling you to graphically edit the formants is opened
       </li>
       <li>
-          <b>C.freq/BS.pos</b>: Centre Frequency for Analog and SateVar. Base position of the vowel sequence for Formant
+          <b>C.freq/BS.pos</b> Centre Frequency for Analog and StateVar. Base position of the vowel sequence for Formant
       </li>
       <li>
-        <b>Q</b>: Q factor for the filter
+        <b>Q</b> Q factor for the filter
       </li>
       <li>
-        <b>V.SensA.</b>: Velocity sensing. How much the filter is influenced by (MIDI) velocity of the note
+        <b>V.SensA.</b> Velocity sensing. How much the filter is influenced by (MIDI) velocity of the note
       </li>
       <li>
-        <b>V.Sns.</b>: Velocity sensing function
+        <b>V.Sns.</b> Velocity sensing function
       </li>
       <li>
-        <b>Gain</b>: Filter output gain
+        <b>Gain</b> Filter output gain
       </li>
       <li>
-        <b>freq.tr.</b>: Amunt of frequency tracking for the filter. If this is positive (rightmost) higher note frequencies will shift the filte cutoff frequency higher. Default range is -100% to 98% unless the checkbox above ('0 / +') is selected: in this case the range is 0% to 200%
+        <b>Freq.tr.</b> Amount of frequency tracking for the filter. If this is positive (rightmost) higher note frequencies will shift the filter cutoff frequency higher. Default range is -100% to 98% unless the checkbox above ('0 / +') is selected: in this case the range is 0% to 198%
       </li>
-  </ul>
+    </ul>
+    </p>
     <img src="../images/boundry.png" alt="divider" class="wideline">
     <h3 style="text-align: center">The Formant Filter</h3>
     <img src="images/formant.png" alt="Formant Window" class="image">
     <p>
-    When the formant window is selected, the <em>FilterType</em> list is covered with an Edit button, and clicking on this opens the window shown. These controls are <em>additional</em> to the others and adjust individual formants and their vowels.
+    When the formant window is selected, the <em>FilterType</em> list is covered with an Edit button, and clicking on this opens the window shown. These controls are <em>additional</em> to the others and adjust individual formants and the vowels they are contained in.  Also, remember that the formant filter interacts with the filter envelope.
+    <br><br>
+    For a deep understanding of formant filtering there is a highly detailed Wikipedia article <a href="https://en.wikipedia.org/wiki/Formant">Here</a>.
     </p>
-    TODO
-    <br>
+    <p>
+    <ul>
+      <li>
+        <b>Formants</b> The number of active formants.
+      </li>
+      <li>
+        <b>Fr.Sl</b> (formant slowness) The rate at which one formant morphs to the next.
+      </li>
+      <li>
+        <b>Vw.Cl</b> (vowel clearness) The rate at which vowels transition.
+      </li>
+      <li>
+        <b>Vowel no.</b> The vowel being edited.
+      </li>
+      <li>
+        <b>Formant</b> The formant being edited.
+      </li>
+      <li>
+        <b>Freq</b> The frequency of the current formant. Uniquely this has no default value, and will be set randomly at the time the filter is first set.
+      </li>
+      <li>
+        <b>Q</b> The current formant's Q factor.
+      </li>
+      <li>
+        <b>Amp</b> The amplitude of the current formant.
+      </li>
+      <li>
+        <b>Seq.Size</b> (sequence size) The number of active vowels.
+      </li>
+      <li>
+        <b>S.Pos.</b> (sequence position) The order of the vowels.
+      </li>
+      <li>
+        <b>Vowel</b> The vowel number at the sequence position shown.
+      </li>
+      <li>
+        <b>Strch</b> (stretch) Changes the time of the overall sequence.
+      </li>
+      <li>
+        <b>Neg.Input</b> Inverts the input from the Envelope and/or LFO.
+      </li>
+      <li>
+        <b>C.f.</b> (centre frequency) The centre point of the complete filter.
+      </li>
+      <li>
+        <b>Oct.</b> (octaves) The pitch range of the complete filter.
+      </li>
+    </ul>
+    </p>
+    <p>
+    <h4>The Formant Graph</h4>
+    You can control some of the parameters by placing the mouse pointer over the yellow lines representing each formant. While making changes, the respective controls will move accordingly.
+    <br><br>
+    Holding down either <em>left</em> or <em>right</em> mouse buttons and moving the mouse sideways will change the formant's center frequency.
+    <br><br>
+    Moving vertically while holding down the <em>left</em> button will change the amplitude. Alternatively holding down the <em>right</em> button changes the formant's Q factor.
+    <br><br>
+    Anywhere on the graph, the <em>scroll-wheel</em> changes the octave range, and holding <em>Shift</em> at the same time changes the center frequency.
+    <br><br>
+    If your mouse has extra buttons on the sides (many haven't) these can be used to switch between the formants instead of moving the mouse across to the next one.
+    <br><br>
+    This is especially useful for controling most of the formant features one-handed, quickly, while also playing on a keyboard.
+    </p>
     <!--<a href="../navigation/navigation.html">Next</a> (Navigation, Controls, Defaults)-->
   </body>
 </html>

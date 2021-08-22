@@ -49,6 +49,8 @@
 #include "Misc/FileMgrFuncs.h"
 #include "Misc/FormatFuncs.h"
 
+#define BANKS_VERSION 1
+
 using file::make_legit_filename;
 using file::isRegularFile;
 using file::isDirectory;
@@ -69,6 +71,7 @@ using file::saveText;
 using func::asString;
 using func::string2int;
 using func::findSplitPoint;
+using func::isDigits;
 
 using std::to_string;
 using std::string;
@@ -537,7 +540,7 @@ string Bank::importBank(string importdir, size_t rootID, unsigned int bankID)
                         int slash = nextfile.rfind("/") + 1;
                         int hyphen = nextfile.rfind("-");
                         if (hyphen > slash && (hyphen - slash) <= 4)
-                            pos = stoi(nextfile.substr(slash, hyphen)) - 1;
+                            pos = string2int(nextfile.substr(slash, hyphen)) -1;
 
                         if (copyFile(importdir + "/" + nextfile, exportfile + "/" + nextfile, 0))
                             missing = true;
@@ -997,10 +1000,10 @@ bool Bank::addtobank(size_t rootID, size_t bankID, int pos, const string filenam
     instrRef.used = true;
     instrRef.name = name;
     instrRef.filename = filename;
-    instrRef.PADsynth_used = false;
-    instrRef.ADDsynth_used = false;
-    instrRef.SUBsynth_used = false;
-    instrRef.yoshiType = false;
+    instrRef.PADsynth_used = 0;
+    instrRef.ADDsynth_used = 0;
+    instrRef.SUBsynth_used = 0;
+    instrRef.yoshiType = -1;
 
     // see which engines are used
     if (synth->getRuntime().checksynthengines)
@@ -1015,10 +1018,10 @@ bool Bank::addtobank(size_t rootID, size_t bankID, int pos, const string filenam
         delete xml;
 
         instrRef.type = type;
-        instrRef.ADDsynth_used = (names & 1) > 0;
-        instrRef.SUBsynth_used = (names & 2) > 0;
-        instrRef.PADsynth_used = (names & 4) > 0;
-        instrRef.yoshiType = (names & 8) > 0;
+        instrRef.ADDsynth_used = (names & 1);
+        instrRef.SUBsynth_used = (names & 2) >> 1;
+        instrRef.PADsynth_used = (names & 4) >> 2;
+        instrRef.yoshiType = (names & 8) >> 3;
     }
     return 0;
 }
@@ -1049,7 +1052,7 @@ void Bank::updateShare(string bankdirs[], string localDir, string shareID)
     string destinationDir = localDir + "yoshimi/banks/Will_Godfrey_Companion"; // currently only concerned with this one.
     if (!isDirectory(destinationDir))
         return;
-    cout << bankdirs[1] << endl;
+    //cout << bankdirs[1] << endl;
     if (isDirectory(bankdirs[1] + next))
         checkShare(bankdirs[1] + next, destinationDir);
 
@@ -1449,7 +1452,7 @@ bool Bank::parseBanksFile(XMLwrapper *xml)
     {
         if (xml->enterbranch("INFORMATION"))
         {
-            writeVersion(xml->getpar("Banks_Version", 1, 1, 9));
+            writeVersion(xml->getpar("Banks_Version", BANKS_VERSION, 1, 99));
             xml->exitbranch();
         }
         if (xml->enterbranch("BANKLIST"))
