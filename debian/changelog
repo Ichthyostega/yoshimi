@@ -1,12 +1,13 @@
-yoshimi (2.0.2~dfsg0-1) unstable; urgency=medium
+yoshimi (2.1.0-1~buster) Lumiera-buster-tool; urgency=low
 
-  * New upstream version 2.0.2~dfsg0
-  * Remove non-existent src/Interface/RingBuffer.cpp from d/copyright
+  * New upstream version 2.1.0
+  * Remove Jack RingBuffer source RingBuffer.cpp from d/copyright
   * Update doc-base, use html manual instead of pdf, for now
   * Update lintian-overrides
-  * Remove the cc logo, to fix privacy breach in index.html of doc files
+  * Rebuild/Backport for Debian/Buster(stable).
+  * unofficial DEB package by Ichthyostega
 
- -- Dennis Braun <d_braun@kabelmail.de>  Sun, 15 Aug 2021 20:20:56 +0200
+ -- Hermann Vosseler <deb@ichthyostega.de>  Mon, 23 Aug 2021 12:44:02 +0200
 
 yoshimi (2.0.2-1~buster) Lumiera-buster-tool; urgency=low
 
