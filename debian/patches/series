@@ -1,0 +1,4 @@
+0001-Lower-CMake-version-requirement.patch
+0002-compile-fix-for-older-GCC.patch
+0003-compile-fix-old-fltk.patch
+0004-compile-fix_no-move-ctor.patch

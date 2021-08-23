@@ -1,14 +1,19 @@
-yoshimi (2.1.0-1ppa1~xenial) xenial; urgency=low
+yoshimi (2.1.0-1ppa1~trusty) trusty; urgency=low
 
   * New upstream version 2.1.0
   * Remove Jack RingBuffer source RingBuffer.cpp from d/copyright
   * Update doc-base, use html manual instead of pdf, for now
   * Update lintian-overrides
   * unofficial DEB package by Ichthyostega
-  * Rebuild/Backport for Ubuntu/Xenial (16.04 LTS)
-  * tweaks to allow build on this somewhat old platform
+  * Build for Ubuntu/Trusty (14.04 LTS)
+  * As of 6/2021, this is the latest (minor) Yoshimi release
+  * tweaks to allow build on this rather old platform
     * force build with -fPIC
     * lower debhelper and compliance level
+    * minor tweaks to get it to compile with GCC 4.8
+    * disable FLTK code guarded by Fl::is_scheme
+      in WidgetCheckButton, since this scheme specific tweaks
+      are seemingly not supported on this old version
 
  -- Hermann Vosseler <deb@ichthyostega.de>  Mon, 23 Aug 2021 12:44:55 +0200
 

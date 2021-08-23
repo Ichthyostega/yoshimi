@@ -1,0 +1,67 @@
+From: Ichthyostega <prg@ichthyostega.de>
+Date: Mon, 23 Aug 2021 15:48:17 +0200
+Subject: compile-fix_no-move-ctor
+
+OutputFile is a "noncopyable" class, wrapping an open file.
+Unfortunately, with GCC 4.8 it was not yet possible to *move* a std::basic_ostream,
+and thus construction of a new OutputFile throgh RVO fails.
+
+Workaround: wrap into shared_ptr
+---
+ src/Misc/TestInvoker.h | 17 ++++++++++++-----
+ 1 file changed, 12 insertions(+), 5 deletions(-)
+
+diff --git a/src/Misc/TestInvoker.h b/src/Misc/TestInvoker.h
+index 2cb54f0..b908dc1 100644
+--- a/src/Misc/TestInvoker.h
++++ b/src/Misc/TestInvoker.h
+@@ -108,7 +108,8 @@ namespace { // local implementation details
+         }
+ 
+         OutputFile(OutputFile&) = delete;
+-        OutputFile(OutputFile&&) = default;
++//      OutputFile(OutputFile&&) = default;            //////////////Backport Ubuntu 14.04 does not work on GCC 4.8
++        OutputFile(OutputFile&&) = delete;
+         OutputFile& operator=(OutputFile&) = delete;
+         OutputFile& operator=(OutputFile&&) = delete;
+ 
+@@ -142,6 +143,8 @@ namespace { // local implementation details
+             }
+         }
+     };
++/////////////////////////////////////////////////////////////////////Backport Ubuntu 14.04 - Workaround for GCC 4.8
++    typedef std::shared_ptr<OutputFile> POutputFile;
+ 
+ 
+ 
+@@ -309,7 +312,9 @@ class TestInvoker
+         {
+             if (!chunksize) chunksize = synth.buffersize;
+             BufferHolder buffer;
+-            OutputFile output = prepareOutput(synth.samplerate);
++            POutputFile poutput = prepareOutput(synth.samplerate);
++/////////////////////////////////////////////////////////////////////Backport Ubuntu 14.04 - Workaround for GCC 4.8 (use a smart-ptr since move constructor didn't work with std::basic_ostream in 2014)
++            OutputFile& output = *poutput;
+             allocate(buffer);
+             synth.getRuntime().Log("TEST::Prepare");
+             synth.setReproducibleState(0);
+@@ -347,14 +352,16 @@ class TestInvoker
+         }
+ 
+ 
+-        OutputFile prepareOutput(unsigned int samplerate)
++        POutputFile
++/////////////////////////////////////////////////////////////////////Backport Ubuntu 14.04 - Workaround for GCC 4.8
++                    prepareOutput(unsigned int samplerate)
+         {
+             if (0 == targetFilename.size())
+-                return OutputFile{}; // discard output
++                return POutputFile(new OutputFile); // discard output
+ 
+             size_t chunkCnt = size_t(ceil(duration * samplerate / chunksize));
+             size_t maxSamples = 2 * repetitions * chunkCnt * chunksize;
+-            return OutputFile{targetFilename, maxSamples};
++            return POutputFile(new OutputFile(targetFilename, maxSamples));///////////////// Workaround for GCC 4.8
+         }
+ 
+ 
