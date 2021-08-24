@@ -48,13 +48,16 @@
 #include "Misc/NumericFuncs.h"
 #include "Misc/FormatFuncs.h"
 #include "Misc/XMLwrapper.h"
+#include "Synth/OscilGen.h"
+#include "Params/ADnoteParameters.h"
+#include "Params/PADnoteParameters.h"
 
 using file::isRegularFile;
 using file::setExtension;
 using file::findLeafName;
 using file::createEmptyFile;
 using file::deleteFile;
-using file::make_legit_pathname;
+using file::make_legit_filename;
 
 using func::dB2rap;
 using func::bitTest;
@@ -131,6 +134,7 @@ SynthEngine::SynthEngine(int argc, char **argv, bool _isLV2Plugin, unsigned int 
     halfsamplerate_f(samplerate / 2),
     buffersize(512),
     buffersize_f(buffersize),
+    bufferbytes(buffersize*sizeof(float)),
     oscilsize(1024),
     oscilsize_f(oscilsize),
     halfoscilsize(oscilsize / 2),
@@ -520,6 +524,41 @@ void SynthEngine::setAllPartMaps(void)
         part[npart]->PmapOffset = 128 - part[npart]->PmapOffset;
 }
 
+
+/* for automated testing: brings all existing pseudo random generators
+ * within this SyntEngine into a reproducible state, based on given seed;
+ * also resets long lived procedural state and rebuilds PAD wavetables */
+void SynthEngine::setReproducibleState(int seed)
+{
+    LFOtime = 0;
+    monotonicBeat = songBeat = 0.0f;
+    prng.init(seed);
+    for (int p = 0; p < NUM_MIDI_PARTS; ++p)
+        if (part[p] and part[p]->Penabled)
+            for (int i = 0; i < NUM_KIT_ITEMS; ++i)
+            {
+                Part::Kititem& kitItem = part[p]->kit[i];
+                if (!kitItem.Penabled) continue; // reseed only enabled items
+                if (kitItem.adpars and kitItem.Padenabled)
+                    for (int v = 0; v < NUM_VOICES; ++v)
+                    {
+                        if (!kitItem.adpars->VoicePar[v].Enabled) continue;
+                        kitItem.adpars->VoicePar[v].OscilSmp->reseed(randomINT());
+                        kitItem.adpars->VoicePar[v].FMSmp->reseed(randomINT());
+                    }
+                if (kitItem.padpars and kitItem.Ppadenabled)
+                    {
+                        part[p]->busy = true;
+                        kitItem.padpars->oscilgen->reseed(randomINT());
+                        // rebuild PADSynth wavetable with new randseed
+                        kitItem.padpars->applyparameters();
+                        part[p]->busy = false;
+                    }
+            }
+    Runtime.Log("SynthEngine("+to_string(uniqueId)+"): reseeded with "+to_string(seed));
+}
+
+
 // Note On Messages
 void SynthEngine::NoteOn(unsigned char chan, unsigned char note, unsigned char velocity)
 {
@@ -770,6 +809,7 @@ void SynthEngine::SetZynControls(bool in_place)
      * Data MSB param to change
      * if | 64 LSB sets eff type
      * for insert effect only | 96 LSB sets destination
+     * for system only &3 sets destination LSB value
      *
      * Data LSB param value
      */
@@ -781,28 +821,33 @@ void SynthEngine::SetZynControls(bool in_place)
     unsigned char efftype = (parnum & 0x60);
     Runtime.dataL = 0xff; // use once then clear it out
 
+    //std::cout << "isSys " << int(group == 36) << "  num " << int(effnum) << "  par " << int(parnum) << "  val " << int(value) << std::endl;
+
     CommandBlock putData;
     memset(&putData, 0xff, sizeof(putData));
     putData.data.value = value;
     putData.data.type = TOPLEVEL::type::Write | TOPLEVEL::type::Integer;
-    // TODO the next line is wrong, it should really be
-    // handled by MIDI
-    putData.data.source |= TOPLEVEL::action::fromCLI;
+    putData.data.source = TOPLEVEL::action::fromMIDI | TOPLEVEL::action::forceUpdate;
 
-    if (group == 0x24)
+    if (group == 0x24) // sys
     {
         putData.data.part = TOPLEVEL::section::systemEffects;
         if (efftype == 0x40)
-            putData.data.control = 1;
-        //else if (efftype == 0x60) // not done yet
-            //putData.data.control = 2;
+        {
+            putData.data.control = EFFECT::sysIns::effectType;
+        }
+        else if (efftype == 0x60) // send eff to
+        {
+            putData.data.control = (parnum & 3);
+            putData.data.insert = 16;
+        }
         else
         {
             putData.data.kit = EFFECT::type::none + sysefx[effnum]->geteffect();
             putData.data.control = parnum;
         }
     }
-    else
+    else // ins
     {
         putData.data.part = TOPLEVEL::section::insertEffects;
         //std::cout << "efftype " << int(efftype) << std::endl;
@@ -817,6 +862,9 @@ void SynthEngine::SetZynControls(bool in_place)
         }
     }
     putData.data.engine = effnum;
+
+    //if ((npart < NUM_MIDI_PARTS && control == PART::control::effectType) || (npart > TOPLEVEL::section::main && kititem == UNUSED && control == 1))
+        //control = EFFECT::sysIns::effectType;
 
     if (in_place)
         interchange.commandEffects(&putData);
@@ -2406,6 +2454,7 @@ void SynthEngine::ShutUp(void)
 bool SynthEngine::loadStateAndUpdate(const string& filename)
 {
     defaults();
+    //std::cout << "file " << filename << std::endl;
     Runtime.sessionStage = _SYS_::type::InProgram;
     Runtime.stateChanged = true;
     bool result = Runtime.restoreSessionData(filename);
@@ -2843,7 +2892,6 @@ unsigned char SynthEngine::loadVector(unsigned char baseChan, const string& name
         return actualBase;
     }
     string file = setExtension(name, EXTEN::vector);
-    make_legit_pathname(file);
     if (!isRegularFile(file))
     {
         Runtime.Log("Can't find " + file, 2);
@@ -2989,7 +3037,7 @@ unsigned char SynthEngine::saveVector(unsigned char baseChan, const string& name
         return textMsgBuffer.push("No vector data on this channel");
 
     string file = setExtension(name, EXTEN::vector);
-    make_legit_pathname(file);
+    make_legit_filename(file);
 
     Runtime.xmlType = TOPLEVEL::XML::Vector;
     XMLwrapper *xml = new XMLwrapper(this, true);
@@ -3598,6 +3646,11 @@ float SynthEngine::getConfigLimits(CommandBlock *getData)
             max = 9;
             break;
         case CONFIG::control::reportsDestination:
+            break;
+        case CONFIG::control::logTextSize:
+            def = 12;
+            min = 11;
+            max = 100;
             break;
         case CONFIG::control::savedInstrumentFormat:
             max = 3;

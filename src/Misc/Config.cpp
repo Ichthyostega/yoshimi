@@ -74,11 +74,11 @@ namespace { // constants used in the implementation
         "Copyright 2002-2009 Nasca Octavian Paul and others, "
         "Copyright 2009-2011 Alan Calvert, "
         "Copyright 2012-2013 Jeremy Jongepier and others, "
-        "Copyright 2014-2019 Will Godfrey and others";
+        "Copyright 2014-2021 Will Godfrey and others";
     const string argline = "Yoshimi " + (string) YOSHIMI_VERSION;
     const char* argp_program_version = argline.c_str();
 
-    string stateText = "load saved state, defaults to '$HOME/" + EXTEN::config + "/yoshimi/yoshimi.state'";
+    string stateText = "load saved state, defaults to '$HOME/" + EXTEN::config + "/yoshimi/yoshimi-0.state'";
 
     static struct argp_option cmd_options[] = {
         {"alsa-audio",        'A',  "<device>",   1,  "use alsa audio output", 0},
@@ -100,6 +100,7 @@ namespace { // constants used in the implementation
         {"samplerate",        'R',  "<rate>",     0,  "set alsa audio sample rate", 0},
         {"oscilsize",         'o',  "<size>",     0,  "set AddSynth oscilator size", 0},
         {"state",             'S',  "<file>",     1,  stateText.c_str(), 0},
+        {"null",               13,  NULL,         0,  "use Null-backend without audio/midi", 0},
         #if defined(JACK_SESSION)
             {"jack-session-uuid", 'U',  "<uuid>",     0,  "jack session uuid", 0},
             {"jack-session-file", 'u',  "<file>",     0,  "load named jack session file", 0},
@@ -144,6 +145,7 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
     instrumentFormat(1),
     EnableProgChange(1), // default will be inverted
     toConsole(0),
+    consoleTextSize(12),
     hideErrors(0),
     showTimes(0),
     logXMLheaders(0),
@@ -218,7 +220,12 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
 
 bool Config::Setup(int argc, char **argv)
 {
-    loadCmdArgs(argc, argv);
+    static bool torun = true;
+    if (torun) // only the first synth can read args
+    {
+        torun = false;
+        loadCmdArgs(argc, argv);
+    }
 
     if (!loadConfig())
     {
@@ -328,6 +335,7 @@ bool Config::loadConfig(void)
     int thisInstance = synth->getUniqueId();
     defaultSession = defaultStateName + "-" + asString(thisInstance) + EXTEN::state;
     yoshimi += ("-" + asString(thisInstance));
+    //std::cout << "\nsession >" << defaultSession << "<\n" << std::endl;
     if (thisInstance == 0 && sessionStage != _SYS_::type::RestoreConf)
     {
         TextMsgBuffer::instance().init(); // sneaked it in here so it's early
@@ -622,6 +630,7 @@ bool Config::extractConfigData(XMLwrapper *xml)
             Oscilsize = xml->getpar("oscil_size", Oscilsize, MIN_OSCIL_SIZE, MAX_OSCIL_SIZE);
         single_row_panel = xml->getpar("single_row_panel", single_row_panel, 0, 1);
         toConsole = xml->getpar("reports_destination", toConsole, 0, 1);
+        consoleTextSize = xml->getpar("console_text_size", consoleTextSize, 11, 100);
         hideErrors = xml->getpar("hide_system_errors", hideErrors, 0, 1);
         showTimes = xml->getpar("report_load_times", showTimes, 0, 1);
         logXMLheaders = xml->getpar("report_XMLheaders", logXMLheaders, 0, 1);
@@ -748,6 +757,7 @@ void Config::addConfigXML(XMLwrapper *xml)
 
     xml->addpar("single_row_panel", single_row_panel);
     xml->addpar("reports_destination", toConsole);
+    xml->addpar("console_text_size", consoleTextSize);
     xml->addpar("hide_system_errors", hideErrors);
     xml->addpar("report_load_times", showTimes);
     xml->addpar("report_XMLheaders", logXMLheaders);
@@ -1434,6 +1444,14 @@ static error_t parse_cmds (int key, char *arg, struct argp_state *state)
             }
             break;
 
+        case 13:
+            settings->configChanged = true;
+            settings->engineChanged = true;
+            settings->midiChanged = true;
+            settings->audioEngine = no_audio;
+            settings->midiEngine  = no_midi;
+            break;
+
 #if defined(JACK_SESSION)
         case 'u':
             if (arg)
@@ -1485,7 +1503,14 @@ void GuiThreadMsg::processGuiMessages()
             if (!guiMaster)
                 std::cerr << "Error starting Main UI!" << std::endl;
             else
+            {
                 guiMaster->Init(guiMaster->getSynth()->getWindowTitle().c_str());
+
+                if (synth->getRuntime().audioEngine < 1)
+                    alert(synth, "Yoshimi could not connect to any sound system. Running with no Audio.");
+                if (synth->getRuntime().midiEngine < 1)
+                    alert(synth, "Yoshimi could not connect to any MIDI system. Running with no MIDI.");
+            }
         }
         else if (guiMaster)
         {

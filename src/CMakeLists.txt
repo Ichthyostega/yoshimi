@@ -41,7 +41,7 @@ add_definitions(-Wall)
 #add_definitions(-Wno-vla) # Nothing wrong with variable length arrays
 # ^^^ comment these out on release pushes
 
-set (YOSHIMI_VERSION "2.0.2")
+set (YOSHIMI_VERSION "2.1.0")
 
 add_definitions (-DMIN_CONFIG_MAJOR=2)
 add_definitions (-DMIN_CONFIG_MINOR=0)
@@ -522,6 +522,11 @@ add_custom_target (showversion
     COMMAND cat version.txt
     COMMAND echo
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+configure_file(${CMAKE_SOURCE_DIR}/version.txt
+            ${CMAKE_SOURCE_DIR}/../doc/yoshimi_user_guide/files/yoshimi_user_guide_version
+            COPYONLY
 )
 
 # clean sweep

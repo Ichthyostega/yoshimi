@@ -33,15 +33,19 @@ class EffectLFO
         EffectLFO(SynthEngine *_synth);
         ~EffectLFO();
         void effectlfoout(float *outl, float *outr);
-        void updateparams(void);
+        void updateparams();
+        void resetState();
         unsigned char Pfreq;
         unsigned char Prandomness;
         unsigned char PLFOtype;
         unsigned char Pstereo; // 64 = center
+        unsigned char Pbpm;
+        unsigned char PbpmStart;
     private:
         float getlfoshape(float x);
 
-        float xl,xr;
+        float xl, xr;
+        float xdelta; // position delta to x when using stereo separation.
         float incx;
         float ampl1, ampl2, ampr1, ampr2; // necessary for "randomness"
         float lfornd;

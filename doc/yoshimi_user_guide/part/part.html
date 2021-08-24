@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html><html>
   <head>
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
@@ -11,10 +10,10 @@
     </nav>
     <a id="top"></a>
     <h2 style="text-align: center">Parts and Channels</h2>
-    <img src="images/section.png" alt="Mixer Panel Window" class="image">
+    <img src="images/section.png" alt="Main - Bottom" class="image">
     <p>
     The first control is the part number you are currently looking at, and
-     alongside this selection is an entry to decide the number of parts. These are rows of 16, and can be 16 (the default), 32 and 64. Initially the higher numbered ones take the same <em>channel</em> as the matching default ones. The is especially useful for <a href="../vector/vector.html">Vector control</a> where a 'column' of up to four parts can linked and controlled by a MIDI joystick, or similar.
+     alongside this selection is an entry to decide the number of parts. These are rows of 16, and can be 16 (the default), 32 and 64. Initially the higher numbered ones take the same <em>channel</em> as the matching default ones. The is especially useful for <a href="../vector/vector.html">Vector control</a> where a 'column' of up to four parts can be linked and controlled by a MIDI joystick, or similar.
      </p>
      <p>
      On the same line you then have what is both a shortcut button to open the window for the current selected bank and (with a right-click) an editable field for the part's current instrument name. Finally, there is an <a href="#edit">Edit</a> button for detailed part editing.
@@ -38,7 +37,7 @@
     <p>
      Nomally the <b>Controllers</b> button opens the <a href="controllers.html">MIDI Controllers</a> window. However a right click on it will instead open a window for the <a href="controllers.html#midiccs">MIDI CCs</a> window (shown at the foot of the same page).
      <br><br>
-     The <b>Pan Law</b> menu selects one of three common panning behaviours. The default is close a constant power output. The first number refers to the apparent level of the side it is panned to, and the other number is the equivalent output when switched to MONO.
+     The <b>Pan Law</b> menu selects one of three common panning behaviours. The default is close to a constant power output. The first number refers to the apparent level of the side it is panned to, and the other number is the equivalent output when switched to MONO.
      </p>
      <p>
      Underneath 'Controllers' are the key range controls.
@@ -56,7 +55,7 @@
      The four controls at bottom right set the amount of this part that will be sent to each of the <em>System</em> effects.
      </p>
     <img src="../images/boundry.png" alt="divider" class="wideline">
-    <img src="images/mixer.png" alt="Mixer Panel Window" class="double" style="float: right;">
+    <img src="images/mixer.png" alt="Mixer Panel Window" class="right-half">
     <p>
     Yoshimi can operate simultaneously across all 16 MIDI channels, so it makes sense to be able to see all of these together, hence the mixer panel shown to the right. The part that is accessible in the main window is shown highlighted in this panel.
     </p>
@@ -65,12 +64,12 @@
     If using Jack Audio you also have the ability to decide the audio destination from here.
     <p>
     If more than 16 parts have been enabled, a new menu appears to the left of <em>Solo</em>, to enable you to select which row of 16 that you want to manage. This cut-down image shows both multiple columns, i.e. more than 16 parts, and Solo in the process of being set up.
-    <img src="images/solo.png" alt="solo section" class="double" style="float: right;">
+    <img src="images/solo.png" alt="solo section" class="right-half">
     </p>
     <h3>Mixer controls</h3>
     (Chanel strips)
     <br><br>
-    <b>Check box</b> Clicking on this will turn the part on or off. If turing it on it will also make it the currently selected one.
+    <b>Check box</b> Clicking on this will turn the part on or off. Turning it on it will also make it the currently selected one.
     <br><br>
     <b>Instrument</b> (name) As well as showing the name and which engines are used (from the colours) clicking on this will make it the currently selected one, and open the instrument bank window.
     <br><br>
@@ -124,7 +123,7 @@
     <br><br>
     <b>Effects</b> Opens the Effects window for editing.
     <br><br>
-    <b>Detune</b> (Humanise) This controls enables you to set a small random detune of the entire part.
+    <b>Detune</b> (Humanise) This control enables you to set a small random detune of the entire part.
     <br><br>
     <b>Velocity</b> (Humanise) With this control you can set a random whole part attenuation.
     <br><br>
@@ -135,7 +134,7 @@
     <a id="kit"></a>
     <p>
     <img src="images/kit.png" alt="Part Kit Window" class="image">
-    Part kits can consist of up to 16 kit items, each with its own key range and full set of engines.
+    Part kits can consist of up to 16 kit items, each with its own key range and full set of engines, although this must be within the overall part's key range.
     <h3>Kit controls</h3>
     (kit item strips)
     <br><br>
@@ -145,7 +144,7 @@
     <br><br>
     <b>Name</b> Each item can be named independently
     <br><br>
-    <b>Min key</b> The minimum MIDI key number this item with respond to.
+    <b>Min key</b> The minimum MIDI key number this item will respond to.
     <br><br>
     <b>m</b> Use the last pressed key to set the minimum key number.
     <br><br>
@@ -167,11 +166,11 @@
     <br><br>
     <b>Edit</b> (PadSynth) Opens the PadSynth editing window for this item.
     <br><br>
-    <b>FX.r.</b> Sets which of the part's three effects will be applied this item.
+    <b>FX.r.</b> Sets which of the part's three effects will be applied to this item.
     <br><br>
     (bottom row)
     <br><br>
-    <b>Mode</b> This menu selects which kit mode that is used.
+    <b>Mode</b> This menu selects the kit mode that is used.
     <div class="tab">
     <em>Multi</em> - All kit items will sound over their full key range.
     <br>
@@ -191,27 +190,34 @@
     <br><br>
     The spinbox selects which of three part effects you are managing.
     <br><br>
-    The menu choses the effect, which will then appear an the area below.
+    The menu chooses the effect, which will then appear in the area below.
     <br><br>
-    The last menu determines the routing of the effects.
+    The last menu determines the routing of the effects:
+    <div class="tab">
     <br>
-    - <em>Next Effect</em> (default): will send the output of the effect to the next one in the chain.
-    <br>
-    - <em>Part Out</em>: makes the current effect the last one in the chain, effectivly ignoring any other following effect.
-    <br>
-    - <em>Dry Out</em>: This will send the effect output directly where part effects are added together. If an effect is set to Dry Out and then bypassed the signal will not pass to the next effect. <span class="warn">Explain dry out better!</span>
+    <em>Next Effect</em> (default): will send the output of the effect (added to the incoming signal) to the next one in the chain.
     <br><br>
-    At the bottom of this window is a button to allow you to disable this effect without losing the settings, or altering the routing for the other effects in the chain.
+    <em>Part Out</em>: makes the current effect the last one in the chain, effectively ignoring any other following effects.
+    <br><br>
+    <em>Dry Out</em>: This will send the incoming signal component directly where part effects are added together, so it won't be passed on to later effects. However, the output of the effect itself <em>is</em> passed on to later ones. Consequently, if this effect is bypassed it also effectively bypasses all later ones.
+    </div>
+    <br>
+    At the bottom of this window is the <em>bypass</em> button to allow you to disable this effect without losing the settings, or altering the routing for the other effects in the chain.
     </p>
     <img src="../images/boundry.png" alt="divider" class="wideline">
     <a id="aftertouch"></a>
     <p>
     <h3>Aftertouch</h3>
     <img src="images/aftertouch.png" alt="Aftertouch window" class="image">
-    Each part can have independent Channel, and Key aftertouch. The controls shown are in parallel to the incoming CCs so you should not use the incoming CC at the same time as aftertouch, otherwise the results can be quite confusing. You can have several of the controls working at the same time, but not on both channel and key at the same time.
+    Each part can have independent Channel, and Key aftertouch. The controls shown operate in parallel to the incoming CCs so you should not use the incoming CC at the same time as aftertouch, otherwise the results can be quite confusing. You can have several of the controls working at the same time, but not on both channel and key at the same time.
     <br><br>
     The normal range is from the CC value at the time the key was pressed up to the maximum for that control. If 'Down' is set as well, the effect will be in the reverse direction. i.e. down to the control's minimum value.
+    <br><br>
+    <b>Note</b>
+    <br>
+    &emsp;If two parts such as, part 1 and part 5 are receiving the same MIDI channel, they can still have quite different aftertouch settings.
     </p>
+    <p>
     <img src="../images/boundry.png" alt="divider" class="wideline">
     <a href="../add/add.html">Next</a> (AddSynth Engine)
     <a href="#edit" class="up">Back to 'Edit'</a>
@@ -221,5 +227,7 @@
     <br>
     <a href="../pad/pad.html">PadSynth Engine</a>
     <a href="#top" class="up">Back to top</a>
+    <br>
+    </p>
   </body>
 </html>
