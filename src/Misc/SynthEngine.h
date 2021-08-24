@@ -31,7 +31,6 @@
 #include <limits.h>
 #include <cstdlib>
 #include <semaphore.h>
-#include <jack/ringbuffer.h>
 #include <string>
 #include <vector>
 #include <list>
@@ -259,9 +258,13 @@ class SynthEngine
         int64_t getLFOtime() {return LFOtime;}
         float getSongBeat() {return songBeat;}
         float getMonotonicBeat() {return monotonicBeat;}
-        void setBeatValues(float song, float monotonic) {
-            songBeat = song;
-            monotonicBeat = monotonic;
+        float getBPM() { return bpm; }
+        bool isBPMAccurate() { return bpmAccurate; }
+        void setBPMAccurate(bool value) { bpmAccurate = value; }
+        void setBeatValues(float songBeat, float monotonicBeat, float bpm) {
+            this->songBeat = songBeat;
+            this->monotonicBeat = monotonicBeat;
+            this->bpm = bpm;
         }
         string makeUniqueName(const string& name);
 
@@ -293,6 +296,9 @@ class SynthEngine
         int64_t LFOtime; // used by Pcontinous without Pbpm
         float songBeat; // used by Pbpm without Pcontinous
         float monotonicBeat; // used by Pbpm
+        float bpm; // used by Echo Effect
+        bool bpmAccurate; // Set to false by engines that can't provide an
+                          // accurate BPM value.
 
         string windowTitle;
         //MusicClient *musicClient;
@@ -301,7 +307,7 @@ class SynthEngine
     public:
         float numRandom()   { return prng.numRandom(); }
         uint32_t randomINT(){ return prng.randomINT(); }   // random number in the range 0...INT_MAX
-        void reseed(int value) { prng.init(value); }
+        void setReproducibleState(int value);
 };
 
 #endif

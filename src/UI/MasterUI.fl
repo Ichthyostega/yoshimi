@@ -43,9 +43,6 @@ decl {\#define PANEL_DUAL_X 530} {public local
 decl {\#define PANEL_DUAL_Y 600} {public local
 }
 
-decl {\#define FILER_SIZE 1500} {public local
-}
-
 decl {\#include <FL/Fl_Tooltip.H>} {public local
 }
 
@@ -53,6 +50,9 @@ decl {\#include <string>} {public local
 }
 
 decl {\#include <iostream>} {public local
+}
+
+decl {\#include <deque>} {public local
 }
 
 decl {\#include <fstream>} {public local
@@ -187,6 +187,14 @@ lineitem = n;}
   Function {FilerLine(int x, int y, int w, int h, const char *label=0):Fl_Group(x,y,w,h,label)} {} {
     code {n = 0;} {}
   }
+  decl {FilerLine(FilerLine const&) =delete;} {public local
+  }
+  decl {FilerLine(FilerLine&&) =delete;} {public local
+  }
+  decl {FilerLine& operator=(FilerLine const&) =delete;} {public local
+  }
+  decl {FilerLine& operator=(FilerLine&&) =delete;} {public local
+  }
   Function {init(SynthEngine *synth_, int n_, bool isDir_, string typeName_, string title_)} {} {
     code {//
 
@@ -232,9 +240,6 @@ class MasterUI {: {private GuiUpdates}
 } {
   Function {MasterUI(SynthEngine *_synth)} {} {
     code {//
-      for (int i = 0; i < FILER_SIZE; ++i)
-          filerlist[i] = NULL;
-
       synth = _synth;
       presetsui = NULL;
       ninseff = 0;
@@ -273,11 +278,6 @@ class MasterUI {: {private GuiUpdates}
     code {//
       aboutwindow->hide();
       delete aboutwindow;
-
-      if (logenable)
-          saveWin(synth, yoshiLog->logConsole->w(), yoshiLog->logConsole->h(), yoshiLog->logConsole->x(), yoshiLog->logConsole->y(), true, "System-log");
-      else
-          setVisible(synth, false, "System-log");
 
       syseffsendwindow->hide();
       if (syseffSeen)
@@ -327,6 +327,7 @@ class MasterUI {: {private GuiUpdates}
 
       if (filerwindow)
       {
+          filerlist.clear();
           if (filerwindow->visible())
               saveWin(synth, filerwindow->w(), filerwindow->h(), filerwindow->x(), filerwindow->y(), true, "Master-filer");
           filerwindow->hide();
@@ -342,7 +343,7 @@ class MasterUI {: {private GuiUpdates}
     code {//
       instance = synth->getUniqueId();
       file::createDir(synth->getRuntime().ConfigDir + "/windows");
-      panelType = 1;
+      panelType = 5;
       msgSeen = false;
       syseffSeen = false;
       partmax = synth->getRuntime().NumAvailableParts;
@@ -379,6 +380,11 @@ class MasterUI {: {private GuiUpdates}
       logenable = fetchData(0, CONFIG::control::reportsDestination, TOPLEVEL::section::config);
       if (!foundWindows)
       {
+          // fake previously seen.
+          saveWin(synth, 0, 0, masterwindow->x() + masterwindow->w() + 16, masterwindow->y(), true, "Midi-virtualkeyboard");
+          virkeyboard->ShowKbd();
+          panelwindow->resize(masterwindow->x(), masterwindow->y(), PANEL_SINGLE_X, PANEL_SINGLE_Y);
+          saveWin(synth, panelwindow->w(), panelwindow->h(), panelwindow->x(), panelwindow->y(), panelType, "Mixer");
           string msg = "As this is a first time start, please check 'Yoshimi->Settings' then save and restart. More information can be found in the manual.";
           setmessage(UNUSED, true, msg, "Close");
       }
@@ -505,7 +511,7 @@ class MasterUI {: {private GuiUpdates}
                 words->copy_label("Searching for the manual.");
                 message->show();
                 message->position(masterwindow->x() + 36, masterwindow->y() + 170);
-                send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate, MAIN::control::openManualPDF, 0, TOPLEVEL::type::Integer, TOPLEVEL::section::main);
+                send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate, MAIN::control::openManual, 0, TOPLEVEL::type::Integer, TOPLEVEL::section::main);
             }
             break;
         case 6: // exit
@@ -1571,12 +1577,13 @@ Alan Calvert started the project}
           callback {//
     size_t pos = favebrowse->value();
     if (pos > 0)
-    {
         filerpath = clearfavecolour(pos);
-        if (filerpath.back() != '/')
-            filerpath += '/';
-    	fileroldpath->value(filerpath.c_str());
-    }
+    else
+       filerpath = clearfavecolour(1);
+
+    if (filerpath.back() != '/')
+        filerpath += '/';
+    fileroldpath->value(filerpath.c_str());
     fillfiler(type_name);
     favecancel->do_callback();}
           tooltip {Set the current path to the selected entry and exit} xywh {20 61 70 20} labelfont 1 labelsize 12
@@ -1844,25 +1851,25 @@ Alan Calvert started the project}
             options |= 16;
 
         file::dir2string(tofetch, filerpath, filerext, options);
-
-        filerscroll->clear();
+        filerlist.clear();        // Note: must come first; dtor of FL_Group automatically
+        filerscroll->clear();     //       detaches child widgets from the FL_Scroll
         lineno = 0;
         //std::cout << "*** list start ***" << std::endl;
-        while(!tofetch.empty() && lineno < FILER_SIZE)
+        while(!tofetch.empty())
         {
             size_t pos = tofetch.find("\\n");
             string next = tofetch.substr(0, pos);
             bool isDir = false;
-            filerlist[lineno] = new FilerLine(0, 0, 390, 20);
+            filerlist.emplace_back(0, 0, 390, 20);
             if (next.find("Dir:") != std::string::npos)
             {
                 next = next.substr(5);
                 isDir = true;
             }
-            filerlist[lineno]->init(synth,lineno, isDir, type_name, next);
+            filerlist.back().init(synth,lineno, isDir, type_name, next);
             //std::cout << "name >" << next << "<" << std::endl;
-            filerlist[lineno]->name->copy_label(next.c_str());
-            filerscroll->add(filerlist[lineno]);
+            filerlist.back().name->copy_label(next.c_str());
+            filerscroll->add(&filerlist.back());
             ++lineno;
             tofetch = tofetch.substr(pos + 1);
         }
@@ -1873,8 +1880,8 @@ Alan Calvert started the project}
   }
   Function {filerselect(int item)} {} {
     code {//
-        string line = string(filerlist[item]->name->label());
-        if (filerlist[item]->dirIcon->visible())
+        string line = string(filerlist[item].name->label());
+        if (filerlist[item].dirIcon->visible())
         {
             //std::cout << "in dir" << std::endl;
             if (line.back() !='/')
@@ -1994,9 +2001,9 @@ Alan Calvert started the project}
         faveset->labelsize(size12);
         for (int i = 0; i < lineno; ++i)
         {
-            filerlist[i]->resize(int(10 * dScale), int(((i * 20) + 96) * dScale), int(440 * dScale), int(20 * dScale));
-            filerlist[i]->name->labelsize(size12);
-            filerlist[i]->type->labelsize(int(4 * dScale));
+            filerlist[i].resize(int(10 * dScale), int(((i * 20) + 96) * dScale), int(440 * dScale), int(20 * dScale));
+            filerlist[i].name->labelsize(size12);
+            filerlist[i].type->labelsize(int(4 * dScale));
         }
         filerwindow->redraw();} {}
   }
@@ -2021,15 +2028,18 @@ Alan Calvert started the project}
         }
         if (Fl::get_key(FL_Enter))
         {
-            string test = valueInst->value();
-            if (!test.empty())
+            string testval = valueInst->value();
+            if (!testval.empty())
             {
-                int result = stoi(valueInst->value());
-                if (result > 0 && result < 32)
+                if (func::isDigits(testval))
                 {
-                    send_data(TOPLEVEL::action::lowPrio, MAIN::control::startInstance, result, TOPLEVEL::type::Integer, TOPLEVEL::section::main);
-                    setInstance->hide();
-                    break;
+                    int result = stoi(testval);
+                    if (result > 0 && result < 32)
+                    {
+                        send_data(TOPLEVEL::action::lowPrio, MAIN::control::startInstance, result, TOPLEVEL::type::Integer, TOPLEVEL::section::main);
+                        setInstance->hide();
+                        break;
+                    }
                 }
             }
         }
@@ -2590,7 +2600,7 @@ Alan Calvert started the project}
             setMasterLabel("");
             break;
 
-        case MAIN::control::openManualPDF:
+        case MAIN::control::openManual:
             message->hide();
             if (miscmsg != NO_MSG)
                 query("", "", "", textMsgBuffer.fetch(miscmsg));
@@ -2808,7 +2818,7 @@ Alan Calvert started the project}
     if (fetchO == 0)
         fetchO = 1; // it's never been seen so set the default
 
-    // assune default sizes
+    // assume default sizes
     int defW = (PANEL_SINGLE_X * 9) / 10;
     int defH = (PANEL_SINGLE_Y * 9) / 10;
 
@@ -3343,15 +3353,9 @@ Alan Calvert started the project}
     code {//
     logenable = isConsole;
     if (logenable)
-    {
-        setVisible(synth, true, "System-log");
         yoshiLog->Show(synth);
-    }
-    else
-    {
-        setVisible(synth, false, "System-log");
-        yoshiLog->logConsole->hide();
-    }} {}
+    else if (yoshiLog->logConsole->visible())
+        yoshiLog->Hide(synth);} {}
   }
   Function {updateBankRootDirs()} {} {
     code {bankui->readbankcfg();} {}
@@ -3412,10 +3416,10 @@ Alan Calvert started the project}
     else
         configui->configwindow->hide();
 
-    if (lastSeen(synth, "System-log"))
+    if (lastSeen(synth, "System-log") & 1)
         yoshiLog->Show(synth);
-    else
-        yoshiLog->logConsole->hide();
+    else if (yoshiLog->logConsole->visible())
+        yoshiLog->Hide(synth);
 
     if (lastSeen(synth, "Vector"))
         vectorui->Show(synth);
@@ -3933,7 +3937,7 @@ Alan Calvert started the project}
   }
   decl {int fileruseX;} {private local
   }
-  decl {FilerLine *filerlist[FILER_SIZE];} {private local
+  decl {deque<FilerLine> filerlist;} {private local
   }
   decl {int lineno;} {private local
   }

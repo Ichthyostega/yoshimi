@@ -204,6 +204,54 @@ void InterChange::muteQueueWrite(CommandBlock *getData)
     }
 }
 
+bool InterChange::findManual(string& found)
+{
+    // selects the newest version of the manual
+    // belt and braces in case file gets deleted while running
+    if (!isRegularFile("/tmp/found_yoshimi_user_guide"))
+    {
+        FILE *fp = popen("find / -type f -name 'yoshimi_user_guide_version' 1>/tmp/found_yoshimi_user_guide 2>/dev/null", "w");
+        pclose(fp);
+        // There is a variable delay between writing to /tmp
+        // and the result being available.
+        int count = 0;
+        while (count < 1000 && !isRegularFile("/tmp/found_yoshimi_user_guide"))
+        {
+            usleep(1000);
+            ++ count;
+        }
+        //std::cout << "delay " << count << "mS" << std::endl;
+    }
+
+    string namelist = file::loadText("/tmp/found_yoshimi_user_guide");
+    if (namelist.empty())
+        return false;
+
+    size_t next = 0;
+    size_t lastversion = 0;
+    string name = "";
+    while (next != string::npos)
+    {
+        next = namelist.find("\n");
+        if (next != string::npos)
+        {
+            name = namelist.substr(0, next);
+            size_t current = isRegularFile(name);
+            if (current > lastversion)
+            {
+                lastversion = current;
+                found = name;
+            }
+            namelist = namelist.substr( next +1);
+        }
+    }
+
+    if (lastversion > 0)
+        return true;
+
+    return false;
+}
+
 
 std::string InterChange::manualSearch(std::string dir2search, std::string path2match)
 {
@@ -754,6 +802,7 @@ int InterChange::indirectMain(CommandBlock *getData, SynthEngine *synth, unsigne
             vectorClear(NUM_MIDI_CHANNELS);
             if (synth->loadStateAndUpdate(text))
             {
+                text = setExtension(text, EXTEN::state);
                 string name = synth->getRuntime().ConfigDir + "/yoshimi";
                 name += ("-" + to_string(synth->getUniqueId()));
                 name += ".state";
@@ -818,56 +867,95 @@ int InterChange::indirectMain(CommandBlock *getData, SynthEngine *synth, unsigne
         case MAIN::control::masterResetAndMlearn:
             synth->resetAll(1);
             break;
-        case MAIN::control::openManualPDF: // display user guide
+        case MAIN::control::openManual: // display user guide
         {
-            std::string manfile = synth->manualname();
-            std::string stub = manfile.substr(0, manfile.rfind("-"));
-
-            std::string path = "";
-            std::string lastdir = "";
-            std::string found = "";
-            std::string search = "/usr/share/doc/yoshimi";
-            path = manualSearch(search, stub);
-            //std::cout << "name1 " << path << std::endl;
-            found = path;
-            lastdir = search;
-
-            search = "/usr/local/share/doc/yoshimi";
-            path = manualSearch(search, stub);
-            //std::cout << "name2 " << path << std::endl;
-            if (path >= found)
+            // first try html version
+            text = "";
+            string found = "";
+            getData->data.control = TOPLEVEL::control::textMessage;
+            if (findManual(found))
             {
+                size_t pos = found.rfind("files/yoshimi_user_guide_version");
+                found = found.substr(0, pos);
+                found += "/index.html";
+                FILE *fp = popen(("xdg-open " + found + " &").c_str(), "r");
+                if (fp == NULL)
+                {
+                    found = "";
+                    text = "Found Manual but can't find Browser :(";
+                }
+                else
+                    pclose(fp);
+            }
+            else
+                text = "Can't find manual :(";
+            newMsg = true;
+            break;
+            /*
+                // fall back to older PDF version
+
+                std::string manfile = synth->manualname();
+                std::string stub = manfile.substr(0, manfile.rfind("-"));
+
+                std::string path = "";
+                std::string lastdir = "";
+                std::string search = "/usr/share/doc/yoshimi";
+                path = manualSearch(search, stub);
+                //std::cout << "name1 " << path << std::endl;
                 found = path;
                 lastdir = search;
-            }
 
-            search = localPath();
-            if (!search.empty())
-            {
+                search = "/usr/local/share/doc/yoshimi";
                 path = manualSearch(search, stub);
-                //std::cout << "name3 " << path << std::endl;
+                //std::cout << "name2 " << path << std::endl;
                 if (path >= found)
                 {
                     found = path;
                     lastdir = search;
                 }
-            }
 
-            if (found.empty())
-                text = "Can't find manual :(";
-            else
-            {
-                if (found.substr(0, found.rfind(".")) != manfile)
-                text = "Can't find current manual. Using older one";
+                search = localPath();
+                if (!search.empty())
+                {
+                    path = manualSearch(search, stub);
+                    //std::cout << "name3 " << path << std::endl;
+                    if (path >= found)
+                    {
+                        found = path;
+                        lastdir = search;
+                    }
+                }
 
+                if (found.empty())
+                {
+                    getData->data.miscmsg = textMsgBuffer.push("Can't find PDF manual :(");
+                    returnsBuffer.write(getData->bytes);
+                }
+                else
+                {
+                    if (found.substr(0, found.rfind(".")) != manfile)
+                    getData->data.miscmsg = textMsgBuffer.push("Can't find last PDF. Looking for older one");
+                    returnsBuffer.write(getData->bytes);
+                }
                 std::string command = "xdg-open " + lastdir + "/" + found + "&";
                 FILE *fp = popen(command.c_str(), "r");
                 if (fp == NULL)
-                    text = "Can't find PDF reader :(";
-                pclose(fp);
+                {
+                    getData->data.miscmsg = textMsgBuffer.push("Can't find PDF reader :(");
+                    returnsBuffer.write(getData->bytes);
+                    found = "";
+                }
+                else
+                    pclose(fp);
+            }
+            if (!found.empty())
+            {
+                getData->data.miscmsg = NO_MSG;
+                returnsBuffer.write(getData->bytes);
             }
             newMsg = true;
             break;
+            */
         }
         case MAIN::control::startInstance:
             if (synth == firstSynth)
@@ -1620,6 +1708,13 @@ float InterChange::readAllData(CommandBlock *getData)
 
 void InterChange::resolveReplies(CommandBlock *getData)
 {
+    if (false)
+    {
+        std::cout << "\nType " << int(getData->data.type) << " Action " << int(getData->data.source) << " Control " << int(getData->data.control) << " Value " << getData->data.value
+        << "\nPart " << int(getData->data.part) << " Kit " << int(getData->data.kit) << " Engine " << int(getData->data.engine)
+        << "\nInsert " << int(getData->data.insert) << " Parameter " << int(getData->data.parameter) << " Offset " << int(getData->data.offset)
+        << "\nMiscMsg " << int(getData->data.miscmsg) << " Spare1 " << int(getData->data.spare1) << " Spare0 " << int(getData->data.spare0) << std::endl;
+    }
     unsigned char source = getData->data.source & TOPLEVEL::action::noAction;
     // making sure there are no stray top bits.
     if (source == TOPLEVEL::action::noAction)
@@ -2651,6 +2746,12 @@ void InterChange::commandConfig(CommandBlock *getData)
             else
                 value = synth->getRuntime().toConsole;
             break;
+        case CONFIG::control::logTextSize:
+            if (write)
+                 synth->getRuntime().consoleTextSize = value_int;
+            else
+                value = synth->getRuntime().consoleTextSize;
+            break;
         case CONFIG::control::savedInstrumentFormat:
             if (write)
                  synth->getRuntime().instrumentFormat = value_int;
@@ -2989,7 +3090,7 @@ void InterChange::commandMain(CommandBlock *getData)
             break;
 
         case MAIN::control::reseed:
-            synth->reseed(int(value));
+            synth->setReproducibleState(int(value));
             // std::cout << "rnd " << synth->randomINT() << std::endl;
             break;
 
@@ -6198,6 +6299,7 @@ void InterChange::commandSysIns(CommandBlock *getData)
     unsigned char insert = getData->data.insert;
 
     bool write = (type & TOPLEVEL::type::Write) > 0;
+    //std::cout << "Itype " << int(type) << "  val " << value << "  cont " << int(control) << "  part " << int(npart) << "  effnum " << int(effnum) << "  insert " << int(insert) << std::endl;
 
     int value_int = lrint(value);
     bool isSysEff = (npart == TOPLEVEL::section::systemEffects);
@@ -6333,6 +6435,8 @@ void InterChange::commandEffects(CommandBlock *getData)
         return;
     }
 
+    if (eff->geteffectpar(EFFECT::control::bpm) == 1)
+        getData->data.offset = 1; // mark this for reporting in Data2Text
 
     if (kititem == EFFECT::type::dynFilter && getData->data.insert != UNUSED)
     {

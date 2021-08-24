@@ -131,6 +131,7 @@ namespace _SYS_
 
     enum mute {Idle, Pending, Fading, Active, Complete, Request, Immediate};
 
+    // session types and stages
     enum type {Normal, Default, JackFirst, JackSecond, StartupFirst, StartupSecond, InProgram, RestoreConf};
 }
 
@@ -278,6 +279,7 @@ namespace CONFIG // usage CONFIG::control::oscillatorSize
         virtualKeyboardLayout,
         XMLcompressionLevel,
         reportsDestination,
+        logTextSize,
         savedInstrumentFormat,
         defaultStateStart = 16,
         hideNonFatalErrors,
@@ -501,6 +503,8 @@ namespace SCALES // usage SCALES::control::refFrequency
         keyboardMap,
         importScl = 48,
         importKbm,
+        exportScl, // not yet
+        exportKbm, // not yet
         name = 64,
         comment,
         retune = 80, // GUI only
@@ -543,7 +547,7 @@ namespace MAIN // usage MAIN::control::volume
         exportPadSynthSamples,
         masterReset,
         masterResetAndMlearn,
-        openManualPDF = 100,
+        openManual = 100,
         startInstance = 104,
         stopInstance,
         stopSound = 128,
@@ -1062,6 +1066,8 @@ namespace EFFECT // usage EFFECT::type::none
         panning, // band for EQ
         frequency, // time reverb, delay echo, L/R-mix dist, Not EQ
         preset = 16, // not EQ
+        bpm,
+        bpmStart,
         changed = 129 // not EQ
     };
 

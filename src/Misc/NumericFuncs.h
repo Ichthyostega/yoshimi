@@ -25,7 +25,10 @@
 
 #include <cmath>
 #include <cstddef>
+#include <stdio.h>
+#include <string.h>
 #include "globals.h"
+#include "Interface/TextLists.h"
 
 namespace func {
 
@@ -59,6 +62,35 @@ inline float rap2dB(float rap)
 }
 
 
+inline int version2value(void)
+{
+    /*
+     * expected text string format
+     * <n.n.n> [text]
+     * to
+     * <nn.nn.nn> [text]
+     *
+     * result = nnnnnn
+     */
+    char tofind[] = YOSHIMI_VERSION;
+    std::string digits = "";
+    std::string num = "0";
+    for (size_t i = 0; i < strlen(tofind); ++i)
+    {
+        if (tofind[i] >= '0' && tofind[i] <= '9')
+        {
+            digits += tofind[i];
+        }
+        else if (tofind[i] == '.' || tofind[i] == ' ')
+        {
+            if (digits.length() == 1)
+                digits = '0'+ digits;
+            num += digits;
+            digits = "";
+        }
+    }
+    return std::stoi(num);
+}
 
 
 // no more than 32 bit please!
@@ -191,6 +223,16 @@ inline void setAllPan(float position, float& left, float& right, unsigned char c
             left = 0.7;
             right = 0.7;
     }
+}
+
+inline std::string bpm2text( float val)
+{
+    // The text list referenced below will need to be altered if this is ever
+    // changed. Remember that intervals need to be preserved too, not just the
+    // total number of steps, otherwise saved instruments will get incorrect
+    // values.
+    static_assert(LFO_BPM_STEPS == 33, "Need to adjust LFO_BPM_STEPS table.");
+    return LFObpm[int(roundf(val * (LFO_BPM_STEPS + 2)))];
 }
 
 inline float quantizedLFOfreqBPM(float value)

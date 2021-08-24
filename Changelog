@@ -1,4 +1,189 @@
-yoshimi 2.0.2
+yoshimi 2.1.0
+
+2021-8-23 Will
+* Final cleanups
+* General Doc updates
+* Set release version 2.1.0
+
+2021-8-22 Will
+* Last minute bugfix :(
+  If HTML manual couldn't be found it went into
+  loop fetching old pdf one and opening pdf reader
+  so commented out pdf section.
+
+* Added LV2 correction.
+
+2021-8-21 Will
+* Made guide headers HTML5 compliant.
+* Applied corrections and style improvements from John.
+
+2021-8-20 Will
+* No code changes (so no version update).
+* Revision of complete New User Guide.
+
+2021-8-16 Will
+* Set release candidate 1.
+
+2021-8-15 Will
+* Some small code cleanups.
+* Added NRPN control to send part to system effects.
+* Updated guide.
+
+2021-8-14 Will
+* Bugfix: MIDI_Learn not loading/saving files.
+  Not handling spaces in path or leafname.
+* Various doc updates.
+
+2021-8-13 Will
+* Expanded EQ Band, Type, Stages labels.
+  Why were they ever abbreviated?
+* Bugfix: Virtual keyboard not seen on first startup.
+
+2021-8-12 Will
+* Doc updates.
+* Changed Banks ID placeholder.
+  May be using it soon.
+
+2021-8-10 Will
+* Further Guide updates and improvements.
+  Also some doc cleanups.
+
+2021-8-9 Will
+* Changed FR to RR in CLI LFO to resolve contention.
+* Various guide updates and wc3 compliance checks.
+
+2021-8-8 Will
+* Util cleanups.
+
+2021-8-7 Will
+* Added an appendix to guide.
+* Added a MIDI note lit generator in Utils.
+* Removed now redundant similar information from docs.
+* Removed PDF version of guide.
+  The on-line copy is now referred to.
+
+2021-8-6 Will
+* Improved manual's CC/NRPN descriptions.
+* Clarified guide text in navigation.
+* Added more links.
+
+2021-8-5 Will
+* Improved reporting when loading manual.
+* NRPN send system effect No. to No. now works!
+  Undated manual accordingly.
+
+2021-8-4 Will
+* User guide more detail and cross links.
+
+* Various Doc updates.
+* Made string to int conversion safe.
+* Activated search for new manual.
+* Developed way to auto update manual version.
+
+2021-8-3 Will
+* User guide corrections and improvements.
+
+2021-8-2 Will
+* Further work on User Guide.
+
+* Changed filer from fixed array to vector.
+
+2021-8-1 Will
+* Revised console window code.
+  text size independent of dimensions.
+* Updated user guide.
+
+* Reverted part of config change from 2021-7-25
+  One line error.
+* Added more comments in misc funcs.
+
+* Considerable expansion of CLI in guide.
+
+* Completed CLI guide.
+
+2021-7-30 Will
+* Added filer images to new user guide.
+  also many spelling corrections :(
+* Further work on manual CLI page.
+  also more images of filer headings.
+
+2021-7-29 Will
+* Updated PDF manual.
+* Added links for new manual.
+  Currently disabled.
+* Updates to new user manual.
+* Added version text to numeric value.
+  Not currently in use.
+
+2021-7-26 Will
+* Completed user guide CCs/NRPNs
+* Started CLI user guide section.
+
+2021-7-25 Will
+* Small cleanups and doc updates.
+* Started CCs/NRPNs on user guide.
+* BugFix: not responding to NRPN sys/ins effects.
+
+2021-7-21 Will
+* Further updates to User guide
+* Added FLTK_event_keys.txt to dev_notes
+
+2021-7-18 Will
+* User guide formant filter done except graph usage.
+
+2021-7-17 Will
+* Initialised LearnBlock in MIDIlearn.
+* Capitalised some GUI filter/effects control names.
+* Corrected spelling in User Guide.
+  Also made small additions and adjustments.
+
+2021-7-15 Will
+* Implemented Effects BPM control for CLI.
+* Updated Effects in new user guide.
+
+* Refined and unified BPM reporting.
+
+2021-7-14 Will
+* Merged in Effects BPM control from Kristian.
+* Adjusted to CLI waveform list.
+* Added (disabled) command block reporting in
+  Interchange->resolveReplies()
+* Started work on User Guide Envelopes and LFOs.
+
+2021-7-1 Hermann
+* New Feature: support for automated tests via CLI.
+
+2021-6-29 Will
+* BugFix: Loading state not adding to history.
+
+2021-6-25 Will
+* BugFix: headers still including jack/ringbuffer.
+  Only appears in jack engine midi struct but
+  doesn't seem to do anything!
+  Replaced with uint_t
+
+2021-6-22 Will
+* Waveform in guide mostly done.
+  There is a lot of detail missing.
+  It was never   doccumented :(
+
+2021-6-21 Will
+* BugFix: GUI scale kemap label not resizing.
+* Completed Scales in guide.
+
+2021-6-20 Will
+* Small improvement to vector and midi learn in guide.
+* Completed Resonance in guide.
+
+2021-6-19 Will
+* Filer now correctly sets default path in favorites.
+* Small doc cleanups.
+* Improved PadSynth Base Type layout.
+  Profile menu named.
+
+* Added further details to filer in manual.
+* Various small adjustments and spelling checks.
+* Added new PadSynth image.
 
 2021-6-17 Will
 * Manual now points to correct version.
