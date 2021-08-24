@@ -1,4 +1,4 @@
-Description: Patch out the external cc logo to make lintian happy
+Description: Patch out external cc logo from index.html to fix privacy breach
 Author: Dennis Braun <d_braun@kabelmail.de>
 Forwarded: not-needed
 
@@ -6,12 +6,12 @@ Index: yoshimi/doc/yoshimi_user_guide/index.html
 ===================================================================
 --- yoshimi.orig/doc/yoshimi_user_guide/index.html
 +++ yoshimi/doc/yoshimi_user_guide/index.html
-@@ -4,7 +4,7 @@
+@@ -9,7 +9,7 @@ set the correct version number. -->
      <meta http-equiv="content-type" content="text/html; charset=UTF-8">
      <title>Yoshimi User Manual</title>
      <link rel="stylesheet" type="text/css" href="files/style.css">
--    <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a>This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
+-    <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a> This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
 +    This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
    </head>
    <body>
-     <h1 style="text-align: center;">The Yoshimi User Guide V2.0</h1>
+   <!-- The next line must not be changed. It is edited at build time -->
