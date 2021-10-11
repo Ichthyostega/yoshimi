@@ -1,4 +1,4 @@
 # Run yoshimi without gui in command line interface
-Test-Command: yoshimi -Ci &
-Depends: @
+Test-Command: echo "set test exec" | yoshimi --null --no-gui --cmdline
+Depends: yoshimi
 Restrictions: allow-stderr, superficial
