@@ -77,12 +77,14 @@ namespace { // Global implementation internal history data
     static vector<string> ParamsHistory;
     static vector<string> ScaleHistory;
     static vector<string> StateHistory;
-    static vector<string> PresetHistory;
     static vector<string> VectorHistory;
     static vector<string> MidiLearnHistory;
+    static vector<string> PresetHistory;
     static vector<string> PadHistory;
     static vector<string> TuningHistory;
     static vector<string> KeymapHistory;
+
+    static vector<string> historyLastSeen(TOPLEVEL::XML::ScalaMap, "");
 }
 
 
@@ -114,16 +116,16 @@ static unsigned int getRemoveSynthId(bool remove = false, unsigned int idx = 0)
 }
 
 
-SynthEngine::SynthEngine(int argc, char **argv, bool _isLV2Plugin, unsigned int forceId) :
+SynthEngine::SynthEngine(std::list<string>& allArgs, LV2PluginType _lv2PluginType, unsigned int forceId) :
     uniqueId(getRemoveSynthId(false, forceId)),
-    isLV2Plugin(_isLV2Plugin),
+    lv2PluginType(_lv2PluginType),
     needsSaving(false),
     bank(this),
     interchange(this),
     midilearn(this),
     mididecode(this),
     //unifiedpresets(this),
-    Runtime(this, argc, argv),
+    Runtime(this, allArgs, getIsLV2Plugin()),
     presetsstore(this),
     textMsgBuffer(TextMsgBuffer::instance()),
     fadeAll(0),
@@ -340,9 +342,11 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
     if (Runtime.instrumentLoad.size())
     {
         string feli = Runtime.instrumentLoad;
-        int loadtopart = 0;
-        if (part[loadtopart]->loadXMLinstrument(feli))
+        if (part[Runtime.load2part]->loadXMLinstrument(feli))
+        {
+            part[Runtime.load2part]->Penabled = 1;
             Runtime.Log("Instrument file " + feli + " loaded");
+        }
         else
         {
             Runtime.Log("Failed to load instrument file " + feli);
@@ -491,7 +495,7 @@ void SynthEngine::defaults(void)
     Runtime.lastfileseen.clear();
     for (int i = 0; i <= TOPLEVEL::XML::ScalaMap; ++i)
     {
-        Runtime.lastfileseen.push_back(Runtime.userHome);
+        Runtime.lastfileseen.push_back(file::userHome());
         Runtime.sessionSeen[i] = false;
     }
 
@@ -1007,7 +1011,7 @@ int SynthEngine::setProgramByName(CommandBlock *getData)
     {
         Runtime.sessionSeen[TOPLEVEL::XML::Instrument] = true;
         addHistory(setExtension(fname, EXTEN::zynInst), TOPLEVEL::XML::Instrument);
-        partonoffLock(npart, 2 - Runtime.enable_part_on_voice_load); // always on if enabled
+        partonoffLock(npart, 1);
     }
     return msgID;
 }
@@ -1072,7 +1076,7 @@ int SynthEngine::setProgramFromBank(CommandBlock *getData, bool notinplace)
         partonoffLock(npart, 2); // as it was
     }
     else
-        partonoffLock(npart, 2 - Runtime.enable_part_on_voice_load); // always on if enabled
+        partonoffLock(npart, 1);
     return msgID;
 }
 
@@ -1390,13 +1394,7 @@ void SynthEngine::ListSettings(list<string>& msg_buf)
         msg_buf.push_back("  MIDI Bank CC " + asString(Runtime.midi_bank_C));
 
     if (Runtime.EnableProgChange)
-    {
         msg_buf.push_back("  MIDI Program Change on");
-        if (Runtime.enable_part_on_voice_load)
-            msg_buf.push_back("  MIDI Program Change enables part");
-        else
-            msg_buf.push_back("  MIDI Program Change doesn't enable part");
-    }
     else
         msg_buf.push_back("  MIDI program change off");
 
@@ -1435,7 +1433,22 @@ void SynthEngine::ListSettings(list<string>& msg_buf)
             break;
     }
     msg_buf.push_back("  Preferred audio " + label);
-    msg_buf.push_back("  ALSA MIDI " + Runtime.alsaMidiDevice);
+    switch (Runtime.alsaMidiType)
+    {
+        case 2:
+            label = "External";
+            break;
+
+        case 1:
+            label = "Search";
+            break;
+
+        default:
+            label = "Fixed";
+            break;
+    }
+    msg_buf.push_back("  ALSA MIDI connection " + label);
+    msg_buf.push_back("  ALSA MIDI source " + Runtime.alsaMidiDevice);
     msg_buf.push_back("  ALSA audio " + Runtime.alsaAudioDevice);
     msg_buf.push_back("  JACK MIDI " + Runtime.jackMidiDevice);
     msg_buf.push_back("  JACK server " + Runtime.jackServer);
@@ -1593,13 +1606,6 @@ int SynthEngine::SetSystemValue(int type, int value)
         case 82: // enable program change
             value = (value > 63);
             cmd = CONFIG::control::enableProgramChange;
-            setpart = TOPLEVEL::section::config;
-            to_send = true;
-            break;
-
-        case 83: // enable part on program change
-            value = (value > 63);
-            cmd = CONFIG::control::instChangeEnablesPart;
             setpart = TOPLEVEL::section::config;
             to_send = true;
             break;
@@ -2492,7 +2498,7 @@ bool SynthEngine::saveMicrotonal(const string& fname)
 
 bool SynthEngine::installBanks()
 {
-    string name = Runtime.ConfigDir + '/' + YOSHIMI;
+    string name = file::configDir() + '/' + YOSHIMI;
     string bankname = name + ".banks";
     bool banksGood = false;
     bool newBanks = false;
@@ -2523,7 +2529,7 @@ bool SynthEngine::installBanks()
 
 bool SynthEngine::saveBanks()
 {
-    string name = Runtime.ConfigDir + '/' + YOSHIMI;
+    string name = file::configDir() + '/' + YOSHIMI;
     string bankname = name + ".banks";
     Runtime.xmlType = TOPLEVEL::XML::Bank;
 
@@ -2560,14 +2566,19 @@ void SynthEngine::newHistory(string name, int group)
 void SynthEngine::addHistory(const string& name, int group)
 {
     //std::cout << "history name " << name << "  group " << group << std::endl;
-    if (Runtime.historyLock[group])
-    {
-        //std::cout << "history locked" << std::endl;
-        return;
-    }
     if (findLeafName(name) < "!")
     {
         //std::cout << "failed leafname" << std::endl;
+        return;
+    }
+    if (group > TOPLEVEL::XML::ScalaMap)
+        return; // last seen not stored for these.
+
+    historyLastSeen.at(group) = name;
+
+    if (Runtime.historyLock[group])
+    {
+        //std::cout << "history locked" << std::endl;
         return;
     }
 
@@ -2575,7 +2586,8 @@ void SynthEngine::addHistory(const string& name, int group)
     vector<string>::iterator itn = listType.begin();
     listType.erase(std::remove(itn, listType.end(), name), listType.end()); // remove all matches
     listType.insert(listType.begin(), name);
-    setLastfileAdded(group, name);
+    while(listType.size() > MAX_HISTORY)
+        listType.pop_back();
 }
 
 
@@ -2638,53 +2650,21 @@ bool SynthEngine::getHistoryLock(int group)
 
 string SynthEngine::lastItemSeen(int group)
 {
+    if (group > TOPLEVEL::XML::ScalaMap)
+        return ""; // last seen not stored for these.
     if (group == TOPLEVEL::XML::Instrument && Runtime.sessionSeen[group] == false)
         return "";
 
-    vector<string> &listType = *getHistory(group);
-    if (listType.empty())
-        return "";
-    return *listType.begin();
-}
-
-
-void SynthEngine::setLastfileAdded(int group, string name)
-{
-    if (name == "")
-        name = Runtime.userHome;
-    list<string>::iterator it = Runtime.lastfileseen.begin();
-    int count = 0;
-    while (count < group && it != Runtime.lastfileseen.end())
-    {
-        ++it;
-        ++count;
-    }
-    if (it != Runtime.lastfileseen.end())
-        *it = name;
-}
-
-
-string SynthEngine::getLastfileAdded(int group)
-{
-    list<string>::iterator it = Runtime.lastfileseen.begin();
-    int count = 0;
-    while (count < group && it != Runtime.lastfileseen.end())
-    {
-        ++it;
-        ++count;
-    }
-    if (it == Runtime.lastfileseen.end())
-        return "";
-    return *it;
+    return historyLastSeen.at(group);
 }
 
 
 bool SynthEngine::loadHistory()
 {
-    string historyname = Runtime.localDir  + "/recent";
+    string historyname = file::localDir()  + "/recent";
     if (!isRegularFile(historyname))
     {   // recover old version
-        historyname = Runtime.ConfigDir + '/' + string(YOSHIMI) + ".history";
+        historyname = file::configDir() + '/' + string(YOSHIMI) + ".history";
         if (!isRegularFile(historyname))
         {
             Runtime.Log("Missing recent history file");
@@ -2709,7 +2689,7 @@ bool SynthEngine::loadHistory()
     string filetype;
     string type;
     string extension;
-    for (count = TOPLEVEL::XML::Instrument; count <= TOPLEVEL::XML::ScalaMap; ++count)
+    for (count = TOPLEVEL::XML::Instrument; count < TOPLEVEL::XML::ScalaMap; ++count)
     {
         switch (count)
         {
@@ -2756,7 +2736,7 @@ bool SynthEngine::loadHistory()
                 break;
         }
         if (xml->enterbranch(type))
-        { // should never exceed max history as size trimmed on save
+        { // should never exceed max history
             Runtime.historyLock[count] = xml->getparbool("lock_status", false);
             hist_size = xml->getpar("history_size", 0, 0, MAX_HISTORY);
             for (int i = 0; i < hist_size; ++i)
@@ -2773,7 +2753,14 @@ bool SynthEngine::loadHistory()
                         newHistory(filetype, count);
                     xml->exitbranch();
                 }
+
             }
+            string tryRecent = xml->getparstr("most_recent");
+            //std::cout << "new >" << tryRecent << "<" << std::endl;
+            if (tryRecent.empty())
+                historyLastSeen.at(count) = getHistory(count)->at(0);
+            else
+                historyLastSeen.at(count) = tryRecent;
             xml->exitbranch();
         }
     }
@@ -2785,7 +2772,7 @@ bool SynthEngine::loadHistory()
 
 bool SynthEngine::saveHistory()
 {
-    string historyname = Runtime.localDir  + "/recent";
+    string historyname = file::localDir()  + "/recent";
     Runtime.xmlType = TOPLEVEL::XML::History;
 
     XMLwrapper *xml = new XMLwrapper(this, true);
@@ -2833,9 +2820,9 @@ bool SynthEngine::saveHistory()
                     break;
 
                 case TOPLEVEL::XML::PadSample:
-                type = "XMZ_PADSAMPLE";
-                extension = "wav_file";
-                break;
+                    type = "XMZ_PADSAMPLE";
+                    extension = "wav_file";
+                    break;
                 case TOPLEVEL::XML::ScalaTune:
                     type = "XMZ_TUNING";
                     extension = "scl_file";
@@ -2848,20 +2835,18 @@ bool SynthEngine::saveHistory()
             vector<string> listType = *getHistory(count);
             if (listType.size())
             {
-                unsigned int offset = 0;
                 int x = 0;
                 xml->beginbranch(type);
                     xml->addparbool("lock_status", Runtime.historyLock[count]);
                     xml->addpar("history_size", listType.size());
-                    if (listType.size() > MAX_HISTORY)
-                        offset = listType.size() - MAX_HISTORY;
-                    for (vector<string>::iterator it = listType.begin(); it != listType.end() - offset; ++it)
+                    for (vector<string>::iterator it = listType.begin(); it != listType.end(); ++it)
                     {
                         xml->beginbranch("XMZ_FILE", x);
                             xml->addparstr(extension, *it);
                         xml->endbranch();
                         ++x;
                     }
+                    xml->addparstr("most_recent", historyLastSeen.at(count));
                 xml->endbranch();
             }
         }
@@ -2888,25 +2873,25 @@ unsigned char SynthEngine::loadVector(unsigned char baseChan, const string& name
     unsigned char actualBase = NO_MSG; // error!
     if (name.empty())
     {
-        Runtime.Log("No filename", 2);
+        Runtime.Log("No filename", _SYS_::LogNotSerious);
         return actualBase;
     }
     string file = setExtension(name, EXTEN::vector);
     if (!isRegularFile(file))
     {
-        Runtime.Log("Can't find " + file, 2);
+        Runtime.Log("Can't find " + file, _SYS_::LogNotSerious);
         return actualBase;
     }
     XMLwrapper *xml = new XMLwrapper(this, true);
     if (!xml)
     {
-        Runtime.Log("Load Vector failed XMLwrapper allocation", 2);
+        Runtime.Log("Load Vector failed XMLwrapper allocation", _SYS_::LogNotSerious);
         return actualBase;
     }
     xml->loadXMLfile(file);
     if (!xml->enterbranch("VECTOR"))
     {
-            Runtime. Log("Extract Data, no VECTOR branch", 2);
+            Runtime. Log("Extract Data, no VECTOR branch", _SYS_::LogNotSerious);
     }
     else
     {
@@ -3037,7 +3022,6 @@ unsigned char SynthEngine::saveVector(unsigned char baseChan, const string& name
         return textMsgBuffer.push("No vector data on this channel");
 
     string file = setExtension(name, EXTEN::vector);
-    make_legit_filename(file);
 
     Runtime.xmlType = TOPLEVEL::XML::Vector;
     XMLwrapper *xml = new XMLwrapper(this, true);
@@ -3052,7 +3036,7 @@ unsigned char SynthEngine::saveVector(unsigned char baseChan, const string& name
 
     if (!xml->saveXMLfile(file))
     {
-        Runtime.Log("Failed to save data to " + file, 2);
+        Runtime.Log("Failed to save data to " + file, _SYS_::LogNotSerious);
         result = textMsgBuffer.push("FAIL");
     }
     delete xml;
@@ -3240,7 +3224,7 @@ bool SynthEngine::loadXML(const string& filename)
     XMLwrapper *xml = new XMLwrapper(this, true);
     if (NULL == xml)
     {
-        Runtime.Log("Failed to init xml tree", 2);
+        Runtime.Log("Failed to init xml tree", _SYS_::LogNotSerious);
         return false;
     }
     if (!xml->loadXMLfile(filename))
@@ -3372,7 +3356,7 @@ MasterUI *SynthEngine::getGuiMaster(bool createGui)
 
 void SynthEngine::guiClosed(bool stopSynth)
 {
-    if (stopSynth && !isLV2Plugin)
+    if (stopSynth && !getIsLV2Plugin())
         Runtime.runSynth = false;
 #ifdef GUI_FLTK
     if (guiClosedCallback != NULL)
@@ -3729,9 +3713,6 @@ float SynthEngine::getConfigLimits(CommandBlock *getData)
             max = 119;
             break;
         case CONFIG::control::enableProgramChange:
-            break;
-        case CONFIG::control::instChangeEnablesPart:
-            def = 1;
             break;
         case CONFIG::control::extendedProgramChangeCC: // runtime midi checked elsewhere
             def = 110;

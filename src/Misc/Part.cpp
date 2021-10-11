@@ -201,6 +201,7 @@ void Part::defaultsinstrument(void)
         partefx[nefx]->defaults();
         Pefxroute[nefx] = 0; // route to next effect
     }
+    Peffnum = 0;
 }
 
 
@@ -1573,8 +1574,8 @@ void Part::getfromXMLinstrument(XMLwrapper *xml)
     {
         Poriginal = xml->getparstr("name");
         // counting type numbers but checking the *contents* of type_offset()
-        info.Pauthor = xml->getparstr("author");
-        info.Pcomments = xml->getparstr("comments");
+        info.Pauthor = func::formatTextLines(xml->getparstr("author"), 54);
+        info.Pcomments = func::formatTextLines(xml->getparstr("comments"), 54);
         int found = xml->getpar("type", 0, -20, 255); // should cover all!
         int type = 0;
         int offset = 0;

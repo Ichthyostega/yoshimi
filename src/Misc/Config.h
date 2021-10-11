@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2014-2020, Will Godfrey & others
+    Copyright 2014-2021, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -38,6 +38,7 @@
 #include "globals.h"
 
 using std::string;
+using std::list;
 
 class XMLwrapper;
 class SynthEngine;
@@ -45,13 +46,13 @@ class SynthEngine;
 class Config
 {
     public:
-        Config(SynthEngine *_synth, int argc, char **argv);
+        Config(SynthEngine *_synth, list<string>& allArgs, bool isLV2Plugin);
         ~Config();
-        bool Setup(int argc, char **argv);
+        bool Setup(void);
         void StartupReport(const string& clientName);
         void Announce(void);
         void Usage(void);
-        void Log(const string& msg, char tostderr = 0); // 1 = cli only ored 2 = hideable
+        void Log(const string& msg, char tostderr = _SYS_::LogNormal);
     void LogError(const string& msg);
         void flushLog(void);
 
@@ -79,14 +80,12 @@ class Config
 
         bool isRuntimeSetupCompleted() {return bRuntimeSetupCompleted;}
 
-        string        userHome;
-        string        ConfigDir;
-        string        localDir;
         string        defaultStateName;
         string        defaultSession;
         string        ConfigFile;
         string        paramsLoad;
         string        instrumentLoad;
+        int           load2part;
         string        midiLearnLoad;
         string        rootDefine;
         bool          stateChanged;
@@ -130,10 +129,9 @@ class Config
         int           sessionStage;
         int           Interpolation;
         string        presetsDirlist[MAX_PRESETS];
-        std::list<string> lastfileseen;
+        list<string> lastfileseen;
         bool          sessionSeen[TOPLEVEL::XML::ScalaMap + 1];
         bool          historyLock[TOPLEVEL::XML::ScalaMap + 1];
-        bool          checksynthengines;
         int           xmlType;
         unsigned char instrumentFormat;
         int           EnableProgChange;
@@ -164,7 +162,6 @@ class Config
         int           midi_bank_root;
         int           midi_bank_C;
         int           midi_upper_voice_C;
-        int           enable_part_on_voice_load;
         bool          enable_NRPN;
         bool          ignoreResetCCs;
         bool          monitorCCin;
@@ -211,7 +208,7 @@ class Config
             bool Enabled[NUM_MIDI_CHANNELS];
         }vectordata;
 
-        std::list<string> LogList;
+        list<string> LogList;
 
         /*
          * These replace local memory allocations that
@@ -228,7 +225,7 @@ class Config
         float *genMixr;
 
     private:
-        void loadCmdArgs(int argc, char **argv);
+        void applyOptions(Config*settings, list<string>& allArgs);
         void defaultPresets(void);
         bool extractBaseParameters(XMLwrapper *xml);
         bool extractConfigData(XMLwrapper *xml);
@@ -252,7 +249,6 @@ class Config
         friend class YoshimiLV2Plugin;
 
     public:
-        string definedBankRoot;
         int exitType;
 };
 

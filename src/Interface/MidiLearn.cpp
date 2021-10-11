@@ -409,7 +409,6 @@ void MidiLearn::generalOperations(CommandBlock *getData)
     if (control == MIDILEARN::control::clearAll)
     {
         midi_list.clear();
-        synth->setLastfileAdded(TOPLEVEL::XML::MLearn, "");
         updateGui();
         synth->getRuntime().Log("List cleared");
         return;
@@ -789,7 +788,7 @@ void MidiLearn::writeToGui(CommandBlock *putData)
     while (!ok && tries < 3);
 
     if (!ok)
-        synth->getRuntime().Log("toGui buffer full!", 2);
+        synth->getRuntime().Log("toGui buffer full!", _SYS_::LogNotSerious | _SYS_::LogError);
 #endif
 }
 
@@ -891,7 +890,7 @@ bool MidiLearn::saveList(const string& name)
     }
 
     string file = setExtension(name, EXTEN::mlearn);
-    make_legit_filename(file);
+//    make_legit_filename(file);
     synth->getRuntime().xmlType = TOPLEVEL::XML::MLearn;
     XMLwrapper *xml = new XMLwrapper(synth, true);
     if (!xml)

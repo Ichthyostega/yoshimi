@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2010, Alan Calvert
-    Copyright 2014-2020 Will Godfrey & others
+    Copyright 2014-2021 Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU Library General Public
@@ -28,6 +28,7 @@
 #define BANK_H
 
 #include "Misc/Part.h"
+#include "Misc/FormatFuncs.h"
 
 #include <string>
 #include <map>
@@ -108,21 +109,22 @@ class Bank
 
         int engines_used(size_t rootID, size_t bankID, unsigned int ninstrument);
         bool emptyslot(size_t rootID, size_t bankID, unsigned int ninstrument);
-        std::string clearslot(unsigned int ninstrument, size_t rootID, size_t bankID);
+        string clearslot(unsigned int ninstrument, size_t rootID, size_t bankID);
         bool savetoslot(size_t rootID, size_t bankID, int ninstrument, int npart);
-        std::string swapslot(unsigned int n1, unsigned int n2, size_t bank1, size_t bank2, size_t root1, size_t root2);
-        std::string swapbanks(unsigned int firstID, unsigned int secondID, size_t firstRoot, size_t secondRoot);
+        string swapslot(unsigned int n1, unsigned int n2, size_t bank1, size_t bank2, size_t root1, size_t root2);
+        string swapbanks(unsigned int firstID, unsigned int secondID, size_t firstRoot, size_t secondRoot);
         string getBankName(int bankID, size_t rootID);
         bool isDuplicateBankName(size_t rootID, const string& name);
         int getBankSize(int bankID, size_t rootID);
         int changeBankName(size_t rootID, size_t bankID, const string& newName);
+        void checkbank(size_t rootID, size_t banknum);
         bool loadbank(size_t rootID, size_t banknum);
-        std::string exportBank(const string& exportdir, size_t rootID, unsigned int bankID);
-        std::string importBank(string importdir, size_t rootID, unsigned int bankID);
+        string exportBank(const string& exportdir, size_t rootID, unsigned int bankID);
+        string importBank(string importdir, size_t rootID, unsigned int bankID);
         bool isDuplicate(size_t rootID, size_t bankID, int pos, const string filename);
         bool newIDbank(const string& newbankdir, unsigned int bankID, size_t rootID = 0xff);
         bool newbankfile(const string& newbankdir, size_t rootID);
-        std::string removebank(unsigned int bankID, size_t rootID = 0xff);
+        string removebank(unsigned int bankID, size_t rootID = 0xff);
         bool removeRoot(size_t rootID);
         bool changeRootID(size_t oldID, size_t newID);
 
@@ -156,6 +158,19 @@ class Bank
         size_t generateSingleRoot(const string& newRoot, bool clear = true);
 
     private:
+
+        inline void splitNumFromName(int &num, string &name)
+        {
+            int chk = func::findSplitPoint(name);
+            if (chk > 0)
+            {
+                num = func::string2int(name.substr(0, chk)) - 1;
+
+                // remove "NNNN-" from instrument name
+                name = name.substr(chk + 1);
+            }
+        }
+
         bool addtobank(size_t rootID, size_t bankID, int pos, const string filename, const string name);
              // add an instrument to the bank, if pos is -1 try to find a position
              // returns true if the instrument was added
@@ -163,14 +178,13 @@ class Bank
         void deletefrombank(size_t rootID, size_t bankID, unsigned int pos);
         bool isValidBank(string chkdir);
 
-        //string dirname;
         const string defaultinsname;
         SynthEngine *synth;
 
         RootEntryMap  roots;
 
         InstrumentEntry &getInstrumentReference(size_t rootID, size_t bankID, size_t ninstrument );
-        void updateShare(string bankdirs[], string localDir, string shareID);
+        void updateShare(string bankdirs[], string baseDir, string shareID);
         void checkShare(string sourceDir, string destinationDir);
         bool transferDefaultDirs(string bankdirs[]);
         bool transferOneDir(string bankdirs[], int baseNumber, int listNumber);
@@ -179,6 +193,7 @@ class Bank
 
         size_t getNewRootIndex();
         size_t getNewBankIndex(size_t rootID);
+        string foundLocal;
 };
 
 #endif /*BANK_H*/

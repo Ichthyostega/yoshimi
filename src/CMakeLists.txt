@@ -41,7 +41,7 @@ add_definitions(-Wall)
 #add_definitions(-Wno-vla) # Nothing wrong with variable length arrays
 # ^^^ comment these out on release pushes
 
-set (YOSHIMI_VERSION "2.1.0")
+set (YOSHIMI_VERSION "2.1.1")
 
 add_definitions (-DMIN_CONFIG_MAJOR=2)
 add_definitions (-DMIN_CONFIG_MINOR=0)
@@ -285,8 +285,9 @@ set (Effects_sources
 )
 
 set (Misc_sources
-    Misc/Config.cpp  Misc/SynthEngine.cpp  Misc/Bank.cpp  Misc/Splash.cpp
-    Misc/Microtonal.cpp   Misc/Part.cpp  Misc/XMLwrapper.cpp  Misc/WavFile.cpp
+    Misc/CmdOptions.cpp  Misc/Config.cpp  Misc/SynthEngine.cpp  Misc/Bank.cpp
+    Misc/Splash.cpp  Misc/Microtonal.cpp   Misc/Part.cpp  Misc/XMLwrapper.cpp
+    Misc/WavFile.cpp
 )
 
 set (Interface_Sources
@@ -540,6 +541,7 @@ add_custom_target (distclean
     COMMAND find ${CMAKE_SOURCE_DIR} -type f -name "*.marks" | xargs -r rm -f
     COMMAND rm -f ${CMAKE_SOURCE_DIR}/LV2_Plugin/Makefile
     COMMAND rm -f ${CMAKE_SOURCE_DIR}/LV2_Plugin/cmake_install.cmake
+    COMMAND rm -f ${CMAKE_SOURCE_DIR}/LV2_Plugin/ -type d -name CMakeFiles | xargs -r rm -rff
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 

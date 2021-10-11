@@ -30,7 +30,6 @@
 #include <errno.h>
 #include <cmath>
 #include <string>
-#include <argp.h>
 #include <libgen.h>
 #include <limits.h>
 
@@ -54,6 +53,9 @@
 #endif
 #include "ConfBuild.h"
 
+using std::cout;
+using std::endl;
+
 using file::isRegularFile;
 using file::createDir;
 using file::copyDir;
@@ -68,47 +70,6 @@ using func::string2int;
 
 unsigned char panLaw = 1;
 
-namespace { // constants used in the implementation
-    char prog_doc[] =
-        "Yoshimi " YOSHIMI_VERSION ", a derivative of ZynAddSubFX - "
-        "Copyright 2002-2009 Nasca Octavian Paul and others, "
-        "Copyright 2009-2011 Alan Calvert, "
-        "Copyright 2012-2013 Jeremy Jongepier and others, "
-        "Copyright 2014-2021 Will Godfrey and others";
-    const string argline = "Yoshimi " + (string) YOSHIMI_VERSION;
-    const char* argp_program_version = argline.c_str();
-
-    string stateText = "load saved state, defaults to '$HOME/" + EXTEN::config + "/yoshimi/yoshimi-0.state'";
-
-    static struct argp_option cmd_options[] = {
-        {"alsa-audio",        'A',  "<device>",   1,  "use alsa audio output", 0},
-        {"alsa-midi",         'a',  "<device>",   1,  "use alsa midi input", 0},
-        {"define-root",       'D',  "<path>",     0,  "define path to new bank root" , 0},
-        {"buffersize",        'b',  "<size>",     0,  "set internal buffer size", 0 },
-        {"no-gui",            'i',  NULL,         0,  "disable gui", 0},
-        {"gui",               'I',  NULL,         0,  "enable gui", 0},
-        {"no-cmdline",        'c',  NULL,         0,  "disable command line interface", 0},
-        {"cmdline",           'C',  NULL,         0,  "enable command line interface", 0},
-        {"jack-audio",        'J',  "<server>",   1,  "use jack audio output", 0},
-        {"jack-midi",         'j',  "<device>",   1,  "use jack midi input", 0},
-        {"autostart-jack",    'k',  NULL,         0,  "auto start jack server", 0},
-        {"auto-connect",      'K',  NULL,         0,  "auto connect jack audio", 0},
-        {"load",              'l',  "<file>",     0,  "load .xmz file", 0},
-        {"load-instrument",   'L',  "<file>",     0,  "load .xiz file", 0},
-        {"load-midilearn",    'M',  "<file>",     0,  "load .xly file", 0},
-        {"name-tag",          'N',  "<tag>",      0,  "add tag to clientname", 0},
-        {"samplerate",        'R',  "<rate>",     0,  "set alsa audio sample rate", 0},
-        {"oscilsize",         'o',  "<size>",     0,  "set AddSynth oscilator size", 0},
-        {"state",             'S',  "<file>",     1,  stateText.c_str(), 0},
-        {"null",               13,  NULL,         0,  "use Null-backend without audio/midi", 0},
-        #if defined(JACK_SESSION)
-            {"jack-session-uuid", 'U',  "<uuid>",     0,  "jack session uuid", 0},
-            {"jack-session-file", 'u',  "<file>",     0,  "load named jack session file", 0},
-        #endif
-        { 0, 0, 0, 0, 0, 0}
-    };
-}
-
 bool         Config::showSplash = true;
 bool         Config::autoInstance = false;
 unsigned int Config::activeInstance = 0;
@@ -116,7 +77,7 @@ int          Config::showCLIcontext = 1;
 
 string jUuid = "";
 
-Config::Config(SynthEngine *_synth, int argc, char **argv) :
+Config::Config(SynthEngine *_synth, std::list<string>& allArgs, bool isLV2Plugin) :
     stateChanged(false),
     restoreJackSession(false),
     oldConfig(false),
@@ -140,7 +101,6 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
     loadDefaultState(false),
     sessionStage(_SYS_::type::Normal),
     Interpolation(0),
-    checksynthengines(1),
     xmlType(0),
     instrumentFormat(1),
     EnableProgChange(1), // default will be inverted
@@ -167,9 +127,8 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
     configChanged(false),
     rtprio(40),
     midi_bank_root(0), // 128 is used as 'disabled'
-    midi_bank_C(32),
+    midi_bank_C(32),   // 128 is used as 'disabled'
     midi_upper_voice_C(128),
-    enable_part_on_voice_load(1),
     enable_NRPN(true),
     ignoreResetCCs(false),
     monitorCCin(false),
@@ -199,41 +158,37 @@ Config::Config(SynthEngine *_synth, int argc, char **argv) :
     bRuntimeSetupCompleted(false),
     exitType(EXIT_SUCCESS)
 {
-    //else
-        //fesetround(FE_TOWARDZERO); // Special thanks to Lars Luthman for conquering
-                               // the heffalump. We need lrintf() to round
-                               // toward zero.
-    //^^^^^^^^^^^^^^^ This call is not needed aymore (at least for lv2 plugin)
-    //as all calls to lrintf() are replaced with (int)truncf()
-    //which befaves exactly the same when flag FE_TOWARDZERO is set
-
-    /*
-     * The above is now all completely redundant as we use
-     * a simple int(n). The values are all positive so there
-     * is no issue with +- zero.
-     */
-
     std::cerr.precision(4);
-    bRuntimeSetupCompleted = Setup(argc, argv);
-}
 
-
-bool Config::Setup(int argc, char **argv)
-{
-    static bool torun = true;
-    if (torun) // only the first synth can read args
+    if (isLV2Plugin)
     {
-        torun = false;
-        loadCmdArgs(argc, argv);
+        //Log("LV2 only");
+        if (!loadConfig())
+            Log("\n\nCould not load config. Using default values.\n");
+        bRuntimeSetupCompleted = true;
+        //skip further setup, which is irrelevant for lv2 plugin instance.
+        return;
     }
 
+    //Log("Standalone Only");
+    static bool torun = true;
+    if (torun) // only the first stand-alone synth can read args
+    {
+        applyOptions(this, allArgs);
+        torun = false;
+    }
     if (!loadConfig())
     {
         string message = "Could not load config. Using default values.";
-        TextMsgBuffer::instance().push(message);
+        TextMsgBuffer::instance().push(message); // needed for CLI
         Log("\n\n" + message + "\n");
     }
+    bRuntimeSetupCompleted = Setup();
+}
 
+
+bool Config::Setup(void)
+{
     switch (audioEngine)
     {
         case alsa_audio:
@@ -286,7 +241,7 @@ void Config::flushLog(void)
     {
         while (LogList.size())
         {
-            std::cout << LogList.front() << std::endl;
+            cout << LogList.front() << endl;
             LogList.pop_front();
         }
     }
@@ -302,45 +257,37 @@ void Config::clearPresetsDirlist(void)
 
 bool Config::loadConfig(void)
 {
-    string homedir = string(getenv("HOME"));
-    if (homedir.empty() || !isDirectory(homedir))
-    {
-        homedir = string("/tmp");
+    if (file::userHome() == "/tmp")
         Log ("Failed to find 'Home' directory - using tmp.\nSettings will be lost on computer shutdown.");
-    }
-    userHome = homedir + '/';
-    localDir = userHome + ".local/share/yoshimi";
-    if (!isDirectory(localDir))
+    if (file::localDir().empty())
     {
-        if (createDir(localDir))
-        {
-            Log("Failed to create local yoshimi directory.");
-            return false;
-        }
+        Log("Failed to create local yoshimi directory.");
+        return false;
     }
-    ConfigDir = userHome + string(EXTEN::config) + "/" + YOSHIMI;
-    defaultStateName = ConfigDir + "/yoshimi";
+    string foundConfig = file::configDir();
+    defaultStateName = foundConfig + "/yoshimi";
 
-    if (!isDirectory(ConfigDir))
+    if (file::configDir().empty())
     {
-        if (createDir(ConfigDir))
-        {
-            Log("Failed to create config directory '" + ConfigDir + "'");
-            return false;
-        }
+        Log("Failed to create config directory '" + file::userHome() + "'");
+        return false;
     }
     string yoshimi = "/" + string(YOSHIMI);
 
-    baseConfig = ConfigDir + yoshimi + string(EXTEN::config);
+    baseConfig = foundConfig + yoshimi + string(EXTEN::config);
+
     int thisInstance = synth->getUniqueId();
     defaultSession = defaultStateName + "-" + asString(thisInstance) + EXTEN::state;
     yoshimi += ("-" + asString(thisInstance));
-    //std::cout << "\nsession >" << defaultSession << "<\n" << std::endl;
+    //cout << "\nsession >" << defaultSession << "<\n" << endl;
+
+    ConfigFile = foundConfig + yoshimi + EXTEN::instance;
+
     if (thisInstance == 0 && sessionStage != _SYS_::type::RestoreConf)
     {
         TextMsgBuffer::instance().init(); // sneaked it in here so it's early
 
-        presetDir = localDir + "/presets";
+        presetDir = file::localDir() + "/presets";
         if (!isDirectory(presetDir))
         { // only ever want to do this once
             if (createDir(presetDir))
@@ -358,19 +305,14 @@ bool Config::loadConfig(void)
                 }
             }
         }
-        definedBankRoot = localDir + "/found/";
-        if (!isDirectory(definedBankRoot))
+        if (!isDirectory(file::localDir() + "/found/"))
         { // only ever want to do this once
-            if (createDir(definedBankRoot))
-                Log("Failed to create root directory '" + definedBankRoot + "'");
+            if (createDir(file::localDir() + "/found/"))
+                Log("Failed to create root directory for local banks");
         }
-    }
 
-    ConfigFile = ConfigDir + yoshimi;
-
-    if (thisInstance == 0 && sessionStage != _SYS_::type::RestoreConf)
-    {
-        string newInstance0 = ConfigDir + yoshimi + EXTEN::instance;
+        // conversion for old location
+        string newInstance0 = ConfigFile;
         if (isRegularFile(baseConfig) && !isRegularFile(newInstance0), 0)
         {
             file::copyFile(baseConfig, newInstance0, 0);
@@ -385,7 +327,6 @@ bool Config::loadConfig(void)
             }
         }
     }
-    ConfigFile += EXTEN::instance;
 
     if (!isRegularFile(baseConfig))
     {
@@ -442,7 +383,7 @@ bool Config::loadConfig(void)
         }
     }
 
-    //std::cout << "Session Stage " << sessionStage << std::endl;
+    //cout << "Session Stage " << sessionStage << endl;
 
     if (sessionStage == _SYS_::type::RestoreConf)
         return true;
@@ -511,7 +452,7 @@ void Config::defaultPresets(void)
     {
         if (isDirectory(presetdirs[i]))
         {
-            Log(presetdirs[i], 2);
+            Log(presetdirs[i], _SYS_::LogNotSerious);
             presetsDirlist[actual] = presetdirs[i];
             ++actual;
         }
@@ -681,7 +622,6 @@ bool Config::extractConfigData(XMLwrapper *xml)
         midi_bank_C = xml->getpar("midi_bank_C", midi_bank_C, 0, 128);
         midi_upper_voice_C = xml->getpar("midi_upper_voice_C", midi_upper_voice_C, 0, 128);
         EnableProgChange = 1 - xml->getpar("ignore_program_change", EnableProgChange, 0, 1); // inverted for Zyn compatibility
-        enable_part_on_voice_load = xml->getpar("enable_part_on_voice_load", enable_part_on_voice_load, 0, 1);
         instrumentFormat = xml->getpar("saved_instrument_format",instrumentFormat, 1, 3);
         enable_NRPN = xml->getparbool("enable_incoming_NRPNs", enable_NRPN);
         ignoreResetCCs = xml->getpar("ignore_reset_all_CCs",ignoreResetCCs,0, 1);
@@ -703,12 +643,12 @@ bool Config::saveConfig(bool master)
     bool result = false;
     if (master)
     {
-        //std::cout << "saving master" << std::endl;
+        //cout << "saving master" << endl;
         xmlType = TOPLEVEL::XML::MasterConfig;
         XMLwrapper *xml = new XMLwrapper(synth, true);
         if (!xml)
         {
-            Log("saveConfig failed xml allocation", 2);
+            Log("saveConfig failed xml allocation", _SYS_::LogNotSerious);
             return result;
         }
         string resConfigFile = baseConfig;
@@ -719,7 +659,7 @@ bool Config::saveConfig(bool master)
             result = true;
         }
         else
-            Log("Failed to save master config to " + resConfigFile, 2);
+            Log("Failed to save master config to " + resConfigFile, _SYS_::LogNotSerious);
 
         delete xml;
     }
@@ -727,7 +667,7 @@ bool Config::saveConfig(bool master)
     XMLwrapper *xml = new XMLwrapper(synth, true);
     if (!xml)
     {
-        Log("saveConfig failed xml allocation", 2);
+        Log("saveConfig failed xml allocation", _SYS_::LogNotSerious);
         return result;
     }
     addConfigXML(xml);
@@ -739,7 +679,7 @@ bool Config::saveConfig(bool master)
         result = true;
     }
     else
-        Log("Failed to save instance to " + resConfigFile, 2);
+        Log("Failed to save instance to " + resConfigFile, _SYS_::LogNotSerious);
 
     delete xml;
     return result;
@@ -785,13 +725,13 @@ void Config::addConfigXML(XMLwrapper *xml)
     xml->addpar("midi_bank_C", midi_bank_C);
     xml->addpar("midi_upper_voice_C", midi_upper_voice_C);
     xml->addpar("ignore_program_change", (1 - EnableProgChange));
-    xml->addpar("enable_part_on_voice_load", enable_part_on_voice_load);
+    xml->addpar("enable_part_on_voice_load", 1); // for backward compatibility
     xml->addpar("saved_instrument_format", instrumentFormat);
     xml->addparbool("enable_incoming_NRPNs", enable_NRPN);
     xml->addpar("ignore_reset_all_CCs",ignoreResetCCs);
     xml->addparbool("monitor-incoming_CCs", monitorCCin);
     xml->addparbool("open_editor_on_learned_CC",showLearnedCC);
-    xml->addpar("check_pad_synth", checksynthengines);
+    xml->addpar("check_pad_synth", 1); // for backward compatibility
     xml->addpar("root_current_ID", synth->ReadBankRoot());
     xml->addpar("bank_current_ID", synth->ReadBank());
     xml->endbranch(); // CONFIGURATION
@@ -805,7 +745,7 @@ bool Config::saveSessionData(string savefile)
     XMLwrapper *xml = new XMLwrapper(synth, true);
     if (!xml)
     {
-        Log("saveSessionData failed xml allocation", 3);
+        Log("saveSessionData failed xml allocation", _SYS_::LogNotSerious | _SYS_::LogError);
         return false;
     }
     bool ok = true;
@@ -813,11 +753,11 @@ bool Config::saveSessionData(string savefile)
     synth->add2XML(xml);
     synth->midilearn.insertMidiListData(xml);
     if (xml->saveXMLfile(savefile))
-        Log("Session data saved to " + savefile, 2);
+        Log("Session data saved to " + savefile, _SYS_::LogNotSerious);
     else
     {
         ok = false;
-        Log("Failed to save session data to " + savefile, 2);
+        Log("Failed to save session data to " + savefile, _SYS_::LogNotSerious);
     }
     if (xml)
         delete xml;
@@ -834,17 +774,17 @@ bool Config::restoreSessionData(string sessionfile)
         sessionfile = setExtension(sessionfile, EXTEN::state);
     if (!sessionfile.size() || !isRegularFile(sessionfile))
     {
-        Log("Session file " + sessionfile + " not available", 2);
+        Log("Session file " + sessionfile + " not available", _SYS_::LogNotSerious);
         goto end_game;
     }
     if (!(xml = new XMLwrapper(synth, true)))
     {
-        Log("Failed to init xml for restoreState", 3);
+        Log("Failed to init xml for restoreState", _SYS_::LogNotSerious | _SYS_::LogError);
         goto end_game;
     }
     if (!xml->loadXMLfile(sessionfile))
     {
-        Log("Failed to load xml file " + sessionfile, 2);
+        Log("Failed to load xml file " + sessionfile, _SYS_::LogNotSerious);
         goto end_game;
     }
 
@@ -868,7 +808,6 @@ bool Config::restoreSessionData(string sessionfile)
             // handles possibly undefined window
         }
 
-
 end_game:
     if (xml)
         delete xml;
@@ -878,30 +817,31 @@ end_game:
 
 void Config::Log(const string& msg, char tostderr)
 {
-    if ((tostderr & 2) && hideErrors)
+    if ((tostderr & _SYS_::LogNotSerious) && hideErrors)
         return;
-    if (showGui && !(tostderr & 1) && toConsole)
-        LogList.push_back(msg);
-    else if (!(tostderr & 1))
-        std::cout << msg << std::endl; // normal log
-
+    else if(!(tostderr & _SYS_::LogError))
+    {
+        if (showGui && toConsole)
+            LogList.push_back(msg);
+        else
+            cout << msg << endl;
+    }
     else
-        std::cerr << msg << std::endl; // error log
+        std::cerr << msg << endl; // error log
 }
+
 
 void Config::LogError(const string &msg)
 {
-    Log("[ERROR] " + msg, 1);
+    std::cerr << "[ERROR] " << msg << endl;
 }
+
 
 void Config::StartupReport(const string& clientName)
 {
     bool fullInfo = (synth->getUniqueId() == 0);
     if (fullInfo)
-    {
-        Log(argline);
-        Log("Build Number " + std::to_string(BUILD_NUMBER), 1);
-    }
+        Log("Build Number " + std::to_string(BUILD_NUMBER));
     Log("Clientname: " + clientName);
     string report = "Audio: ";
     switch (audioEngine)
@@ -918,7 +858,7 @@ void Config::StartupReport(const string& clientName)
             report += "nada";
     }
     report += (" -> '" + audioDevice + "'");
-    Log(report, 2);
+    Log(report, _SYS_::LogNotSerious);
     report = "Midi: ";
     switch (midiEngine)
     {
@@ -936,12 +876,12 @@ void Config::StartupReport(const string& clientName)
     if (!midiDevice.size())
         midiDevice = "default";
     report += (" -> '" + midiDevice + "'");
-    Log(report, 2);
+    Log(report, _SYS_::LogNotSerious);
     if (fullInfo)
     {
-        Log("Oscilsize: " + asString(synth->oscilsize), 2);
-        Log("Samplerate: " + asString(synth->samplerate), 2);
-        Log("Period size: " + asString(synth->buffersize), 2);
+        Log("Oscilsize: " + asString(synth->oscilsize), _SYS_::LogNotSerious);
+        Log("Samplerate: " + asString(synth->samplerate), _SYS_::LogNotSerious);
+        Log("Period size: " + asString(synth->buffersize), _SYS_::LogNotSerious);
     }
 }
 
@@ -972,7 +912,7 @@ bool Config::startThread(pthread_t *pth, void *(*thread_fn)(void*), void *arg,
                 {
                     Log("Failed to set SCHED_FIFO policy in thread attribute "
                                 + string(strerror(errno))
-                                + " (" + asString(chk) + ")", 1);
+                                + " (" + asString(chk) + ")", _SYS_::LogError);
                     schedfifo = false;
                     continue;
                 }
@@ -980,7 +920,7 @@ bool Config::startThread(pthread_t *pth, void *(*thread_fn)(void*), void *arg,
                 {
                     Log("Failed to set inherit scheduler thread attribute "
                                 + string(strerror(errno)) + " ("
-                                + asString(chk) + ")", 1);
+                                + asString(chk) + ")", _SYS_::LogError);
                     schedfifo = false;
                     continue;
                 }
@@ -988,12 +928,12 @@ bool Config::startThread(pthread_t *pth, void *(*thread_fn)(void*), void *arg,
                 int prio = rtprio - priodec;
                 if (prio < 1)
                     prio = 1;
-                Log(name + " priority is " + std::to_string(prio), 1);
+                Log(name + " priority is " + std::to_string(prio), _SYS_::LogError);
                 prio_params.sched_priority = prio;
                 if ((chk = pthread_attr_setschedparam(&attr, &prio_params)))
                 {
                     Log("Failed to set thread priority attribute ("
-                                + asString(chk) + ")  ", 3);
+                                + asString(chk) + ")  ", _SYS_::LogNotSerious | _SYS_::LogError);
                     schedfifo = false;
                     continue;
                 }
@@ -1012,17 +952,17 @@ bool Config::startThread(pthread_t *pth, void *(*thread_fn)(void*), void *arg,
             break;
         }
         else
-            Log("Failed to initialise thread attributes " + asString(chk), 1);
+            Log("Failed to initialise thread attributes " + asString(chk), _SYS_::LogError);
 
         if (schedfifo)
         {
             Log("Failed to start thread (sched_fifo) " + asString(chk)
-                + "  " + string(strerror(errno)), 1);
+                + "  " + string(strerror(errno)), _SYS_::LogError);
             schedfifo = false;
             continue;
         }
         Log("Failed to start thread (sched_other) " + asString(chk)
-            + "  " + string(strerror(errno)), 1);
+            + "  " + string(strerror(errno)), _SYS_::LogError);
         outcome = false;
         break;
     }
@@ -1070,7 +1010,7 @@ void Config::signalCheck(void)
 
 void Config::setInterruptActive(void)
 {
-    Log("Interrupt received", 1);
+    Log("Interrupt received", _SYS_::LogError);
     __sync_or_and_fetch(&sigIntActive, 0xFF);
 }
 
@@ -1255,6 +1195,9 @@ int Config::SSEcapability(void)
         return ((edx & 0x02000000 /*SSE*/) | (edx & 0x04000000 /*SSE2*/)) >> 25;
     #endif
 }
+/*
+SSEcapability() draws gratefully on the work of others.
+*/
 
 /*
  * The code below has been replaced with specific anti-denormal code where needed.
@@ -1289,70 +1232,34 @@ int Config::SSEcapability(void)
     #endif
 }*/
 
-
-/**
-SSEcapability() and AntiDenormals() draw gratefully on the work of others,
-including:
-
-Jens M Andreasen, LAD, <http://lists.linuxaudio.org/pipermail/linux-audio-dev/2009-August/024707.html>).
-
-LinuxSampler src/common/Features.cpp, licensed thus -
-
- *   LinuxSampler - modular, streaming capable sampler                     *
- *                                                                         *
- *   Copyright (C) 2003, 2004 by Benno Senoner and Christian Schoenebeck   *
- *   Copyright (C) 2005 - 2008 Christian Schoenebeck                       *
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- *   This program is distributed in the hope that it will be useful,       *
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
- *   GNU General Public License for more details.                          *
- *                                                                         *
- *   You should have received a copy of the GNU General Public License     *
- *   along with this program; if not, write to the Free Software           *
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston,                 *
- *   MA  02111-1307  USA                                                   *
-**/
-
-
-static error_t parse_cmds (int key, char *arg, struct argp_state *state)
+void Config::applyOptions(Config* settings, std::list<string>& allArgs)
 {
-    Config *settings = (Config*)state->input;
-    if (arg && arg[0] == 0x3d)
-        ++ arg;
-    int num;
-
-    switch (key)
+    if (allArgs.empty())
+        return;
+    for (std::list<string>::iterator it = allArgs.begin(); it != allArgs.end(); ++it)
     {
-        case 'N': settings->nameTag = string(arg); break;
-
-        case 'l': settings->paramsLoad = string(arg); break;
-
-        case 'L': settings->instrumentLoad = string(arg); break;
-
-        case 'M':settings->midiLearnLoad = string(arg);break;
-
-        case 'A':
-            settings->configChanged = true;
-            settings->engineChanged = true;
-            settings->audioEngine = alsa_audio;
-            if (arg)
-                settings->audioDevice = string(arg);
-            else
-                settings->audioDevice = settings->alsaAudioDevice;
+        string line = *it;
+        size_t pos = line.find(":");
+        char cmd = line.at(0);
+        line = line.substr(pos +1);
+        switch (cmd)
+        {
+            case 'A':
+                settings->configChanged = true;
+                settings->engineChanged = true;
+                settings->audioEngine = alsa_audio;
+                if (!line.empty())
+                    settings->audioDevice = line;
+                else
+                    settings->audioDevice = settings->alsaAudioDevice;
             break;
 
         case 'a':
             settings->configChanged = true;
             settings->midiChanged = true;
             settings->midiEngine = alsa_midi;
-            if (arg)
-                settings->midiDevice = string(arg);
+            if (!line.empty())
+                settings->midiDevice = line;
             else
                 settings->midiDevice = string(settings->alsaMidiDevice);
             break;
@@ -1360,12 +1267,8 @@ static error_t parse_cmds (int key, char *arg, struct argp_state *state)
         case 'b':
             settings->configChanged = true;
             settings->bufferChanged = true;
-            settings->Buffersize = string2int(string(arg));
-            break;
-
-        case 'D':
-            if (arg)
-                settings->rootDefine = string(arg);
+            settings->Buffersize = string2int(line);
+            cout << "B "<< line << endl;
             break;
 
         case 'c':
@@ -1378,6 +1281,11 @@ static error_t parse_cmds (int key, char *arg, struct argp_state *state)
             settings->configChanged = true;
             settings->cliChanged = true;
             settings->showCli = true;
+            break;
+
+        case 'D':
+            if (!line.empty())
+                settings->rootDefine = line;
             break;
 
         case 'i':
@@ -1396,22 +1304,18 @@ static error_t parse_cmds (int key, char *arg, struct argp_state *state)
             settings->configChanged = true;
             settings->engineChanged = true;
             settings->audioEngine = jack_audio;
-            if (arg)
-                settings->audioDevice = string(arg);
+            if (!line.empty())
+                settings->audioDevice = line;
             break;
 
         case 'j':
             settings->configChanged = true;
             settings->midiChanged = true;
             settings->midiEngine = jack_midi;
-            if (arg)
-                settings->midiDevice = string(arg);
+            if (!line.empty())
+                settings->midiDevice = line;
             else
                 settings->midiDevice = string(settings->jackMidiDevice);
-            break;
-
-        case 'k':
-            settings->startJack = true;
             break;
 
         case 'K':
@@ -1420,74 +1324,91 @@ static error_t parse_cmds (int key, char *arg, struct argp_state *state)
             settings->connectJackaudio = true;
             break;
 
+        case 'k':
+            settings->startJack = true;
+            break;
+
+        case 'l': settings->paramsLoad = line; break;
+
+        case 'L':
+        {
+            unsigned int partLoad = 0;
+            size_t pos = line.rfind("@");
+            // this provides a way to specify which part to load to
+            if (pos != string::npos)
+            {
+                if (line.length() - pos <= 3)
+                {
+                    partLoad = (stoi("0" + line.substr(pos + 1))) - 1;
+                }
+                if (partLoad >= 64)
+                    partLoad = 0;
+                line = line.substr(0, pos);
+            }
+            settings->load2part = partLoad;
+            settings->instrumentLoad = line;
+            break;
+        }
+
+        case 'M':settings->midiLearnLoad = line; break;
+
+        case 'N': settings->nameTag = line; break;
+
         case 'o':
             settings->configChanged = true;
             settings->oscilChanged = true;
-            settings->Oscilsize = string2int(string(arg));
+            settings->Oscilsize = string2int(line);
             break;
 
         case 'R':
+        {
             settings->configChanged = true;
             settings->rateChanged = true;
-            num = (string2int(string(arg)) / 48 ) * 48;
+            int num = (string2int(line) / 48 ) * 48;
             if (num < 48000 || num > 192000)
                 num = 44100; // play safe
             settings->Samplerate = num;
             break;
+        }
 
         case 'S':
-            if (arg)
+            if (!line.empty())
             {
                 settings->sessionStage = _SYS_::type::StartupFirst;
                 settings->configChanged = true;
-                settings->StateFile = string(arg);
+                settings->StateFile = line;
             }
             break;
 
-        case 13:
+        case 'u':
+            if (!line.empty())
+            {
+                settings->sessionStage = _SYS_::type::JackFirst;
+                settings->configChanged = true;
+                settings->StateFile = setExtension(line, EXTEN::state);
+            }
+            break;
+
+        case 'U':
+            if (!line.empty())
+                jUuid = line;
+            break;
+
+        case '@':
             settings->configChanged = true;
             settings->engineChanged = true;
             settings->midiChanged = true;
             settings->audioEngine = no_audio;
             settings->midiEngine  = no_midi;
             break;
+        }
 
-#if defined(JACK_SESSION)
-        case 'u':
-            if (arg)
-            {
-                settings->sessionStage = _SYS_::type::JackFirst;
-                settings->configChanged = true;
-                settings->StateFile = setExtension(string(arg), EXTEN::state);
-            }
-            break;
-
-        case 'U':
-                if (arg)
-                    jUuid = string(arg);
-        break;
-#endif
-
-        case ARGP_KEY_ARG:
-        case ARGP_KEY_END:
-            break;
-
-        default:
-            return error_t(ARGP_ERR_UNKNOWN);
+        //cout << cmd << " line " << line << endl;
     }
-    return error_t(0);
-}
-
-
-static struct argp cmd_argp = { cmd_options, parse_cmds, prog_doc, 0, 0, 0, 0};
-
-
-void Config::loadCmdArgs(int argc, char **argv)
-{
-    argp_parse(&cmd_argp, argc, argv, 0, 0, this);
     if (jackSessionUuid.size() && jackSessionFile.size())
         restoreJackSession = true;
 }
+
 
 #ifdef GUI_FLTK
 void GuiThreadMsg::processGuiMessages()
@@ -1501,7 +1422,7 @@ void GuiThreadMsg::processGuiMessages()
         {
             // This *defines* guiMaster
             if (!guiMaster)
-                std::cerr << "Error starting Main UI!" << std::endl;
+                std::cerr << "Error starting Main UI!" << endl;
             else
             {
                 guiMaster->Init(guiMaster->getSynth()->getWindowTitle().c_str());
