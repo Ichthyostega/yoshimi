@@ -1,7 +1,7 @@
 usr/bin
-usr/share/metainfo
+usr/lib/lv2
 usr/share/applications
 usr/share/icons
 usr/share/man
+usr/share/metainfo
 usr/share/pixmaps
-usr/lib/lv2
