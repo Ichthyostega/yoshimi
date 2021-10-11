@@ -27,6 +27,7 @@
 #include <cfloat>
 #include <bitset>
 #include <unistd.h>
+#include <thread>
 
 #include "Interface/InterChange.h"
 #include "Interface/Data2Text.h"
@@ -71,12 +72,10 @@ using func::nearestPowerOf2;
 
 using func::asString;
 
-
 extern void mainRegisterAudioPort(SynthEngine *s, int portnum);
 extern SynthEngine *firstSynth;
 
 int startInstance = 0;
-
 
 InterChange::InterChange(SynthEngine *_synth) :
     synth(_synth),
@@ -97,6 +96,7 @@ InterChange::InterChange(SynthEngine *_synth) :
     swapBank1(UNUSED),
     swapInstrument1(UNUSED)
 {
+    ;
 }
 
 
@@ -177,7 +177,7 @@ void *InterChange::sortResultsThread(void)
             else
                 resolveReplies(&getData);
         }
-        usleep(80); // actually gives around 120 uS
+            usleep(80); // actually gives around 120 uS
     }
     return NULL;
 }
@@ -204,31 +204,25 @@ void InterChange::muteQueueWrite(CommandBlock *getData)
     }
 }
 
-bool InterChange::findManual(string& found)
-{
-    // selects the newest version of the manual
-    // belt and braces in case file gets deleted while running
-    if (!isRegularFile("/tmp/found_yoshimi_user_guide"))
-    {
-        FILE *fp = popen("find / -type f -name 'yoshimi_user_guide_version' 1>/tmp/found_yoshimi_user_guide 2>/dev/null", "w");
-        pclose(fp);
-        // There is a variable delay between writing to /tmp
-        // and the result being available.
-        int count = 0;
-        while (count < 1000 && !isRegularFile("/tmp/found_yoshimi_user_guide"))
-        {
-            usleep(1000);
-            ++ count;
-        }
-        //std::cout << "delay " << count << "mS" << std::endl;
-    }
 
-    string namelist = file::loadText("/tmp/found_yoshimi_user_guide");
+std::string InterChange::findHtmlManual(void)
+{
+    string namestring = "doc/yoshimi/yoshimi_user_guide/files/yoshimi_user_guide_version";
+    string namelist = "";
+    if (isRegularFile("/usr/share/" + namestring))
+        namelist += ("/usr/share/" + namestring + "\n");
+    if (isRegularFile("/usr/local/share/" + namestring))
+        namelist += ("/usr/local/share/" + namestring + "\n");
     if (namelist.empty())
-        return false;
+    {
+        if(!file::cmd2string("find /home/ -type f -name 'yoshimi_user_guide_version' 2>/dev/null", namelist))
+            return "";
+    }
+    //std::cout << namelist << std::endl;
 
     size_t next = 0;
     size_t lastversion = 0;
+    string found = "";
     string name = "";
     while (next != string::npos)
     {
@@ -236,6 +230,8 @@ bool InterChange::findManual(string& found)
         if (next != string::npos)
         {
             name = namelist.substr(0, next);
+
+            // check it's there and the most recent
             size_t current = isRegularFile(name);
             if (current > lastversion)
             {
@@ -245,11 +241,7 @@ bool InterChange::findManual(string& found)
             namelist = namelist.substr( next +1);
         }
     }
-
-    if (lastversion > 0)
-        return true;
-
-    return false;
+    return found;
 }
 
 
@@ -803,7 +795,7 @@ int InterChange::indirectMain(CommandBlock *getData, SynthEngine *synth, unsigne
             if (synth->loadStateAndUpdate(text))
             {
                 text = setExtension(text, EXTEN::state);
-                string name = synth->getRuntime().ConfigDir + "/yoshimi";
+                string name = file::configDir() + "/yoshimi";
                 name += ("-" + to_string(synth->getUniqueId()));
                 name += ".state";
                 if ((text != name)) // never include default state
@@ -820,7 +812,7 @@ int InterChange::indirectMain(CommandBlock *getData, SynthEngine *synth, unsigne
             string filename = setExtension(text, EXTEN::state);
             if (synth->saveState(filename))
             {
-                string name = synth->getRuntime().ConfigDir + "/yoshimi";
+                string name = file::configDir() + "/yoshimi";
                 name += ("-" + to_string(synth->getUniqueId()));
                 name += ".state";
                 if ((text != name)) // never include default state
@@ -871,29 +863,20 @@ int InterChange::indirectMain(CommandBlock *getData, SynthEngine *synth, unsigne
         {
             // first try html version
             text = "";
-            string found = "";
             getData->data.control = TOPLEVEL::control::textMessage;
-            if (findManual(found))
+            string found  = findHtmlManual();
+            if (!found.empty())
             {
+
                 size_t pos = found.rfind("files/yoshimi_user_guide_version");
                 found = found.substr(0, pos);
-                found += "/index.html";
-                FILE *fp = popen(("xdg-open " + found + " &").c_str(), "r");
-                if (fp == NULL)
-                {
-                    found = "";
-                    text = "Found Manual but can't find Browser :(";
-                }
-                else
-                    pclose(fp);
+                file::cmd2string("xdg-open " + found + "index.html &");
             }
             else
                 text = "Can't find manual :(";
-            newMsg = true;
-            break;
-            /*
-                // fall back to older PDF version
 
+            if (found.empty())
+            {    // fall back to older PDF version
                 std::string manfile = synth->manualname();
                 std::string stub = manfile.substr(0, manfile.rfind("-"));
 
@@ -938,24 +921,22 @@ int InterChange::indirectMain(CommandBlock *getData, SynthEngine *synth, unsigne
                     returnsBuffer.write(getData->bytes);
                 }
                 std::string command = "xdg-open " + lastdir + "/" + found + "&";
-                FILE *fp = popen(command.c_str(), "r");
-                if (fp == NULL)
+                if (!file::cmd2string(command))
                 {
                     getData->data.miscmsg = textMsgBuffer.push("Can't find PDF reader :(");
                     returnsBuffer.write(getData->bytes);
                     found = "";
                 }
-                else
-                    pclose(fp);
             }
             if (!found.empty())
             {
+                text = "";
                 getData->data.miscmsg = NO_MSG;
                 returnsBuffer.write(getData->bytes);
             }
             newMsg = true;
             break;
-            */
+
         }
         case MAIN::control::startInstance:
             if (synth == firstSynth)
@@ -1572,10 +1553,11 @@ int InterChange::indirectPart(CommandBlock *getData, SynthEngine *synth, unsigne
             getData->data.source &= ~TOPLEVEL::action::lowPrio;
             break;
         case PART::control::defaultInstrumentCopyright:
-            std::string name = synth->getRuntime().ConfigDir + "/copyright.txt";
+            std::string name = file::configDir() + "/copyright.txt";
             if (parameter == 0) // load
             {
                 text = loadText(name); // TODO provide failure warning
+                text = func::formatTextLines(text, 54);
                 part->info.Pauthor = text;
                 guiTo = true;
             }
@@ -1731,7 +1713,7 @@ void InterChange::resolveReplies(CommandBlock *getData)
     }
 
     if (source != TOPLEVEL::action::fromMIDI)
-        synth->getRuntime().Log(resolveAll(synth, getData, true));
+        synth->getRuntime().Log(resolveAll(synth, getData, _SYS_::LogNotSerious));
 
     if (source == TOPLEVEL::action::fromCLI)
         synth->getRuntime().finishedCLI = true;
@@ -2352,7 +2334,6 @@ void InterChange::commandVector(CommandBlock *getData)
     if (control == VECTOR::control::erase)
     {
         vectorClear(chan);
-        synth->setLastfileAdded(TOPLEVEL::XML::Vector, "");
         return;
     }
     if (write)
@@ -2979,12 +2960,6 @@ void InterChange::commandConfig(CommandBlock *getData)
             else
                 value = synth->getRuntime().EnableProgChange;
             break;
-        case CONFIG::control::instChangeEnablesPart:
-            if (write)
-                synth->getRuntime().enable_part_on_voice_load = value_bool;
-            else
-                value = synth->getRuntime().enable_part_on_voice_load;
-            break;
         case CONFIG::control::extendedProgramChangeCC:
             if (write)
             {
@@ -3309,7 +3284,7 @@ void InterChange::commandBank(CommandBlock *getData)
                 if (offset == -1)
                 {
                     synth->getRuntime().Log("caught invalid instrument type (-1)");
-                    textMsgBuffer.push("*");
+                    textMsgBuffer.push("@end");
                 }
 
                 do {
@@ -3320,6 +3295,9 @@ void InterChange::commandBank(CommandBlock *getData)
                                 textMsgBuffer.push(asString(searchRoot, 3) + ": " + asString(searchBank, 3) + ". " + asString(searchInst + 1, 3) + "  " + synth->getBankRef().getname(searchInst, searchBank, searchRoot));
                                 ++ searchInst;
                                 return;
+                                /*
+                                 * notice this exit point!
+                                 */
                             }
                             ++searchInst;
                         } while (searchInst < MAX_INSTRUMENTS_IN_BANK);
@@ -3331,7 +3309,7 @@ void InterChange::commandBank(CommandBlock *getData)
                     ++searchRoot;
                 } while (searchRoot < MAX_BANK_ROOT_DIRS);
                 searchRoot = 0;
-                textMsgBuffer.push("*");
+                textMsgBuffer.push("@end");
             }
             break;
         }

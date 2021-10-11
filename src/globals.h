@@ -133,6 +133,11 @@ namespace _SYS_
 
     // session types and stages
     enum type {Normal, Default, JackFirst, JackSecond, StartupFirst, StartupSecond, InProgram, RestoreConf};
+
+    // Log types
+    const char LogNormal = 0;
+    const char LogError = 1;
+    const char LogNotSerious = 2;
 }
 
 /*
@@ -234,7 +239,7 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         harmonicAmplitude,
         harmonicPhaseBandwidth, // this should also be split in two
         resonanceGroup,
-        resonanceGraphInsert,
+        resonanceGraphInsert, // 9
         systemEffectSend = 16,
         partEffectSelect,
         kitGroup = 32
@@ -315,7 +320,6 @@ namespace CONFIG // usage CONFIG::control::oscillatorSize
         bankRootCC = 65,
         bankCC = 67,
         enableProgramChange,
-        instChangeEnablesPart,
         extendedProgramChangeCC = 71,
         ignoreResetAllCCs,
         logIncomingCCs,

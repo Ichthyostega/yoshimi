@@ -34,6 +34,7 @@
 #include <string>
 #include <vector>
 #include <list>
+#include <map>
 
 #include "Misc/RandomGen.h"
 #include "Misc/Microtonal.h"
@@ -58,12 +59,18 @@ class MasterUI;
 
 using std::string;
 
+enum LV2PluginType
+{
+    LV2PluginTypeNone,
+    LV2PluginTypeSingle,
+    LV2PluginTypeMulti
+};
 
 class SynthEngine
 {
     private:
         unsigned int uniqueId;
-        bool isLV2Plugin;
+        LV2PluginType lv2PluginType;
         bool needsSaving;
     public:
         std::atomic <uint8_t> audioOut;
@@ -77,7 +84,7 @@ class SynthEngine
         PresetsStore presetsstore;
     public:
         TextMsgBuffer& textMsgBuffer;
-        SynthEngine(int argc, char **argv, bool _isLV2Plugin = false, unsigned int forceId = 0);
+        SynthEngine(std::list<string>& allArgs, LV2PluginType _lv2PluginType = LV2PluginTypeNone, unsigned int forceId = 0);
         ~SynthEngine();
         bool Init(unsigned int audiosrate, int audiobufsize);
 
@@ -100,8 +107,6 @@ class SynthEngine
         void setHistoryLock(int group, bool status);
         bool getHistoryLock(int group);
         string lastItemSeen(int group);
-        void setLastfileAdded(int group, string name);
-        string getLastfileAdded(int group);
         bool loadHistory(void);
         bool saveHistory(void);
         unsigned char loadVectorAndUpdate(unsigned char baseChan, const string& name);
@@ -243,7 +248,8 @@ class SynthEngine
         int meterDelay;
         void fetchMeterData(void);
 
-        inline bool getIsLV2Plugin() {return isLV2Plugin; }
+        inline LV2PluginType getLV2PluginType() {return lv2PluginType;}
+        inline bool getIsLV2Plugin() {return lv2PluginType != LV2PluginTypeNone; }
         inline Config &getRuntime() {return Runtime;}
         inline PresetsStore &getPresetsStore() {return presetsstore;}
         unsigned int getUniqueId() {return uniqueId;}

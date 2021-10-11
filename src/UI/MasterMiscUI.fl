@@ -433,7 +433,7 @@ class Panellistitem {: {public Fl_Group}
       Fl_Group panellistitemgroup {
         xywh {0 -5 65 279} box PLASTIC_THIN_UP_BOX
         code0 {if (!synth->partonoffRead(npart + *plgroup)) o->deactivate();}
-        code1 {if (synth->getRuntime().audioEngine != jack_audio) audiosend->deactivate();}
+        code1 {if (synth->getRuntime().audioEngine != jack_audio && synth->getLV2PluginType() != LV2PluginTypeMulti) audiosend->deactivate();}
       } {
         Fl_Group {} {
           xywh {30 64 26 112} box ENGRAVED_FRAME
@@ -654,17 +654,15 @@ Right mouse button: Instrument edit} xywh {12 248 40 20} box PLASTIC_UP_BOX labe
   } {
     code {//
     unsigned int engine = 0;
-    if (synth->getRuntime().checksynthengines)
+
+    for (int i = 0; i < NUM_KIT_ITEMS; ++i)
     {
-        for (int i = 0; i < NUM_KIT_ITEMS; ++i)
-        {
-            if (synth->part[npart]->kit[i].Padenabled)
-                engine |= 1;
-            if (synth->part[npart]->kit[i].Psubenabled)
-                engine |= 2;
-            if (synth->part[npart]->kit[i].Ppadenabled)
-                engine |= 4;
-        }
+        if (synth->part[npart]->kit[i].Padenabled)
+            engine |= 1;
+        if (synth->part[npart]->kit[i].Psubenabled)
+            engine |= 2;
+        if (synth->part[npart]->kit[i].Ppadenabled)
+            engine |= 4;
     }
     return engine;} {}
   }

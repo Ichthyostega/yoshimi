@@ -21,25 +21,19 @@
 
 #include <iostream>
 #include <string>
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <list>
 #include <termios.h>
 #include <pthread.h>
 #include <atomic>
 
-#include <cstdio>
-#include <unistd.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 
-#include "Misc/Config.h"
+#include "Misc/CmdOptions.h"
 #include "Misc/SynthEngine.h"
 #include "MusicIO/MusicClient.h"
 #include "CLI/CmdInterface.h"
-#include "Interface/InterChange.h"
 #include "Misc/FileMgrFuncs.h"
-#include "Misc/FormatFuncs.h"
 
 #ifdef GUI_FLTK
     #include "MasterUI.h"
@@ -60,8 +54,7 @@ std::atomic <bool> waitForTest{false};
 void mainRegisterAudioPort(SynthEngine *s, int portnum);
 int mainCreateNewInstance(unsigned int forceId);
 Config *firstRuntime = NULL;
-static int globalArgc = 0;
-static char **globalArgv = NULL;
+static std::list<std::string> globalAllArgs;
 bool isSingleMaster = false;
 bool bShowGui = true;
 bool bShowCmdLine = true;
@@ -310,31 +303,31 @@ int mainCreateNewInstance(unsigned int forceId)
 {
     MusicClient *musicClient = NULL;
     unsigned int instanceID;
-    SynthEngine *synth = new SynthEngine(globalArgc, globalArgv, false, forceId);
+    SynthEngine *synth = new SynthEngine(globalAllArgs, LV2PluginTypeNone, forceId);
     if (!synth->getRuntime().isRuntimeSetupCompleted())
         goto bail_out;
     instanceID = synth->getUniqueId();
     if (!synth)
-    {
+    { // this has to be a direct call - no synth for log!
         std::cerr << "Failed to allocate SynthEngine" << std::endl;
         goto bail_out;
     }
 
     if (!(musicClient = MusicClient::newMusicClient(synth)))
     {
-        synth->getRuntime().Log("Failed to instantiate MusicClient");
+        synth->getRuntime().Log("Failed to instantiate MusicClient",_SYS_::LogError);
         goto bail_out;
     }
 
     if (!synth->Init(musicClient->getSamplerate(), musicClient->getBuffersize()))
     {
-        synth->getRuntime().Log("SynthEngine init failed");
+        synth->getRuntime().Log("SynthEngine init failed",_SYS_::LogError);
         goto bail_out;
     }
 
     if (!musicClient->Start())
     {
-        synth->getRuntime().Log("Failed to start MusicIO");
+        synth->getRuntime().Log("Failed to start MusicIO",_SYS_::LogError);
         goto bail_out;
     }
 #ifdef GUI_FLTK
@@ -372,7 +365,7 @@ int mainCreateNewInstance(unsigned int forceId)
 
 bail_out:
     synth->getRuntime().runSynth = false;
-    synth->getRuntime().Log("Bail: Yoshimi stages a strategic retreat :-(");
+    synth->getRuntime().Log("Bail: Yoshimi stages a strategic retreat :-(",_SYS_::LogError);
     if (musicClient)
     {
         musicClient->Close();
@@ -394,22 +387,12 @@ void *commandThread(void *) // silence warning (was *arg = NULL)
     return 0;
 }
 
-std::string runCommand(std::string command, bool clean)
+std::string runCommand(std::string command)
 {
-    const int lineLen = 63;
-    char returnLine[lineLen + 1];
-    FILE *fp = popen(command.c_str(), "r");
-    fgets(returnLine, lineLen, fp);
-    pclose(fp);
-    if (clean)
-    {
-        for (int i = 0; i < lineLen; ++ i)
-        {
-            if (returnLine[i] == ':')
-                returnLine[i] = '0';
-        }
-    }
-    return std::string(returnLine);
+    string returnLine = "";
+    file::cmd2string(command, returnLine);
+    //std::cout << returnLine << std::endl;
+    return returnLine;
 }
 
 int main(int argc, char *argv[])
@@ -453,17 +436,25 @@ int main(int argc, char *argv[])
 
     if (isSingleMaster)
     {
-        std::string firstText = runCommand("pgrep -o -x yoshimi", false);
-        int firstpid = std::stoi(firstText);
-        int firstTime = std::stoi(runCommand("ps -o etime= -p " + firstText, true));
-        int secondTime = std::stoi(runCommand("ps -o etime= -p " + std::to_string(getpid()), true));
 
+        std::string firstText = runCommand("pgrep -o -x yoshimi");
+        int firstpid = std::stoi(firstText);
+        int firstTime = std::stoi(runCommand("ps -o etimes= -p " + firstText));
+        int secondTime = std::stoi(runCommand("ps -o etimes= -p " + std::to_string(getpid())));
         if ((firstTime - secondTime) > 0)
         {
                 kill(firstpid, SIGUSR2); // send message to 1st instance
                 return 0; // exit quietly
         }
     }
+
+    std::list<std::string> allArgs;
+
+    int gui;
+    int cmd;
+    CmdOptions(argc, argv, allArgs, gui, cmd);
+    globalAllArgs = allArgs;
+
 #ifdef GUI_FLTK
     bool guiStarted = false;
     time(&old_father_time);
@@ -474,8 +465,7 @@ int main(int argc, char *argv[])
     tcgetattr(0, &oldTerm);
 
     std::cout << "Yoshimi " << YOSHIMI_VERSION << " is starting" << std::endl; // guaranteed start message
-    globalArgc = argc;
-    globalArgv = argv;
+
     bool bExitSuccess = false;
     map<SynthEngine *, MusicClient *>::iterator it;
 
@@ -524,17 +514,17 @@ int main(int argc, char *argv[])
     memset(&yoshimiSigAction, 0, sizeof(yoshimiSigAction));
     yoshimiSigAction.sa_handler = yoshimiSigHandler;
     if (sigaction(SIGUSR1, &yoshimiSigAction, NULL))
-        firstRuntime->Log("Setting SIGUSR1 handler failed");
+        firstRuntime->Log("Setting SIGUSR1 handler failed",_SYS_::LogError);
     if (sigaction(SIGUSR2, &yoshimiSigAction, NULL))
-        firstRuntime->Log("Setting SIGUSR2 handler failed");
+        firstRuntime->Log("Setting SIGUSR2 handler failed",_SYS_::LogError);
     if (sigaction(SIGINT, &yoshimiSigAction, NULL))
-        firstRuntime->Log("Setting SIGINT handler failed");
+        firstRuntime->Log("Setting SIGINT handler failed",_SYS_::LogError);
     if (sigaction(SIGHUP, &yoshimiSigAction, NULL))
-        firstRuntime->Log("Setting SIGHUP handler failed");
+        firstRuntime->Log("Setting SIGHUP handler failed",_SYS_::LogError);
     if (sigaction(SIGTERM, &yoshimiSigAction, NULL))
-        firstRuntime->Log("Setting SIGTERM handler failed");
+        firstRuntime->Log("Setting SIGTERM handler failed",_SYS_::LogError);
     if (sigaction(SIGQUIT, &yoshimiSigAction, NULL))
-        firstRuntime->Log("Setting SIGQUIT handler failed");
+        firstRuntime->Log("Setting SIGQUIT handler failed",_SYS_::LogError);
     // following moved here for faster first synth startup
     firstSynth->loadHistory();
     firstSynth->installBanks();
@@ -557,9 +547,14 @@ int main(int argc, char *argv[])
         }
     }
 
-    void *ret;
-    pthread_join(threadGui, &ret);
-    if (ret == (void *)1)
+//firstRuntime->Log("test normal msg");
+//firstRuntime->Log("test not serious",_SYS_::LogNotSerious);
+//firstRuntime->Log("test error msg",_SYS_::LogError);
+//firstRuntime->Log("test not serious error",_SYS_::LogNotSerious | _SYS_::LogError);
+
+    void *res;
+    pthread_join(threadGui, &res);
+    if (res == (void *)1)
     {
         goto bail_out;
     }
@@ -568,8 +563,8 @@ int main(int argc, char *argv[])
         MusicClient* music = synthInstances[firstSynth];
         if (music) music->Close(); // causes esp. JackClient to detach
 
-        pthread_join(threadCmd, &ret);
-        if (ret == (void *)1)
+        pthread_join(threadCmd, &res);
+        if (res == (void *)1)
         {
             goto bail_out;
         }
@@ -586,7 +581,7 @@ bail_out:
         _synth->getRuntime().runSynth = false;
         if (!bExitSuccess)
         {
-            _synth->getRuntime().Log("Bail: Yoshimi stages a strategic retreat :-(");
+            _synth->getRuntime().Log("Bail: Yoshimi stages a strategic retreat :-(",_SYS_::LogError);
         }
 
         if (_client)

@@ -1,7 +1,7 @@
 /*
-    CmdInterface.h
+    CmdOptions.h
 
-    Copyright 2015-2019, Will Godfrey & others.
+    Copyright 2021, Will Godfrey.
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -18,25 +18,28 @@
 
 */
 
-#ifndef CMDINTERFACE_H
-#define CMDINTERFACE_H
+#ifndef CMDOPTIONS_H
+#define CMDOPTIONS_H
 
-#include "CLI/CmdInterpreter.h"
+#include <string>
+#include <list>
 
+#include "globals.h"
 
+using std::string;
 
-class CmdInterface
+class CmdOptions
 {
     public:
-        CmdInterface();
-
-        void cmdIfaceCommandLoop();
+        CmdOptions(int argc, char **argv, std::list<string> &allArgs, int &guin, int &cmdn);
+        std::list<string> settings;
+        int gui;
+        int cmd;
 
     private:
-        cli::CmdInterpreter interpreter;
+        void loadCmdArgs(int argc, char **argv);
 
-        Config& getRuntime();
-        void Log(const string& , char tostderr = _SYS_::LogNormal);
 };
 
-#endif
+#endif /*CMDOPTIONS_H*/
+
