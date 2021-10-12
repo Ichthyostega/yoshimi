@@ -1,0 +1,13 @@
+Test-Command: xvfb-run -a debian/tests/run-yoshimi simple.yosh
+Depends:
+ xauth,
+ xvfb,
+ yoshimi,
+Restrictions: allow-stderr, superficial
+
+Test-Command: xvfb-run -a debian/tests/run-yoshimi play.yosh
+Depends:
+ xauth,
+ xvfb,
+ yoshimi,
+Restrictions: allow-stderr
