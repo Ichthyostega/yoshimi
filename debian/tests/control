@@ -1,4 +1,11 @@
-Test-Command: echo "set test exec" | yoshimi --null --no-gui --cmdline
+Test-Command: xvfb-run -a debian/tests/run-yoshimi simple.yosh
 Depends:
+ xvfb,
  yoshimi,
 Restrictions: allow-stderr, superficial
+
+Test-Command: xvfb-run -a debian/tests/run-yoshimi play.yosh
+Depends:
+ xvfb,
+ yoshimi,
+Restrictions: allow-stderr

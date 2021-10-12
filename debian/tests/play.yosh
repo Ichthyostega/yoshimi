@@ -1,0 +1,4 @@
+set part 1 instrument 36
+/
+set test target test-out
+execute

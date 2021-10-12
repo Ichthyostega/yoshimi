@@ -1,0 +1,18 @@
+#!/bin/sh
+set -e
+
+infile="$1"
+
+if [ ! -f "${infile}" ]; then
+	infile=${0%/*}/${infile}
+fi
+if [ ! -f "${infile}" ]; then
+	echo "usage: $0 <yoshimifile>" 1>&2
+	exit 1
+fi
+cat "${infile}" | yoshimi --null --no-gui --cmdline
+
+md5file=${infile%.yosh}.md5
+if [ -f "${md5file}" ]; then
+	md5sum -c "${md5file}"
+fi
