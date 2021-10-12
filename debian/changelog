@@ -1,9 +1,12 @@
-yoshimi (2.1.1.1-1ppa1~focal) focal; urgency=low
+yoshimi (2.1.1.1-1ppa1~xenial) xenial; urgency=low
 
   * New upstream minor release 2.1.1.1
   * Patch to remove external image URL from userguide
-  * Rebuild/Backport for Ubuntu/Focal(20.04 LTS).
   * unofficial DEB package by Ichthyostega
+  * Rebuild/Backport for Ubuntu/Xenial (16.04 LTS)
+  * tweaks to allow build on this somewhat old platform
+    * force build with -fPIC
+    * lower debhelper and compliance level
 
  -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 12 Oct 2021 23:31:14 +0200
 
@@ -16,7 +19,7 @@ yoshimi (2.1.0-1~buster) Lumiera-buster-tool; urgency=low
   * Rebuild/Backport for Debian/Buster(stable).
   * unofficial DEB package by Ichthyostega
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Mon, 23 Aug 2021 12:44:02 +0200
+ -- Hermann Vosseler <deb@ichthyostega.de>  Mon, 23 Aug 2021 12:44:55 +0200
 
 yoshimi (2.0.2-1~buster) Lumiera-buster-tool; urgency=low
 
@@ -35,7 +38,7 @@ yoshimi (2.0.1-1~buster) Lumiera-buster-tool; urgency=low
   [ Mattia Rizzolo ]
   * Remove unused build-dependency on liboost-dev.
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 27 Apr 2021 00:31:05 +0200
+ -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 27 Apr 2021 00:42:55 +0200
 
 yoshimi (2.0-1~buster) Lumiera-buster-tool; urgency=low
 
@@ -52,7 +55,7 @@ yoshimi (2.0-1~buster) Lumiera-buster-tool; urgency=low
     + Change license for desktop/metainfo/* and Util/YoshimiSplash.svg to CC-BY-4.0
   * Fix license name of yoshimi.appdata.xml to make lintian happy
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Fri, 05 Mar 2021 01:12:42 +0100
+ -- Hermann Vosseler <deb@ichthyostega.de>  Fri, 05 Mar 2021 01:23:42 +0100
 
 yoshimi (1.7.1-1~buster) Lumiera-buster-tool; urgency=low
 
