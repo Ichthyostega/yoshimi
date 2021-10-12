@@ -1,4 +1,127 @@
-yoshimi 2.1.0
+yoshimi 2.1.1.1
+
+2021-10-12 Will
+* BugFix:  Not recognising no FLTK on first time start
+* Set bugfix release 2.1.1.1
+
+2021-10-11 Will
+* Final updates to user guide and docs
+* Set release version to 2.1.1
+
+2021-10-9 Will
+* Bugfix: Vectors not save to correct locations.
+
+2021-10-7 Will
+* Created separate button for MIDI CCs in main window
+* Updated user guide
+* Set version as 2.1.1 rc2
+
+2021-10-6 Will
+* Updates in doc and dev_notes
+* Additional comments in globals.h and interchange.cpp
+
+2021-10-5 Will
+BugFix: Not resetting part effect number to zero
+  when loading a new instrument or clearing one.
+
+2021-10-4 Will
+* Updates to User guide
+* Small GUI cleanups
+* Doc and build instruction updates.
+* Set version as 2.1.1 rc1
+
+2021-10-3 Will
+* Further improvements to bank management
+  Mostly addtobank() and orphan/duplicate files
+
+2021-10-2 Will
+* Corrected wrong years here!
+* Changed search list terminator from "*" to "@end"
+  Makes it easier to see and consistent with
+  other lists terminators
+
+2021-9-30 Will
+* Moved userDir definition to FileMgrFuncs.cpp
+  from config.cpp
+* Moved localDir definition to FileMgrFuncs.cpp
+  from config.cpp
+  Also renamed confusing duplicate names in bank.cpp
+* Rationalised string manipulation in bank.cpp
+* Moved configDir definition to FileMgrFuncs.cpp
+  from config.cpp
+
+2021-9-29 Will
+* Removed controls to enable part on program change.
+  It was only relevant to MIDI and always on regardless.
+* Made new bank version numbers positive
+  starting from 10 to clear trial versions.
+
+2021-9-27 Will
+* Removed redundant references the checksynthengines
+
+2021-9-23 Will
+* Merged in latest banks updates
+* Updated build number
+
+2021-9-15 Will
+* Double click in filer favourite paths window sets it directly.
+* Updated User Guide.
+* update_guide_version.py no longer adds M/rc{n} suffixes.
+
+*BugFix: textmsg leak loading instruments.
+
+2021-9-14 Will
+* Commented out CLI test message in interchange.
+* Updated build dependencies.
+
+2021-9-11 Will
+* BugFix: Crash when trying to clear or save inactive part.
+* Added missing ALSA connection type to config list report.
+
+2021-9-10 Will
+* Commented out legit filename test in MidiLearn.cpp
+  This was falsely adjusting valid filenames.
+
+2021-9-7 Will
+* BugFix: Corrupted instrument Copyright and Comments entries.
+
+2021-9-5 Will
+* Replaced logging type numbers with labels.
+* Added (commented out) test massages in main.cpp.
+
+2021-9-4 Will
+* Revised Config.cpp to streamline and improve readability.
+
+2021-9-3 Will
+* Merged in revisedArgs
+* Code cleanups.
+  No changes to logic.
+
+* CLI load file at start can now specify part number.
+
+2021-8-30 Will
+* BugFix: crash when trying to import bank.
+  last seen code not trapping out of range values.
+
+2021-8-29 Will
+* Cleaned up history vector implementation.
+* Separated last seen files from history.
+  If history was locked so was last seen.
+
+2021-8-28 Will
+* Reverted manual code to minimise load time.
+
+2021-8-25 Will
+* Improved manual search.
+  No longer uses tmp and reinstated PDF.
+* Moved all popen commands to FileMgrFuncs.h
+* Improved single master detection.
+
+* Started separating startup options from Config.cpp
+  Currently disabled.
+
+2021-8-24 Will
+* Slight speed up for user guide search.
 
 2021-8-23 Will
 * Final cleanups
