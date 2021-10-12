@@ -1,0 +1,38 @@
+From: Ichthyostega <deb@ichthyostega.de>
+Date: Sun, 7 Apr 2019 19:16:00 +0200
+Subject: Lower CMake version requirement
+
+Description: Lower CMake version requirement.
+ To allow Building on Ubuntu/Trusty(14.04), we need to lower the CMake
+ minimum version. As it turns out, fortunatel the build does not yet
+ really use newer CMake features.
+ .
+ yoshimi (1.5.10.2-1ppa1~trusty) trusty; urgency=low
+ .
+   * Build for Ubuntu/Trusty (14.04 LTS)
+   * As of 4/2019, this is the latest stable/bugfix Yoshimi release
+   * tweaks to allow building on this quite old platform
+     * force build with -fPIC
+     * lower debhelper and compliance level
+Author: Hermann Vosseler <deb@ichthyostega.de>
+Forwarded: not-needed
+Last-Update: 2019-04-7
+---
+ src/CMakeLists.txt | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 61d4a9a..337e287 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -18,8 +18,8 @@
+ #   along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
+ 
+ project (Yoshimi)
+-cmake_minimum_required (VERSION 3.0)
+-cmake_policy (VERSION 3.0)
++cmake_minimum_required (VERSION 2.8)
++cmake_policy (VERSION 2.8)
+ cmake_policy (SET CMP0004 NEW)
+ if (POLICY CMP0046)
+     cmake_policy (SET CMP0046 NEW)

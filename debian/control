@@ -26,11 +26,13 @@ Build-Depends:
  libxext-dev,
  lv2-dev,
  pkg-config,
+ libjpeg-dev,
+ libxinerama-dev,
+ libxft-dev,
  sharutils,
- zlib1g-dev,
-Standards-Version: 4.5.1
-Rules-Requires-Root: no
-Vcs-Git: https://github.com/Ichthyostega/yoshimi.git -b deb
+ zlib1g-dev
+Standards-Version: 4.3.0
+Vcs-Git: https://github.com/Ichthyostega/yoshimi.git
 Homepage: https://yoshimi.sourceforge.io
 
 Package: yoshimi
@@ -38,7 +40,7 @@ Architecture: any
 Depends:
  yoshimi-data (= ${source:Version}),
  ${misc:Depends},
- ${shlibs:Depends},
+ ${shlibs:Depends}
 Recommends:
  jackd,
  yoshimi-doc,
@@ -53,9 +55,9 @@ Package: yoshimi-data
 Architecture: all
 Multi-Arch: foreign
 Depends:
- ${misc:Depends},
+ ${misc:Depends}
 Recommends:
- yoshimi,
+ yoshimi
 Description: Presets for Yoshimi
  Yoshimi is a software synthesizer originally based on ZynAddSubFX2
  .
@@ -69,9 +71,9 @@ Section: doc
 Architecture: all
 Multi-Arch: foreign
 Depends:
- ${misc:Depends},
+ ${misc:Depends}
 Recommends:
- yoshimi,
+ yoshimi
 Description: Documentation for Yoshimi
  Yoshimi is a software synthesizer originally based on ZynAddSubFX2
  .
