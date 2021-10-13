@@ -1,9 +1,15 @@
-yoshimi (2.1.1~dfsg0-1) UNRELEASED; urgency=medium
+yoshimi (2.1.1~dfsg0-1) unstable; urgency=medium
 
   * New upstream version 2.1.1~dfsg0
-  * Add salsa-ci configuration
 
- -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Mon, 11 Oct 2021 23:38:57 +0200
+  * autopkgtests
+    + Fix superficial test
+    + Add proper (non-trivial) test
+  * Add salsa-ci configuration
+  * Apply 'wrap-and-sort -ast'
+  * Add myself to uploaders
+
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Wed, 13 Oct 2021 09:52:30 +0200
 
 yoshimi (2.1.0~dfsg0-1) unstable; urgency=medium
 
