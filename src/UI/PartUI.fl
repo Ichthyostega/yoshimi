@@ -622,11 +622,14 @@ class PartUI {: {public Fl_Group, PartUI_}
         Fl_Button partcontrollers {
           label Controllers
           callback {//
-          if (Fl::event_button() != 3)
-              Showctl();
-          else
-              Showctlmidi();}
-          tooltip {Left mouse button: Controller range settings, Right mouse button: MIDI CCs} xywh {8 81 139 25} box PLASTIC_UP_BOX color 228 labelsize 12
+          Showctl();}
+          tooltip {MIDI Controller range settings} xywh {2 82 86 22} box PLASTIC_UP_BOX color 228 labelsize 12
+        }
+        Fl_Button midiCCs {
+          label {Midi CCs}
+          callback {//
+          Showctlmidi();}
+          tooltip {Emulates common MIDI CCs} xywh {96 82 60 22} box PLASTIC_UP_BOX color 228 labelsize 12
         }
         Fl_Spinner partkeyshift {
           label {Key Shift}
@@ -856,7 +859,7 @@ class PartUI {: {public Fl_Group, PartUI_}
       code3 {o->size_range(editDW, editDH, 0, 0, 0, 0, 1);}
     } {
       Fl_Group {} {
-        xywh {0 220 395 103} box ENGRAVED_FRAME
+        xywh {0 220 395 103} box ENGRAVED_BOX
       } {
         Fl_Group ADD {
           label ADDsynth
@@ -997,7 +1000,7 @@ class PartUI {: {public Fl_Group, PartUI_}
           send_data(TOPLEVEL::action::lowPrio, PART::control::instrumentComments, 0, TOPLEVEL::type::Integer, UNUSED, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(string(o->value())));}
           xywh {5 123 385 91} type Multiline color 26 labelsize 12 align 5
           code0 {o->maximum_size(MAX_INFO_TEXT_SIZE);}
-          code1 {o->value(func::formatTextLines(part->info.Pcomments, 58).c_str());}
+          code1 {o->value(part->info.Pcomments.c_str());}
         }
         Fl_Choice instrumentType {
           label {Type:}
@@ -2140,10 +2143,12 @@ class PartUI {: {public Fl_Group, PartUI_}
             break;
 
         case PART::control::instrumentCopyright:
-            copyright->value(func::formatTextLines(text, 58).c_str());
+            copyright->value("");
+            copyright->value(text.c_str());
             break;
         case PART::control::instrumentComments:
-            commentField->value(func::formatTextLines(text, 58).c_str());
+            commentField->value("");
+            commentField->value(text.c_str());
             break;
         case PART::control::instrumentName:
             if (!kitType)
@@ -2419,36 +2424,35 @@ class PartUI {: {public Fl_Group, PartUI_}
     if (instrumentName == "")
         instrumentName = part->Pname;
     partname = instrumentName; // this needs improving
-    if (synth->getRuntime().checksynthengines)
+
+    if (adsynenabledcheck->value())
+        addbox->color(ADD_COLOUR);
+    else
+        addbox->color(BASE_COLOUR);
+    ADD->damage(1);
+    if (subsynenabledcheck->value())
+        subbox->color(SUB_COLOUR);
+    else
+        subbox->color(BASE_COLOUR);
+    SUB->damage(1);
+    if (padsynenabledcheck->value())
+        padbox->color(PAD_COLOUR);
+    else
+        padbox->color(BASE_COLOUR);
+    PAD->damage(1);
+    for (int i = 0; i < NUM_KIT_ITEMS; ++i)
     {
-        if (adsynenabledcheck->value())
-            addbox->color(ADD_COLOUR);
-        else
-            addbox->color(BASE_COLOUR);
-        ADD->damage(1);
-        if (subsynenabledcheck->value())
-            subbox->color(SUB_COLOUR);
-        else
-            subbox->color(BASE_COLOUR);
-        SUB->damage(1);
-        if (padsynenabledcheck->value())
-            padbox->color(PAD_COLOUR);
-        else
-            padbox->color(BASE_COLOUR);
-        PAD->damage(1);
-        for (int i = 0; i < NUM_KIT_ITEMS; ++i)
-        {
-            if (partkititem[i]->enabledcheck->value())
-            { // nested so we don't access non existent
-                if (partkititem[i]->mutedcheck->value() == 0)
-                {
-                    engine |= partkititem[i]->adcheck->value();
-                    engine |= (partkititem[i]->subcheck->value() << 1);
-                    engine |= (partkititem[i]->padcheck->value() << 2);
-                }
+        if (partkititem[i]->enabledcheck->value())
+        { // nested so we don't access non existent
+            if (partkititem[i]->mutedcheck->value() == 0)
+            {
+                engine |= partkititem[i]->adcheck->value();
+                engine |= (partkititem[i]->subcheck->value() << 1);
+                engine |= (partkititem[i]->padcheck->value() << 2);
             }
         }
     }
+
     if (engine & 1) // addsynth
         instrumentaddbox->color(ADD_COLOUR);
     else
@@ -2539,17 +2543,15 @@ class PartUI {: {public Fl_Group, PartUI_}
   Function {setinstrumentlabel(string text = "")} {} {
     code {//
     engine = 0;
-    if (synth->getRuntime().checksynthengines)
+
+    for (int i = 0; i < NUM_KIT_ITEMS; ++i)
     {
-        for (int i = 0; i < NUM_KIT_ITEMS; ++i)
-        {
-            if (part->kit[i].Padenabled)
-                engine |= 1;
-            if (part->kit[i].Psubenabled)
-                engine |= 2;
-            if (part->kit[i].Ppadenabled)
-                engine |= 4;
-        }
+        if (part->kit[i].Padenabled)
+            engine |= 1;
+        if (part->kit[i].Psubenabled)
+            engine |= 2;
+        if (part->kit[i].Ppadenabled)
+            engine |= 4;
     }
     if (engine & 1)
         instrumentaddbox->color(ADD_COLOUR);
@@ -2746,16 +2748,22 @@ class PartUI {: {public Fl_Group, PartUI_}
     int size11 = int(11 * dScale);
     int size12 = int(12 * dScale);
     int size14 = int(14 * dScale);
+    int boxY = int(227 * dScale);
+    int boxWidth = int(89 * dScale);
+    int boxHeight = int(18 * dScale);
 
     ADD->labelsize(size14);
+    addbox->resize(int(10 * dScale), boxY, boxWidth, boxHeight);
     adsynenabledcheck->labelsize(size11);
     adeditbutton->labelsize(size14);
 
     SUB->labelsize(size14);
+    subbox->resize(int(110 * dScale), boxY, boxWidth, boxHeight);
     subsynenabledcheck->labelsize(size11);
     subeditbutton->labelsize(size14);
 
     PAD->labelsize(size14);
+    padbox->resize(int(210 * dScale), boxY, boxWidth, boxHeight);
     padsynenabledcheck->labelsize(size11);
     padeditbutton->labelsize(size14);
 
@@ -2987,6 +2995,7 @@ class PartUI {: {public Fl_Group, PartUI_}
     keymode->textsize(size11);
     modepatch->labelsize(size11);
     partcontrollers->labelsize(size12);
+    midiCCs->labelsize(size12);
     partkeyshift->labelsize(size);
         partkeyshift->textsize(size11);
     partkeylimit->labelsize(size);

@@ -27,6 +27,8 @@
 #include <sys/types.h>
 #include <cstring>
 #include <string>
+#include <vector>
+#include <list>
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -37,10 +39,10 @@
 
 #include "globals.h"
 
-#define OUR_PATH_MAX 2048
+#define OUR_PATH_MAX 4096
 /*
  * PATH_MAX is a poorly defined constant, and not very
- * portable. As this function is only used for a single
+ * portable. As this function is only used for a simple
  * tightly defined purpose we set a value to replace it
  * that should be safe for any reasonable architecture.
  */
@@ -73,7 +75,6 @@ namespace file {
 
 using std::string;
 using std::stringstream;
-
 
 // make a filename legal
 inline void make_legit_filename(string& fname)
@@ -151,6 +152,40 @@ inline bool isDirectory(const string& chkpath)
             return true;
     }
     return false;
+}
+
+/* performs specific OS command
+ * optionally returning a multi-line response
+ */
+
+inline bool cmd2string(std::string cmd)
+{
+    FILE* fp = popen(cmd.c_str(), "r");
+    if(fp)
+    {
+        pclose(fp);
+        return true;
+    }
+    return false;
+}
+
+inline bool cmd2string(std::string cmd, string& result)
+{
+    bool isok = false;
+    FILE* fp = popen(cmd.c_str(), "r");
+    if(fp)
+    {
+        std::vector<char> buffer(OUR_PATH_MAX);
+        std::size_t n = fread(buffer.data(), 1, buffer.size(), fp);
+        if(n && n < buffer.size())
+        {
+            buffer.data()[n] = 0;
+            result = buffer.data();
+        }
+        pclose(fp);
+        isok = true;
+    }
+    return isok;
 }
 
 
@@ -368,6 +403,33 @@ inline int listDir(std::list<string>* dirList, const string& dirName)
     return count;
 }
 
+
+/*
+ * Counts all the objects within the directory.
+ */
+
+inline int countDir(const std::string dirName)
+{
+    DIR *dir = opendir(dirName.c_str());
+    if (dir == NULL)
+        return -1;
+    struct dirent *fn;
+    int count = 0;
+    char dir1[2] = {'.', 0};
+    char dir2[3] = {'.', '.', 0};
+    while ((fn = readdir(dir)))
+    {
+        if (fn->d_type == DT_DIR)
+        {
+            if(fn->d_name != dir1 && fn->d_name != dir2)
+                ++ count;
+        }
+    }
+    closedir(dir);
+    return count;
+}
+
+
 /*
  * we return the contents as sorted, sequential lists in directories
  * and files of the required type as a series of leaf names (as the
@@ -572,19 +634,20 @@ inline string loadText(const string& filename)
     // no Yoshimi input text lines should get anywhere near this!
     while (!feof(readfile))
     {
-        line[0] = 0;
+        string rawline = "";
         if (fgets(line , OUR_PATH_MAX , readfile))
         {
-            size_t end = strlen(line);
-            line[end] = 0; // ensure at least 1
-            while (line[end] < '!' && end != 0)
+            rawline = string(line);
+            while (rawline.length() > 0 && rawline[0] < '!')
+                rawline.erase(0, 1);
+            if(rawline.length() > 0)
             {
-                line[end] = 0; // remove MS line end and spaces
-                --end;
+                while (rawline.length() > 0 && rawline[rawline.length() - 1] < ' ')
+                {
+                    rawline.pop_back();
+                }
+                text += (rawline + '\n');
             }
-            line[end+1] = '\n';
-            if (line[0] >= ' ') // we never want blank lines
-                text += string(line);
         }
     }
     fclose (readfile);
@@ -687,6 +750,35 @@ inline string extendLocalPath(const string& leaf)
     return path.substr(0, next) + leaf;
 }
 
+inline string userHome(void)
+{
+    string home = string(getenv("HOME"));
+    if (home.empty() || !isDirectory(home))
+        home = string("/tmp");
+return home + '/';
+}
+
+inline string localDir(void)
+{
+    string local = userHome() + ".local/share/yoshimi";
+    if (!isDirectory(local))
+    {
+        if (createDir(local))
+            local = "";
+    }
+    return local;
+}
+
+inline string configDir(void)
+{
+    string config = userHome() + string(EXTEN::config) + "/" + YOSHIMI;
+    if (!isDirectory(config))
+    {
+        if (createDir(config))
+            config = "";
+    }
+    return config;
+}
 
 }//(End)namespace file
 #endif /*FILEMGR_H*/
