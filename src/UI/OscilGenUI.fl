@@ -1,5 +1,5 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0304
+version 1.0305
 header_name {.h}
 code_name {.cc}
 comment {OscilgenUI.h} {not_in_source in_header
@@ -29,7 +29,7 @@ Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 This file is a derivative of the ZynAddSubFX original.
 
-} {selected in_source in_header
+} {in_source in_header
 }
 
 decl {\#include "ResonanceUI.h"} {public local
@@ -84,8 +84,8 @@ decl {\#include "MasterUI.h"} {private global
 }
 
 decl {\#include "Misc/NumericFuncs.h"
-    using func::dB2rap;
-    using func::rap2dB;} {private local
+    using func::decibel;
+    using func::asDecibel;} {private local
 }
 
 class OscilSpectrum {: {public Fl_Box}
@@ -162,8 +162,8 @@ class OscilSpectrum {: {public Fl_Box}
         int tmp = i * GX + 2;
         x = spc[i] / max;
 
-        if (x > dB2rap(-maxdb))
-            x = rap2dB(x) / maxdb + 1;
+        if (x > decibel(-maxdb))
+            x = asDecibel(x) / maxdb + 1;
         else
             x = 0;
 
@@ -458,25 +458,30 @@ class Oscilharmonic {: {public Fl_Group}
   }
 }
 
-class OscilEditor {: {public PresetsUI_}
+class OscilEditor {open : {public PresetsUI_}
 } {
-  Function {make_window()} {} {
+  Function {make_window()} {open
+  } {
     Fl_Window osceditUI {
       label {ADsynth Oscillator Editor}
       callback {saveWin(synth, osceditUI->w(), osceditUI->h(), osceditUI->x(), osceditUI->y(), false, "Waveform " + to_string(waveType));
 OSCseen = false;
-o->hide();}
-      xywh {11 26 735 595} type Double hide resizable
+o->hide();} open
+      xywh {11 26 735 595} type Double labelsize 12 hide resizable
       code0 {string tname;}
       code1 {setWindowTitle();}
       code2 {waveDW = o->w() * 9 / 10; waveDH = o->h() * 9 / 10;}
       code3 {o->size_range(waveDW, waveDH, 0, 0, 0, 0, 1);}
     } {
+      Fl_Box applybox {
+        xywh {298 278 64 24} box THIN_UP_BOX color 237
+        code0 {if (!oscil->ADvsPAD) o->hide();}
+      }
       Fl_Button applybutton {
         label Apply
         callback {//
-        send_data(TOPLEVEL::action::forceUpdate, PART::control::padsynthParameters, 0, TOPLEVEL::type::Integer);}
-        xywh {300 280 60 20} box THIN_UP_BOX labelfont 1
+        send_data(TOPLEVEL::action::forceUpdate, PART::control::padsynthParameters, 1, TOPLEVEL::type::Integer);} selected
+        xywh {301 281 58 18} box THIN_UP_BOX labelfont 1 labelsize 12
         code0 {if (!oscil->ADvsPAD) o->hide();}
       }
       Fl_Group oscildisplaygroup {
@@ -832,7 +837,7 @@ o->hide();}
     code {//
     float value = getData->data.value;
     unsigned char control = getData->data.control;
-    unsigned char eng = getData->data.engine;
+    //unsigned char eng = getData->data.engine;
     unsigned char insert = getData->data.insert;
 
     //if (eng != engine)
@@ -1075,11 +1080,6 @@ o->hide();}
         waveformgroup->redraw();
         harmonicgroup->redraw();
         oldosc->redraw();
-        if (eng == 2)
-        {
-            applybutton->color(FL_RED);
-            applybutton->redraw();
-        }
     }} {}
   }
   Function {fetchData(float value, int control, int part, int kititem = UNUSED, int engine = UNUSED, int insert = UNUSED, int parameter = UNUSED, int offset = UNUSED, int miscmsg = UNUSED, int request = UNUSED)} {return_type float
@@ -1263,8 +1263,8 @@ o->hide();}
     oldosc->redraw();
     if (cbwidget!=NULL) {
         cbwidget->do_callback();
-        applybutton->color(FL_RED);
-        applybutton->redraw();
+        //applybutton->color(FL_RED);
+        //applybutton->redraw();
 };} {}
   }
   Function {waveRtext()} {} {
@@ -1278,7 +1278,7 @@ o->hide();}
         int size12 = int(12 * dScale);
         int size14 = int(14 * dScale);
 
-        applybutton->labelsize(size14);
+        applybutton->labelsize(size12);
         hrndtype->labelsize(size);
             hrndtype->textsize(size);
         oscilname->labelsize(size12);

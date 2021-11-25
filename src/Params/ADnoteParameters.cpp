@@ -29,12 +29,12 @@
 #include <cmath>
 #include <stdlib.h>
 #include "Misc/NumericFuncs.h"
-
-using namespace std;
-using func::setAllPan;
-
 #include "Misc/SynthEngine.h"
 #include "Params/ADnoteParameters.h"
+
+using func::setAllPan;
+using func::power;
+
 
 int ADnoteParameters::ADnote_unison_sizes[] =
 {2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50, 0};
@@ -217,7 +217,7 @@ void ADnoteParameters::enableVoice(int nvoice)
 float ADnoteParameters::getBandwidthDetuneMultiplier(void)
 {
     float bw = (GlobalPar.PBandwidth - 64.0f) / 64.0f;
-    bw = powf(2.0f, bw * pow(fabs(bw), 0.2f) * 5.0f);
+    bw = power<2>(bw * pow(fabs(bw), 0.2f) * 5.0f);
     return bw;
 }
 
@@ -956,6 +956,7 @@ float ADnoteParameters::getLimits(CommandBlock *getData)
                 break;
 
             case ADDSYNTH::control::randomWidth:
+                type |= learnable;
                 def = 63;
                 max = 63;
                 break;
@@ -998,20 +999,26 @@ float ADnoteParameters::getLimits(CommandBlock *getData)
                 break;
 
             case ADDSYNTH::control::dePop:
+                type |= learnable;
                 def = FADEIN_ADJUSTMENT_SCALE;
+                break;
 
-            case ADDSYNTH::control::punchStrength: // just ensures it doesn't get caught by default
+            case ADDSYNTH::control::punchStrength:
+                type |= learnable;
                 break;
 
             case ADDSYNTH::control::punchDuration:
+                type |= learnable;
                 def = 60;
                 break;
 
             case ADDSYNTH::control::punchStretch:
+                type |= learnable;
                 def = 64;
                 break;
 
             case ADDSYNTH::control::punchVelocity:
+                type |= learnable;
                 def = 72;
                 break;
 
@@ -1183,6 +1190,7 @@ float ADnoteParameters::getLimits(CommandBlock *getData)
             break;
 
         case ADDVOICE::control::enableUnison:
+            type |= learnable;
             max = 1;
             break;
 

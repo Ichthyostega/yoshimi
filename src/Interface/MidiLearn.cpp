@@ -20,6 +20,8 @@
 
 */
 
+#define newml YES
+
 #include "Interface/MidiLearn.h"
 #include "Interface/InterChange.h"
 #include "Interface/RingBuffer.h"
@@ -43,6 +45,8 @@ using file::setExtension;
 
 using func::asString;
 using func::asHexString;
+using std::cout;
+using std::endl;
 using std::to_string;
 using std::string;
 using std::vector;
@@ -154,19 +158,14 @@ bool MidiLearn::runMidiLearn(int _value, unsigned short int CC, unsigned char ch
             value = minOut +((maxOut - minOut) * value / 127.0f);
         else if (minOut != 0) // it's just a shift
             value += minOut;
-
         CommandBlock putData;
+
+        memcpy(putData.bytes, foundEntry.frame.bytes, sizeof(CommandBlock));
         putData.data.value = value;
-        putData.data.type = TOPLEVEL::type::Write | (foundEntry.data.type & TOPLEVEL::type::Integer);
+        putData.data.type = TOPLEVEL::type::Write | (foundEntry.frame.data.type & TOPLEVEL::type::Integer);
         // write command from midi with original integer / float type
         putData.data.source = TOPLEVEL::action::toAll;
-        putData.data.control = foundEntry.data.control;
-        putData.data.part = foundEntry.data.part;
-        putData.data.kit = foundEntry.data.kit;
-        putData.data.engine = foundEntry.data.engine;
-        putData.data.insert = foundEntry.data.insert;
-        putData.data.parameter = foundEntry.data.parameter;
-        putData.data.miscmsg = foundEntry.data.miscmsg;
+
         if (writeMidi(&putData, in_place))
         {
             if (firstLine && !in_place) // not in_place
@@ -259,7 +258,7 @@ int MidiLearn::findEntry(list<LearnBlock> &midi_list, int lastpos, unsigned shor
             block->status = it->status;
             block->min_out = it->min_out;
             block->max_out = it->max_out;
-            block->data = it->data;
+            block->frame.data = it->frame.data;
             if ((it->status & 5) == 1) // blocked, not muted
                 return scan::listBlocked; // don't allow any more of this CC and channel;
             return newpos;
@@ -397,6 +396,7 @@ void MidiLearn::generalOperations(CommandBlock *getData)
     unsigned char engine = getData->data.engine;
     unsigned char insert = getData->data.insert;
     unsigned char parameter = getData->data.parameter;
+    unsigned char offset = getData->data.offset;
     unsigned char par2 = getData->data.miscmsg;
 
     if (control == MIDILEARN::control::sendRefreshRequest)
@@ -610,6 +610,7 @@ void MidiLearn::generalOperations(CommandBlock *getData)
         putData.data.engine = engine;
         putData.data.insert = insert;
         putData.data.parameter = parameter;
+        putData.data.offset = offset;
         it->CC = kit;
         it->chan = engine;
         it->min_in = insert;
@@ -628,7 +629,7 @@ void MidiLearn::generalOperations(CommandBlock *getData)
         entry.status = type;
         entry.min_out = it->min_out;
         entry.max_out = it->max_out;
-        entry.data = it->data;
+        entry.frame.data = it->frame.data;
         unsigned int CC = entry.CC;
         int chan = entry.chan;
 
@@ -666,18 +667,10 @@ void MidiLearn::generalOperations(CommandBlock *getData)
 string MidiLearn::findName(list<LearnBlock>::iterator it)
 {
     CommandBlock putData;
+    memcpy(putData.bytes, it->frame.bytes, sizeof(CommandBlock));
     putData.data.value = 0;
     putData.data.source = 0;
-
-    putData.data.type = it->data.type;
-    putData.data.control = it->data.control;
-    putData.data.part = it->data.part;
-    putData.data.kit = it->data.kit;
-    putData.data.engine = it->data.engine;
-    putData.data.insert = it->data.insert;
-    putData.data.parameter = it->data.parameter;
-    putData.data.offset = UNUSED;
-    string name = resolveAll(synth, &putData, false);;
+    string name = resolveAll(synth, &putData, false);
     return name;
 }
 
@@ -718,23 +711,14 @@ void MidiLearn::insertLine(unsigned short int CC, unsigned char chan)
 
     //std::cout << "SEND Control " << (int) learnTransferBlock.data.control << " Part " << (int) learnTransferBlock.data.part << "  Kit " << (int) learnTransferBlock.data.kit << " Engine " << (int) learnTransferBlock.data.engine << "  Insert " << (int) learnTransferBlock.data.insert << std::std::endl;
 
-    unsigned char type = learnTransferBlock.data.type & 0x80;
-    learnTransferBlock.data.type = (type &0xf8) | 5; // min
+    unsigned char type = learnTransferBlock.data.type & TOPLEVEL::type::Integer;
+    learnTransferBlock.data.type = (type | TOPLEVEL::type::Limits | TOPLEVEL::type::Minimum);
     entry.min_out = synth->interchange.readAllData(&learnTransferBlock);
-    learnTransferBlock.data.type = (type &0xf8) | 6; // max
+    learnTransferBlock.data.type = (type | TOPLEVEL::type::Limits | TOPLEVEL::type::Maximum);
     entry.max_out = synth->interchange.readAllData(&learnTransferBlock);
 
-    // Should be a better way to do this!
-
-    entry.data.type = type;
-    entry.data.control = learnTransferBlock.data.control;
-    entry.data.part = learnTransferBlock.data.part;
-    entry.data.kit = learnTransferBlock.data.kit;
-    entry.data.engine = learnTransferBlock.data.engine;
-    entry.data.insert = learnTransferBlock.data.insert;
-    entry.data.parameter = learnTransferBlock.data.parameter;
-    entry.data.miscmsg = learnTransferBlock.data.miscmsg;
-
+    memcpy(entry.frame.bytes, learnTransferBlock.bytes, sizeof(CommandBlock));
+    entry.frame.data.type = type;
     list<LearnBlock>::iterator it;
     it = midi_list.begin();
     int lineNo = 0;
@@ -782,7 +766,7 @@ void MidiLearn::writeToGui(CommandBlock *putData)
         ok = synth->interchange.toGUI.write(putData->bytes);
         ++tries;
         if (!ok)
-                usleep(1);
+                usleep(100);
         // we can afford a short delay for buffer to clear
     }
     while (!ok && tries < 3);
@@ -890,7 +874,6 @@ bool MidiLearn::saveList(const string& name)
     }
 
     string file = setExtension(name, EXTEN::mlearn);
-//    make_legit_filename(file);
     synth->getRuntime().xmlType = TOPLEVEL::XML::MLearn;
     XMLwrapper *xml = new XMLwrapper(synth, true);
     if (!xml)
@@ -942,14 +925,14 @@ bool MidiLearn::insertMidiListData(XMLwrapper *xml)
             xml->addpar("Convert_Min", it->min_out);
             xml->addpar("Convert_Max", it->max_out);
             xml->beginbranch("COMMAND");
-                xml->addpar("Type", it->data.type);
-                xml->addpar("Control", it->data.control);
-                xml->addpar("Part", it->data.part);
-                xml->addpar("Kit_Item", it->data.kit);
-                xml->addpar("Engine", it->data.engine);
-                xml->addpar("Insert", it->data.insert);
-                xml->addpar("Parameter", it->data.parameter);
-                xml->addpar("Secondary_Parameter", it->data.miscmsg);
+                xml->addpar("Type", it->frame.data.type);
+                xml->addpar("Control", it->frame.data.control);
+                xml->addpar("Part", it->frame.data.part);
+                xml->addpar("Kit_Item", it->frame.data.kit);
+                xml->addpar("Engine", it->frame.data.engine);
+                xml->addpar("Insert", it->frame.data.insert);
+                xml->addpar("Parameter", it->frame.data.parameter);
+                xml->addpar("Secondary_Parameter", it->frame.data.offset);
                 xml->addparstr("Command_Name",findName(it).c_str());
                 xml->endbranch();
             xml->endbranch();
@@ -992,6 +975,7 @@ bool MidiLearn::loadList(const string& name)
 
 bool MidiLearn::extractMidiListData(bool full,  XMLwrapper *xml)
 {
+    midi_list.clear();
     if (!xml->enterbranch("MIDILEARN"))
     {
         if (full)
@@ -1038,14 +1022,45 @@ bool MidiLearn::extractMidiListData(bool full,  XMLwrapper *xml)
             entry.min_out = xml->getpar("Convert_Min", 0, -16384, 16383);
             entry.max_out = xml->getpar("Convert_Max", 0, -16384, 16383);
             xml->enterbranch("COMMAND");
-                entry.data.type = xml->getpar255("Type", 0); // ??
-                entry.data.control = xml->getpar255("Control", 0);
-                entry.data.part = xml->getpar255("Part", 0);
-                entry.data.kit = xml->getpar255("Kit_Item", 0);
-                entry.data.engine = xml->getpar255("Engine", 0);
-                entry.data.insert = xml->getpar255("Insert", 0);
-                entry.data.parameter = xml->getpar255("Parameter", 0);
-                entry.data.miscmsg = xml->getpar255("Secondary_Parameter", 0);
+                entry.frame.data.type = xml->getpar255("Type", 0); // ??
+                entry.frame.data.control = xml->getpar255("Control", 0);
+                entry.frame.data.part = xml->getpar255("Part", 0);
+                entry.frame.data.kit = xml->getpar255("Kit_Item", 0);
+                entry.frame.data.engine = xml->getpar255("Engine", 0);
+                entry.frame.data.insert = xml->getpar255("Insert", 0);
+                entry.frame.data.parameter = xml->getpar255("Parameter", 0);
+                entry.frame.data.offset = xml->getpar255("Secondary_Parameter", 0);
+#ifdef newml
+                CommandBlock allData;
+                string test = xml->getparstr("Command_Name");
+                TextData::encodeAll(synth, test, allData);
+                if (ID == 0)
+                    cout << endl;
+                cout << "line " << (ID + 1);
+                if (allData.data.control != entry.frame.data.control)
+                    cout << " changed control Old " << int(entry.frame.data.control) << " > New " << int(allData.data.control);
+                if (allData.data.part != entry.frame.data.part)
+                    cout << " changed part Old " << int(entry.frame.data.part) << " > New " << int(allData.data.part);
+                if (allData.data.kit != entry.frame.data.kit)
+                    cout << " changed kit Old " << int(entry.frame.data.kit) << " > New " << int(allData.data.kit);
+                if (allData.data.engine != entry.frame.data.engine)
+                    cout << " changed engine Old " << int(entry.frame.data.engine) << " > New " << int(allData.data.engine);
+                if (allData.data.insert != entry.frame.data.insert)
+                    cout << " changed insert Old " << int(entry.frame.data.insert) << " > New " << int(allData.data.insert);
+                if (allData.data.parameter != entry.frame.data.parameter)
+                    cout << " changed parameter Old " << int(entry.frame.data.parameter) << " > New " << int(allData.data.parameter);
+                if (allData.data.offset != entry.frame.data.offset)
+                    cout << " changed offset Old " << int(entry.frame.data.offset) << " > " << int(allData.data.offset);
+                cout << endl;
+
+                entry.frame.data.control = allData.data.control;
+                entry.frame.data.part = allData.data.part;
+                entry.frame.data.kit = allData.data.kit;
+                entry.frame.data.engine = allData.data.engine;
+                entry.frame.data.insert = allData.data.insert;
+                entry.frame.data.parameter = allData.data.parameter;
+                entry.frame.data.offset = allData.data.offset;
+#endif
                 xml->exitbranch();
             xml->exitbranch();
             entry.status = status;

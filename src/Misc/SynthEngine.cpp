@@ -59,7 +59,7 @@ using file::createEmptyFile;
 using file::deleteFile;
 using file::make_legit_filename;
 
-using func::dB2rap;
+using func::decibel;
 using func::bitTest;
 using func::asString;
 using func::string2int;
@@ -84,7 +84,7 @@ namespace { // Global implementation internal history data
     static vector<string> TuningHistory;
     static vector<string> KeymapHistory;
 
-    static vector<string> historyLastSeen(TOPLEVEL::XML::ScalaMap, "");
+    static vector<string> historyLastSeen(TOPLEVEL::XML::ScalaMap + 1, ""); // don't really understand this :(
 }
 
 
@@ -163,7 +163,6 @@ SynthEngine::SynthEngine(std::list<string>& allArgs, LV2PluginType _lv2PluginTyp
         uint8_t arr[4];
     } x;
     Runtime.isLittleEndian = (x.arr[0] == 0x44);
-    meterDelay = 20;
     ctl = new Controller(this);
     for (int i = 0; i < NUM_MIDI_CHANNELS; ++ i)
         Runtime.vectordata.Name[i] = "No Name " + to_string(i + 1);
@@ -359,7 +358,7 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
         if (midilearn.loadList(feml))
         {
 #ifdef GUI_FLTK
-            midilearn.updateGui();
+            midilearn.updateGui(); // does nothing if --no-gui
 #endif
             Runtime.Log("midiLearn file " + feml + " loaded");
         }
@@ -2153,9 +2152,9 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
             // Mix the channels according to the part settings about System Effect
             for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
             {
-                if (partLocal[npart]        // it's enabled
-                 && Psysefxvol[nefx][npart]      // it's sending an output
-                 && part[npart]->Paudiodest & 1) // it's connected to the main outs
+                if (partLocal[npart]               // it's enabled
+                 && Psysefxvol[nefx][npart]        // it's sending an output
+                 && (part[npart]->Paudiodest & 1)) // it's connected to the main outs
                 {
                     // the output volume of each part to system effect
                     float vol = sysefxvol[nefx][npart];
@@ -2227,12 +2226,12 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
             if (Pvolume - TransVolume > cStep)
             {
                 TransVolume += cStep;
-                volume = dB2rap((TransVolume - 96.0f) / 96.0f * 40.0f);
+                volume = decibel<-40>(1.0f - TransVolume/96.0f);
             }
             else if (TransVolume - Pvolume > cStep)
             {
                 TransVolume -= cStep;
-                volume = dB2rap((TransVolume - 96.0f) / 96.0f * 40.0f);
+                volume = decibel<-40>(1.0f - TransVolume/96.0f);
             }
             mainL[idx] *= volume; // apply Master Volume
             mainR[idx] *= volume;
@@ -2326,16 +2325,6 @@ void SynthEngine::fetchMeterData()
 { // overload protection below shouldn't be needed :(
     if (!VUready)
         return;
-    if (meterDelay > 0)
-    {
-        --meterDelay;
-        VUdata.values.vuOutPeakL = 0.0f;
-        VUdata.values.vuOutPeakR = 0.0f;
-        VUdata.values.vuRmsPeakL = 0.0f;
-        VUdata.values.vuRmsPeakR = 0.0f;
-        VUready = true;
-        return;
-    }
     float fade;
     float root;
     int buffsize;
@@ -2367,7 +2356,7 @@ void SynthEngine::fetchMeterData()
 
     fade = VUdata.values.vuOutPeakR * 0.92f;// mult;
     if (fade >= 1.0f) // overload protection
-        fade = 00.f;
+        fade = 0.0f;
     if (VUcopy.values.vuOutPeakR > 1.8f) // overload protection
         VUcopy.values.vuOutPeakR = fade;
     else
@@ -2422,14 +2411,14 @@ void SynthEngine::setPkeyshift(int Pkeyshift_)
 void SynthEngine::setPsysefxvol(int Ppart, int Pefx, char Pvol)
 {
     Psysefxvol[Pefx][Ppart] = Pvol;
-    sysefxvol[Pefx][Ppart]  = powf(0.1f, (1.0f - Pvol / 96.0f) * 2.0f);
+    sysefxvol[Pefx][Ppart]  = decibel<-40>(1.0f - Pvol / 96.0f);  // Pvol=0..127 => -40dB .. +12.9166dB
 }
 
 
 void SynthEngine::setPsysefxsend(int Pefxfrom, int Pefxto, char Pvol)
 {
     Psysefxsend[Pefxfrom][Pefxto] = Pvol;
-    sysefxsend[Pefxfrom][Pefxto]  = powf(0.1f, (1.0f - Pvol / 96.0f) * 2.0f);
+    sysefxsend[Pefxfrom][Pefxto]  = decibel<-40>(1.0f - Pvol / 96.0f);
 }
 
 void SynthEngine::setPaudiodest(int value)
@@ -2689,7 +2678,7 @@ bool SynthEngine::loadHistory()
     string filetype;
     string type;
     string extension;
-    for (count = TOPLEVEL::XML::Instrument; count < TOPLEVEL::XML::ScalaMap; ++count)
+    for (count = TOPLEVEL::XML::Instrument; count <= TOPLEVEL::XML::ScalaMap; ++count)
     {
         switch (count)
         {
@@ -2739,28 +2728,30 @@ bool SynthEngine::loadHistory()
         { // should never exceed max history
             Runtime.historyLock[count] = xml->getparbool("lock_status", false);
             hist_size = xml->getpar("history_size", 0, 0, MAX_HISTORY);
-            for (int i = 0; i < hist_size; ++i)
+            if (hist_size > 0)
             {
-                if (xml->enterbranch("XMZ_FILE", i))
+                for (int i = 0; i < hist_size; ++i)
                 {
-                    filetype = xml->getparstr(extension);
-                    if (extension == "xiz_file" && !isRegularFile(filetype))
+                    if (xml->enterbranch("XMZ_FILE", i))
                     {
-                        if (filetype.rfind(EXTEN::zynInst) != string::npos)
-                            filetype = setExtension(filetype, EXTEN::yoshInst);
+                        filetype = xml->getparstr(extension);
+                        if (extension == "xiz_file" && !isRegularFile(filetype))
+                        {
+                            if (filetype.rfind(EXTEN::zynInst) != string::npos)
+                                filetype = setExtension(filetype, EXTEN::yoshInst);
+                        }
+                        if (filetype.size() && isRegularFile(filetype))
+                            newHistory(filetype, count);
+                        xml->exitbranch();
                     }
-                    if (filetype.size() && isRegularFile(filetype))
-                        newHistory(filetype, count);
-                    xml->exitbranch();
+
                 }
 
+                string tryRecent = xml->getparstr("most_recent");
+                //std::cout << "new >" << tryRecent << "<" << std::endl;
+                if (!tryRecent.empty())
+                    historyLastSeen.at(count) = tryRecent;
             }
-            string tryRecent = xml->getparstr("most_recent");
-            //std::cout << "new >" << tryRecent << "<" << std::endl;
-            if (tryRecent.empty())
-                historyLastSeen.at(count) = getHistory(count)->at(0);
-            else
-                historyLastSeen.at(count) = tryRecent;
             xml->exitbranch();
         }
     }
@@ -3443,6 +3434,7 @@ float SynthEngine::getLimits(CommandBlock *getData)
         case MAIN::control::mono:
             def = 0; // off
             max = 1;
+            type |= learnable;
             break;
 
         case MAIN::control::soloType:
@@ -3727,6 +3719,7 @@ float SynthEngine::getConfigLimits(CommandBlock *getData)
             break;
         case CONFIG::control::enableNRPNs:
             def = 1;
+            break;
 
         case CONFIG::control::saveCurrentConfig:
             break;
