@@ -215,7 +215,8 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         /*
          * the following values must never appear in any other sections
          */
-        textMessage = 254, // FE
+        unrecognised = 253, // FD
+        textMessage,
         forceExit // this is effective from *any* section!
     };
 
@@ -312,6 +313,8 @@ namespace CONFIG // usage CONFIG::control::oscillatorSize
         alsaAudioDevice,
         alsaPreferredAudio,
         alsaSampleRate,
+        readAudio,
+        readMIDI,
 
         // end of engine controls
         addPresetRootDir = 60,
@@ -498,21 +501,22 @@ namespace SCALES // usage SCALES::control::refFrequency
         invertScale,
         invertedScaleCenter,
         scaleShift,
-
         enableKeyboardMap = 16,
         lowKey,
         middleKey,
         highKey,
         tuning = 32,
+        clearAll,
+        retune, // GUI only
+        // all the above directly alter the tuning. retune must be the last
+
         keyboardMap,
         importScl = 48,
         importKbm,
         exportScl, // not yet
         exportKbm, // not yet
         name = 64,
-        comment,
-        retune = 80, // GUI only
-        clearAll = 96
+        comment
     };
 }
 
@@ -854,10 +858,6 @@ namespace PADSYNTH // usage PADSYNTH::control::volume
         enableRandomPan,
         randomWidth,
 
-        bandwidth = 16,
-        bandwidthScale,
-        spectrumMode = 19, // Bandwidth, Discrete, Continuous
-
         detuneFrequency = 32,
         equalTemperVariation,
         baseFrequencyAs440Hz,
@@ -866,6 +866,10 @@ namespace PADSYNTH // usage PADSYNTH::control::volume
         coarseDetune,
         pitchBendAdjustment,
         pitchBendOffset,
+
+        bandwidth,// = 16, moved these three
+        bandwidthScale,
+        spectrumMode,// = 19, // Bandwidth, Discrete, Continuous
 
         overtoneParameter1 = 48,
         overtoneParameter2,

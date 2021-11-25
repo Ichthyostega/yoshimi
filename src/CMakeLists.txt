@@ -41,7 +41,7 @@ add_definitions(-Wall)
 #add_definitions(-Wno-vla) # Nothing wrong with variable length arrays
 # ^^^ comment these out on release pushes
 
-set (YOSHIMI_VERSION "2.1.1.1")
+set (YOSHIMI_VERSION "2.1.2 rc2")
 
 add_definitions (-DMIN_CONFIG_MAJOR=2)
 add_definitions (-DMIN_CONFIG_MINOR=0)
@@ -139,13 +139,6 @@ endif ()
 
 find_package (PkgConfig REQUIRED)
 
-include (CheckFunctionExists)
-
-check_function_exists(exp10f EXP10F)
-
-if (EXP10F)
-    add_definitions(-DHAVE_EXP10F)
-endif ()
 
 check_c_source_compiles (
     "#include <argp.h>
@@ -293,6 +286,7 @@ set (Misc_sources
 set (Interface_Sources
     Interface/InterChange.cpp
     Interface/Data2Text.cpp
+    Interface/Text2Data.cpp
     Interface/MidiLearn.cpp
     Interface/MidiDecode.cpp
     Interface/RingBuffer.h

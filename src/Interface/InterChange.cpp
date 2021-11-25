@@ -92,9 +92,13 @@ InterChange::InterChange(SynthEngine *_synth) :
     syncWrite(false),
     lowPrioWrite(false),
     tick(0),
+    sortResultsThreadHandle(0),
     swapRoot1(UNUSED),
     swapBank1(UNUSED),
-    swapInstrument1(UNUSED)
+    swapInstrument1(UNUSED),
+    searchInst(0),
+    searchBank(0),
+    searchRoot(0)
 {
     ;
 }
@@ -419,21 +423,24 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
 #endif
         bool ok = returnsBuffer.write(getData->bytes);
 #ifdef GUI_FLTK
-        if (synth->getRuntime().showGui && switchNum == TOPLEVEL::section::scales && control == SCALES::control::importScl)
-        {   // loading a tuning includes a name and comment!
-            getData->data.control = SCALES::control::name;
-            getData->data.miscmsg = textMsgBuffer.push(synth->microtonal.Pname);
-            returnsBuffer.write(getData->bytes);
-            getData->data.control = SCALES::control::comment;
-            getData->data.miscmsg = textMsgBuffer.push(synth->microtonal.Pcomment);
-            ok &= returnsBuffer.write(getData->bytes);
+        if (synth->getRuntime().showGui)
+        {
+            if (switchNum == TOPLEVEL::section::scales && control == SCALES::control::importScl)
+            {   // loading a tuning includes a name and comment!
+                getData->data.control = SCALES::control::name;
+                getData->data.miscmsg = textMsgBuffer.push(synth->microtonal.Pname);
+                returnsBuffer.write(getData->bytes);
+                getData->data.control = SCALES::control::comment;
+                getData->data.miscmsg = textMsgBuffer.push(synth->microtonal.Pcomment);
+                ok &= returnsBuffer.write(getData->bytes);
+            }
+            if (switchNum == TOPLEVEL::section::main && control == MAIN::control::loadNamedState)
+                synth->midilearn.updateGui();
+                /*
+                 * This needs improving. We should only set it
+                 * when the state file contains a learn list.
+                 */
         }
-        if (synth->getRuntime().showGui && switchNum == TOPLEVEL::section::main && control == MAIN::control::loadNamedState)
-            synth->midilearn.updateGui();
-        /*
-         * This needs improving. We should only set it
-         * when the state file contains a learn list.
-         */
 #endif
         if (!ok)
             synth->getRuntime().Log("Unable to  write to returnsBuffer buffer");
@@ -443,7 +450,8 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
         {
             synth->fileCompatible = true;
 #ifdef GUI_FLTK
-            if ((getData->data.source & TOPLEVEL::action::noAction) == TOPLEVEL::action::fromGUI)
+            if (synth->getRuntime().showGui &&
+               (getData->data.source & TOPLEVEL::action::noAction) == TOPLEVEL::action::fromGUI)
             {
                 getData->data.control = TOPLEVEL::control::textMessage;
                 getData->data.miscmsg = textMsgBuffer.push("File from ZynAddSubFX 3.0 or later has parameter types changed incompatibly with earlier versions, and with Yoshimi. It may not perform correctly.");
@@ -511,7 +519,7 @@ int InterChange::indirectMidi(CommandBlock *getData, SynthEngine *synth, unsigne
     text += textMsgBuffer.fetch(msgID & NO_MSG);
     newMsg = true;
     getData->data.source = TOPLEVEL::action::toAll;
-    // everyone will want to knopw about these!
+    // everyone will want to know about these!
     guiTo = true;
     return value;
 }
@@ -1757,8 +1765,8 @@ void InterChange::mediate()
         }
 #endif
 #ifdef GUI_FLTK
-
-        if (fromGUI.read(getData.bytes))
+        if (synth->getRuntime().showGui
+            && fromGUI.read(getData.bytes))
         {
             more = true;
             if (getData.data.part != TOPLEVEL::section::midiLearn) // Not special midi-learn message
@@ -1777,7 +1785,8 @@ void InterChange::mediate()
                 returns(&getData);
             }
 #ifdef GUI_FLTK
-            else if (getData.data.control == MIDILEARN::control::reportActivity)
+            else if (synth->getRuntime().showGui
+                    && getData.data.control == MIDILEARN::control::reportActivity)
                 toGUI.write(getData.bytes);
 #endif
         }
@@ -1799,30 +1808,33 @@ void InterChange::mediate()
         if (effpar > 0xffff)
         {
 #ifdef GUI_FLTK
-            CommandBlock effData;
-            memset(&effData.bytes, 255, sizeof(effData));
-            unsigned char npart = effpar & 0xff;
-            unsigned char effnum = (effpar >> 8) & 0xff;
-            unsigned char efftype;
-            if (npart < NUM_MIDI_PARTS)
+            if (synth->getRuntime().showGui)
             {
-                efftype = synth->part[npart]->partefx[effnum]->geteffect();
-                effData.data.control = PART::control::effectType;
-            }
-            else
-            {
-                effData.data.control = EFFECT::sysIns::effectType;
-                if (npart == TOPLEVEL::section::systemEffects)
-                    efftype = synth->sysefx[effnum]->geteffect();
+                CommandBlock effData;
+                memset(&effData.bytes, 255, sizeof(effData));
+                unsigned char npart = effpar & 0xff;
+                unsigned char effnum = (effpar >> 8) & 0xff;
+                unsigned char efftype;
+                if (npart < NUM_MIDI_PARTS)
+                {
+                    efftype = synth->part[npart]->partefx[effnum]->geteffect();
+                    effData.data.control = PART::control::effectType;
+                }
                 else
-                    efftype = synth->insefx[effnum]->geteffect();
+                {
+                    effData.data.control = EFFECT::sysIns::effectType;
+                    if (npart == TOPLEVEL::section::systemEffects)
+                        efftype = synth->sysefx[effnum]->geteffect();
+                    else
+                        efftype = synth->insefx[effnum]->geteffect();
+                }
+                effData.data.source = TOPLEVEL::action::fromGUI | TOPLEVEL::action::forceUpdate;
+                effData.data.type = TOPLEVEL::type::Write;
+                effData.data.value = efftype;
+                effData.data.part = npart;
+                effData.data.engine = effnum;
+                toGUI.write(effData.bytes);
             }
-            effData.data.source = TOPLEVEL::action::fromGUI | TOPLEVEL::action::forceUpdate;
-            effData.data.type = TOPLEVEL::type::Write;
-            effData.data.value = efftype;
-            effData.data.part = npart;
-            effData.data.engine = effnum;
-            toGUI.write(effData.bytes);
 #endif
             synth->getRuntime().effectChange = UNUSED;
         } // end of temporary fix
@@ -1873,13 +1885,16 @@ void InterChange::returns(CommandBlock *getData)
     if (getData->data.source < TOPLEVEL::action::lowPrio)
     { // currently only used by gui. this may change!
 #ifdef GUI_FLTK
-        unsigned char type = getData->data.type; // back from synth
-        int tmp = (getData->data.source & TOPLEVEL::action::noAction);
-        if (getData->data.source & TOPLEVEL::action::forceUpdate)
-            tmp = TOPLEVEL::action::toAll;
+        if (synth->getRuntime().showGui)
+        {
+            unsigned char type = getData->data.type; // back from synth
+            int tmp = (getData->data.source & TOPLEVEL::action::noAction);
+            if (getData->data.source & TOPLEVEL::action::forceUpdate)
+                tmp = TOPLEVEL::action::toAll;
 
-        if ((type & TOPLEVEL::type::Write) && tmp != TOPLEVEL::action::fromGUI)
-            toGUI.write(getData->bytes);
+            if ((type & TOPLEVEL::type::Write) && tmp != TOPLEVEL::action::fromGUI)
+                toGUI.write(getData->bytes);
+        }
 #endif
     }
     if (!decodeLoopback.write(getData->bytes))
@@ -2024,21 +2039,18 @@ bool InterChange::commandSendReal(CommandBlock *getData)
         getData->data.value = part->busy;
         return false;
     }
-    if (kititem != UNUSED && kititem != 0 && engine != UNUSED && control != 8 && part->kit[kititem].Penabled == false)
-        return false; // attempt to access not enabled kititem
-
     if (kititem == UNUSED || insert == TOPLEVEL::insert::kitGroup)
     {
-        if (control != PART::control::kitMode && kititem != UNUSED && part->Pkitmode == 0)
-            return false;
-
         commandPart(getData);
         return true;
     }
 
-    if (kititem > 0 && kititem != UNUSED && part->Pkitmode == 0)
+    if (kititem > 0 && kititem != UNUSED)
     {
-        return false;
+        if (part->Pkitmode == 0)
+            return false;
+        else if (!part->kit[kititem].Penabled)
+            return false;
     }
 
     if (engine == PART::engine::addSynth)
@@ -2201,6 +2213,7 @@ bool InterChange::processPad(CommandBlock *getData, SynthEngine *synth)
 {
     Part *part = synth->part[getData->data.part];
     int kititem = getData->data.kit;
+    bool needApply = false;
     switch(getData->data.insert)
     {
         case UNUSED:
@@ -2225,23 +2238,33 @@ bool InterChange::processPad(CommandBlock *getData, SynthEngine *synth)
         case TOPLEVEL::insert::oscillatorGroup:
             commandOscillator(getData,  part->kit[kititem].padpars->POscil);
             part->kit[kititem].padpars->presetsUpdated();
+            needApply = true;
             break;
         case TOPLEVEL::insert::harmonicAmplitude:
             commandOscillator(getData,  part->kit[kititem].padpars->POscil);
             part->kit[kititem].padpars->presetsUpdated();
+            needApply = true;
             break;
         case TOPLEVEL::insert::harmonicPhaseBandwidth:
             commandOscillator(getData,  part->kit[kititem].padpars->POscil);
             part->kit[kititem].padpars->presetsUpdated();
+            needApply = true;
             break;
         case TOPLEVEL::insert::resonanceGroup:
             commandResonance(getData, part->kit[kititem].padpars->resonance);
             part->kit[kititem].padpars->presetsUpdated();
+            needApply = true;
             break;
         case TOPLEVEL::insert::resonanceGraphInsert:
             commandResonance(getData, part->kit[kititem].padpars->resonance);
             part->kit[kititem].padpars->presetsUpdated();
+            needApply = true;
             break;
+    }
+    if (needApply)
+    {
+        part->kit[kititem].padpars->Papplied = 0;
+        getData->data.offset = 0;
     }
     return true;
 }
@@ -2812,6 +2835,13 @@ void InterChange::commandConfig(CommandBlock *getData)
             else
                 value = firstSynth->getRuntime().showCLIcontext;
             break;
+
+        case CONFIG::control::readAudio:
+            value = int(synth->getRuntime().audioEngine);
+            break;
+        case CONFIG::control::readMIDI:
+            value = int(synth->getRuntime().midiEngine);
+            break;
 // jack
         case CONFIG::control::jackMidiSource: // done elsewhere
             break;
@@ -3357,6 +3387,22 @@ void InterChange::commandPart(CommandBlock *getData)
 
     Part *part;
     part = synth->part[npart];
+    if (part->Pkitmode == 0)
+    {
+        kitType = false;
+        if (control != PART::control::kitMode && kititem != UNUSED)
+        {
+            getData->data.source = TOPLEVEL::action::noAction;
+            synth->getRuntime().Log("Not in kit mode");
+        }
+    }
+    else if (control != PART::control::enableKitLine && !part->kit[kititem].Penabled && kititem < UNUSED)
+    {
+        getData->data.source = TOPLEVEL::action::noAction;
+        synth->getRuntime().Log("Kit item " +  to_string(kititem + 1) + " not enabled");
+        return;
+    }
+
     unsigned char effNum = part->Peffnum;
     if (!kitType)
         kititem = 0;
@@ -4874,6 +4920,8 @@ void InterChange::commandSub(CommandBlock *getData)
         case SUBSYNTH::control::stereo:
             if (write)
                 pars->Pstereo = value_bool;
+            else
+                value = pars->Pstereo;
             break;
     }
 
@@ -5153,20 +5201,26 @@ void InterChange::commandPad(CommandBlock *getData)
             break;
 
         case PADSYNTH::control::applyChanges:
-            if (write)
-            {
-                synth->partonoffWrite(npart, -1);
-                getData->data.source = TOPLEVEL::action::lowPrio;
+            if (write && value >= 0.5f)
+            { // this control is 'expensive' only used if necessary
+                if (!pars->Papplied)
+                {
+                    synth->partonoffWrite(npart, -1);
+                    getData->data.source = TOPLEVEL::action::lowPrio;
+                    getData->data.value = 1;
+                }
+                else
+                    getData->data.source = TOPLEVEL::action::noAction;
             }
+            else
+                value = pars->Papplied;
             break;
 
         case PADSYNTH::control::stereo:
             if (write)
                 pars->PStereo = value_bool;
             else
-            {
-                ;
-            }
+                value = pars->PStereo;
             break;
 
         case PADSYNTH::control::dePop:
@@ -5201,6 +5255,11 @@ void InterChange::commandPad(CommandBlock *getData)
             break;
     }
 
+    if (control >= PADSYNTH::control::bandwidth && control < PADSYNTH::control::applyChanges)
+    {
+        pars->Papplied = 0;
+        getData->data.offset = 0;
+    }
     if (!write)
         getData->data.value = value;
 }

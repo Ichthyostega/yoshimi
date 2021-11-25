@@ -1,4 +1,77 @@
-yoshimi 2.1.1.1
+yoshimi 2.1.2 rc2
+
+2021-11-24 Will
+* Improved recognition of Apply Parameters from MIDI
+* doc updates
+* Rationalised more Data2Text and Text2Data names.
+* CLI can now read midi source and audio destination.
+* Set version as 2.1.2 rc2
+
+2021-11-23 Will
+* Completed unification of padsynth apply status
+* CLI can now read CLI and GUI current status.
+
+* Doc Updates.
+* Set version as 2.1.2 rc1
+
+2021-11-22 Will
+* Bugfix CLI sub and pad stereo set but not read.
+* padsynth applied status now correctly set.
+  GUI still not fully in sync.
+* CLI can now read padsynth applied status.
+
+2021-11-21 Will
+* More small GUI tweaks.
+
+2021-11-20 Will
+* Added instruments from Hugh across various banks.
+* Updated User Guide
+* Adjustments to names in Data2Text and Text2Data
+* GUI text position adjustments.
+
+* Filter tracking check box label now reflects its status.
+* Filter label changed to 'Parameters' and position properly scaled.
+
+2021-11-16 Will
+* BugFix: CLI padsynth waveform and resonance not setting 'apply'
+* New MIDI-learn style enabled.
+
+2021-11-12 Will
+* BugFix: Crash loading scala keymap file
+
+* Dat2Text Ocsillator controls now independent of list position.
+
+2021-11-12 Will
+* All Dat2Text engines now independent of numeric positions.
+* Unified control names for MIDI learn.
+
+2021-11-11 Will
+* BugFix: Data2Text making assumptions about control numbers.
+
+2021-11-5 Will
+* Updated user guide.
+
+2021-11-4 Will
+* Loading a state file now always clears the MIDI learn list.
+
+2021-10-27 Will
+* BugFix: crash with corrupted history file.
+* added Default_Maths.txt to dev_notes.
+
+2021-10-26 Will
+* Rationalised some PI calculation variations.
+* Added old (commented out) jack MIDI check.
+
+2021-10-17 Will
+* Reverted VU changes
+
+2021-10-16 Will
+* Minor adjustments to VU metering
+* Extra check when loading history lists
+* Doc updates
+
+2021-10-15 Will
+* BugFix: Missing jack midi entry in CmdOptions.cpp
 
 2021-10-12 Will
 * BugFix:  Not recognising no FLTK on first time start
