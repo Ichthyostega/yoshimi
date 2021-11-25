@@ -28,7 +28,7 @@ Build-Depends:
  pkg-config,
  sharutils,
  zlib1g-dev,
-Standards-Version: 4.5.1
+Standards-Version: 4.6.0
 Rules-Requires-Root: no
 Vcs-Git: https://github.com/Ichthyostega/yoshimi.git -b deb
 Homepage: https://yoshimi.sourceforge.io
