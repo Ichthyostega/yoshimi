@@ -1,0 +1,88 @@
+From: Ichthyostega <prg@ichthyostega.de>
+Date: Mon, 23 Aug 2021 14:51:00 +0200
+Subject: compile-fix-old-fltk
+
+disable FLTK code guarded by Fl::is_scheme (a construct not yet supported by FLTK in 2014)
+---
+ src/UI/WidgetCheckButton.cpp | 45 ++++++++++++++++++++++++--------------------
+ 1 file changed, 25 insertions(+), 20 deletions(-)
+
+diff --git a/src/UI/WidgetCheckButton.cpp b/src/UI/WidgetCheckButton.cpp
+index a0bb43a..839c07b 100644
+--- a/src/UI/WidgetCheckButton.cpp
++++ b/src/UI/WidgetCheckButton.cpp
+@@ -48,11 +48,12 @@ void Fl_Light_Button2::draw() {
+         // Check box...
+         draw_box(down_box(), x()+dx, y()+dy, W, W, FL_BACKGROUND2_COLOR);
+         if (value()) {
+-          if (Fl::is_scheme("gtk+")) {
+-            fl_color(FL_SELECTION_COLOR);
+-          } else {
++///////////////////////////////////////// does not compile on Ubuntu Trusty 14.04 LTS
++//        if (Fl::is_scheme("gtk+")) {
++//          fl_color(FL_SELECTION_COLOR);
++//        } else {
+             fl_color(col);
+-          }
++//        }
+           /* The only difference to the fltk original is the checkmark line width
+              calculations, line points, and the fl_begin_line/fl_end_line calls */
+           int lw = (int)((float)W / 8);
+@@ -82,12 +83,14 @@ void Fl_Light_Button2::draw() {
+           int tdx = dx + (W - tW) / 2;
+           int tdy = dy + (W - tW) / 2;
+ 
+-          if (Fl::is_scheme("gtk+")) {
+-            fl_color(FL_SELECTION_COLOR);
+-            tW --;
+-            fl_pie(x() + tdx - 1, y() + tdy - 1, tW + 3, tW + 3, 0.0, 360.0);
+-            fl_color(fl_color_average(FL_WHITE, FL_SELECTION_COLOR, 0.2f));
+-          } else fl_color(col);
++///////////////////////////////////////// does not compile on Ubuntu Trusty 14.04 LTS
++//        if (Fl::is_scheme("gtk+")) {
++//          fl_color(FL_SELECTION_COLOR);
++//          tW --;
++//          fl_pie(x() + tdx - 1, y() + tdy - 1, tW + 3, tW + 3, 0.0, 360.0);
++//          fl_color(fl_color_average(FL_WHITE, FL_SELECTION_COLOR, 0.2f));
++//        } else fl_color(col);
++          fl_color(col);
+ 
+           switch (tW) {
+             // Larger circles draw fine...
+@@ -115,10 +118,11 @@ void Fl_Light_Button2::draw() {
+               break;
+           }
+ 
+-          if (Fl::is_scheme("gtk+")) {
+-            fl_color(fl_color_average(FL_WHITE, FL_SELECTION_COLOR, 0.5));
+-            fl_arc(x() + tdx, y() + tdy, tW + 1, tW + 1, 60.0, 180.0);
+-          }
++///////////////////////////////////////// does not compile on Ubuntu Trusty 14.04 LTS
++//        if (Fl::is_scheme("gtk+")) {
++//          fl_color(fl_color_average(FL_WHITE, FL_SELECTION_COLOR, 0.5));
++//          fl_arc(x() + tdx, y() + tdy, tW + 1, tW + 1, 60.0, 180.0);
++//        }
+         }
+         break;
+       default :
+@@ -134,13 +138,14 @@ void Fl_Light_Button2::draw() {
+     int ww = W/2+1;
+     int xx = dx;
+     if (w()<ww+2*xx) xx = (w()-ww)/2;
+-    if (Fl::is_scheme("plastic")) {
+-      col = active_r() ? selection_color() : fl_inactive(selection_color());
+-      fl_color(value() ? col : fl_color_average(col, FL_BLACK, 0.5f));
+-      fl_pie(x()+xx, y()+dy+1, ww, hh, 0, 360);
+-    } else {
++///////////////////////////////////////// does not compile on Ubuntu Trusty 14.04 LTS
++//  if (Fl::is_scheme("plastic")) {
++//    col = active_r() ? selection_color() : fl_inactive(selection_color());
++//    fl_color(value() ? col : fl_color_average(col, FL_BLACK, 0.5f));
++//    fl_pie(x()+xx, y()+dy+1, ww, hh, 0, 360);
++//  } else {
+       draw_box(FL_THIN_DOWN_BOX, x()+xx, y()+dy+1, ww, hh, col);
+-    }
++//  }
+     lx = dx + ww + 2;
+   }
+   draw_label(x()+lx, y(), w()-lx-bx, h());

@@ -1,0 +1,28 @@
+From: Ichthyostega <prg@ichthyostega.de>
+Date: Fri, 6 Sep 2019 06:25:33 +0200
+Subject: compile-fix for older GCC
+
+basically yoshimi requires C++11,
+however, the support for this new language standard was somehow brittle
+with the compilers GCC 4.7 and 4.8
+
+In this case here, the new-style initialiser syntax caused the parsing to flounder.
+Using parenthesis instead of curly braces for the initialisation of the reference
+fixes this problem
+---
+ src/CLI/CmdInterpreter.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/CLI/CmdInterpreter.cpp b/src/CLI/CmdInterpreter.cpp
+index 5fb237f..928cf44 100644
+--- a/src/CLI/CmdInterpreter.cpp
++++ b/src/CLI/CmdInterpreter.cpp
+@@ -111,7 +111,7 @@ CmdInterpreter::CmdInterpreter() :
+     currentInstance{0},
+     synth{nullptr},
+     instrumentGroup{},
+-    textMsgBuffer{TextMsgBuffer::instance()},
++    textMsgBuffer(TextMsgBuffer::instance()),
+     testInvoker{},
+ 
+     context{LEVEL::Top},
