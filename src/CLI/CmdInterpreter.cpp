@@ -1384,6 +1384,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
                     value = (input.toggle() == 1);
                 }
             }
+            break;
         }
         if (selected > -1)
         {
@@ -3147,16 +3148,26 @@ int CmdInterpreter::commandConfig(Parser& input, unsigned char controlType)
     else if (input.matchnMove(1, "gui"))
     {
         command = CONFIG::control::enableGUI;
-        value = input.toggle();
-        if (value == -1)
-            return REPLY::value_msg;
+        if (controlType == type_read)
+            value = 0;
+        else
+        {
+            value = input.toggle();
+            if (value == -1)
+                return REPLY::value_msg;
+        }
     }
     else if (input.matchnMove(1, "cli"))
     {
         command = CONFIG::control::enableCLI;
-        value = input.toggle();
-        if (value == -1)
-            return REPLY::value_msg;
+        if (controlType == type_read)
+            value = 0;
+        else
+        {
+            value = input.toggle();
+            if (value == -1)
+                return REPLY::value_msg;
+        }
     }
 
     else if (input.matchnMove(2, "identify"))
@@ -3266,24 +3277,38 @@ int CmdInterpreter::commandConfig(Parser& input, unsigned char controlType)
 
     else if (input.matchnMove(2, "midi"))
     {
-        value = 1;
-        if (input.matchnMove(1, "alsa"))
-            command = CONFIG::control::alsaPreferredMidi;
-        else if (controlType != TOPLEVEL::type::Write || input.matchnMove(1, "jack"))
-            command = CONFIG::control::jackPreferredMidi;
+        if (controlType != TOPLEVEL::type::Write)
+        {
+            return sendDirect(synth, TOPLEVEL::action::fromCLI, 0, controlType, CONFIG::control::readMIDI, TOPLEVEL::section::config);
+        }
         else
-            return REPLY::value_msg;
+        {
+            value = 1;
+            if (input.matchnMove(1, "alsa"))
+                command = CONFIG::control::alsaPreferredMidi;
+            else if (input.matchnMove(1, "jack"))
+                command = CONFIG::control::jackPreferredMidi;
+            else
+                return REPLY::value_msg;
+        }
     }
 
     else if (input.matchnMove(2, "audio"))
     {
-        value = 1;
-        if (input.matchnMove(1, "alsa"))
-            command = CONFIG::control::alsaPreferredAudio;
-        else if (controlType != TOPLEVEL::type::Write || input.matchnMove(1, "jack"))
-            command = CONFIG::control::jackPreferredAudio;
+        if (controlType != TOPLEVEL::type::Write)
+        {
+            return sendDirect(synth, TOPLEVEL::action::fromCLI, 0, controlType, CONFIG::control::readAudio, TOPLEVEL::section::config);
+        }
         else
-            return REPLY::value_msg;
+        {
+            value = 1;
+            if (input.matchnMove(1, "alsa"))
+                command = CONFIG::control::alsaPreferredAudio;
+            else if (input.matchnMove(1, "jack"))
+                command = CONFIG::control::jackPreferredAudio;
+            else
+                return REPLY::value_msg;
+        }
     }
 
     else if (input.matchnMove(2, "root"))
@@ -4762,7 +4787,7 @@ int CmdInterpreter::padSynth(Parser& input, unsigned char controlType)
 
     if (input.matchnMove(2, "apply"))
     {
-        value = 0; // dummy
+        value = 1;
         cmd = PADSYNTH::control::applyChanges;
     }
 
@@ -4837,7 +4862,14 @@ int CmdInterpreter::resonance(Parser& input, unsigned char controlType)
         cmd = RESONANCE::control::smoothGraph;
     else if (input.matchnMove(1, "clear"))
         cmd = RESONANCE::control::clearGraph;
-
+    else if (input.matchnMove(2, "apply"))
+    { // this is a padsynth level control but must be callable here
+        if (engine != PART::engine::padSynth)
+            return REPLY::available_msg;
+        value = 1;
+        insert = UNUSED;
+        cmd = PADSYNTH::control::applyChanges;
+    }
     if (cmd > -1)
         return sendNormal(synth, 0, value, controlType, cmd, npart, kitNumber, engine, insert);
 
@@ -5086,10 +5118,10 @@ int CmdInterpreter::waveform(Parser& input, unsigned char controlType)
     }
 
     else if (input.matchnMove(2, "apply"))
-    {
+    { // this is a padsynth level control but must be callable here
         if (engine != PART::engine::padSynth)
             return REPLY::available_msg;
-        value = 0; // dummy
+        value = 1;
         insert = UNUSED;
         cmd = PADSYNTH::control::applyChanges;
     }

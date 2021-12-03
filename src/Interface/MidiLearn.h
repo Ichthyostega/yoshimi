@@ -22,29 +22,33 @@
 #ifndef MIDILEARN_H
 #define MIDILEARN_H
 
+#include "globals.h"
+
 #include <list>
 #include <string>
 
 #include "Interface/InterChange.h"
 #include "Interface/Data2Text.h"
+#include "Interface/Text2Data.h"
 
 class XMLwrapper;
 class SynthEngine;
 class DataText;
+class TextData;
 
 using std::string;
 using std::list;
 
-class MidiLearn : private DataText
+class MidiLearn : private DataText, TextData
 {
     public:
         MidiLearn(SynthEngine *_synth);
         ~MidiLearn();
         void add2XML(XMLwrapper *xml);
         void getfromXML(XMLwrapper *xml);
-        CommandBlock commandData;
+        CommandBlock data;//commandData;
 
-        struct Control{
+/*        struct Control{
             unsigned char type = 0;
             unsigned char control = 0;
             unsigned char part = 0;
@@ -52,10 +56,11 @@ class MidiLearn : private DataText
             unsigned char engine = 0;
             unsigned char insert = 0;
             unsigned char parameter = 0;
+            unsigned char offset = 0;
             unsigned char miscmsg = 0;
-        };
+        };*/
 
-        Control data;
+        //Control data;
 
         struct LearnBlock{
             unsigned short int CC = 0;
@@ -65,7 +70,7 @@ class MidiLearn : private DataText
             unsigned char status = 0; // up to here must be specified on input
             int min_out = 0; // defined programmatically
             int max_out = 0; // defined programmatically
-            Control data; // controller to learn
+            CommandBlock frame; // controller to learn
         };
         bool learning;
 

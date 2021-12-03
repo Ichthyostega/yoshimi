@@ -27,8 +27,8 @@ endif () # opengl version
 if (POLICY CMP0072)
     cmake_policy (SET CMP0072 OLD)
 endif ()
-set (CMAKE_CXX_STANDARD 11) # we seem to need both for
-add_definitions(-std=gnu++11) # various versions of cmake
+set (CMAKE_CXX_STANDARD 14) # we seem to need both for
+add_definitions(-std=gnu++14) # various versions of cmake
 
 add_definitions(-Wall)
 
@@ -41,7 +41,7 @@ add_definitions(-Wall)
 #add_definitions(-Wno-vla) # Nothing wrong with variable length arrays
 # ^^^ comment these out on release pushes
 
-set (YOSHIMI_VERSION "2.1.1.1")
+set (YOSHIMI_VERSION "2.1.2.2")
 
 add_definitions (-DMIN_CONFIG_MAJOR=2)
 add_definitions (-DMIN_CONFIG_MINOR=0)
@@ -139,13 +139,7 @@ endif ()
 
 find_package (PkgConfig REQUIRED)
 
-include (CheckFunctionExists)
-
-check_function_exists(exp10f EXP10F)
-
-if (EXP10F)
-    add_definitions(-DHAVE_EXP10F)
-endif ()
+find_package(Threads REQUIRED)
 
 check_c_source_compiles (
     "#include <argp.h>
@@ -293,6 +287,7 @@ set (Misc_sources
 set (Interface_Sources
     Interface/InterChange.cpp
     Interface/Data2Text.cpp
+    Interface/Text2Data.cpp
     Interface/MidiLearn.cpp
     Interface/MidiDecode.cpp
     Interface/RingBuffer.h
@@ -441,6 +436,7 @@ set(ExternLibraries
     ${Readline_LIBRARY}
     ${ZLIB_LIBRARIES}
     ${LIBDL_LINUX}
+    ${CMAKE_THREAD_LIBS_INIT}
 )
 
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "FreeBSD")
