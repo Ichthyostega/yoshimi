@@ -1,5 +1,5 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0304
+version 1.0305
 header_name {.h}
 code_name {.cc}
 comment {FilterUI.h} {not_in_source in_header
@@ -85,7 +85,7 @@ decl {\#include "Misc/FormatFuncs.h"
 }
 
 decl {\#include "Misc/NumericFuncs.h"
-    using func::rap2dB;
+    using func::asDecibel;
     using func::limit;} {private local
 }
 
@@ -170,8 +170,8 @@ class FormantFilterGraph {: {public Fl_Box}
                     + " kHz";
             fl_draw(tmpstr.c_str(), ox + 2 * scale, oy + 2 * scale, 40 * scale, 12 * scale, FL_ALIGN_LEFT, NULL, 0);
             tmpstr = asString((int)
-                (rap2dB(1e-9 + pars->getformantamp(pars->Pvowels[*nvowel].formants[*nformant].amp)) + pars->getgain()))
-                    + " dB";
+                (asDecibel(1e-9 + pars->getformantamp(pars->Pvowels[*nvowel].formants[*nformant].amp)) + pars->getgain()))
+                          + " dB";
             fl_draw(tmpstr.c_str(), ox + 2 * scale, oy + 15 * scale, 40 * scale, 12 * scale, FL_ALIGN_LEFT, NULL, 0);
         }
 
@@ -404,7 +404,6 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
       class Fl_Group
     } {
       Fl_Group filterparamswindow {
-        label {             Filter Params}
         xywh {0 0 275 75} box PLASTIC_UP_BOX color 231 labelfont 1 labelsize 10 align 17
       } {
         Fl_Choice analogfiltertypechoice {
@@ -432,7 +431,7 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
           code1 {o->add("analog");o->add("formant");o->add("StVarF");}
         } {}
         Fl_Dial cfreqdial {
-          label {C.Freq}
+          label { C.Freq}
           callback {//
           send_data(0, FILTERINSERT::control::centerFrequency, o->value(), TOPLEVEL::type::Write);}
           tooltip {Center Frequency of the Filter or the base position in the vowel's sequence} xywh {65 28 30 30} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
@@ -458,7 +457,7 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
           class WidgetPDial
         }
         Fl_Dial vsnsadial {
-          label {V.SnsA.}
+          label {V.Sns.}
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, FILTERINSERT::control::velocitySensitivity, o->value(), TOPLEVEL::type::Write);}
           tooltip {Velocity sensing amount of the Filter} xywh {135 28 30 30} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
@@ -466,7 +465,7 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
           class WidgetPDial
         }
         Fl_Dial vsnsdial {
-          label {V.Sns.}
+          label { VF.Sns.}
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, FILTERINSERT::control::velocityCurve, o->value(), TOPLEVEL::type::Write);}
           tooltip {Velocity Sensing Function of the Filter} xywh {170 28 30 30} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
@@ -486,12 +485,13 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
         Fl_Counter stcounter {
           label {St.}
           callback {//
-          send_data(TOPLEVEL::action::forceUpdate, FILTERINSERT::control::stages, o->value() - 1, TOPLEVEL::type::Write);
-
-// stages has been fixed at 5 (current max stages) until a programatic
-// way can be found to set max to this value}
+          send_data(TOPLEVEL::action::forceUpdate, FILTERINSERT::control::stages, o->value() - 1, TOPLEVEL::type::Write);}
           tooltip {Filter stages (in order to increase dB/oct. value and the order of the filter)} xywh {78 10 31 15} type Simple labelsize 10 align 8 minimum 1 maximum 5 step 1 value 1 textfont 1 textsize 10
         }
+      }
+      Fl_Text_Display filterparamslabel {
+        label Parameters
+        xywh {135 14 50 4} box NO_BOX labelfont 1 labelsize 10
       }
       Fl_Button editbutton {
         label Edit
@@ -528,11 +528,19 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
         xywh {220 8 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
       }
       Fl_Check_Button freqtrackoffset {
-        label { 0 /+}
         callback {//
-        send_data(TOPLEVEL::action::forceUpdate, FILTERINSERT::control::frequencyTrackingRange, o->value(), TOPLEVEL::type::Write);}
-        tooltip {Set frequency tracking range to 0%-200%} xywh {238 10 33 16} down_box DOWN_BOX labelsize 10 align 24
+        int tmp = (o->value() != 0);
+        send_data(TOPLEVEL::action::forceUpdate, FILTERINSERT::control::frequencyTrackingRange, tmp, TOPLEVEL::type::Write);}
+        tooltip {Set frequency tracking range to 0%-200%} xywh {236 10 16 16} down_box DOWN_BOX align 24
         class Fl_Check_Button2
+      }
+      Fl_Text_Display freqtracknormal {
+        label {- /+}
+        xywh {242 24 44 4} box NO_BOX labelsize 10 textsize 10
+      }
+      Fl_Text_Display freqtrackchecked {
+        label {0/+}
+        xywh {242 24 44 4} box NO_BOX labelsize 10 textsize 10 hide
       }
     }
   }
@@ -806,7 +814,7 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
     code {//
             int size = int(dScale * 10);
 
-            filterparamswindow->labelsize(size);
+            filterparamslabel->labelsize(size);
 
             cfreqdial->labelsize(size);
             qdial->labelsize(size);
@@ -830,8 +838,9 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
             editbutton->labelsize(size);
             filtC->labelsize(size);
             filtP->labelsize(size);
-
-            freqtrackoffset->labelsize(size);} {}
+            freqtrackoffset->labelsize(size);
+            freqtracknormal->labelsize(size);
+            freqtrackchecked->labelsize(size);} {}
   }
   Function {formantRtext()} {} {
     code {//
@@ -902,6 +911,11 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
     unsigned char part = getData->data.part;
     unsigned char kititem = getData->data.kit;
     unsigned char eng = getData->data.engine;
+    unsigned char param =  getData->data.parameter;
+    unsigned char offset =  getData->data.offset;
+
+    bool isCurrent =  (param == nformant && offset == nvowel);
+
     int value_int = lrint(value);
 
     bool fromUs = ((getData->data.source & TOPLEVEL::action::noAction) == TOPLEVEL::action::fromGUI);
@@ -932,7 +946,7 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
             break;
 
         case FILTERINSERT::control::frequencyTracking:
-            freqtrdial->value(value);
+            freqtrdial->value(value_int);
             break;
 
         case FILTERINSERT::control::velocitySensitivity:
@@ -977,8 +991,18 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
             break;
 
         case FILTERINSERT::control::frequencyTrackingRange:
-            freqtrackoffset->value(value != 0);
-            freqtrdial->setValueType(getFilterFreqTrackType(value != 0));
+            freqtrackoffset->value(value_int);
+            freqtrdial->setValueType(getFilterFreqTrackType(value_int));
+            if (value_int)
+            {
+                freqtracknormal->hide();
+                freqtrackchecked->show();
+            }
+            else
+            {
+                freqtracknormal->show();
+                freqtrackchecked->hide();
+            }
             break;
 
         case FILTERINSERT::control::formantSlowness:
@@ -990,18 +1014,27 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
             break;
 
         case FILTERINSERT::control::formantFrequency:
-            formant_freq_dial->value(value);
-            formantfiltergraph->redraw();
+            if (isCurrent)
+            {
+                formant_freq_dial->value(value);
+                formantfiltergraph->redraw();
+            }
             break;
 
         case FILTERINSERT::control::formantQ:
-            formant_q_dial->value(value);
-            formantfiltergraph->redraw();
+            if (isCurrent)
+            {
+                formant_q_dial->value(value);
+                formantfiltergraph->redraw();
+            }
             break;
 
         case FILTERINSERT::control::formantAmplitude:
-            formant_amp_dial->value(value);
-            formantfiltergraph->redraw();
+            if (isCurrent)
+            {
+                formant_amp_dial->value(value);
+                formantfiltergraph->redraw();
+            }
             break;
 
         case FILTERINSERT::control::formantStretch:

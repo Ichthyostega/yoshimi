@@ -13,7 +13,7 @@
     <img src="images/padharmonic.png" alt="PadSynth Harmonics Window" class="double">
     <img src="images/padenvelope.png" alt="PadSynth Envelopes Window" class="double">
     <p>
-    The PadSynth engine was designed by Paul Nasca and to the best of our knowledge there is no comparable type generally available. It uses a waveform oscillator that is virtually identical to the one used by AddSynth. Some complex mathematics is then applied to manipulate the overall spectrum. Finally this is converted to a set of fixed perfectly looping wavetables. As a result none of the previous controls are real-time. However, it is the wavetables that are called for actual sound generation after passing through the usual envelope controls (which are real-time).
+    The PadSynth engine was designed by Paul Nasca and to the best of our knowledge there is no comparable type generally available. It uses a waveform oscillator that is virtually identical to the one used by AddSynth. Some complex mathematics is then applied to manipulate the overall spectrum. Finally this is converted to a set of fixed perfectly looping wavetables. As a result none of these <em>harmonics</em> controls are real-time. Also, it is the wavetables that are called for actual sound generation after passing through the usual envelope controls (which are real-time).
     <br><br>
     There are two tabbed views in a single window. You will normally be shown the harmonic structure, the envelopes one (as it's name suggests) consisting mostly of envelope and LFO inserts.
     </p>
@@ -42,9 +42,9 @@
     <br><br>
     <b>AmpMode</b> Amplitude mode: Sum, Multiply, Div1, Div2.
     <br><br>
-    <b>Par1</b> Parameter 1 for AmpMode (depends on mode selected).
+    <b>Par1</b> The spectral width of the multiplier (depends on mode selected).
     <br><br>
-    <b>Par2</b> Parameter 2 for AmpMode (depends on mode selected).
+    <b>Par2</b> The amplitude of the multiplier (depends on mode selected).
     <br><br>
     <b>AutoScale</b> We don't currently have information about this control.
     </div>
@@ -55,7 +55,7 @@
     <br><br>
     <b>smp/oct</b>  The number of samples used in each octave.
     <br><br>
-    <b>no.oct</b> The number of octaves covered.
+    <b>no.oct</b> The number of octaves of samples independently generated.
     <br><br>
     <b>Sample Size</b> Size of the sample.
     <br><br>
@@ -83,13 +83,15 @@
     </div>
     <br>
     <b>Note</b>
-    <br>
-    &emsp;If any of the above controls are altered it will be necessary to click on the <em>Apply</em> button as the wavetable has to be rebuilt.
+    <div class="tab">
+    If any of the above controls are altered it will be necessary to click on the <em>Apply</em> button (which will have turned red) as the wavetable has to be rebuilt.<br>
+    Also, be aware that with a very big sample size and/or octave range and samples/octave this could take many seconds to complete.
+    </div>
     </p>
     <p>
     <h3>Envelopes and LFOs</h3>
     <div class="tab">
-    Once again we have all the standard inserts. There are also the local controls found in AddSynth and SubSynth. None of these affect the wavetable itself, so there is no need for the apply button here.
+    Once again we have all the standard inserts. There are also the same local controls found in AddSynth and SubSynth. None of these affect the wavetable itself, so there is no need for the apply button here.
     </div>
     </p>
     <p>
