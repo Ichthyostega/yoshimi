@@ -1,3 +1,12 @@
+yoshimi (2.1.2.2~dfsg0-1) unstable; urgency=medium
+
+  * New upstream version 2.1.2.2~dfsg0
+  * Update lintian-overrides
+  * Fix spelling error
+  * Fix d/watch
+
+ -- Dennis Braun <d_braun@kabelmail.de>  Sun, 05 Dec 2021 00:24:13 +0100
+
 yoshimi (2.1.1.1~dfsg0-1) unstable; urgency=medium
 
   * New upstream version 2.1.1.1~dfsg0
