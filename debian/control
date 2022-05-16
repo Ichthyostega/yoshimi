@@ -7,8 +7,9 @@ Uploaders:
  Jaromír Mikeš <mira.mikes@seznam.cz>,
  Hermann Vosseler <deb@ichthyostega.de>
 Build-Depends:
- cmake,
- debhelper (>= 10~),
+ cmake3 | cmake (>= 3~),
+ debhelper (>= 9~),
+ g++-9,
  dssi-dev,
  fluid,
  libasound2-dev,
