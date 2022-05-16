@@ -7,7 +7,7 @@
     Copyright 2018-2019, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
-    it and/or modify it under the terms of the GNU Library General Public
+    it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation; either version 2 of
     the License, or (at your option) any later version.
 
@@ -29,8 +29,6 @@
 #define ALIENWAH_H
 
 #include <complex>
-
-using namespace std;
 
 #include "Effects/Effect.h"
 #include "Effects/EffectLFO.h"
@@ -69,8 +67,8 @@ class Alienwah : public Effect
 
         // Internal Values
         float fb, depth, phase;
-        complex<float> *oldl, *oldr;
-        complex<float> oldclfol, oldclfor;
+        std::complex<float> *oldl, *oldr;
+        std::complex<float> oldclfol, oldclfor;
         int oldk;
 
 };

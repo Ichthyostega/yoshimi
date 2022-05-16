@@ -7,7 +7,7 @@
     Copyright 2017-2018, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
-    it and/or modify it under the terms of the GNU Library General Public
+    it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation; either version 2 of
     the License, or (at your option) any later version.
 
@@ -27,8 +27,6 @@
 
 #include <cmath>
 #include <iostream>
-
-using namespace std;
 
 #include "Misc/XMLwrapper.h"
 #include "Misc/SynthEngine.h"
@@ -239,19 +237,20 @@ void Controller::setportamento(int value)
 }
 
 
-int Controller::initportamento(float oldfreq, float newfreq, bool in_progress)
+// returns true if portamento's preconditions are met
+bool Controller::initportamento(float oldfreq, float newfreq, bool in_progress)
 {
     portamento.x = 0.0f;
 
     if (in_progress)
     {   // Legato in progress
         if (!portamento.portamento)
-            return 0;
+            return false;
     }
     else
     {   // No legato, do the original if...return
         if (portamento.used != 0 || !portamento.portamento)
-            return 0;
+            return false;
     }
 
     float portamentotime = power<100>(portamento.time / 127.0f) / 50.0f; // portamento time in seconds
@@ -276,13 +275,13 @@ int Controller::initportamento(float oldfreq, float newfreq, bool in_progress)
     if (portamento.updowntimestretch >= 64 && newfreq < oldfreq)
     {
         if (portamento.updowntimestretch == 127)
-            return 0;
+            return false;
         portamentotime *= powFrac<10>((portamento.updowntimestretch - 64) / 63.0f);
     }
     if (portamento.updowntimestretch < 64 && newfreq > oldfreq)
     {
         if (portamento.updowntimestretch == 0)
-            return 0;
+            return false;
         portamentotime *= powFrac<10>((64.0f - portamento.updowntimestretch) / 64.0f);
     }
 
@@ -295,13 +294,13 @@ int Controller::initportamento(float oldfreq, float newfreq, bool in_progress)
 
     float thresholdrap = power<2>(portamento.pitchthresh / 12.0f);
     if (portamento.pitchthreshtype == 0 && (tmprap - 0.00001f) > thresholdrap)
-        return 0;
+        return false;
     if (portamento.pitchthreshtype == 1 && (tmprap + 0.00001f) < thresholdrap)
-        return 0;
+        return false;
 
     portamento.used = 1;
     portamento.freqrap = portamento.origfreqrap;
-    return 1;
+    return true;
 }
 
 

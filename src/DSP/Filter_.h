@@ -6,7 +6,7 @@
     Copyright 2018, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
-    it and/or modify it under the terms of the GNU Library General Public
+    it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation; either version 2 of
     the License, or (at your option) any later version.
 
@@ -30,7 +30,9 @@
 class Filter_
 {
     public:
-        Filter_() { };
+        Filter_()
+            : outgain{0.0}
+        { };
         virtual ~Filter_() { };
         virtual Filter_* clone() = 0;
         virtual void filterout(float *smp) = 0;

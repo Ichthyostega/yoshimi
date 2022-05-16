@@ -1,4 +1,272 @@
-yoshimi 2.1.2
+yoshimi 2.2.0
+
+* Final cleanups and adjustments.
+* Commented out cmake testing definitions.
+* Set release version 2.2.0
+
+2022-5-13 Will
+bn2130
+* Corrected some entries in textLists.h
+  Adjusted User Guide to match.
+* Set release candidate 2.2.0 rc3
+
+2022-5-11 Will
+bn2130
+* Changed cmake policy CMP0072 from OLD to NEW.
+* Added tooltip to Edit button.
+
+bn2129
+* Applied patch from Hermann for compiling with clang.
+* Changed randWalkWindow_retext() to randRtext()
+* doc updates.
+* Set release candidate 2.2.0 rc2
+
+2022-5-9 Will
+bn2128
+* Merged in altmain with adjusted main window.
+* BugFix: CLI drum mode control in wrong place.
+* Suppressed compiler warning in BuildScheduler.h
+* Updated docs and User guide.
+* Set release candidate 2.2.0 rc1
+
+2022-5-1 Will
+bn2127
+* Minor tweaks to the main window.
+
+2022-4-30 Will
+bn2126
+* Included Hermans updates to the User Guide
+* Minor adjustments to User Guide and various text files.
+
+bn2125
+* More additions/corrections to notes.
+* Added Theatre Organ to Companion bank.
+
+2022-4-29 Will
+bn2124
+* GUI main window adjustments.
+* doc updates.
+* User Guide updates.
+
+2022-4-28 Will
+bn2123
+* Reverted Resonance undo speedup test - caused odd issues.
+* Further Adjustments to User Guide
+* Initial preparation for Release of V 2.2.0
+
+2022-4-27 Will
+bn2122
+* BugFix: previous change caused lockup of partUI insert.
+
+2022-4-26 Will
+bn2121
+* Small GUI cleanups.
+* Updates to Yoshimi Control Numbers.pdf
+* Moved buildpush and incbuildnumber.py out of repository.
+
+2022-4-24 Will
+bn2120
+* Added undoRedoClear() if deleting a kit line.
+  Removed this from overal kit enabling.
+* Added warnings to various GUI actions that could disrupt undo/redo behavoir.
+
+2022-4-23 Will
+bn2119
+* Adjusted position of Random Walk controls.
+* Updated User Guide Image.
+* Swapped order of some of these entries.
+  Makes more sense!
+
+bn2118
+* Changed Random Walk window to horizontal layout.
+* Revised Config window layout.
+* Initial update to User Guide for new features.
+
+2022-4-23 Will
+bn2117
+* Bugfix: New FLTK commands not disabled for headless build.
+
+bn2116
+* Bugfix: Missing random walk exit branch when loading instrument.
+
+2022-4-22 Will
+bn2115
+* Revised position of new controls in PadSynth window.
+* Completed text rescaling in Retrigger window.
+
+2022-4-21 Hermann
+Landing "padthread" feature
+* Extensive rework of FFTW memory management
+* rework and clean-up of Legato / Portament notes
+* Notes and parameters mostly use unique_ptr for memory management
+* PADSynth wavetables now built in background thread
+* crossfade on playing notes when new PADSynth wavetable ready
+* PADSynth may self-retrigger PADSynth wavetable build with random walk
+* ability to cover Legato, Portamento and XFade with automated tests
+
+2022-4-21 Will
+bn2113
+* Switched keyboard undo/redo fro main.cpp to MasterUI.fl
+
+2022-4-20 Will
+bn2112
+* Bugfix: unable to cancel envelope freemode.
+
+2022-4-18 Will
+bn2111
+* Placed copy of Yoshimi_License_History.txt in doc
+* Removed 'library' from all licenses.
+
+2022-4-17 Will
+bn2110
+* Fixed regression (not reporting effect types)
+* Removed invalid class link in MasterMisc
+
+2022-4-14 Will
+bn2109
+* BugFix: previous fix didn't get the root cause.
+  Repeated key handler creation.
+
+2022-4-7 Will
+bn2108
+* BugFix: filer window becomes slow to respond after many calls.
+
+2022-4-2 Will
+* Added tooltips to Undo/Redo
+* Modified GUI resonance window event handler.
+  It was interfering with Undo/Redo actions.
+* Corrected GUI oscilator window event handler.
+  It was always capturing mouse events.
+
+* Refined SubSynth Undo/Redo
+* Refined Resonance Undo/Redo
+
+2022-4-1 Will
+* Changed some names to make effect controls clearer.
+
+* [Ctrl]+z and [Ctrl]+[Shift]+z now undo/redo
+  as well as [Alt]+u, [Alt]+r.
+
+2022-3-31 Will
+* Completed moving effect type identifiers to inserts.
+  Actual control still with kit.
+
+2022-3-30 Will
+* Bugfix: Dynfilter not reporting internal filte results to CLI
+  but performing them correctly.
+
+* BugFix: analog filter type defaulting to High 1
+  Should be Low 2
+
+2022-3-28 Will
+* Working through effects initially just reading types from the
+  insert labels instead of the kit ones.
+
+2022-3-28 Will
+* Moved insert numbers to make space for effects.
+
+2022-3-26 Will
+* Added key based undo/redo patch from Jesper.
+  [Alt]+u, [Alt]+r
+
+* Refined redraw action for resonance window on undo.
+
+2022-3-25 Will
+* Moved Vector control base channel from insert to paramater.
+  Done to avoid possible centention with real inserts.
+
+2022-3-24 Will
+* Completed undo/redo for envelopes and tidied code.
+* Corrected Xpoint reporting (been wrong for some time).
+
+2022-3-23 Will
+* Envelope points now working correctly.
+  Had to create a special case for this :(
+
+* Separated add/delete envelope points.
+* add fully correct, delete not quite on undo/redo.
+
+2022-3-19 Will
+* Undo done for SubSynth clear harmonics.
+
+* Completed Undo for resonance.
+* Started Undo for waveform - but disabled.
+
+2022-3-18 Will
+* Reduced undo/redo messaging spam
+* Group undo/redo now in blocks of 16
+  Runs faster without risk of Xruns
+  No change to setting groups.
+
+* Further undo/redo refinements
+
+2022-3-17 Will
+* Can now group undo reset all controllers.
+* Can now group undo resonance set random.
+
+2022-3-16 Will
+* Simplified Undo/Redo
+  Groups still not done :(
+
+2022-3-13 Will
+Revised GUI main window
+Updated User Manual
+
+2022-3-10 Will
+Merged in undo branch
+Merged in default BPM from Kristian
+Added CLI code for default BPM
+
+2022-3-9 Will
+* Corrected envelope info in user guide.
+
+2022-2-15 Will
+* BugFix: CLI not correctly listing part contents.
+
+2022-2-11 Hermann
+* Changes to make Reverb computations completely reproducible
+* Ensure InterpolatedValue stops when passing beyond interpolation-length
+* Allow to forcibly push InterpolatedValue to the next target; used for Effect::cleanup()
+* Fix spurious AnalogFilter recalculations due to float comparison glitches
+
+2022-2-5 Will
+* Added copy of MPE spec to dev_notes.
+* Corrected spelling mistakes here!
+
+2022-2-4 Will
+* Improved update system for User Guide version
+
+2022-1-20 Will
+* Swapped order of bank and main controls in commandSendReal()
+  also put comment in for suggested undo/redo location.
+* Made Undo and Redo buttons in main inactive to avoid confusion.
+
+2022-1-17 Will
+* Set placeholders for Undo/Redo.
+* Made additional small adjustments to main window.
+
+2021-12-7 Will
+* globals AddVoice1 offset is now defined as NUM_VOICES
+* globals AddMod1 offset is now AddVoice1 + NUM_VOICES
+
+2021-12-6 Will
+* doc corrections.
+
+2021-12-4 Will
+In CMakeLists.txt:
+    * added (disabled) option to compile with Clang.
+    * added suppression of deprecation warning.
+Resolved warnings shown in Clang.
+
+2021-12-3 Will
+* Includes compatibility fix for Clang compiler.
+* Set minimum C++ version to 14
+* set bugfix version 2.1.2.2
+
+2021-11-30 Will
+* BugFix: failed to link using recent cmake versions.
+  Thanks to David Runge for a timely fix.
+* set bugfix version 2.1.2.1
 
 2021-11-29 Will
 * Filer window path deactivated if in favourites.

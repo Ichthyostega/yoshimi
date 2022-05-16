@@ -1,10 +1,10 @@
 /*
     Data2Text.cpp - conversion of commandBlock entries to text
 
-    Copyright 2021 Will Godfrey
+    Copyright 2021 - 2022 Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
-    it and/or modify it under the terms of the GNU Library General Public
+    it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation; either version 2 of
     the License, or (at your option) any later version.
 
@@ -76,6 +76,7 @@ string DataText::resolveAll(SynthEngine *_synth, CommandBlock *getData, bool add
     unsigned char control = getData->data.control;
     unsigned char npart = getData->data.part;
     unsigned char kititem = getData->data.kit;
+    unsigned char effSend = getData->data.kit;
     unsigned char engine = getData->data.engine;
     unsigned char insert = getData->data.insert;
 
@@ -126,7 +127,15 @@ string DataText::resolveAll(SynthEngine *_synth, CommandBlock *getData, bool add
         return withValue(commandName, type, showValue, addValue, value);
     }
 
-    if ((kititem >= EFFECT::type::none && kititem <= EFFECT::type::dynFilter) || (control >= PART::control::effectNumber && control <= PART::control::effectBypass && kititem == UNUSED))
+    if (npart == TOPLEVEL::section::undoMark)
+    {
+        if (control == MAIN::undo)
+            return "Nothing to undo!";
+        else if (control == MAIN::redo)
+            return "Nothing to redo!";
+    }
+
+    if ((effSend >= (TOPLEVEL::insert::none | 128) && effSend <= (TOPLEVEL::insert::dynFilter | 128)) || (control >= PART::control::effectNumber && control <= PART::control::effectBypass && effSend == UNUSED))
     {
         commandName = resolveEffects(getData, addValue);
         return withValue(commandName, type, showValue, addValue, value);
@@ -149,7 +158,7 @@ string DataText::resolveAll(SynthEngine *_synth, CommandBlock *getData, bool add
         switch(insert)
         {
             case UNUSED:
-                commandName = resolvePad(getData, addValue);
+                commandName = resolvePad(synth, getData, addValue);
                 break;
             case TOPLEVEL::insert::LFOgroup:
                 commandName = resolveLFO(getData, addValue);
@@ -160,26 +169,27 @@ string DataText::resolveAll(SynthEngine *_synth, CommandBlock *getData, bool add
             case TOPLEVEL::insert::envelopeGroup:
                 commandName = resolveEnvelope(getData, addValue);
                 break;
-            case TOPLEVEL::insert::envelopePoints:
+            case TOPLEVEL::insert::envelopePointAdd:
+            case TOPLEVEL::insert::envelopePointDelete:
                 commandName = resolveEnvelope(getData, addValue);
                 break;
             case TOPLEVEL::insert::envelopePointChange:
                 commandName = resolveEnvelope(getData, addValue);
                 break;
             case TOPLEVEL::insert::oscillatorGroup:
-                commandName = resolveOscillator(getData, addValue);
+                commandName = resolveOscillator(synth, getData, addValue);
                 break;
             case TOPLEVEL::insert::harmonicAmplitude:
-                commandName = resolveOscillator(getData, addValue);
+                commandName = resolveOscillator(synth, getData, addValue);
                 break;
             case TOPLEVEL::insert::harmonicPhaseBandwidth:
-                commandName = resolveOscillator(getData, addValue);
+                commandName = resolveOscillator(synth, getData, addValue);
                 break;
             case TOPLEVEL::insert::resonanceGroup:
-                commandName = resolveResonance(getData, addValue);
+                commandName = resolveResonance(synth, getData, addValue);
                 break;
             case TOPLEVEL::insert::resonanceGraphInsert:
-                commandName = resolveResonance(getData, addValue);
+                commandName = resolveResonance(synth, getData, addValue);
                 break;
         }
         return withValue(commandName, type, showValue, addValue, value);
@@ -204,7 +214,8 @@ string DataText::resolveAll(SynthEngine *_synth, CommandBlock *getData, bool add
             case TOPLEVEL::insert::envelopeGroup:
                 commandName = resolveEnvelope(getData, addValue);
                 break;
-            case TOPLEVEL::insert::envelopePoints:
+            case TOPLEVEL::insert::envelopePointAdd:
+            case TOPLEVEL::insert::envelopePointDelete:
                 commandName = resolveEnvelope(getData, addValue);
                 break;
             case TOPLEVEL::insert::envelopePointChange:
@@ -230,20 +241,21 @@ string DataText::resolveAll(SynthEngine *_synth, CommandBlock *getData, bool add
             case TOPLEVEL::insert::envelopeGroup:
                 commandName = resolveEnvelope(getData, addValue);
                 break;
-            case TOPLEVEL::insert::envelopePoints:
+            case TOPLEVEL::insert::envelopePointAdd:
+            case TOPLEVEL::insert::envelopePointDelete:
                 commandName = resolveEnvelope(getData, addValue);
                 break;
             case TOPLEVEL::insert::envelopePointChange:
                 commandName = resolveEnvelope(getData, addValue);
                 break;
             case TOPLEVEL::insert::oscillatorGroup:
-                commandName = resolveOscillator(getData, addValue);
+                commandName = resolveOscillator(synth, getData, addValue);
                 break;
             case TOPLEVEL::insert::harmonicAmplitude:
-                commandName = resolveOscillator(getData, addValue);
+                commandName = resolveOscillator(synth, getData, addValue);
                 break;
             case TOPLEVEL::insert::harmonicPhaseBandwidth:
-                commandName = resolveOscillator(getData, addValue);
+                commandName = resolveOscillator(synth, getData, addValue);
                 break;
         }
         return withValue(commandName, type, showValue, addValue, value);
@@ -265,17 +277,18 @@ string DataText::resolveAll(SynthEngine *_synth, CommandBlock *getData, bool add
             case TOPLEVEL::insert::envelopeGroup:
                 commandName = resolveEnvelope(getData, addValue);
                 break;
-            case TOPLEVEL::insert::envelopePoints:
+            case TOPLEVEL::insert::envelopePointAdd:
+            case TOPLEVEL::insert::envelopePointDelete:
                 commandName = resolveEnvelope(getData, addValue);
                 break;
             case TOPLEVEL::insert::envelopePointChange:
                 commandName = resolveEnvelope(getData, addValue);
                 break;
             case TOPLEVEL::insert::resonanceGroup:
-                commandName = resolveResonance(getData, addValue);
+                commandName = resolveResonance(synth, getData, addValue);
                 break;
             case TOPLEVEL::insert::resonanceGraphInsert:
-                commandName = resolveResonance(getData, addValue);
+                commandName = resolveResonance(synth, getData, addValue);
                 break;
         }
     }
@@ -287,7 +300,7 @@ string DataText::resolveVector(CommandBlock *getData, bool addValue)
 {
     int value_int = lrint(getData->data.value);
     unsigned char control = getData->data.control;
-    unsigned int chan = getData->data.insert;
+    unsigned int chan = getData->data.parameter;
 
     bool isFeature = false;
     string contstr = "";
@@ -354,6 +367,7 @@ string DataText::resolveVector(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = "Unrecognised";
+            break;
     }
 
     if (control == VECTOR::control::undefined)
@@ -490,6 +504,7 @@ string DataText::resolveMicrotonal(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = "Unrecognised";
+            break;
 
     }
 
@@ -566,6 +581,25 @@ string DataText::resolveConfig(CommandBlock *getData, bool addValue)
                     contstr += "cubic";
                 else
                     contstr += "linear";
+            }
+            showValue = false;
+            break;
+        case CONFIG::control::handlePadSynthBuild:
+            contstr = "PADSynth wavetable build ";
+            if (addValue)
+            {
+                switch (value_int)
+                {
+                    case 0:
+                        contstr += "Muted";
+                        break;
+                    case 1:
+                        contstr += "Background";
+                        break;
+                    case 2:
+                        contstr += "AutoApply";
+                        break;
+                }
             }
             showValue = false;
             break;
@@ -1123,6 +1157,9 @@ string DataText::resolveMain(CommandBlock *getData, bool addValue)
         case MAIN::control::keyShift:
             contstr = "Key Shift";
             break;
+        case MAIN::control::bpmFallback:
+            contstr = "Fallback BPM";
+            break;
         case MAIN::control::mono:
             contstr = "Master Mono/Stereo ";
             showValue = false;
@@ -1330,6 +1367,7 @@ string DataText::resolveMain(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = "Unrecognised";
+            break;
     }
 
     return ("Main " + contstr);
@@ -1800,6 +1838,7 @@ string DataText::resolvePart(CommandBlock *getData, bool addValue)
             showValue = false;
             name = "";
             contstr = "Unrecognised";
+            break;
     }
     return ("Part " + to_string(npart + 1) + kitnum + name + contstr);
 }
@@ -1882,6 +1921,7 @@ string DataText::resolveAdd(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = "Unrecognised";
+            break;
     }
 
     return ("Part " + to_string(npart + 1) + " Kit " + to_string(kititem + 1) + " AddSynth " + contstr);
@@ -2136,6 +2176,7 @@ string DataText::resolveAddVoice(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = "Unrecognised";
+            break;
     }
 
     return ("Part " + to_string(npart + 1) + " Kit " + to_string(kititem + 1) + " Add Voice " + to_string(nvoice + 1) + " " + contstr);
@@ -2285,14 +2326,16 @@ string DataText::resolveSub(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = "Unrecognised";
+            break;
     }
 
     return ("Part " + to_string(npart + 1) + " Kit " + to_string(kititem + 1) + " SubSynth " + contstr);
 }
 
 
-string DataText::resolvePad(CommandBlock *getData, bool addValue)
+string DataText::resolvePad(SynthEngine *_synth, CommandBlock *getData, bool addValue)
 {
+    SynthEngine *synth = _synth;
     float value = getData->data.value;
     unsigned char type = getData->data.type;
     unsigned char control = getData->data.control;
@@ -2371,7 +2414,7 @@ string DataText::resolvePad(CommandBlock *getData, bool addValue)
             contstr = "Punch Velocity";
             break;
 
-            case PADSYNTH::control::applyChanges:
+        case PADSYNTH::control::applyChanges:
             showValue = false;
             contstr = "Changes Applied ";
             if (addValue)
@@ -2411,11 +2454,34 @@ string DataText::resolvePad(CommandBlock *getData, bool addValue)
         case PADSYNTH::control::spectrumMode:
             contstr = "Spectrum Mode";
             break;
+        case PADSYNTH::control::xFadeUpdate:
+            contstr = "XFade Update";
+            break;
+        case PADSYNTH::control::rebuildTrigger:
+            contstr = "BuildTrigger";
+            break;
+        case PADSYNTH::control::randWalkDetune:
+            contstr = "RWDetune";
+            break;
+        case PADSYNTH::control::randWalkBandwidth:
+            contstr = "RWBandwidth";
+            break;
+        case PADSYNTH::control::randWalkFilterFreq:
+            contstr = "RWFilterFreq";
+            break;
+        case PADSYNTH::control::randWalkProfileWidth:
+            contstr = "RWWidthProfile";
+            break;
+        case PADSYNTH::control::randWalkProfileStretch:
+            contstr = "RWStretchProfile";
+            break;
     }
+    string padApply{synth->getRuntime().usePadAutoApply()? " - rebuilding PAD"
+                                                         : " - Need to Apply"};
     if (!contstr.empty())
     {
         if (write)
-            contstr += " - Need to Apply";
+            contstr += padApply;
         return ("Part " + to_string(npart + 1) + " Kit " + to_string(kititem + 1) + " PadSynth " + contstr);
     }
 
@@ -2463,7 +2529,7 @@ string DataText::resolvePad(CommandBlock *getData, bool addValue)
     {
         contstr = "Harmonic Base " + contstr;
         if (write)
-            contstr += " - Need to Apply";
+            contstr += padApply;
         return ("Part " + to_string(npart + 1) + " Kit " + to_string(kititem + 1) + " PadSynth " + contstr);
     }
 
@@ -2484,17 +2550,19 @@ string DataText::resolvePad(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = "Unrecognised";
+            break;
     }
     if (contstr != "Unrecognised")
         contstr = "Harmonic Samples " + contstr;
     if (write && contstr != "Unrecognised")
-        contstr += " - Need to Apply";
+        contstr += padApply;
     return ("Part " + to_string(npart + 1) + " Kit " + to_string(kititem + 1) + " PadSynth " + contstr);
 }
 
 
-string DataText::resolveOscillator(CommandBlock *getData, bool addValue)
+string DataText::resolveOscillator(SynthEngine *_synth, CommandBlock *getData, bool addValue)
 {
+    SynthEngine* synth = _synth;
     float value = getData->data.value;
     unsigned char type = getData->data.type;
     unsigned char control = getData->data.control;
@@ -2511,7 +2579,8 @@ string DataText::resolveOscillator(CommandBlock *getData, bool addValue)
     {
         eng_name = " PadSynth";
         if (write)
-            isPad = " - Need to Apply";
+            isPad = synth->getRuntime().usePadAutoApply()? " - rebuilding PAD"
+                                                         : " - Need to Apply";
     }
     else
     {
@@ -2673,14 +2742,16 @@ string DataText::resolveOscillator(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = "Unrecognised";
+            break;
     }
 
     return ("Part " + to_string(npart + 1) + " Kit " + to_string(kititem + 1) + eng_name + " Harm Mods " + contstr + isPad);
 }
 
 
-string DataText::resolveResonance(CommandBlock *getData, bool addValue)
+string DataText::resolveResonance(SynthEngine *_synth, CommandBlock *getData, bool addValue)
 {
+    SynthEngine *synth = _synth;
     int value = int(getData->data.value + 0.5f);
     unsigned char type = getData->data.type;
     unsigned char control = getData->data.control;
@@ -2693,24 +2764,20 @@ string DataText::resolveResonance(CommandBlock *getData, bool addValue)
 
     string name;
     string isPad = "";
-    if (engine == PART::engine::padSynth)
+    if (engine == PART::engine::padSynth && control != PADSYNTH::control::applyChanges)
     {
         name = " PadSynth";
         if (write)
-            isPad = " - Need to Apply";
+            isPad = synth->getRuntime().usePadAutoApply()? " - rebuilding PAD"
+                                                         : " - Need to Apply";
     }
     else
         name = " AddSynth";
 
     if (insert == TOPLEVEL::insert::resonanceGraphInsert)
     {
-        if (write == true && engine == PART::engine::padSynth)
-            isPad = " - Need to Apply";
         return ("Part " + to_string(npart + 1) + " Kit " + to_string(kititem + 1) + name + " Resonance Point " + to_string(parameter + 1) + isPad);
     }
-
-    if (write == true && engine == PART::engine::padSynth && control != PADSYNTH::control::applyChanges)
-        isPad = " - Need to Apply";
     string contstr;
     switch (control)
     {
@@ -2768,6 +2835,7 @@ string DataText::resolveResonance(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = "Unrecognised";
+            break;
     }
 
     return ("Part " + to_string(npart + 1) + " Kit " + to_string(kititem + 1) + name + " Resonance " + contstr + isPad);
@@ -2860,6 +2928,7 @@ string DataText::resolveLFO(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = "Unrecognised";
+            break;
     }
 
     return ("Part " + to_string(npart + 1) + " Kit " + to_string(kititem + 1) + name + lfo + " LFO " + contstr);
@@ -2868,15 +2937,9 @@ string DataText::resolveLFO(CommandBlock *getData, bool addValue)
 
 string DataText::resolveFilter(CommandBlock *getData, bool addValue)
 {
-    int value_int = int(getData->data.value);
-    unsigned char control = getData->data.control;
     unsigned char npart = getData->data.part;
     unsigned char kititem = getData->data.kit;
     unsigned char engine = getData->data.engine;
-
-    int nseqpos = getData->data.parameter;
-    int nformant = getData->data.parameter;
-    int nvowel = getData->data.offset;
 
     string name;
 
@@ -2888,7 +2951,22 @@ string DataText::resolveFilter(CommandBlock *getData, bool addValue)
         name = " PadSynth";
     else if (engine >= PART::engine::addVoice1)
         name = " Adsynth Voice " + to_string((engine - PART::engine::addVoice1) + 1);
-    string contstr;
+    string contstr = filterControl(getData, addValue);
+
+    return ("Part " + to_string(npart + 1) + " Kit " + to_string(kititem + 1) + name + " Filter " + contstr);
+}
+
+
+string DataText::filterControl(CommandBlock *getData, bool addValue)
+{
+    int value_int = int(getData->data.value);
+    unsigned char control = getData->data.control;
+
+    int nformant = getData->data.parameter;
+    int nseqpos  = getData->data.parameter;
+    int nvowel = getData->data.offset;
+
+    string contstr = "";
     switch (control)
     {
         case FILTERINSERT::control::centerFrequency:
@@ -3012,14 +3090,15 @@ string DataText::resolveFilter(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = "Unrecognised";
+            break;
     }
     string extra = "";
     if (control >= FILTERINSERT::control::formantFrequency && control <= FILTERINSERT::control::formantAmplitude)
         extra = "Vowel " + to_string(nvowel) + " Formant " + to_string(nformant) + " ";
     else if (control == FILTERINSERT::control::vowelPositionInSequence)
         extra = "Seq Pos " + to_string(nseqpos) + " ";
-
-    return ("Part " + to_string(npart + 1) + " Kit " + to_string(kititem + 1) + name + " Filter " + extra + contstr);
+    contstr = extra + contstr;
+    return contstr;
 }
 
 
@@ -3032,8 +3111,8 @@ string DataText::resolveEnvelope(CommandBlock *getData, bool)
     unsigned char kititem = getData->data.kit;
     unsigned char engine = getData->data.engine;
     unsigned char insert = getData->data.insert;
+    unsigned char offset = getData->data.offset;
     unsigned char insertParam = getData->data.parameter;
-    int miscmsg = getData->data.miscmsg;
 
     string env;
     string name;
@@ -3073,14 +3152,14 @@ string DataText::resolveEnvelope(CommandBlock *getData, bool)
             break;
     }
 
-    if (insert == TOPLEVEL::insert::envelopePoints)
+    if (insert == TOPLEVEL::insert::envelopePointAdd || insert == TOPLEVEL::insert::envelopePointDelete)
     {
         if (!write)
         {
-            return ("Freemode add/remove is write only. Current points " + to_string(int(miscmsg)));
+            return ("Freemode add/remove is write only. Current points " + to_string(value));
         }
-        if (miscmsg != UNUSED)
-            return ("Part " + to_string(int(npart + 1)) + " Kit " + to_string(int(kititem + 1)) + name  + env + " Env Added Freemode Point " + to_string(int(control & 0x3f)) + " X increment " + to_string(int(miscmsg)) + " Y");
+        if (insert == TOPLEVEL::insert::envelopePointAdd)
+            return ("Part " + to_string(int(npart + 1)) + " Kit " + to_string(int(kititem + 1)) + name  + env + " Env Added Freemode Point " + to_string(int(control & 0x3f)) + " X increment " + to_string(int(offset)) + " Y");
         else
         {
             showValue = false;
@@ -3090,7 +3169,7 @@ string DataText::resolveEnvelope(CommandBlock *getData, bool)
 
     if (insert == TOPLEVEL::insert::envelopePointChange)
     {
-        return ("Part " + to_string(int(npart + 1)) + " Kit " + to_string(int(kititem + 1)) + name  + env + " Env Freemode Point " +  to_string(int(control)) + " X increment " + to_string(int(miscmsg)) + " Y");
+        return ("Part " + to_string(int(npart + 1)) + " Kit " + to_string(int(kititem + 1)) + name  + env + " Env Freemode Point " +  to_string(int(control)) + " X increment " + to_string(int(offset)) + " Y");
     }
 
     string contstr;
@@ -3148,6 +3227,7 @@ string DataText::resolveEnvelope(CommandBlock *getData, bool)
         default:
             showValue = false;
             contstr = "Unrecognised";
+            break;
     }
 
     return ("Part " + to_string(npart + 1) + " Kit " + to_string(int(kititem + 1)) + name  + env + " Env " + contstr);
@@ -3159,7 +3239,7 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
     int value = lrint(getData->data.value);
     unsigned char control = getData->data.control;
     unsigned char npart = getData->data.part;
-    unsigned char kititem = getData->data.kit;
+    unsigned char effType = getData->data.kit;
     unsigned char effnum = getData->data.engine;
     unsigned char insert = getData->data.insert;
     unsigned char parameter = getData->data.parameter;
@@ -3173,8 +3253,8 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
         name = "Insert";
     else
         name = "Part " + to_string(npart + 1);
-
-    if (kititem == EFFECT::type::dynFilter && getData->data.insert != UNUSED)
+;
+    if (effType == (TOPLEVEL::insert::dynFilter | 128) && getData->data.insert != UNUSED)
     {
         if (npart == TOPLEVEL::section::systemEffects)
             name = "System";
@@ -3182,26 +3262,8 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
             name = "Insert";
         else name = "Part " + to_string(npart + 1);
         name += " Effect " + to_string(effnum + 1);
-
         name += " DynFilter ~ Filter ";
-        switch (control)
-        {
-            case 0:
-                name += "C Freq";
-                break;
-            case 1:
-                name += "Q";
-                break;
-            case 5:
-                name += "Gain";
-                break;
-            case 2:
-                name += "FreqTrk";
-                break;
-            default:
-                name += "unrecognised";
-                break;
-        }
+        name += filterControl(getData, addValue);
         return name;
     }
 
@@ -3238,7 +3300,7 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
             showValue = false;
         return (name + effname);
     }
-    else if (npart >= TOPLEVEL::section::systemEffects && kititem == UNUSED)
+    else if (npart >= TOPLEVEL::section::systemEffects && effType == UNUSED)
     {
         string contstr;
         string second = "";
@@ -3288,10 +3350,10 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
         }
     }
     string contstr = "";
-    if ((npart < NUM_MIDI_PARTS && control == PART::control::effectType) || (npart > TOPLEVEL::section::main && kititem == UNUSED && control == EFFECT::sysIns::effectType))
+    if ((npart < NUM_MIDI_PARTS && control == PART::control::effectType) || (npart > TOPLEVEL::section::main && effType == UNUSED && control == EFFECT::sysIns::effectType))
     {
         name += " set to";
-        kititem = value | EFFECT::type::none; // TODO fix this!
+        effType = value | TOPLEVEL::insert::none | 128; // TODO fix this!
         showValue = false;
     }
     else
@@ -3300,13 +3362,13 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
     int ref = control; // we frequently modify this
     bool isBPM = (ref == 2 && offset == 1);
     //std::cout << "isbpm " << int(isBPM) << std::endl;
-    switch (kititem)
+    switch (effType & 127)
     {
-        case EFFECT::type::none:
+        case TOPLEVEL::insert::none:
             effname = " None";
             contstr = " ";
             break;
-        case EFFECT::type::reverb:
+        case TOPLEVEL::insert::reverb:
         {
             if (ref > 4) // there is no 5 or 6 in the list names
                 ref -= 2;
@@ -3330,7 +3392,7 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
             }
             break;
         }
-        case EFFECT::type::echo:
+        case TOPLEVEL::insert::echo:
             effname = " Echo ";
             if (ref > 6) // there is no 7-16 in the list names
                 ref -= 10;
@@ -3341,7 +3403,7 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
                 contstr += (" " + bpm2text(float(value) / 127.0f));
             }
             break;
-        case EFFECT::type::chorus:
+        case TOPLEVEL::insert::chorus:
         {
             effname = " Chorus ";
             if (ref > 10) // there is no 11-16 in the list names
@@ -3375,7 +3437,7 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
             }
             break;
         }
-        case EFFECT::type::phaser:
+        case TOPLEVEL::insert::phaser:
             effname = " Phaser ";
             if (ref > 14) // there is no 15-16 in the list names
                 ref -= 2;
@@ -3408,7 +3470,7 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
                 }
             }
             break;
-        case EFFECT::type::alienWah:
+        case TOPLEVEL::insert::alienWah:
             effname = " AlienWah ";
             if (ref > 10) // there is no 11-16 in the list names
                 ref -= 6;
@@ -3427,7 +3489,7 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
                 contstr += (" " + bpm2text(float(value) / 127.0f));
             }
             break;
-        case EFFECT::type::distortion:
+        case TOPLEVEL::insert::distortion:
         {
             effname = " Distortion ";
             if (ref > 5) // there is an extra line in the list names
@@ -3465,7 +3527,7 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
             controlType = distortionlist[ref * 2];
             break;
         }
-        case EFFECT::type::eq:
+        case TOPLEVEL::insert::eq:
         {
             effname = " EQ ";
             if (control > 1)
@@ -3487,7 +3549,7 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
             controlType = eqlist[ref * 2];
             break;
         }
-        case EFFECT::type::dynFilter:
+        case TOPLEVEL::insert::dynFilter:
             effname = " DynFilter ";
             if (ref > 10) // there is no 11-16 in the list names
                 ref -= 6;
@@ -3521,9 +3583,10 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             contstr = " Unrecognised";
+            break;
     }
     //std::cout << "control " << int(control) << std::endl;
-    if (control == EFFECT::control::preset && kititem != EFFECT::type::eq)
+    if (control == EFFECT::control::preset && effType != (TOPLEVEL::insert::eq | 128))
     {
         contstr = " Preset " + to_string (value + 1);
         showValue = false;

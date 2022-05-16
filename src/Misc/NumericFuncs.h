@@ -82,7 +82,7 @@ inline int version2value(void)
 /* === Helper for exponential with constant base == */
 /*
  * Yoshimi code used the generic power function powf() at various places just to compute the exponential
- * for a fixed (and even integral) base. This can be optimised, since b^x = exp(ln(b)*x); and in fact,
+ * for a fixed (and even integral) base. This can be optimised, since b^x = exp(ln(b)·x); and in fact,
  * modern optimisers apply this rewriting with --fast-math. But unfortunately these rewritings differ
  * slightly (esp. regarding to SSE), which leads to slightly different sample (float numbers) being
  * computed on different Compilers/Platforms.
@@ -93,13 +93,17 @@ namespace {
     template<unsigned int base, bool fraction=false>
     struct PowerFunction
     {
-        static constexpr float LN_BASE = log(fraction? 1.0/base : double(base));
+        static_assert(base > 0, "0^x is always zero");
 
         static float invoke(float exponent)
         {
             return expf(LN_BASE * exponent);
         }
+        static const float LN_BASE;
     };
+
+    template<unsigned int base, bool fraction>
+    const float PowerFunction<base,fraction>::LN_BASE = log(fraction? 1.0/base : double(base));
 }
 
 /* compute base^exponent for a fixed integral base */

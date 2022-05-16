@@ -25,10 +25,13 @@ if (POLICY CMP0046)
     cmake_policy (SET CMP0046 NEW)
 endif () # opengl version
 if (POLICY CMP0072)
-    cmake_policy (SET CMP0072 OLD)
+    cmake_policy (SET CMP0072 NEW)
 endif ()
-set (CMAKE_CXX_STANDARD 11) # we seem to need both for
-add_definitions(-std=gnu++11) # various versions of cmake
+
+#set(CMAKE_CXX_COMPILER "clang++")
+
+set (CMAKE_CXX_STANDARD 14) # we seem to need both for
+add_definitions(-std=gnu++14) # various versions of cmake
 
 add_definitions(-Wall)
 
@@ -39,9 +42,10 @@ add_definitions(-Wall)
 #add_definitions(-Werror=format-security)
 #add_definitions(-Wextra)
 #add_definitions(-Wno-vla) # Nothing wrong with variable length arrays
+#add_definitions(-Wno-deprecated)
 # ^^^ comment these out on release pushes
 
-set (YOSHIMI_VERSION "2.1.2")
+set (YOSHIMI_VERSION "2.2.0")
 
 add_definitions (-DMIN_CONFIG_MAJOR=2)
 add_definitions (-DMIN_CONFIG_MINOR=0)
@@ -139,6 +143,7 @@ endif ()
 
 find_package (PkgConfig REQUIRED)
 
+find_package(Threads REQUIRED)
 
 check_c_source_compiles (
     "#include <argp.h>
@@ -266,8 +271,8 @@ configure_file(
     IMMEDIATE @ONLY)
 
 set (DSP_sources
-    DSP/FFTwrapper.cpp  DSP/AnalogFilter.cpp  DSP/FormantFilter.cpp
-    DSP/SVFilter.cpp  DSP/Filter.cpp  DSP/Unison.cpp
+    DSP/AnalogFilter.cpp  DSP/Filter.cpp  DSP/FormantFilter.cpp
+    DSP/SVFilter.cpp  DSP/Unison.cpp
 )
 
 set (Effects_sources
@@ -279,8 +284,8 @@ set (Effects_sources
 
 set (Misc_sources
     Misc/CmdOptions.cpp  Misc/Config.cpp  Misc/SynthEngine.cpp  Misc/Bank.cpp
-    Misc/Splash.cpp  Misc/Microtonal.cpp   Misc/Part.cpp  Misc/XMLwrapper.cpp
-    Misc/WavFile.cpp
+    Misc/BuildScheduler.cpp Misc/Microtonal.cpp   Misc/Part.cpp Misc/Splash.cpp
+    Misc/WavFile.cpp Misc/XMLwrapper.cpp
 )
 
 set (Interface_Sources
@@ -435,6 +440,7 @@ set(ExternLibraries
     ${Readline_LIBRARY}
     ${ZLIB_LIBRARIES}
     ${LIBDL_LINUX}
+    ${CMAKE_THREAD_LIBS_INIT}
 )
 
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "FreeBSD")

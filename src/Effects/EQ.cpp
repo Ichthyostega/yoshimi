@@ -7,7 +7,7 @@
     Copyright 2018-2021, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
-    it and/or modify it under the terms of the GNU Library General Public
+    it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation; either version 2 of
     the License, or (at your option) any later version.
 
@@ -33,27 +33,16 @@ using func::powFrac;
 using func::asDecibel;
 
 
-EQ::EQ(bool insertion_, float *efxoutl_, float *efxoutr_, SynthEngine *_synth) :
-    Effect(insertion_, efxoutl_, efxoutr_, NULL, 0, _synth)
+EQ::EQ(bool insertion_, float *efxoutl_, float *efxoutr_, SynthEngine *_synth)
+    : Effect(insertion_, efxoutl_, efxoutr_, NULL, 0, _synth)
+    , Pchanged{false}
+    , Pvolume{}
+    , Pband{0}
+    , filter{*synth,*synth,*synth,*synth,*synth,*synth,*synth,*synth} // MAX_EQ_BANDS
 {
-    for (int i = 0; i < MAX_EQ_BANDS; ++i)
-    {
-        filter[i].Ptype = 0;
-        filter[i].Pfreq = 64;
-        filter[i].Pgain = 64;
-        filter[i].Pq = 64;
-        filter[i].Pstages = 0;
-        filter[i].l = new AnalogFilter(6, 1000.0, 1.0, 0, synth);
-        filter[i].r = new AnalogFilter(6, 1000.0, 1.0, 0, synth);
-        filter[i].freq.setSampleRate(synth->samplerate);
-        filter[i].gain.setSampleRate(synth->samplerate);
-        filter[i].q.setSampleRate(synth->samplerate);
-    }
     // default values
     setvolume(50);
-    Pband = 0;
     setpreset(Ppreset);
-    Pchanged = false;
     cleanup();
 }
 
@@ -61,6 +50,7 @@ EQ::EQ(bool insertion_, float *efxoutl_, float *efxoutr_, SynthEngine *_synth) :
 // Cleanup the effect
 void EQ::cleanup(void)
 {
+    Effect::cleanup();
     for (int i = 0; i < MAX_EQ_BANDS; ++i)
     {
         filter[i].l->cleanup();

@@ -7,7 +7,7 @@
     Copyright 2018 Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
-    it and/or modify it under the terms of the GNU Library General Public
+    it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation; either version 2 of
     the License, or (at your option) any later version.
 
@@ -40,7 +40,7 @@ class Resonance : public Presets
         Resonance(SynthEngine *_synth);
         ~Resonance() { }
         void setpoint(int n, unsigned char p);
-        void applyres(int n, FFTFREQS fftdata, float freq);
+        void applyres(int n, fft::Spectrum& fftdata, float freq);
         void smooth(void);
         void interpolatepeaks(int type);
         void randomize(int type);

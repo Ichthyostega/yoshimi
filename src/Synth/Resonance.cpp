@@ -7,7 +7,7 @@
     Copyright 2018-2019 Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
-    it and/or modify it under the terms of the GNU Library General Public
+    it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation; either version 2 of
     the License, or (at your option) any later version.
 
@@ -66,7 +66,7 @@ void Resonance::setpoint(int n, unsigned char p)
 
 
 // Apply the resonance to FFT data
-void Resonance::applyres(int n, FFTFREQS fftdata, float freq)
+void Resonance::applyres(int n, fft::Spectrum& fftdata, float freq)
 {
     if (Penabled == 0)
         return; // if the resonance is disabled
@@ -100,8 +100,8 @@ void Resonance::applyres(int n, FFTFREQS fftdata, float freq)
         y = power<10>(y * PmaxdB / 20.0);
         if (Pprotectthefundamental != 0 && i == 1)
             y = 1.0;
-        fftdata.c[i] *= y;
-        fftdata.s[i] *= y;
+        fftdata.c(i) *= y;
+        fftdata.s(i) *= y;
     }
 }
 

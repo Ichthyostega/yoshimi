@@ -3,6 +3,7 @@
 
     Copyright 2011, Alan Calvert
     Copyright 2021, Kristian Amlie
+    Copyright 2022, Ichthyostega
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -22,8 +23,8 @@
 #define SYNTHHELPER_H
 
 #include <cmath>
+#include <cassert>
 
-#define DEFAULT_PARAM_INTERPOLATION_LENGTH_MSECS 50.0f
 
 namespace synth {
 
@@ -35,47 +36,37 @@ namespace synth {
 template <typename T>
 class InterpolatedValue
 {
+    static constexpr auto DEFAULT_PARAM_INTERPOLATION_LENGTH_msec{50.0};
+
+    T oldValue;
+    T newValue;
+    T targetValue;
+
+    const int interpolationLength;
+    int interpolationPos;
+
     public:
-        InterpolatedValue(T startValue, int sampleRate_)
+        InterpolatedValue(T startValue, size_t sampleRate)
             : oldValue(startValue)
             , newValue(startValue)
             , targetValue(startValue)
-            , sampleRate(sampleRate_)
-        {
-            setInterpolationLength(DEFAULT_PARAM_INTERPOLATION_LENGTH_MSECS);
-        }
-
-        void setInterpolationLength(float msecs)
-        {
-            float samples = msecs / 1000.0f * sampleRate;
             // Round up so we are as smooth as possible.
-            interpolationLength = ceilf(samples);
-            interpolationPos = interpolationLength;
-        }
+            , interpolationLength(ceilf(DEFAULT_PARAM_INTERPOLATION_LENGTH_msec / 1000.0 * sampleRate))
+            , interpolationPos(interpolationLength)
+        { }
 
         bool isInterpolating() const
         {
             return interpolationPos < interpolationLength;
         }
 
-        void setTargetValue(T value)
-        {
-            targetValue = value;
-            if (!isInterpolating() && targetValue != newValue)
-            {
-                newValue = value;
-                interpolationPos = 0;
-            }
-        }
-
-       // The value interpolated from.
+        // The value interpolated from.
         T getOldValue() const
         {
             return oldValue;
         }
 
-       // The value interpolated to (not necessarily the same as the last set
-       // target point).
+        // The value interpolated to (not necessarily the same as the last set target point).
         T getNewValue() const
         {
             return newValue;
@@ -88,12 +79,30 @@ class InterpolatedValue
 
         float factor() const
         {
-            return (float)interpolationPos / (float)interpolationLength;
+            return float(interpolationPos) / float(interpolationLength);
         }
 
         T getValue() const
         {
             return getOldValue() * (1.0f - factor()) + getNewValue() * factor();
+        }
+
+        void setTargetValue(T value)
+        {
+            targetValue = value;
+            if (!isInterpolating() && targetValue != newValue)
+            {
+                newValue = targetValue;
+                interpolationPos = 0;
+            }
+        }
+
+        // enforce clean reproducible state by immediately
+        // pushing the interpolation to current target value
+        void pushToTarget()
+        {
+            interpolationPos = interpolationLength;
+            oldValue = newValue = targetValue;
         }
 
         T getAndAdvanceValue()
@@ -121,57 +130,84 @@ class InterpolatedValue
 
         void advanceValue(int samples)
         {
+            if (interpolationPos >= interpolationLength)
+                return;
+
             if (interpolationPos + samples < interpolationLength)
+            {
                 interpolationPos += samples;
-            else if (interpolationPos + samples >= interpolationLength * 2)
-            {
-                oldValue = newValue = targetValue;
-                interpolationPos = interpolationLength;
+                return;
             }
-            else
+
+            oldValue = newValue;
+            if (targetValue != newValue)
             {
-                oldValue = newValue;
                 newValue = targetValue;
                 interpolationPos += samples - interpolationLength;
+                if (interpolationPos >= interpolationLength)
+                    pushToTarget();
             }
+            else
+                interpolationPos = interpolationLength;
         }
-
-    private:
-        T oldValue;
-        T newValue;
-        T targetValue;
-
-        int interpolationLength;
-        int interpolationPos;
-
-    protected:
-        int sampleRate;
 };
 
-// Default-initialized variant of InterpolatedValue. Use only if you must (for
-// example in an array), normally it is better to use the fully initialized
-// one. If you use this, then you should call setSampleRate immediately after
-// construction.
-template <typename T>
-class InterpolatedValueDfl : public InterpolatedValue<T>
+
+/**
+ * Exponential S-Fade Edit-curve.
+ * Create a soft transition without foregrounding the change. The generated value from 0.0 … 1.0
+ * lags first, then accelerates after 1/5 of the fade time and finally approaches 1.0 asymptotically.
+ * Approximation is based on the differential equation for exponential decay; two functions with
+ * different decay time are cascaded: the first one sets a moving goal for the second one
+ * to follow up damped, at the end both converging towards 1.0
+ *
+ * Differential equations  | Solution
+ *   g' = q1·(1 - g)         g(x) = 1 - e^-q·x
+ *   f' = q2·(g - f)         f(x) = 1 - k/(k-1) · e^-q·x  +  1/(k-1) · e^-k·q·x
+ *
+ * with Definitions: q1 = q, q2 = k·q
+ * turning point at: w  = 1/5·fadeLen
+ * ==> f''= 0  <=>  k = e^((k-1)·q·w)  <=>  q = 1/w·ln(k)/(k-1)
+ */
+class SFadeCurve
 {
-    public:
-        InterpolatedValueDfl()
-            : InterpolatedValue<T>(0, 44100)
-        {
-        }
+    static constexpr float ASYM = 1.0 / 0.938; // heuristics: typically the curve reaches 0.96 after fadeLen
+    static constexpr float K = 2.0;            // higher values of K create a more linear less S-shape curve
+    static float lnK() { return log(K) / (K-1);}
+    static constexpr float TURN = 1/5.0;       // heuristics: turning point after 1/5 of fade length
 
-        void setSampleRate(int sampleRate)
+    const float q1;
+    const float q2;
+    float goal;
+    float mix;
+
+    public:
+        SFadeCurve(size_t fadeLen)
+            : q1{lnK() / (TURN * fadeLen)}
+            , q2{K * q1}
+            , goal{0}
+            , mix{0}
+        { }
+
+        float nextStep()
         {
-            this->sampleRate = sampleRate;
-            this->setInterpolationLength(DEFAULT_PARAM_INTERPOLATION_LENGTH_MSECS);
+            goal += q1 * (ASYM - goal);
+            mix  += q2 * (goal - mix);
+            return std::min(mix, 1.0f);
         }
 };
+
+
 
 
 inline bool aboveAmplitudeThreshold(float a, float b)
 {
-    return ((2.0f * fabsf(b - a) / fabsf(b + a + 0.0000000001f)) > 0.0001f);
+    float mean = (fabsf(a)+fabsf(b)) / 2;
+    float delta = fabsf(b - a);
+    if (mean == 0)
+        return false;
+    else
+        return 1e-5f < delta / mean;
 }
 
 
