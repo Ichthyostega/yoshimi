@@ -11,21 +11,19 @@ Minor bug Multi instances produce jack error reports when main instance closed, 
 GUI Oddity. Press spacebar on startup and you disable part 1 AddSynth engine.
 From then on repeats the last action.
 
+Add dynfilter filter types to prompt.
+Never been done before :(
+
 Add which engines are enabled in CLI list part.
 In fact significantly re-write this!
 
 Revise GUI voice list related to voice editor.
-
-Effect change warning for dynfilter insert not yet done.
 
 CLI waveform (in voice) changes don't update GUI unless waveform window is open too.
 
 LV2: internal sound banks do not appear to be exposed as LV2 presets
 Visible in carla apparently.
 
-
-
-Requested: auto 'apply' timer for padsynth.
 
 In filer show actual extension (xiz/xiy)
 

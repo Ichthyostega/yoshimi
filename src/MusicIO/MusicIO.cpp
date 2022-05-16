@@ -36,32 +36,15 @@ using func::asString;
 
 
 MusicIO::MusicIO(SynthEngine *_synth, BeatTracker *_beatTracker) :
-    interleaved(NULL),
+    LV2_engine{_synth->getIsLV2Plugin()},
+    bufferAllocation{},  // Allocation happens later in prepBuffers()
+    zynLeft{0},
+    zynRight{0},
+    interleaved(),
     beatTracker(_beatTracker),
     synth(_synth)
-{
-    memset(zynLeft, 0, sizeof(float *) * (NUM_MIDI_PARTS + 1));
-    memset(zynRight, 0, sizeof(float *) * (NUM_MIDI_PARTS + 1));
-    LV2_engine = synth->getIsLV2Plugin();
-}
+{ }
 
-
-MusicIO::~MusicIO()
-{
-    for (int npart = 0; npart < (NUM_MIDI_PARTS + 1); ++npart)
-    {
-        if (zynLeft[npart])
-        {
-            fftwf_free(zynLeft[npart]);
-            zynLeft[npart] = NULL;
-        }
-        if (zynRight[npart])
-        {
-            fftwf_free(zynRight[npart]);
-            zynRight[npart] = NULL;
-        }
-    }
-}
 
 
 void MusicIO::setMidi(unsigned char par0, unsigned char par1, unsigned char par2, bool in_place)
@@ -123,6 +106,8 @@ void MusicIO::setMidi(unsigned char par0, unsigned char par1, unsigned char par2
             putData.data.engine = par1;
             synth->midilearn.writeMidi(&putData, false);
         }
+        if (event == 0x90)
+            synth->interchange.noteSeen = true;
         return;
     }
     synth->mididecode.midiProcess(par0, par1, par2, in_place, inSync);
@@ -131,44 +116,24 @@ void MusicIO::setMidi(unsigned char par0, unsigned char par1, unsigned char par2
 
 bool MusicIO::prepBuffers(void)
 {
-    int buffersize = getBuffersize();
-    if (buffersize > 0)
-    {
-        for (int part = 0; part < (NUM_MIDI_PARTS + 1); part++)
-        {
-            if (!(zynLeft[part] = (float*) fftwf_malloc(buffersize * sizeof(float))))
-                goto bail_out;
-            if (!(zynRight[part] = (float*) fftwf_malloc(buffersize * sizeof(float))))
-                goto bail_out;
-            memset(zynLeft[part], 0, buffersize * sizeof(float));
-            memset(zynRight[part], 0, buffersize * sizeof(float));
+    size_t buffSize = getBuffersize();
+    if (buffSize == 0)
+        return false;
 
-        }
-        return true;
-    }
+    size_t allocSize = 2 * (NUM_MIDI_PARTS + 1)
+                         * buffSize;
+    // All buffers allocated together
+    // Note: std::bad_alloc is raised on failure, which kills the application...
+    bufferAllocation.reset(allocSize);
 
-bail_out:
-    synth->getRuntime().Log("Failed to allocate audio buffers, size " + asString(buffersize));
-    for (int part = 0; part < (NUM_MIDI_PARTS + 1); part++)
+    for (size_t i=0; i < (NUM_MIDI_PARTS + 1); ++i)
     {
-        if (zynLeft[part])
-        {
-            fftwf_free(zynLeft[part]);
-            zynLeft[part] = NULL;
-        }
-        if (zynRight[part])
-        {
-            fftwf_free(zynRight[part]);
-            zynRight[part] = NULL;
-        }
+        zynLeft[i]  = & bufferAllocation[(2*i  ) * buffSize];
+        zynRight[i] = & bufferAllocation[(2*i+1) * buffSize];
     }
-    if (interleaved)
-    {
-        delete[] interleaved;
-        interleaved = NULL;
-    }
-    return false;
+    return true;
 }
+
 
 BeatTracker::BeatTracker() :
     songVsMonotonicBeatDiff(0)
@@ -271,13 +236,9 @@ BeatTracker::BeatValues MultithreadedBeatTracker::getBeatValues()
     pthread_mutex_unlock(&mutex);
 
     if (time == lastTime) {
-        if (clock - time > 1000000) {
-            // If no MIDI clock messages have arrived for over a second, revert
-            // to a static 120 BPM. This is just a fallback to prevent
-            // oscillators from stalling completely.
-            ret.songBeat = songBeatTmp + (float)(clock - time) / 1000000.0f * 120.0f / 60.0f;
-            ret.monotonicBeat = monotonicBeatTmp + (float)(clock - time) / 1000000.0f * 120.0f / 60.0f;
-        }
+        // Can only happen on the very first iteration. Avoid division by zero.
+        ret.songBeat = 0;
+        ret.monotonicBeat = 0;
     } else {
         // Based on beat and clock from MIDI thread, interpolate and find the
         // beat for audio thread.
@@ -286,6 +247,18 @@ BeatTracker::BeatValues MultithreadedBeatTracker::getBeatValues()
         ret.monotonicBeat = ratio * (monotonicBeatTmp - lastMonotonicBeatTmp) + lastMonotonicBeatTmp;
     }
 
+    return ret;
+}
+
+BeatTracker::BeatValues MultithreadedBeatTracker::getRawBeatValues()
+{
+    pthread_mutex_lock(&mutex);
+    BeatValues ret = {
+        songBeat,
+        monotonicBeat,
+        bpm,
+    };
+    pthread_mutex_unlock(&mutex);
     return ret;
 }
 
@@ -311,6 +284,11 @@ BeatTracker::BeatValues SinglethreadedBeatTracker::setBeatValues(BeatTracker::Be
 }
 
 BeatTracker::BeatValues SinglethreadedBeatTracker::getBeatValues()
+{
+    return beats;
+}
+
+BeatTracker::BeatValues SinglethreadedBeatTracker::getRawBeatValues()
 {
     return beats;
 }

@@ -8,7 +8,7 @@
     Copyright 2014-2021, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
-    it and/or modify it under the terms of the GNU Library General Public
+    it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation; either version 2 of
     the License, or (at your option) any later version.
 
@@ -125,6 +125,7 @@ Config::Config(SynthEngine *_synth, std::list<string>& allArgs, bool isLV2Plugin
     banksChecked(false),
     panLaw(1),
     configChanged(false),
+    handlePadSynthBuild(0),
     rtprio(40),
     midi_bank_root(0), // 128 is used as 'disabled'
     midi_bank_C(32),   // 128 is used as 'disabled'
@@ -489,6 +490,7 @@ bool Config::extractBaseParameters(XMLwrapper *xml)
         activeInstance = xml->getparU("active_instances", 0);
     else
         activeInstance = 1;
+    handlePadSynthBuild = xml->getparU("handle_padsynth_build",1, 0,2);  // 0 = blocking/muted, 1 = background thread (=default), 2 = auto-Apply on param change
     showCLIcontext = xml->getpar("show_CLI_context", 1, 0, 2);
     GzipCompression = xml->getpar("gzip_compression", GzipCompression, 0, 9);
 

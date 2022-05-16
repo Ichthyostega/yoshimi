@@ -7,7 +7,7 @@
     Copyright 2014-2021, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
-    it and/or modify it under the terms of the GNU Library General Public
+    it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation; either version 2 of
     the License, or (at your option) any later version.
 
@@ -167,6 +167,8 @@ void Chorus::out(float *smpsl, float *smpsr)
 // Cleanup the effect
 void Chorus::cleanup(void)
 {
+    Effect::cleanup();
+    fb.pushToTarget();
     for (int i = 0; i < maxdelay; ++i)
         delayl[i] = delayr[i] = 0.0f;
     lfo.resetState();

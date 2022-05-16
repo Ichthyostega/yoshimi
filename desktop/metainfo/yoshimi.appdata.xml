@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Copyright 2016-2021 Yoshimi project <willgodfrey@musically.me.uk> -->
+<!-- Copyright 2016-2022 Yoshimi project <willgodfrey@musically.me.uk> -->
 <component type="desktop">
   <id>yoshimi.desktop</id>
   <metadata_license>CC-BY-4.0</metadata_license>
@@ -17,14 +17,17 @@
     In the V1.7.x series ALSA MIDI can search for and connect to all viable sources, almost all controls have been made realtime, both key and channel aftertouch have been implemented and there is now the ability to change the panning law. Refinement continues, both visually and within the code.
     </p>
     <p>
-    Version 2.0 brings fully resizeable windows, both key and channel aftertouch, MIDI sync for LFOs, and extensions to panning control.
+    Version 2.0 brings fully resizable windows, both key and channel aftertouch, MIDI sync for LFOs, and extensions to panning control.
     </p>
     <p>
     Version 2.1.0 extends MIDI sync for Effects where relevant, and extensions to NRPNs. There is also an new HTML User Guide.
     </p>
+    <p>
+    Version 2.2.0 sees a major revision of the PadSynth engine allowing significant morphing of the wavetables in real-time.
+    </p>
   </description>
   <releases>
-​    <release version="2.1.2.2" date="2021-12-3" />
+​    <release version="2.2.0" date="2022-5-16" />
 ​  </releases>
   <provides>
     <binary>yoshimi</binary>

@@ -99,32 +99,47 @@
     </p>
     <p>
     <a id="buttons"></a>
-    Below these are the <em>top level</em> buttons and controls. referring to the main window...
+    Below these are the <em>top level</em> buttons and controls. Referring to the main window...
     <br><br>
     <b>Stop</b> is the usual panic button. It cancels all sounding notes. However, while it does so extremely fast, it is actually a rapid fade down. This is so there isn't a sharp 'edge' that would be quite unpleasant if you are monitoring on headphones and might be damaging to some audio systems.
     <br><br>
-    <b>Mixer Panel</b> simply opens the mixer window, described later in <a href="part/part.html">Part</a>.
-    <br><br>
-    <b>Vectors</b> also opens another window, this time for combined control of up to four parts.
-    <br><br>
     <b>Reset</b> Stops all sound (as above) and also clears almost all settings, taking you back to the startup condition. The one exception is <em>Midi Learn</em>. If you want to clear this as well, you have to hold down the <em>Ctrl</em> key at the same time.
+    <br><br>
+    <b>Stereo</b> This button switches between stereo and mono (when the color changes to red and the word becomes 'Mono'). It only affects the output pair, and is never saved. It switches virtually silently and is very useful for checking how the music would sound on a mono system.
+    <br><br>
+    <b>Mixer Panel</b> simply opens the mixer window, described later in <a href="part/part.html">Part</a>.
     <br><br>
     <b>Virtual keyboard</b> opens the window displaying this in the same way as a first time startup.
     <br><br>
     <b>Midi Learn</b> opens the window for loading, saving and editing these learned controls.
     <br><br>
+    <b>Vectors</b> also opens another window, this time for combined control of up to four parts.
+    <br><br>
+    <b>Undo</b> reverts the last control that was changed.
+    <br><br>
+    <b>Redo</b> re-applies the most recent 'Undo' action.
+    <br><br>
+    The initial <em>Undo</em> learning process tries to avoid unnecessary storage in two ways.
+    <br><br>
+    The first is by only storing the last change of a control until either a note has been played, or a different control has been changed.
+    <br><br>
+    The second is by storing some settings as groups. An example is the resonance window. If you select a random graph, try it, then set another one to try, after that an undo will restore the entire previous graph. However if you manually drag elements of the graph, the graph points will be stored individually.
+    <br><br>
+    There are some limitations to 'Undo' and 'Redo'. Loading a new part, performing a master reset, etc. will clear the lists. It would not be sensible to try to modify elements that might no longer exist. Also some of the waveform controls make such extreme changes that attempting to store, then re-apply them would be prohibitively disruptive.
+    </p>
+    <p>
     <b>Detune</b> provides a very fine detune of the entire synth so you can match the pitch to any other synth or sound source you might be using.
     <br><br>
     <b>Volume</b> is the master volume control for the main audio output pair. It doesn't affect any individual part outputs you might have set (if using Jack audio, or LV2).
     <br><br>
-    <b>S</b> This button switches between stereo and mono (when the color changes to red and the letter becomes an 'M'). It only affects the output pair, and is never saved. It switches virtually silently and is very useful for checking how the music would sound on a mono system.
+    <b>Key Shift</b> allows you to step the overall key up or down in semitone steps as much as three octaves.
     <br><br>
-    <b>Shift</b> allows you to step the overall key up or down in semitone steps as much as three octaves.
+    <b>F. BPM</b> This provides a reference MIDI clock within Yoshimi when there is none being sent from your external keyboard/controller.
     </P>
     <a id="system"></a>
     <img src="images/system.png" alt="The System Effects Insert" class="image">
     <p>
-    Next there is a short tabbed insert. By default this shows the <em>System</em> effects. These are applied to the whole of the main Left/Right audio outputs and immediately below it is the currently selected one. These are described in <a href="effects/effects.html">Effects.</a> The source for system effects is shown at the bottom of the main window, and is the output from <a href="part/part.html">Parts</a>.
+    Next there is a short tabbed insert. By default this shows the <em>System</em> effects. These are applied to the whole of the main Left/Right audio outputs and immediately below it is the currently selected one. These are described in <a href="effects/effects.html">Effects.</a> The sources for system effects are shown at the bottom of the main window, and are from the output of <a href="part/part.html">Parts</a>.
     </p>
     <p>
     The spinbox selects the effect being managed. You can have up to four of these, and the menu selects which actual effect will be used.
@@ -143,7 +158,7 @@
     <img src="images/boundry.png" alt="divider" class="wideline">
     <p>
     <img src="images/insertion.png" alt="Insertion Effects" class="image">
-    This next view shows just the <em>Insertion</em> effects tab. The actual effects are, of course, the same.
+    This next view shows just the <em>Insertion</em> effects tab. The actual effects are, of course, from the same set.
     <br><br>
     Here, you can have up to eight effects, and they can be sent to any individual part or the main outputs. Again, you have a menu to select the wanted effect.
     <br><br>
@@ -155,7 +170,7 @@
     At the very bottom is the Left/Right VU display for the main audio output.
     <img src="images/vu.png" alt="VU meter overloading" class="image">
     The VU display will indicate if there is overload (aka clipping) by highlighting the number in red. In case of overload you might need to reduce the master volume or the volume of a <a href="part/part.html">Part</a> which is too loud. You can reset the overload indicator by simply clicking on it. <br>
-    The fine division are 1dB steps, and the thickest ones 10dB.
+    The blue bars are the peak levels rising immediately but falling back slowly to give you time to see them clearly. The yellow lines are relatively slow RMS levels. For both of these, the fine division are 1dB steps, and the thickest ones 10dB.
     </p>
     <p>
     <a href="bank/bank.html">Next</a> (Instrument Banks)

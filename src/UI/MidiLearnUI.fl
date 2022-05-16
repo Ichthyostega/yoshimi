@@ -8,10 +8,10 @@ comment {MidiLearnUI.h} {not_in_source in_header
 comment {MidiLearnUI.cc} {in_source not_in_header
 }
 
-comment {Copyright (C) 2016-2020, Will Godfrey
+comment {Copyright (C) 2016-2022, Will Godfrey
 
 This file is part of yoshimi, which is free software: you can redistribute
-it and/or modify it under the terms of the GNU Library General Public
+it and/or modify it under the terms of the GNU General Public
 License as published by the Free Software Foundation; either version 2 of
 the License, or (at your option) any later version.
 
@@ -32,9 +32,6 @@ decl {\#include <FL/fl_ask.H>
     \#include "Misc/SynthEngine.h"} {private global
 }
 
-decl {using namespace std;} {public local
-}
-
 decl {\#include "MasterUI.h"} {private global
 }
 
@@ -51,6 +48,12 @@ decl {\#include "UI/MiscGui.h"
     \#include "UI/WidgetSpinner.h"
     \#include "UI/WidgetCheckButton.h"
     \#include "Params/Controller.h"} {public global
+}
+
+decl {\#include <vector>
+    \#include <string>
+    using std::vector;
+    using std::to_string;} {private global
 }
 
 decl {\#include "Misc/FileMgrFuncs.h"
@@ -292,8 +295,6 @@ class MidiLearnKitItem {: {public Fl_Group}
     end();} {}
   }
   decl {int n;} {private local
-  }
-  decl {char label[50];} {private local
   }
   decl {SynthEngine *synth;} {private local
   }

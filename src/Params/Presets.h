@@ -7,7 +7,7 @@
     Copyright 2018-2019, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
-    it and/or modify it under the terms of the GNU Library General Public
+    it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation; either version 2 of
     the License, or (at your option) any later version.
 
@@ -30,6 +30,28 @@
 #include "Params/PresetsStore.h"
 
 class SynthEngine;
+
+struct Note
+{
+    int midi;
+    float freq;
+    float vel;
+
+    Note(int midiNote, float freq, float velocity)
+        : midi{midiNote}
+        , freq{freq}
+        , vel{limitVelocity(velocity)}
+    { }
+    // copyable and assignable
+
+    Note withFreq(float changedFreq)
+    { return Note{midi,changedFreq,vel}; }
+
+private:
+    static float limitVelocity(float rawVal)
+    { return std::max(0.0f, std::min(rawVal, 1.0f)); }
+};
+
 
 class Presets
 {
@@ -73,8 +95,8 @@ class Presets
         class PresetsUpdate
         {
             public:
-                PresetsUpdate(const Presets *presets_) :
-                    presets(presets_),
+                PresetsUpdate(Presets const& presets_) :
+                    presets(&presets_),
                     lastUpdated(presets->updatedAt)
                 {}
 
@@ -91,11 +113,11 @@ class Presets
                     lastUpdated = presets->updatedAt - 1;
                 }
 
-                void changePresets(const Presets *presets_)
+                void changePresets(Presets const& presets_)
                 {
-                    if (presets != presets_)
+                    if (presets != &presets_)
                     {
-                        presets = presets_;
+                        presets = &presets_;
                         forceUpdate();
                     }
                 }

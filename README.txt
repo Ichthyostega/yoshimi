@@ -1,23 +1,12 @@
-Version 2.1.2
+Version 2.2.0
 
-More small improvements and extensions.
+A major feature is the revision of the PadSynth engine, giving more dynamic control.
 
-Improvements to MIDI-learn, and better compatibility with the earliest versions.
+We now support Undo/Redo for most settings.
 
-CLI extensions:
-PadSynth status can be read.
-GUI status can be read.
-MIDI source and audio destination can be read.
+Some controls in the main window are better placed and should be more obvious.
 
-GUI clarity improvements.
-
-Further revision and extension of the HTML user guide.
-
-Better actual sound conformity across distros/compliers.
-
-Bugfixes.
-
-Further details in /doc/Yoshimi_2.1.2_features.txt
+Full details are in /doc/Yoshimi_2.2.0_features.txt
 
 Yoshimi source code is available from either:
 https://sourceforge.net/projects/yoshimi
