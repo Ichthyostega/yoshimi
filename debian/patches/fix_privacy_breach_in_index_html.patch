@@ -6,7 +6,7 @@ Index: yoshimi/doc/yoshimi_user_guide/index.html
 ===================================================================
 --- yoshimi.orig/doc/yoshimi_user_guide/index.html
 +++ yoshimi/doc/yoshimi_user_guide/index.html
-@@ -9,7 +9,7 @@ set the correct version number. -->
+@@ -4,7 +4,7 @@
      <meta http-equiv="content-type" content="text/html; charset=UTF-8">
      <title>Yoshimi User Manual</title>
      <link rel="stylesheet" type="text/css" href="files/style.css">
