@@ -7,7 +7,7 @@
     Copyright 2018-2019, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
-    it and/or modify it under the terms of the GNU Library General Public
+    it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation; either version 2 of
     the License, or (at your option) any later version.
 
@@ -65,11 +65,11 @@ class Echo : public Effect
         void setvolume(unsigned char Pvolume_);
         void setdelay(unsigned char Pdelay_);
         void setlrdelay(unsigned char Plrdelay_);
-        void setfb(unsigned char Pfb_);
+        void setfeedback(unsigned char Pfb_);
         void sethidamp(unsigned char Phidamp_);
 
         // Real Parameters
-        synth::InterpolatedValue<float> fb, hidamp;
+        synth::InterpolatedValue<float> feedback, hidamp;
         int dl, dr, delay, lrdelay;
 
         void initdelays(void);

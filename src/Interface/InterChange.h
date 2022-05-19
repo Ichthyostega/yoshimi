@@ -3,9 +3,10 @@
 
     Copyright 2016-2020 Will Godfrey
     Copyright 2021,  Will Godfrey, Rainer Hans Liffers
+    Copyright 2022, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
-    it and/or modify it under the terms of the GNU Library General Public
+    it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation; either version 2 of
     the License, or (at your option) any later version.
 
@@ -32,8 +33,11 @@
 #include "Params/OscilParameters.h"
 #include "Synth/Resonance.h"
 
-class SynthEngine;
+#include <list>
+
 class DataText;
+class SynthEngine;
+class PADnoteParameters;
 
 // used by main.cpp and SynthEngine.cpp
 extern std::string singlePath;
@@ -78,7 +82,6 @@ class InterChange : private DataText
         void mediate(void);
         void historyActionCheck(CommandBlock *getData);
         void returns(CommandBlock *getData);
-        void setpadparams(int npart, int kititem);
         void doClearPart(int npart);
         bool commandSend(CommandBlock *getData);
         float readAllData(CommandBlock *getData);
@@ -86,6 +89,8 @@ class InterChange : private DataText
         std::string resolveText(CommandBlock *getData, bool addValue);
         void testLimits(CommandBlock *getData);
         float returnLimits(CommandBlock *getData);
+        void Log(std::string const& msg);
+
         std::atomic<bool> syncWrite;
         std::atomic<bool> lowPrioWrite;
 
@@ -114,7 +119,7 @@ class InterChange : private DataText
         bool processAdd(CommandBlock *getData, SynthEngine *synth);
         bool processVoice(CommandBlock *getData, SynthEngine *synth);
         bool processSub(CommandBlock *getData, SynthEngine *synth);
-        bool processPad(CommandBlock *getData, SynthEngine *synth);
+        bool processPad(CommandBlock *getData);
 
         void commandMidi(CommandBlock *getData);
         void vectorClear(int Nvector);
@@ -124,10 +129,11 @@ class InterChange : private DataText
         void commandMain(CommandBlock *getData);
         void commandBank(CommandBlock *getData);
         void commandPart(CommandBlock *getData);
+        void commandControllers(CommandBlock *getData, bool write);
         void commandAdd(CommandBlock *getData);
         void commandAddVoice(CommandBlock *getData);
         void commandSub(CommandBlock *getData);
-        void commandPad(CommandBlock *getData);
+        bool commandPad(CommandBlock *getData, PADnoteParameters& pars);
         void commandOscillator(CommandBlock *getData, OscilParameters *oscil);
         void commandResonance(CommandBlock *getData, Resonance *respar);
         void commandLFO(CommandBlock *getData);
@@ -136,14 +142,33 @@ class InterChange : private DataText
         void filterReadWrite(CommandBlock *getData, FilterParams *pars, unsigned char *velsnsamp, unsigned char *velsns);
         void commandEnvelope(CommandBlock *getData);
         void envelopeReadWrite(CommandBlock *getData, EnvelopeParams *pars);
+        void envelopePointAdd(CommandBlock *getData, EnvelopeParams *pars);
+        void envelopePointDelete(CommandBlock *getData, EnvelopeParams *pars);
+        void envelopePointChange(CommandBlock *getData, EnvelopeParams *pars);
+
         void commandSysIns(CommandBlock *getData);
 
+        void add2undo(CommandBlock *getData, bool& noteSeen, bool group = false);
+        void addFixed2undo(CommandBlock *getData);
+        void undoLast(CommandBlock *candidate);
+        std::list<CommandBlock> undoList;
+        std::list<CommandBlock> redoList;
+        CommandBlock lastEntry;
+        CommandBlock undoMarker;
+        bool undoLoopBack;
+        bool setUndo;
+        bool setRedo;
+        bool undoStart;
+        int cameFrom; // 0 = new command, 1 = undo, 2 = redo
+
+    public:
+        bool noteSeen;
+        void undoRedoClear(void);
         /*
          * this is made public specifically so that it can be
          * reached from SynthEngine by jack freewheeling NRPNs.
          * This avoids unnecessary (error prone) duplication.
          */
-    public:
         void commandEffects(CommandBlock *getData);
 
     private:

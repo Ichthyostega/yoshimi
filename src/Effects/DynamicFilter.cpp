@@ -7,7 +7,7 @@
     Copyright 2014-2021, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
-    it and/or modify it under the terms of the GNU Library General Public
+    it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation; either version 2 of
     the License, or (at your option) any later version.
 
@@ -121,6 +121,7 @@ void DynamicFilter::out(float *smpsl, float *smpsr)
 // Cleanup the effect
 void DynamicFilter::cleanup(void)
 {
+    Effect::cleanup();
     reinitfilter();
     ms1 = ms2 = ms3 = ms4 = 0.0f;
     lfo.resetState();

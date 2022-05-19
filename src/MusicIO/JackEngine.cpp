@@ -140,8 +140,8 @@ bool JackEngine::Start(void)
     internalbuff = synth->getRuntime().Buffersize;
     jack_set_xrun_callback(jackClient, _xrunCallback, this);
     #if defined(JACK_SESSION)
-        if (jack_set_session_callback
-            && jack_set_session_callback(jackClient, _jsessionCallback, this))
+        //if (jack_set_session_callback &&
+        if(jack_set_session_callback(jackClient, _jsessionCallback, this))
             synth->getRuntime().Log("Set jack session callback failed");
     #endif
 
@@ -521,10 +521,12 @@ void JackEngine::handleBeatValues(jack_nframes_t nframes)
     jack_position_t pos;
     jack_transport_state_t state = jack_transport_query(jackClient, &pos);
 
-    BeatTracker::BeatValues beats(beatTracker->getBeatValues());
+    BeatTracker::BeatValues beats(beatTracker->getRawBeatValues());
 
     if (pos.valid & JackPositionBBT)
         beats.bpm = pos.beats_per_minute;
+    else
+        beats.bpm = synth->PbpmFallback;
 
     float bpmInc = (float)nframes * beats.bpm
         / ((float)audio.jackSamplerate * 60.0f);

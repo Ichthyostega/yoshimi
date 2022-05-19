@@ -7,7 +7,7 @@
     Copyright 2018, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
-    it and/or modify it under the terms of the GNU Library General Public
+    it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation; either version 2 of
     the License, or (at your option) any later version.
 
@@ -37,17 +37,18 @@
 #include "Effects/Distorsion.h"
 #include "Effects/EQ.h"
 #include "Effects/DynamicFilter.h"
+#include "Misc/Alloc.h"
 #include "Misc/XMLwrapper.h"
+#include "Misc/SynthEngine.h"
 #include "Params/FilterParams.h"
 #include "Params/Presets.h"
 
-class SynthEngine;
 
 class EffectMgr : public Presets
 {
     public:
+       ~EffectMgr() = default;
         EffectMgr(const bool insertion_, SynthEngine *_synth);
-        ~EffectMgr();
 
         void add2XML(XMLwrapper *xml);
         void defaults(void);
@@ -72,7 +73,8 @@ class EffectMgr : public Presets
 
         SynthEngine *getSynthEngine() {return synth;}
 
-        float *efxoutl, *efxoutr;
+        Samples efxoutl;
+        Samples efxoutr;
         bool insertion; // the effect is connected as insertion effect (or not)
 
         // used by UI
@@ -82,8 +84,8 @@ class EffectMgr : public Presets
 
     private:
         int nefx;
-        Effect *efx;
         bool dryonly;
+        unique_ptr<Effect> efx;
 };
 
 class LimitMgr

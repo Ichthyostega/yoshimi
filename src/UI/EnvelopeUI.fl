@@ -1,5 +1,5 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0305
+version 1.0308
 header_name {.h}
 code_name {.cc}
 comment {Envelope.h} {not_in_source in_header
@@ -11,10 +11,10 @@ comment {Envelope.cc} {in_source not_in_header
 comment {Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009, Alan Calvert
-Copyright 2016-2020 Will Godfrey
+Copyright 2016-2022 Will Godfrey
 
 This file is part of yoshimi, which is free software: you can redistribute
-it and/or modify it under the terms of the GNU Library General Public
+it and/or modify it under the terms of the GNU General Public
 License as published by the Free Software Foundation; either version 2 of
 the License, or (at your option) any later version.
 
@@ -65,6 +65,9 @@ decl {\#include "Misc/SynthEngine.h"} {public global
 decl {\#include "MasterUI.h"} {private global
 }
 
+decl {using std::to_string;} {private global
+}
+
 class EnvelopeFreeEdit {: {public Fl_Box}
 } {
   Function {EnvelopeFreeEdit(int x,int y, int w, int h, const char *label=0):Fl_Box(x,y,w,h,label)} {} {
@@ -99,11 +102,11 @@ pair=NULL;} {}
     int npoints = env->Penvpoints;
     float sum=0;
     for (int i = 1; i < npoints; i++)
-        sum += env->getdt(i) + 1; // this is ambiguous :(
+        sum += (env->getdt(i) + 1);
 
-    float sumbefore = 0;//the sum of all points before the computed point
+    float sumbefore = 0; // the sum of all points before the computed point
     for (int i = 1; i <= n; i++)
-        sumbefore += env->getdt(i) + 1; // this is ambiguous :(
+        sumbefore += (env->getdt(i) + 1);
 
     return((int) (sumbefore / (float) sum * lx));} {}
   }
@@ -303,7 +306,7 @@ return(1);} {}
   }
   decl {EnvelopeParams *env;} {private local
   }
-  decl {int oldx,oldy;} {private local
+  decl {int oldx;} {private local
   }
   decl {int currentpoint,cpx,cpdt;} {private local
   }
@@ -385,7 +388,7 @@ class EnvelopeUI {: {public Fl_Group,PresetsUI_}
         int value = env->Penvval[curpoint];
         int offset = env->Penvdt[curpoint];
 
-        send_data(TOPLEVEL::action::forceUpdate, group, curpoint, value, TOPLEVEL::type::Write, TOPLEVEL::insert::envelopePoints, offset);}
+        send_data(TOPLEVEL::action::forceUpdate, group, curpoint, value, TOPLEVEL::type::Write, TOPLEVEL::insert::envelopePointAdd, offset);}
         xywh {112 155 80 20} box THIN_UP_BOX labelsize 11
         code0 {if (env->Pfreemode==0) o->hide();}
       }
@@ -400,7 +403,7 @@ class EnvelopeUI {: {public Fl_Group,PresetsUI_}
         if (env->Penvpoints <= 3)
             return;
 
-send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Write, TOPLEVEL::insert::envelopePoints);}
+send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Write, TOPLEVEL::insert::envelopePointDelete);}
         xywh {200 155 80 20} box THIN_UP_BOX labelsize 11
         code0 {if (env->Pfreemode==0) o->hide();}
       }
@@ -871,7 +874,7 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
     if (part != npart || (eng >= 128 && eng != engine))
         return;
 
-    if (insert == TOPLEVEL::insert::envelopePoints || insert == TOPLEVEL::insert::envelopePointChange)
+    if (insert == TOPLEVEL::insert::envelopePointAdd || insert == TOPLEVEL::insert::envelopePointDelete || insert == TOPLEVEL::insert::envelopePointChange)
     {
         if (insert == TOPLEVEL::insert::envelopePointChange) // adjust point
             freeedit->lastpoint = control;
@@ -1091,10 +1094,6 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
         freemodebutton->value(0);
 
     hide();
-    //int winx = freemodeeditwindow->x();
-    //int winy = freemodeeditwindow->y();
-
-    //freemodeeditwindow->hide();
 
     envwindow->hide();
     Fl_Group *par = envwindow->parent();
@@ -1106,8 +1105,6 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
 
     par->show();
     show();
-    //freemodeeditwindow->position(winx, winy);
-    //freemodeeditwindow->show();
 
     if (freemode)
     {

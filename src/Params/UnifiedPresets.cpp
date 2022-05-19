@@ -4,7 +4,7 @@
     Copyright 2018-2019 Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
-    it and/or modify it under the terms of the GNU Library General Public
+    it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation; either version 2 of
     the License, or (at your option) any later version.
 
@@ -35,7 +35,7 @@ string UnifiedPresets::findSectionName(CommandBlock *getData)
     if (insert != UNUSED) // temp!
         return name;
 
-    if (engine >= PART::engine::addVoice1 && engine <= PART::engine::addVoice8)
+    if (engine >= PART::engine::addVoice1 && engine < PART::engine::addMod1)
     {
         string name = "VOICE id=\"" + std::to_string(int(engine - PART::engine::addVoice1)) + "\"";
         return name;
@@ -66,7 +66,7 @@ string UnifiedPresets::findleafExtension(CommandBlock *getData)
     if (insert != UNUSED) // temp!
         return name;
 
-    if (engine >= PART::engine::addVoice1 && engine <= PART::engine::addVoice8)
+    if (engine >= PART::engine::addVoice1 && engine < PART::engine::addMod1)
         return "addsythn"; // all voices have the same extension
     switch (engine)
     {

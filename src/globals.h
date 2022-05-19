@@ -1,10 +1,10 @@
 /*
     globals.h - general static definitions
 
-    Copyright 2018-2021, Will Godfrey
+    Copyright 2018-2022, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
-    it and/or modify it under the terms of the GNU Library General Public
+    it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation; either version 2 of
     the License, or (at your option) any later version.
 
@@ -24,6 +24,10 @@
 #include <cstdint>
 #include <cstddef>
 #include <string>
+#include <iostream>
+
+typedef unsigned char uchar;
+typedef unsigned int  uint;
 
 /*
  * For test purposes where you want guaranteed identical results, enable the
@@ -59,7 +63,6 @@
 #define MAX_INSTRUMENTS_IN_BANK 160
 #define MAX_AD_HARMONICS 128
 #define MAX_SUB_HARMONICS 64
-#define PAD_MAX_SAMPLES 96
 #define NUM_MIDI_PARTS 64
 #define PART_NORMAL 0
 #define PART_MONO 1
@@ -77,6 +80,11 @@
 #define A_DEF 440.0f
 #define A_MAX 1100.0f
 
+// There is nothing which technically prevents these from being lower or higher,
+// but we need to set the limits for the UI somewhere.
+#define BPM_FALLBACK_MIN 32.0f
+#define BPM_FALLBACK_MAX 480.0f
+
 // The number of discrete steps we use for the LFO BPM frequency. Make sure to
 // update LFO_BPM_LCM as well, if this is updated.
 #define LFO_BPM_STEPS 33
@@ -92,9 +100,9 @@
 
 // GUI colours
 #define ADD_COLOUR 0xdfafbf00
-#define BASE_COLOUR 0xbfbfbf00
+#define BASE_COLOUR 0xfdf6e600
 #define SUB_COLOUR 0xafcfdf00
-#define PAD_COLOUR 0xcfdfaf00
+#define PAD_COLOUR 0xcdddad00
 #define YOSHI_COLOUR 0x0000e100
 #define EXTOSC_COLOUR 0x8fbfdf00
 #define EXTVOICE_COLOUR 0x9fdf8f00
@@ -102,7 +110,7 @@
 
 // these were previously (pointlessly) user configurable
 #define NUM_VOICES 8
-#define POLIPHONY 60
+#define POLYPHONY 60
 #define PART_DEFAULT_LIMIT 20
 #define NUM_SYS_EFX 4
 #define NUM_INS_EFX 8
@@ -141,20 +149,9 @@ namespace _SYS_
 }
 
 /*
- * for many of the following, where they are in groups the
+ * For many of the following, where they are in groups the
  * group order must not change, but the actual values can
  * and new entries can be added between the group ends
- *
- * *** WARNING ***
- *
- * The above is no longer completely true!
- * Controller numbers in particular must not change if
- * these might be recorded in MIDI-learn files. The same
- * applies to voice numbers in 'engine' - use existing
- * gaps for new controls instead.
- *
- * Generally any controls/features that can't be learned
- * should be safe to move.
  */
 
 namespace TOPLEVEL // usage TOPLEVEL::section::vector
@@ -163,6 +160,7 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         part1 = 0,   // nothing must come
         part64 = 63, // between these two
 
+        undoMark = 68, // 44
         copyPaste = 72, // 48 (not yet!)
         vector = 192, // CO
         midiLearn = 216, // D8
@@ -232,19 +230,32 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
     // inserts are here as they are split between many
     // sections but must remain distinct.
     enum insert : unsigned char {
-        LFOgroup = 0,
+        none = 0,
+        reverb,
+        echo,
+        chorus,
+        phaser,
+        alienWah,
+        distortion,
+        eq,
+        dynFilter,
+        // any new effects should go here
+        count, // this must be the last type!
+
+        LFOgroup, // 10
         filterGroup,
         envelopeGroup,
-        envelopePoints, // this should be split in two
+        envelopePointAdd,
+        envelopePointDelete,
         envelopePointChange,
-        oscillatorGroup, // 5
+        oscillatorGroup,
         harmonicAmplitude,
-        harmonicPhaseBandwidth, // this should also be split in two
+        harmonicPhaseBandwidth, // this should be split in two
         resonanceGroup,
-        resonanceGraphInsert, // 9
-        systemEffectSend = 16,
+        resonanceGraphInsert,
+        systemEffectSend,
         partEffectSelect,
-        kitGroup = 32
+        kitGroup //23
     };
 
     enum insertType : unsigned char {
@@ -298,9 +309,10 @@ namespace CONFIG // usage CONFIG::control::oscillatorSize
         enableCLI,
         enableAutoInstance,
         enableSinglePath,
-        enableHighlight, // in banks
         historyLock,
         exposeStatus, // CLI only
+        enableHighlight, // in banks
+        handlePadSynthBuild,   // how to build PADSynth wavetable; 0=legacy/muted, 1=background thread, 2=autoApply
 
         // start of engine controls
         jackMidiSource = 32,
@@ -531,6 +543,7 @@ namespace MAIN // usage MAIN::control::volume
         panLawType,
         detune = 32,
         keyShift = 35,
+        bpmFallback,
         reseed = 40,
         soloType = 48,
         soloCC,
@@ -559,6 +572,8 @@ namespace MAIN // usage MAIN::control::volume
         openManual = 100,
         startInstance = 104,
         stopInstance,
+        undo,
+        redo,
         stopSound = 128,
         readPartPeak = 200, // now does L/R
         readMainLRpeak,
@@ -611,11 +626,10 @@ namespace PART // usage PART::control::volume
         effectType,
         effectDestination,
         effectBypass,
-        padsynthParameters = 104,
         audioDestination = 120,
 
     // start of controllers
-        volumeRange = 128,
+        volumeRange = 128, // start marker (must be first)
         volumeEnable,
         panningWidth,
         modWheelDepth,
@@ -629,16 +643,17 @@ namespace PART // usage PART::control::volume
         filterQdepth,
         filterCutoffDepth,
         breathControlEnable,
-        resonanceCenterFrequencyDepth = 144,
+        resonanceCenterFrequencyDepth,
         resonanceBandwidthDepth,
-        portamentoTime = 160,
+        portamentoTime,
         portamentoTimeStretch,
         portamentoThreshold,
         portamentoThresholdType,
         enableProportionalPortamento,
         proportionalPortamentoRate,
         proportionalPortamentoDepth,
-        receivePortamento = 168,
+        receivePortamento, // 151
+        resetAllControllers, // end marker (must be last)
     // end of controllers
 
     // start of midi controls
@@ -660,7 +675,6 @@ namespace PART // usage PART::control::volume
         instrumentName,
         instrumentType,
         defaultInstrumentCopyright, // this needs to be split into two for load/save
-        resetAllControllers, // this needs to bump up 1 to make space
         partBusy = 252 // internally generated - read only
     };
 
@@ -677,22 +691,9 @@ namespace PART // usage PART::control::volume
         padSynth,
 
     // addVoice and addMod must be consecutive
-        addVoice1 = 128,
-        addVoice2,
-        addVoice3,
-        addVoice4,
-        addVoice5,
-        addVoice6,
-        addVoice7,
-        addVoice8,
-        addMod1 = 192,
-        addMod2,
-        addMod3,
-        addMod4,
-        addMod5,
-        addMod6,
-        addMod7,
-        addMod8
+        addVoice1 = NUM_VOICES,
+        addMod1 = addVoice1 + NUM_VOICES,
+        addVoiceModEnd = addMod1 + NUM_VOICES
     };
 
     namespace aftertouchType {
@@ -868,9 +869,10 @@ namespace PADSYNTH // usage PADSYNTH::control::volume
         pitchBendAdjustment,
         pitchBendOffset,
 
-        bandwidth,// = 16, moved these three
-        bandwidthScale,
-        spectrumMode,// = 19, // Bandwidth, Discrete, Continuous
+        bandwidth,
+        bandwidthScale,       // Normal, Equal Hz, ¼ , ½ , ¾ , 1½ , Double, Inverse ½
+        spectrumMode,         // Bandwidth, Discrete, Continuous
+        xFadeUpdate,          // in millisec
 
         overtoneParameter1 = 48,
         overtoneParameter2,
@@ -894,6 +896,14 @@ namespace PADSYNTH // usage PADSYNTH::control::volume
         samplesPerOctave, // 0.5, 1, 2, 3, 4, 6, 12
         numberOfOctaves, // 1 - 8
         sampleSize, // 16k, 32k, 64k, 128k, 256k, 512k, 1M
+
+        rebuildTrigger = 90,
+        randWalkDetune,          // random walk spread, 0 off, 96 is factor 2
+        randWalkBandwidth,       // -> bandwidth
+        randWalkFilterFreq,      // -> centerFrequency
+        randWalkProfileWidth,    // -> baseWidth
+        randWalkProfileStretch,  // -> modulatorStretch
+
         applyChanges = 104,
         stereo = 112,
 
@@ -965,7 +975,7 @@ namespace OSCILLATOR // usage OSCILLATOR::control::phaseRandomness
         spike,
         circle,
         hyperSec,
-        user
+        user = 127
     };
 }
 
@@ -1055,21 +1065,8 @@ namespace ENVELOPEINSERT // usage ENVELOPEINSERT::control::attackLevel
     };
 }
 
-namespace EFFECT // usage EFFECT::type::none
+namespace EFFECT // usage EFFECT::control::level
 {
-    enum type : unsigned char {
-        none = 128, // must be higher than normal kits
-        reverb,
-        echo,
-        chorus,
-        phaser,
-        alienWah,
-        distortion,
-        eq,
-        dynFilter,
-        count // this must be the last item!
-    };
-
     enum control : unsigned char {
         level = 0, // volume, wet/dry, gain for EQ
         panning, // band for EQ
