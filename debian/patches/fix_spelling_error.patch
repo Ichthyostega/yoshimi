@@ -1,0 +1,66 @@
+Description: Fix spelling error
+Author: Dennis Braun <d_braun@kabelmail.de>
+Forwarded: yes
+
+
+Index: yoshimi/doc/Banks_Presets_Update.txt
+===================================================================
+--- yoshimi.orig/doc/Banks_Presets_Update.txt
++++ yoshimi/doc/Banks_Presets_Update.txt
+@@ -11,7 +11,7 @@ For all users if any banks get added or
+ 
+ There is a really strange anomaly where phantom empty banks sometimes get added to the first and/or the last bank root in the list. These are always at bank ID 0 - which should be impossible!
+ 
+-Work rounds have been created to hide these (and not include them when the master file is saved), but still report them to the CLI. Also there is nothing to stop you adding real ones at these locations. We don't recommend it as many sequencers try to set root and bank zero with every program change unless you keep resetting them yourself. This is a ridiculous waste of bandwith and is *not* a requirement in the MIDI spec.
++Work rounds have been created to hide these (and not include them when the master file is saved), but still report them to the CLI. Also there is nothing to stop you adding real ones at these locations. We don't recommend it as many sequencers try to set root and bank zero with every program change unless you keep resetting them yourself. This is a ridiculous waste of bandwidth and is *not* a requirement in the MIDI spec.
+ 
+ Yoshimi reports, but ignores unrecognised locations. Repeat calls to the same ones are reported as done, but ignored.
+ 
+Index: yoshimi/doc/yoshimi_user_guide/pad/pad.html
+===================================================================
+--- yoshimi.orig/doc/yoshimi_user_guide/pad/pad.html
++++ yoshimi/doc/yoshimi_user_guide/pad/pad.html
+@@ -50,14 +50,14 @@
+     <br><br>
+     <b>Par2</b> Controls how the secondary modulation is faded or combined with the harmonic profile.
+     <br><br>
+-    <b>AutoScale</b> Automatically stretches or squeezes the resulting profile, so that all the various profile shapes generate a similar blurring effect. What is taken as <em>nominal bandwith</em> is indicated in the profile display by the vertical bars and the dark background. If AutoScale is disabled, this nominal bandwidth is fixed and thus reshaping the profile also increases or decreases the actual spread.
++    <b>AutoScale</b> Automatically stretches or squeezes the resulting profile, so that all the various profile shapes generate a similar blurring effect. What is taken as <em>nominal bandwidth</em> is indicated in the profile display by the vertical bars and the dark background. If AutoScale is disabled, this nominal bandwidth is fixed and thus reshaping the profile also increases or decreases the actual spread.
+     <br><br>
+     <b>Bandwidth</b> This is the most important control, and defines the effective Bandwidth of the harmonic profile in cents. By increasing this value, the sound transitions gradually from the precise waveform to a sonic cloud.
+     <br><br>
+     <b>Bandwidth Scale</b> How the Bandwidth is adjusted with the increasing frequency of each harmonic.
+-    <ul><li><b>Normal</b>: Bandwith grows with frequency, and thus perceptually the spread is the same on each harmonic.</li>
++    <ul><li><b>Normal</b>: Bandwidth grows with frequency, and thus perceptually the spread is the same on each harmonic.</li>
+         <li><b>EqualHz</b>: Bandwidth is constant, independent of frequency. Perceptually this means that the bandwidth on higher harmonics seems to diminish.</li>
+-        <li><b>Quarter, Half, 75%, 150%, Double</b>: all these setting increase the Bandwith for higher harmonics to various degrees</li>
++        <li><b>Quarter, Half, 75%, 150%, Double</b>: all these setting increase the Bandwidth for higher harmonics to various degrees</li>
+         <li><b>Inv.Half</b>: here the Bandwidth is even reduced for higher harmonics by half an octave per octave</li>
+     </ul>
+     </div>
+Index: yoshimi/doc/yoshimi_user_guide/sub/sub.html
+===================================================================
+--- yoshimi.orig/doc/yoshimi_user_guide/sub/sub.html
++++ yoshimi/doc/yoshimi_user_guide/sub/sub.html
+@@ -25,7 +25,7 @@
+     </p>
+     <p>
+     <h3>Local Controls</h3>
+-    Very obvious is the scrollable row of sliders. These represent 64 harmonic bands, the upper row being the amplitude, and the lower row the bandwidth. At minimum bandwith the harmonics are close to sinewaves, and at maximum they are very obviously noise.
++    Very obvious is the scrollable row of sliders. These represent 64 harmonic bands, the upper row being the amplitude, and the lower row the bandwidth. At minimum bandwidth the harmonics are close to sinewaves, and at maximum they are very obviously noise.
+     <br><br>
+     The <b>Bandwidth</b> control (top centre) sets the overall range and the <b>Bandwidth&nbsp;Scale</b> changes the frequency scaling of this range that is applied. You can have quite narrow LF bands with wide HF ones, vice-versa or anywhere between the two.
+     <br><br>
+Index: yoshimi/src/UI/PADnoteUI.fl
+===================================================================
+--- yoshimi.orig/src/UI/PADnoteUI.fl
++++ yoshimi/src/UI/PADnoteUI.fl
+@@ -469,7 +469,7 @@ class PADnoteUI {: {public PresetsUI_}
+             label {Spectrum Mode}
+             callback {//
+             send_data(TOPLEVEL::action::forceUpdate, PADSYNTH::control::spectrumMode, o->value(), TOPLEVEL::type::Integer);}
+-            tooltip {How to generate the spectrum: Bandwith: widen each harmonic by a profile, Discrete: no blurring, similar to AddSynth, Continuous: connect outline of all harmonics into a continuous noisy distribution.} xywh {265 315 90 20} down_box BORDER_BOX labelsize 10 align 5 textfont 1 textsize 11
++            tooltip {How to generate the spectrum: Bandwidth: widen each harmonic by a profile, Discrete: no blurring, similar to AddSynth, Continuous: connect outline of all harmonics into a continuous noisy distribution.} xywh {265 315 90 20} down_box BORDER_BOX labelsize 10 align 5 textfont 1 textsize 11
+             code0 {o->add("Bandwidth");o->add("Discrete");o->add("Continuous");}
+             code1 {o->value(pars->Pmode);}
+           } {}
