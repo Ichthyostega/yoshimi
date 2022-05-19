@@ -1,4 +1,4 @@
-yoshimi (2.2.0-1) UNRELEASED; urgency=medium
+yoshimi (2.2.0-1) unstable; urgency=medium
 
   * New upstream version 2.2.0
   * Remove dfsg tag, splashreference.svg has been removed by upstream
@@ -7,7 +7,7 @@ yoshimi (2.2.0-1) UNRELEASED; urgency=medium
   * Refresh patchset
   * Refresh lintian-overrides
 
- -- Dennis Braun <d_braun@kabelmail.de>  Thu, 19 May 2022 16:54:18 +0200
+ -- Dennis Braun <d_braun@kabelmail.de>  Thu, 19 May 2022 18:40:03 +0200
 
 yoshimi (2.1.2.2~dfsg0-1) unstable; urgency=medium
 
