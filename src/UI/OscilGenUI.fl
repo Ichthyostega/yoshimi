@@ -1,5 +1,5 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0305
+version 1.0308
 header_name {.h}
 code_name {.cc}
 comment {OscilgenUI.h} {not_in_source in_header
@@ -11,10 +11,10 @@ comment {OscilgenUI.cc} {in_source not_in_header
 comment {Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009-2010, Alan Calvert
-Copyright 2016-2021 Will Godfrey and others.
+Copyright 2016-2022 Will Godfrey and others.
 
 This file is part of yoshimi, which is free software: you can redistribute
-it and/or modify it under the terms of the GNU Library General Public
+it and/or modify it under the terms of the GNU General Public
 License as published by the Free Software Foundation; either version 2 of
 the License, or (at your option) any later version.
 
@@ -29,7 +29,7 @@ Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 This file is a derivative of the ZynAddSubFX original.
 
-} {in_source in_header
+} {selected in_source in_header
 }
 
 decl {\#include "ResonanceUI.h"} {public local
@@ -88,6 +88,9 @@ decl {\#include "Misc/NumericFuncs.h"
     using func::asDecibel;} {private local
 }
 
+decl {using std::to_string;} {private global
+}
+
 class OscilSpectrum {: {public Fl_Box}
 } {
   Function {OscilSpectrum(int x,int y, int w, int h, const char *label=0):Fl_Box(x,y,w,h,label)} {} {
@@ -105,7 +108,6 @@ class OscilSpectrum {: {public Fl_Box}
     int oy = y();
     int lx = w();
     int ly = h();
-    //fl_line_style(0, int(1 * ly / 50.0f));
     const int maxdb = 60; // must be multiple of 10
     int GX = 2;
     int n = lx / GX - 1;
@@ -117,9 +119,9 @@ class OscilSpectrum {: {public Fl_Box}
         spc[i] = 0.0;
 
     if (oscbase == 0)
-        oscilSmp->getspectrum(n, spc, 0);
+        oscilSmp->getOscilSpectrumIntensities(n, spc);
     else
-        oscilSmp->getspectrum(n, spc, 1);
+        oscilSmp->getBasefuncSpectrumIntensities(n, spc);
 
     // normalize
     float max = 0;
@@ -204,7 +206,7 @@ class PSlider {: {public mwheel_slider}
   } {
     code {int X=x(),Y=y(),W=w(),H=h();
 
-    int rval = 1;
+    int rval = 0;
 
     if ((!Fl::event_buttons())|| (event==0)||(Fl::event_shift()==0))
         rval = mwheel_slider::handle(event);
@@ -217,6 +219,7 @@ class PSlider {: {public mwheel_slider}
             mwheel_slider::handle(FL_LEAVE);
             deactivate();
             activate();
+            rval = 1;
         }
         else
         {
@@ -225,7 +228,7 @@ class PSlider {: {public mwheel_slider}
     }
     else
     {
-        mwheel_slider::handle(FL_PUSH);
+       rval = mwheel_slider::handle(FL_PUSH);
     }
 
     update_selection_color((int) value());
@@ -267,11 +270,11 @@ class Oscilloscope {: {public Fl_Box}
     int lx = w();
     int ly = h() - 1;
     fl_line_style(0, int(1 * ly / float(frame)));
-    float smps[synth->oscilsize];
+    fft::Waveform smps(synth->oscilsize);
     if (oscbase == 0)
-        oscilSmp->get(smps, -1.0);
+        oscilSmp->displayWaveformForGui(smps);
     else
-        oscilSmp->getcurrentbasefunction(smps);
+        oscilSmp->displayBasefuncForGui(smps);
 
     if (damage() != 1)
     {
@@ -458,15 +461,14 @@ class Oscilharmonic {: {public Fl_Group}
   }
 }
 
-class OscilEditor {open : {public PresetsUI_}
+class OscilEditor {: {public PresetsUI_}
 } {
-  Function {make_window()} {open
-  } {
+  Function {make_window()} {} {
     Fl_Window osceditUI {
       label {ADsynth Oscillator Editor}
       callback {saveWin(synth, osceditUI->w(), osceditUI->h(), osceditUI->x(), osceditUI->y(), false, "Waveform " + to_string(waveType));
 OSCseen = false;
-o->hide();} open
+o->hide();}
       xywh {11 26 735 595} type Double labelsize 12 hide resizable
       code0 {string tname;}
       code1 {setWindowTitle();}
@@ -475,14 +477,14 @@ o->hide();} open
     } {
       Fl_Box applybox {
         xywh {298 278 64 24} box THIN_UP_BOX color 237
-        code0 {if (!oscil->ADvsPAD) o->hide();}
+        code0 {if (!forPAD) o->hide();}
       }
       Fl_Button applybutton {
         label Apply
         callback {//
-        send_data(TOPLEVEL::action::forceUpdate, PART::control::padsynthParameters, 1, TOPLEVEL::type::Integer);} selected
-        xywh {301 281 58 18} box THIN_UP_BOX labelfont 1 labelsize 12
-        code0 {if (!oscil->ADvsPAD) o->hide();}
+        send_data(TOPLEVEL::action::forceUpdate, PADSYNTH::control::applyChanges, 1, TOPLEVEL::type::Integer);}
+        tooltip {Rebuild PADSynth wavetable to pick up changes} xywh {301 281 58 18} box THIN_UP_BOX labelfont 1 labelsize 12
+        code0 {if (!forPAD) o->hide();}
       }
       Fl_Group oscildisplaygroup {
         xywh {5 5 360 300} box ENGRAVED_FRAME
@@ -499,7 +501,7 @@ o->hide();} open
         } {}
         Fl_Group {} {
           xywh {246 277 115 25} box ENGRAVED_BOX
-          code0 {if (oscil->ADvsPAD) o->hide();}
+          code0 {if (forPAD) o->hide();}
         } {
           Fl_Choice hrndtype {
             label {H.rnd}
@@ -528,7 +530,7 @@ o->hide();} open
 
           send_data(0, OSCILLATOR::control::phaseRandomness, o->value(), TOPLEVEL::type::Integer);}
         tooltip {Oscilator Phase Randomness: smaller than 0 is "group", larger than 0 is for each harmonic} xywh {140 287 100 14} type {Horz Knob} box THIN_DOWN_BOX labelsize 10 align 1 minimum -64 maximum 63 step 1 textfont 1 textsize 11
-        code0 {if (oscil->ADvsPAD) o->hide();}
+        code0 {if (forPAD) o->hide();}
         class mwheel_val_slider_rev
       }
       Fl_Group basefuncdisplaygroup {
@@ -616,6 +618,8 @@ o->hide();} open
       Fl_Button useasbase {
         label {Use as base}
         callback {//
+        if (choice(synth, "", "Yes", "No", "Clear the harmonics settings?\\nThis action is not easily reversed and may cause strange Undo/Redo behaviour.") < 2)
+            return;
         send_data(TOPLEVEL::action::forceUpdate, OSCILLATOR::control::useAsBaseFunction, autoclearbutton->value() > 0, TOPLEVEL::type::Integer);}
         tooltip {Use this Oscillator as base function} xywh {5 313 85 20} box THIN_UP_BOX labelfont 1 labelsize 11
       }
@@ -627,7 +631,7 @@ o->hide();} open
         osceditUI->hide();
         if ((Fl::event_button() == 3))
         {
-            if (oscil->ADvsPAD)
+            if (forPAD)
                 synth->getGuiMaster()->partui->padnoteui->padnotewindow->show();
             else
                 synth->getGuiMaster()->partui->adnoteui->ADnoteVoice->show();
@@ -637,7 +641,7 @@ o->hide();} open
       Fl_Button clearHarm {
         label Clear
         callback {//
-        if (choice(synth, "", "Yes", "No", "Clear the harmonics settings?") < 2)
+        if (choice(synth, "", "Yes", "No", "Clear the harmonics settings?\\n This action can't be reversed and may cause strange Undo/Redo behaviour.") < 2)
             return;
         send_data(TOPLEVEL::action::forceUpdate, OSCILLATOR::control::clearHarmonics, o->value(), TOPLEVEL::type::Integer);}
         xywh {670 505 55 15} box THIN_UP_BOX labelfont 1 labelsize 11
@@ -799,7 +803,7 @@ o->hide();} open
       Fl_Button tosine {
         label Sine
         callback {//
-        if (choice(synth, "", "Yes", "No", "Convert to SINE?") < 2)
+        if (choice(synth, "", "Yes", "No", "Convert to SINE?\\nThis action can't be reversed and may cause strange Undo/Redo behaviour.") < 2)
             return;
 
         send_data(TOPLEVEL::action::forceUpdate, OSCILLATOR::control::convertToSine, o->value(), TOPLEVEL::type::Integer);}
@@ -828,7 +832,7 @@ o->hide();} open
   Function {send_data(int action, int control, float value, int type)} {} {
     code {//
         int insert = TOPLEVEL::insert::oscillatorGroup;
-        if (control == PART::control::padsynthParameters)
+        if (control == PADSYNTH::control::applyChanges)
             insert = UNUSED;
         type |= TOPLEVEL::type::Write;
         collect_data(synth, value, action, type, control, npart, kititem, engine, insert);} {}
@@ -1087,15 +1091,16 @@ o->hide();} open
     code {//
         return collect_readData(synth, value, control, part, kititem, engine, insert, parameter, offset, miscmsg, request);} {}
   }
-  Function {OscilEditor(OscilParameters *oscil_, Fl_Widget *oldosc_, Fl_Widget *cbwidget_, Fl_Widget *cbapplywidget_, SynthEngine *_synth, int npart_, int kititem_, int engine_)} {} {
+  Function {OscilEditor(OscilParameters *oscil_, Fl_Widget *oldosc_, Fl_Widget *cbwidget_, Fl_Widget *cbapplywidget_, SynthEngine *_synth, int npart_, int kititem_, int engine_, bool forPAD_ =false)} {} {
     code {//
     synth = _synth;
     npart = npart_;
     kititem = kititem_;
     engine = engine_;
+    forPAD = forPAD_;
     oscil = oscil_;
-    fft = new FFTwrapper(synth->oscilsize);
-    oscilSmp = new OscilGen(fft, NULL, synth, oscil);
+    fft = new fft::Calc(synth->oscilsize);
+    oscilSmp = new OscilGen(*fft, NULL, synth, oscil);
     oldosc = oldosc_;
     cbwidget = cbwidget_;
     cbapplywidget=cbapplywidget_;
@@ -1227,7 +1232,7 @@ o->hide();} open
         {
             tname = "AddSynth Voice ";
             int sourceEngine = -1;
-            if (engine <= PART::engine::addVoice8)
+            if (engine < PART::engine::addMod1)
             {
                 tname = tname + to_string((engine - PART::engine::addVoice1) + 1);
                 sourceEngine = fetchData(0, ADDVOICE::control::voiceOscillatorSource,npart,kititem, engine);
@@ -1263,8 +1268,7 @@ o->hide();} open
     oldosc->redraw();
     if (cbwidget!=NULL) {
         cbwidget->do_callback();
-        //applybutton->color(FL_RED);
-        //applybutton->redraw();
+;
 };} {}
   }
   Function {waveRtext()} {} {
@@ -1339,7 +1343,7 @@ o->hide();} open
   }
   decl {OscilParameters *oscil;} {private local
   }
-  decl {FFTwrapper *fft;} {private local
+  decl {fft::Calc *fft;} {private local
   }
   decl {OscilGen *oscilSmp;} {private local
   }
@@ -1362,5 +1366,7 @@ o->hide();} open
   decl {bool OSCseen;} {private local
   }
   decl {SynthEngine *synth;} {private local
+  }
+  decl {bool forPAD;} {private local
   }
 }

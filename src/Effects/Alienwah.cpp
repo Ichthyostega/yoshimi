@@ -7,7 +7,7 @@
     Copyright 2018-2021, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
-    it and/or modify it under the terms of the GNU Library General Public
+    it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation; either version 2 of
     the License, or (at your option) any later version.
 
@@ -27,7 +27,7 @@
 #include "Misc/SynthEngine.h"
 #include "Effects/Alienwah.h"
 
-using namespace std;
+using std::complex;
 
 static const int PRESET_SIZE = 11;
 static const int NUM_PRESETS = 4;
@@ -121,6 +121,7 @@ void Alienwah::out(float *smpsl, float *smpsr)
 // Cleanup the effect
 void Alienwah::cleanup(void)
 {
+    Effect::cleanup();
     for (int i = 0; i < Pdelay; ++i)
     {
         oldl[i] = complex<float>(0.0f, 0.0f);

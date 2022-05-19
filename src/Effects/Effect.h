@@ -7,7 +7,7 @@
     Copyright 2018, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
-    it and/or modify it under the terms of the GNU Library General Public
+    it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation; either version 2 of
     the License, or (at your option) any later version.
 
@@ -42,7 +42,7 @@ class Effect
         virtual void changepar(int npar, unsigned char value) = 0;
         virtual unsigned char getpar(int npar) = 0;
         virtual void out(float *smpsl, float *smpsr) = 0;
-        virtual void cleanup() { };
+        virtual void cleanup();
         virtual float getfreqresponse(float /* freq */) { return (0); };
 
         unsigned char Ppreset; // Currentl preset

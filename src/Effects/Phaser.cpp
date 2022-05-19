@@ -7,7 +7,7 @@
     Copyright 2018-2021, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
-    it and/or modify it under the terms of the GNU Library General Public
+    it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation; either version 2 of
     the License, or (at your option) any later version.
 
@@ -305,6 +305,7 @@ void Phaser::NormalPhase(float *smpsl, float *smpsr)
 // Cleanup the effect
 void Phaser::cleanup(void)
 {
+    Effect::cleanup();
     fbl = fbr = oldlgain = oldrgain = 0.0f;
     memset(oldl, 0, sizeof(float)*Pstages * 2);
     memset(oldr, 0, sizeof(float)*Pstages * 2);

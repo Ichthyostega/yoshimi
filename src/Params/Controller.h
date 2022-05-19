@@ -7,7 +7,7 @@
     Copyright 2017-2018, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
-    it and/or modify it under the terms of the GNU Library General Public
+    it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation; either version 2 of
     the License, or (at your option) any later version.
 
@@ -60,8 +60,7 @@ class Controller
         void setresonancecenter(int value);
         void setresonancebw(int value);
         void setPanDepth(char par) { panning.depth = par;}
-        int initportamento(float oldfreq, float newfreq, bool in_progress);
-        // returns 1 if the portamento's conditions are true, else return 0
+        bool initportamento(float oldfreq, float newfreq, bool in_progress); // returns true if portamento's preconditions are met
         void updateportamento(void); // update portamento values
         float getLimits(CommandBlock *getData);
 

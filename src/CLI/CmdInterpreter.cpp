@@ -1,7 +1,7 @@
 /*
     CmdInterpreter.cpp
 
-    Copyright 2019 - 2021, Will Godfrey and others.
+    Copyright 2019 - 2022, Will Godfrey and others.
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -65,6 +65,7 @@ namespace cli {
 
 using std::string;
 using std::to_string;
+using std::stringstream;
 using std::vector;
 using std::list;
 using std::cout;
@@ -253,14 +254,14 @@ string CmdInterpreter::buildAllFXStatus()
     }
     nFXtype = readControl(synth, 0, ctl, section, UNUSED, nFX);
     result += (" eff " + asString(nFX + 1) + " " + fx_list[nFXtype].substr(0, 6));
-    nFXpreset = readControl(synth, 0, EFFECT::control::preset, section,  EFFECT::type::none + nFXtype, nFX);
+    nFXpreset = readControl(synth, 0, EFFECT::control::preset, section,  (TOPLEVEL::insert::none | 128) + nFXtype, nFX);
 
     if (bitTest(context, LEVEL::InsFX) && readControl(synth, 0, EFFECT::sysIns::effectDestination, TOPLEVEL::section::systemEffects, UNUSED, nFX) == -1)
         result += " Unrouted";
     else if (nFXtype > 0 && nFXtype != 7)
     {
         result += ("-" + asString(nFXpreset + 1));
-        if (readControl(synth, 0, EFFECT::control::changed, section,  EFFECT::type::none + nFXtype, nFX))
+        if (readControl(synth, 0, EFFECT::control::changed, section,  (TOPLEVEL::insert::none | 128) + nFXtype, nFX))
             result += "?";
     }
     return result;
@@ -424,7 +425,7 @@ string CmdInterpreter::buildPartStatus(bool showPartDetails)
     else if (bitTest(context, LEVEL::Oscillator))
     {
         int type = (int)readControl(synth, 0, OSCILLATOR::control::baseFunctionType, npart, kitNumber, engine + voiceNumber, TOPLEVEL::insert::oscillatorGroup);
-        if (type > OSCILLATOR::wave::hyperSec)
+        if (type == OSCILLATOR::wave::user)
             result += " user";
         else
             result += (" " + waveshape[type]);
@@ -919,7 +920,7 @@ char CmdInterpreter::helpList(Parser& input, unsigned int local)
 
     if (synth->getRuntime().toConsole)
         // we need this in case someone is working headless
-        cout << "\nSet CONfig REPorts [s] - set report destination (gui/stderr)" << endl;
+        cout << "\nSet CONfig REPorts [s] - set report destination (Gui/Stdout)" << endl;
 
     synth->cliOutput(msg, LINES);
     return REPLY::exit_msg;
@@ -1204,7 +1205,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
                 if (selected == EFFECT::control::frequency && value == -1)
                 {
                     input.skipChars();
-                    value = freqBPMset(input, readControl(synth, 0, EFFECT::control::bpm, effClass, EFFECT::type::none + nFXtype, nFX));
+                    value = freqBPMset(input, readControl(synth, 0, EFFECT::control::bpm, effClass, (TOPLEVEL::insert::none | 128) + nFXtype, nFX));
                     if (value < 0)
                         return REPLY::done_msg; // error already reported
                 }
@@ -1220,7 +1221,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
                 if (selected == EFFECT::control::frequency && value == -1)
                 {
                     input.skipChars();
-                    value = freqBPMset(input, readControl(synth, 0, EFFECT::control::bpm, effClass, EFFECT::type::none + nFXtype, nFX));
+                    value = freqBPMset(input, readControl(synth, 0, EFFECT::control::bpm, effClass, (TOPLEVEL::insert::none | 128) + nFXtype, nFX));
                     if (value < 0)
                         return REPLY::done_msg; // error already reported
                 }
@@ -1251,7 +1252,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
                 if (selected == EFFECT::control::frequency && value == -1)
                 {
                     input.skipChars();
-                    value = freqBPMset(input, readControl(synth, 0, EFFECT::control::bpm, effClass, EFFECT::type::none + nFXtype, nFX));
+                    value = freqBPMset(input, readControl(synth, 0, EFFECT::control::bpm, effClass, (TOPLEVEL::insert::none | 128) + nFXtype, nFX));
                     if (value < 0)
                         return REPLY::done_msg; // error already reported
                 }
@@ -1282,7 +1283,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
                 if (selected == EFFECT::control::frequency && value == -1)
                 {
                     input.skipChars();
-                    value = freqBPMset(input, readControl(synth, 0, EFFECT::control::bpm, effClass, EFFECT::type::none + nFXtype, nFX));
+                    value = freqBPMset(input, readControl(synth, 0, EFFECT::control::bpm, effClass, (TOPLEVEL::insert::none | 128) + nFXtype, nFX));
                     if (value < 0)
                         return REPLY::done_msg; // error already reported
                 }
@@ -1355,7 +1356,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
                 if (selected == EFFECT::control::frequency && value == -1)
                 {
                     input.skipChars();
-                    value = freqBPMset(input, readControl(synth, 0, EFFECT::control::bpm, effClass, EFFECT::type::none + nFXtype, nFX));
+                    value = freqBPMset(input, readControl(synth, 0, EFFECT::control::bpm, effClass, (TOPLEVEL::insert::none | 128) + nFXtype, nFX));
                     if (value < 0)
                         return REPLY::done_msg; // error already reported
                 }
@@ -1394,7 +1395,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
                 value = string2int(input);
             }
             //cout << "Val " << value << "  type " << controlType << "  cont " << selected << "  part " << context << "  efftype " << int(nFXtype) << "  num " << int(nFX) << endl;
-            return sendNormal(synth, 0, value, controlType, selected, effClass, EFFECT::type::none + nFXtype, nFX);
+            return sendNormal(synth, 0, value, controlType, selected, effClass, (TOPLEVEL::insert::none | 128) + nFXtype, nFX);
         }
         // Continue cos it's not for us.
     }
@@ -1474,7 +1475,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
             partno = TOPLEVEL::section::insertEffects;
         else
             partno = TOPLEVEL::section::systemEffects;
-        return sendNormal(synth, 0, nFXpreset, controlType, EFFECT::control::preset, partno,  EFFECT::type::none + nFXtype, nFX);
+        return sendNormal(synth, 0, nFXpreset, controlType, EFFECT::control::preset, partno,  (TOPLEVEL::insert::none | 128) + nFXtype, nFX);
     }
     return REPLY::op_msg;
 }
@@ -1832,7 +1833,7 @@ int CmdInterpreter::filterSelect(Parser& input, unsigned char controlType)
     bool isDyn = false;
     if (bitTest(context, LEVEL::AllFX) && nFXtype == 8)
     {
-        kit = EFFECT::type::dynFilter;
+        kit = TOPLEVEL::insert::dynFilter | 128;
         engine = 0;
         if (bitTest(context, LEVEL::InsFX))
         {
@@ -2218,7 +2219,7 @@ int CmdInterpreter::envelopeSelect(Parser& input, unsigned char controlType)
                     return REPLY::value_msg;
 
                 value = string2int(input); // Y
-                insert = TOPLEVEL::insert::envelopePoints;
+                insert = TOPLEVEL::insert::envelopePointAdd;
 
             }
             else if (input.matchnMove(1, "delete"))
@@ -2244,7 +2245,7 @@ int CmdInterpreter::envelopeSelect(Parser& input, unsigned char controlType)
                 }
                 if (cmd < 0 || cmd >= (MAX_ENVELOPE_POINTS - 1))
                     return REPLY::range_msg;
-                insert = TOPLEVEL::insert::envelopePoints;
+                insert = TOPLEVEL::insert::envelopePointDelete;
             }
             else if (input.matchnMove(1, "change"))
             {
@@ -2494,10 +2495,10 @@ void CmdInterpreter::listCurrentParts(Parser& input, list<string>& msg_buf)
     int avail = readControl(synth, 0, MAIN::control::availableParts, TOPLEVEL::section::main);
     bool full = input.matchnMove(1, "more");
     if (bitFindHigh(context) == LEVEL::Part)
-    {
+    { // part level list results
         if (!readControl(synth, 0, PART::control::kitMode, TOPLEVEL::section::part1 + npart))
         {
-            if (readControl(synth, 0, PART::control::enable, TOPLEVEL::section::part1 + npart, UNUSED, PART::engine::addSynth))
+            if (readControl(synth, 0, PART::control::enableAdd, TOPLEVEL::section::part1 + npart, UNUSED, PART::engine::addSynth))
             {
                 name += " AddSynth ";
                 if (full)
@@ -2505,16 +2506,16 @@ void CmdInterpreter::listCurrentParts(Parser& input, list<string>& msg_buf)
                     string found = "";
                     for (int voice = 0; voice < NUM_VOICES; ++voice)
                     {
-                        if (readControl(synth, 0, PART::control::enableAdd, TOPLEVEL::section::part1 + npart, 0, PART::engine::addVoice1 + voice))
+                        if (readControl(synth, 0, ADDVOICE::control::enableVoice, TOPLEVEL::section::part1 + npart, 0, PART::engine::addVoice1 + voice))
                             found += (" " + to_string(voice + 1));
                     }
                     if (found > "")
                         name += ("Voices" + found + " ");
                 }
             }
-            if (readControl(synth, 0, PART::control::enable, TOPLEVEL::section::part1 + npart, UNUSED, PART::engine::subSynth))
+            if (readControl(synth, 0, PART::control::enableSub, TOPLEVEL::section::part1 + npart, UNUSED, PART::engine::subSynth))
                 name += " SubSynth ";
-            if (readControl(synth, 0, PART::control::enable, TOPLEVEL::section::part1 + npart, UNUSED, PART::engine::padSynth))
+            if (readControl(synth, 0, PART::control::enablePad, TOPLEVEL::section::part1 + npart, UNUSED, PART::engine::padSynth))
                 name += " PadSynth ";
             if (name == "")
                 name = "no engines active!";
@@ -2524,10 +2525,12 @@ void CmdInterpreter::listCurrentParts(Parser& input, list<string>& msg_buf)
         msg_buf.push_back("kit items");
         for (int item = 0; item < NUM_KIT_ITEMS; ++item)
         {
+            if (!readControl(synth, 0, PART::control::enableKitLine, TOPLEVEL::section::part1 + npart, item, UNUSED, TOPLEVEL::insert::kitGroup))
+                continue;
             name = "";
             if (readControl(synth, 0, PART::control::enable, TOPLEVEL::section::part1 + npart, item, UNUSED, TOPLEVEL::insert::kitGroup))
             {
-                name = "  " + to_string(item) + " ";
+                name = "  " + to_string(item + 1) + " ";
                 {
                 if (readControl(synth, 0, PART::control::kitItemMute, TOPLEVEL::section::part1 + npart, item, UNUSED, TOPLEVEL::insert::kitGroup))
                     name += "Quiet";
@@ -2556,7 +2559,7 @@ void CmdInterpreter::listCurrentParts(Parser& input, list<string>& msg_buf)
                         msg_buf.push_back(name);
                         name = "    ";
                     }
-                    if (readControl(synth, 0, PART::control::enable, TOPLEVEL::section::part1 + npart, item, PART::engine::addSynth, TOPLEVEL::insert::kitGroup))
+                    if (readControl(synth, 0, PART::control::enableAdd, TOPLEVEL::section::part1 + npart, item, PART::engine::addSynth, TOPLEVEL::insert::kitGroup))
                     {
                         name += "AddSynth ";
                         if (full)
@@ -2564,16 +2567,16 @@ void CmdInterpreter::listCurrentParts(Parser& input, list<string>& msg_buf)
                             string found = "";
                             for (int voice = 0; voice < NUM_VOICES; ++voice)
                             {
-                                if (readControl(synth, 0, PART::control::enableAdd, TOPLEVEL::section::part1 + npart, item, PART::engine::addVoice1 + voice))
+                                if (readControl(synth, 0, ADDVOICE::control::enableVoice, TOPLEVEL::section::part1 + npart, item, PART::engine::addVoice1 + voice))
                                 found += (" " + to_string(voice + 1));
                             }
                             if (found > "")
                                 name += ("Voices" + found + " ");
                         }
                     }
-                    if (readControl(synth, 0, PART::control::enable, TOPLEVEL::section::part1 + npart, item, PART::engine::subSynth, TOPLEVEL::insert::kitGroup))
+                    if (readControl(synth, 0, PART::control::enableSub, TOPLEVEL::section::part1 + npart, item, PART::engine::subSynth, TOPLEVEL::insert::kitGroup))
                         name += "SubSynth ";
-                    if (readControl(synth, 0, PART::control::enable, TOPLEVEL::section::part1 + npart, item, PART::engine::padSynth, TOPLEVEL::insert::kitGroup))
+                    if (readControl(synth, 0, PART::control::enablePad, TOPLEVEL::section::part1 + npart, item, PART::engine::padSynth, TOPLEVEL::insert::kitGroup))
                         name += "PadSynth ";
                     if (name == "")
                         name = "no engines active!";
@@ -2585,6 +2588,8 @@ void CmdInterpreter::listCurrentParts(Parser& input, list<string>& msg_buf)
         }
         return;
     }
+
+    // top level list results
     msg_buf.push_back(asString(avail) + " parts available");
     for (int partno = 0; partno < NUM_MIDI_PARTS; ++partno)
     {
@@ -2838,7 +2843,7 @@ int CmdInterpreter::commandVector(Parser& input, unsigned char controlType)
 
     if (input.matchWord(1, "off"))
     {
-        sendDirect(synth, 0, 0,controlType,VECTOR::control::erase, TOPLEVEL::section::vector, UNUSED, UNUSED, chan);
+        sendDirect(synth, 0, 0,controlType,VECTOR::control::erase, TOPLEVEL::section::vector, UNUSED, UNUSED, UNUSED, chan);
         axis = 0;
         bitClear(context, LEVEL::Vector);
         return REPLY::done_msg;
@@ -2866,13 +2871,13 @@ int CmdInterpreter::commandVector(Parser& input, unsigned char controlType)
         tmp = string2int(input);
         if (axis == 0)
         {
-            sendDirect(synth, 0, tmp, controlType, VECTOR::control::Xcontroller, TOPLEVEL::section::vector, UNUSED, UNUSED, chan);
+            sendDirect(synth, 0, tmp, controlType, VECTOR::control::Xcontroller, TOPLEVEL::section::vector, UNUSED, UNUSED, UNUSED, chan);
             bitSet(context, LEVEL::Vector);
             return REPLY::done_msg;
         }
         if (Runtime.vectordata.Enabled[chan])
         {
-            sendDirect(synth, 0, tmp, controlType, VECTOR::control::Ycontroller, TOPLEVEL::section::vector, UNUSED, UNUSED, chan);
+            sendDirect(synth, 0, tmp, controlType, VECTOR::control::Ycontroller, TOPLEVEL::section::vector, UNUSED, UNUSED, UNUSED, chan);
             return REPLY::done_msg;
         }
     }
@@ -2898,7 +2903,7 @@ int CmdInterpreter::commandVector(Parser& input, unsigned char controlType)
             if (name <= "!")
                 return REPLY::value_msg;
         }
-        sendDirect(synth, TOPLEVEL::action::lowPrio, 0, controlType, VECTOR::control::name, TOPLEVEL::section::vector, UNUSED, UNUSED, chan, UNUSED, UNUSED, textMsgBuffer.push(name));
+        sendDirect(synth, TOPLEVEL::action::lowPrio, 0, controlType, VECTOR::control::name, TOPLEVEL::section::vector, UNUSED, UNUSED, UNUSED, chan, UNUSED, textMsgBuffer.push(name));
         return REPLY::done_msg;
     }
 
@@ -2915,7 +2920,7 @@ int CmdInterpreter::commandVector(Parser& input, unsigned char controlType)
             enable = 1;
         else if (feat > 1 && input.matchnMove(1, "reverse"))
             enable = 2;
-        sendDirect(synth, 0, enable, controlType, VECTOR::control::Xfeature0 + (axis * (VECTOR::control::Ycontroller - VECTOR::control::Xcontroller)) + feat , TOPLEVEL::section::vector, UNUSED, UNUSED, chan);
+        sendDirect(synth, 0, enable, controlType, VECTOR::control::Xfeature0 + (axis * (VECTOR::control::Ycontroller - VECTOR::control::Xcontroller)) + feat , TOPLEVEL::section::vector, UNUSED, UNUSED, UNUSED, chan);
         return REPLY::done_msg;
     }
 
@@ -2935,7 +2940,7 @@ int CmdInterpreter::commandVector(Parser& input, unsigned char controlType)
         else
             return REPLY::op_msg;
         tmp = string2int(input);
-        sendDirect(synth, 0, tmp, controlType, VECTOR::control::XleftInstrument + hand + (axis * (VECTOR::control::Ycontroller - VECTOR::control::Xcontroller)), TOPLEVEL::section::vector, UNUSED, UNUSED, chan);
+        sendDirect(synth, 0, tmp, controlType, VECTOR::control::XleftInstrument + hand + (axis * (VECTOR::control::Ycontroller - VECTOR::control::Xcontroller)), TOPLEVEL::section::vector, UNUSED, UNUSED, UNUSED, chan);
         return REPLY::done_msg;
     }
 
@@ -3072,6 +3077,18 @@ int CmdInterpreter::commandConfig(Parser& input, unsigned char controlType)
     {
         command = CONFIG::control::padSynthInterpolation;
         value = !input.matchnMove(1, "linear");
+    }
+    else if (input.matchnMove(3, "buildpad"))
+    {
+        command = CONFIG::control::handlePadSynthBuild;
+        if (input.matchnMove(1, "muted"))
+            value = 0;
+        else if (input.matchnMove(1, "background"))
+            value = 1;
+        else if (input.matchnMove(1, "autoapply"))
+            value = 2;
+        else if (controlType == TOPLEVEL::type::Write)
+            return REPLY::value_msg;
     }
     else if (input.matchnMove(1, "virtual"))
     {
@@ -4784,11 +4801,44 @@ int CmdInterpreter::padSynth(Parser& input, unsigned char controlType)
 
         cmd = PADSYNTH::control::spectrumMode;
     }
+    else if (input.matchnMove(2, "xfadeupdate"))
+    {
+        cmd = PADSYNTH::control::xFadeUpdate;
+    }
+    else if (input.matchnMove(2, "buildtrigger"))
+    {
+        cmd = PADSYNTH::control::rebuildTrigger;
+    }
+    else if (input.matchnMove(3, "rwdetune"))
+    {
+        cmd = PADSYNTH::control::randWalkDetune;
+    }
+    else if (input.matchnMove(3, "rwbandwidth"))
+    {
+        cmd = PADSYNTH::control::randWalkBandwidth;
+    }
+    else if (input.matchnMove(3, "rwfilterfreq"))
+    {
+        cmd = PADSYNTH::control::randWalkFilterFreq;
+    }
+    else if (input.matchnMove(3, "rwwidthprofile"))
+    {
+        cmd = PADSYNTH::control::randWalkProfileWidth;
+    }
+    else if (input.matchnMove(3, "rwstretchprofile"))
+    {
+        cmd = PADSYNTH::control::randWalkProfileStretch;
+    }
 
     if (input.matchnMove(2, "apply"))
     {
         value = 1;
         cmd = PADSYNTH::control::applyChanges;
+        unsigned char parameter = UNUSED;
+        if(input.matchnMove(5, "force"))
+            parameter = 0; // see InterChange::commandPad, case PADSYNTH::control::applyChanges
+                           // invokes PADnoteParameters::setpadparams(blocking)  with blocking = (parameter == 0)
+        return sendNormal(synth, 0, value, controlType, cmd, npart, kitNumber, PART::engine::padSynth, UNUSED, parameter);
     }
 
     if (cmd > -1)
@@ -4869,6 +4919,11 @@ int CmdInterpreter::resonance(Parser& input, unsigned char controlType)
         value = 1;
         insert = UNUSED;
         cmd = PADSYNTH::control::applyChanges;
+        unsigned char parameter = UNUSED;
+        if(input.matchnMove(5, "force"))
+            parameter = 0; // see InterChange::commandPad, case PADSYNTH::control::applyChanges
+                           // invokes PADnoteParameters::setpadparams(blocking)  with blocking = (parameter == 0)
+        return sendNormal(synth, 0, value, controlType, cmd, npart, kitNumber, PART::engine::padSynth, insert, parameter);
     }
     if (cmd > -1)
         return sendNormal(synth, 0, value, controlType, cmd, npart, kitNumber, engine, insert);
@@ -5124,6 +5179,11 @@ int CmdInterpreter::waveform(Parser& input, unsigned char controlType)
         value = 1;
         insert = UNUSED;
         cmd = PADSYNTH::control::applyChanges;
+        unsigned char parameter = UNUSED;
+        if(input.matchnMove(5, "force"))
+            parameter = 0; // see InterChange::commandPad, case PADSYNTH::control::applyChanges
+                           // invokes PADnoteParameters::setpadparams(blocking)  with blocking = (parameter == 0)
+        return sendNormal(synth, 0, value, controlType, cmd, npart, kitNumber, PART::engine::padSynth, insert, parameter);
     }
     if (cmd == -1)
         return REPLY::available_msg;
@@ -5390,11 +5450,12 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
         return midiControllers(input, controlType);
     }
 
+    if (input.matchnMove(2, "drum"))
+        return sendNormal(synth, 0, (input.toggle() != 0), controlType, PART::control::drumMode, npart);
+
     if (inKitEditor)
     {
         int value;
-        if (input.matchnMove(2, "drum"))
-            return sendNormal(synth, 0, (input.toggle() != 0), controlType, PART::control::drumMode, npart);
         if (input.matchnMove(2, "quiet"))
             return sendNormal(synth, 0, (input.toggle() != 0), controlType, PART::control::kitItemMute, npart, kitNumber, UNUSED, TOPLEVEL::insert::kitGroup);
          // This is for selection from 3 part effects. See above for definitions.
@@ -5569,7 +5630,7 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
             if (input.lineEnd(controlType))
                 return REPLY::value_msg;
             value = string2int(input);
-            if (value < 1 || value > POLIPHONY)
+            if (value < 1 || value > POLYPHONY)
                 return REPLY::range_msg;
         }
         return sendNormal(synth, 0, value, controlType, PART::control::maxNotes, npart);
@@ -5682,6 +5743,12 @@ int CmdInterpreter::commandTest(Parser& input, unsigned char controlType)
     {
         // just consume; we are already in the test context
     }
+
+    if (controlType == TOPLEVEL::type::Write && input.matchWord(2, "swapwave"))
+    {// special treatment for testing the PADSynth wavetable swap and cross-fade
+        synth->setReproducibleState(0); // re-seed PRNG and rebuild all PAD wavetables (blocking).
+        synth->swapTestPADtable();
+    }// note: the following handler will consume the "swapwave" command and store the offset parameter
 
     string response;
     if (getTestInvoker().handleParameterChange(input, controlType, response, synth->buffersize))
@@ -5947,6 +6014,14 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
             return REPLY::value_msg;
         int value = string2int(input);
         return sendNormal(synth, TOPLEVEL::action::lowPrio, value, controlType, MAIN::control::keyShift, TOPLEVEL::section::main);
+    }
+
+    if (input.matchnMove(3, "BPM"))
+    {
+        if (input.lineEnd(controlType))
+            return REPLY::value_msg;
+        float value = string2float(input);
+        return sendNormal(synth, 0, value, controlType, MAIN::control::bpmFallback, TOPLEVEL::section::main);
     }
 
     if (input.matchnMove(2, "solo"))
@@ -6357,7 +6432,6 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
             return Reply::what("add");
         }
     }
-
     if (input.matchWord(3, "import") || input.matchWord(3, "export") )
     { // need the double test to find which then move along line
         int type = 0;
@@ -6474,6 +6548,7 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
                 return Reply::DONE;
             }
         }
+
         if (input.matchnMove(2, "mlearn"))
         {
             if (input.matchnMove(3, "all"))
@@ -6754,6 +6829,11 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
             return sendNormal(synth, TOPLEVEL::action::lowPrio, 0, TOPLEVEL::type::Write, PART::control::defaultInstrumentCopyright, TOPLEVEL::section::part1 + npart, UNUSED, UNUSED, UNUSED, 1);
         return Reply::what("save");
     }
+
+    if (input.matchnMove(3, "undo"))
+            return sendNormal(synth, 0, 0, TOPLEVEL::type::Write,  MAIN::control::undo, TOPLEVEL::section::undoMark);
+    if (input.matchnMove(3, "redo"))
+        return sendNormal(synth, 0, 0, TOPLEVEL::type::Write, MAIN::control::redo, TOPLEVEL::section::undoMark);
 
     if (input.matchnMove(2, "zread"))
     {

@@ -7,7 +7,7 @@
     Copyright 2014-2021, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
-    it and/or modify it under the terms of the GNU Library General Public
+    it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation; either version 2 of
     the License, or (at your option) any later version.
 
@@ -114,6 +114,7 @@ XMLwrapper::XMLwrapper(SynthEngine *_synth, bool _isYoshi, bool includeBase) :
             addparbool("enable_CLI", synth->getRuntime().showCli);
             addparbool("enable_single_master", synth->getRuntime().singlePath);
             addparbool("banks_checked", synth->getRuntime().banksChecked);
+            addparU("handle_padsynth_build", synth->getRuntime().handlePadSynthBuild);
             addparbool("enable_auto_instance", synth->getRuntime().autoInstance);
             addparU("active_instances", synth->getRuntime().activeInstance);
             addpar("show_CLI_context", synth->getRuntime().showCLIcontext);

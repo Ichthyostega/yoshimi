@@ -4,7 +4,7 @@
     Copyright 2019-2020 Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
-    it and/or modify it under the terms of the GNU Library General Public
+    it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation; either version 2 of
     the License, or (at your option) any later version.
 
@@ -55,11 +55,12 @@ class DataText
         std::string resolveAdd(CommandBlock *getData, bool addValue);
         std::string resolveAddVoice(CommandBlock *getData, bool addValue);
         std::string resolveSub(CommandBlock *getData, bool addValue);
-        std::string resolvePad(CommandBlock *getData, bool addValue);
-        std::string resolveOscillator(CommandBlock *getData, bool addValue);
-        std::string resolveResonance(CommandBlock *getData, bool addValue);
+        std::string resolvePad(SynthEngine*, CommandBlock *getData, bool addValue);
+        std::string resolveOscillator(SynthEngine*, CommandBlock *getData, bool addValue);
+        std::string resolveResonance(SynthEngine*, CommandBlock *getData, bool addValue);
         std::string resolveLFO(CommandBlock *getData, bool addValue);
         std::string resolveFilter(CommandBlock *getData, bool addValue);
+        std::string filterControl(CommandBlock *getData, bool addValue);
         std::string resolveEnvelope(CommandBlock *getData, bool addValue);
         std::string resolveEffects(CommandBlock *getData, bool addValue);
 };

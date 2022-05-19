@@ -7,7 +7,7 @@
     Copyright 2017-2019, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
-    it and/or modify it under the terms of the GNU Library General Public
+    it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation; either version 2 of
     the License, or (at your option) any later version.
 
@@ -26,39 +26,29 @@
 
 #include <iostream>
 
-#include "DSP/FFTwrapper.h"
 #include "Misc/SynthEngine.h"
 #include "Effects/EffectMgr.h"
 
 EffectMgr::EffectMgr(const bool insertion_, SynthEngine *_synth) :
-    Presets(_synth),
-    insertion(insertion_),
-    filterpars(NULL),
-    nefx(0),
-    efx(NULL),
-    dryonly(false)
+    Presets{_synth},
+    efxoutl{size_t(_synth->buffersize)},
+    efxoutr{size_t(_synth->buffersize)},
+    insertion{insertion_},
+    filterpars{NULL},
+    nefx{TOPLEVEL::insert::none},
+    dryonly{false},
+    efx{}
 {
     setpresettype("Peffect");
-    efxoutl = (float*)fftwf_malloc(synth->bufferbytes);
-    efxoutr = (float*)fftwf_malloc(synth->bufferbytes);
-    memset(efxoutl, 0, synth->bufferbytes);
-    memset(efxoutr, 0, synth->bufferbytes);
     defaults();
 }
 
 
-EffectMgr::~EffectMgr()
-{
-    if (efx)
-        delete efx;
-    fftwf_free(efxoutl);
-    fftwf_free(efxoutr);
-}
 
 
 void EffectMgr::defaults(void)
 {
-    changeeffect(0);
+    changeeffect(TOPLEVEL::insert::none);
     setdryonly(false);
 }
 
@@ -70,47 +60,43 @@ void EffectMgr::changeeffect(int _nefx)
     if (nefx == _nefx)
         return;
     nefx = _nefx;
-    memset(efxoutl, 0, synth->bufferbytes);
-    memset(efxoutr, 0, synth->bufferbytes);
-    if (efx)
-        delete efx;
     switch (nefx)
     {
-        case 1:
-            efx = new Reverb(insertion, efxoutl, efxoutr, synth);
+        case TOPLEVEL::insert::reverb:
+            efx.reset(new Reverb{insertion, efxoutl.get(), efxoutr.get(), synth});
             break;
 
-        case 2:
-            efx = new Echo(insertion, efxoutl, efxoutr, synth);
+        case TOPLEVEL::insert::echo:
+            efx.reset(new Echo{insertion, efxoutl.get(), efxoutr.get(), synth});
             break;
 
-        case 3:
-            efx = new Chorus(insertion, efxoutl, efxoutr, synth);
+        case TOPLEVEL::insert::chorus:
+            efx.reset(new Chorus{insertion, efxoutl.get(), efxoutr.get(), synth});
             break;
 
-        case 4:
-            efx = new Phaser(insertion, efxoutl, efxoutr, synth);
+        case TOPLEVEL::insert::phaser:
+            efx.reset(new Phaser{insertion, efxoutl.get(), efxoutr.get(), synth});
             break;
 
-        case 5:
-            efx = new Alienwah(insertion, efxoutl, efxoutr, synth);
+        case TOPLEVEL::insert::alienWah:
+            efx.reset(new Alienwah{insertion, efxoutl.get(), efxoutr.get(), synth});
             break;
 
-        case 6:
-            efx = new Distorsion(insertion, efxoutl, efxoutr, synth);
+        case TOPLEVEL::insert::distortion:
+            efx.reset(new Distorsion{insertion, efxoutl.get(), efxoutr.get(), synth});
             break;
 
-        case 7:
-            efx = new EQ(insertion, efxoutl, efxoutr, synth);
+        case TOPLEVEL::insert::eq:
+            efx.reset(new EQ{insertion, efxoutl.get(), efxoutr.get(), synth});
             break;
 
-        case 8:
-            efx = new DynamicFilter(insertion, efxoutl, efxoutr, synth);
+        case TOPLEVEL::insert::dynFilter:
+            efx.reset(new DynamicFilter{insertion, efxoutl.get(), efxoutr.get(), synth});
             break;
 
             // put more effect here
         default:
-            efx = NULL;
+            efx.reset();
             break; // no effect (thru)
     }
     if (efx)
@@ -128,6 +114,8 @@ int EffectMgr::geteffect(void)
 // Cleanup the current effect
 void EffectMgr::cleanup(void)
 {
+    memset(efxoutl.get(), 0, synth->bufferbytes);
+    memset(efxoutr.get(), 0, synth->bufferbytes);
     if (efx)
         efx->cleanup();
 }
@@ -184,19 +172,19 @@ void EffectMgr::out(float *smpsl, float *smpsr)
         {
             memset(smpsl, 0, synth->sent_bufferbytes);
             memset(smpsr, 0, synth->sent_bufferbytes);
-            memset(efxoutl, 0, synth->sent_bufferbytes);
-            memset(efxoutr, 0, synth->sent_bufferbytes);
+            memset(efxoutl.get(), 0, synth->sent_bufferbytes);
+            memset(efxoutr.get(), 0, synth->sent_bufferbytes);
         }
         return;
     }
-    memset(efxoutl, 0, synth->sent_bufferbytes);
-    memset(efxoutr, 0, synth->sent_bufferbytes);
+    memset(efxoutl.get(), 0, synth->sent_bufferbytes);
+    memset(efxoutr.get(), 0, synth->sent_bufferbytes);
     efx->out(smpsl, smpsr);
 
-    if (nefx == 7)
+    if (nefx == TOPLEVEL::insert::eq)
     {   // this is need only for the EQ effect
-        memcpy(smpsl, efxoutl, synth->sent_bufferbytes);
-        memcpy(smpsr, efxoutr, synth->sent_bufferbytes);
+        memcpy(smpsl, efxoutl.get(), synth->sent_bufferbytes);
+        memcpy(smpsr, efxoutr.get(), synth->sent_bufferbytes);
         return;
     }
 
@@ -336,47 +324,47 @@ void EffectMgr::getfromXML(XMLwrapper *xml)
 
 float LimitMgr::geteffectlimits(CommandBlock *getData)
 {
-    int effType = getData->data.kit;
+    int effType = getData->data.kit & 127;
     float value = 0;
     switch (effType)
     {
-        case EFFECT::type::none:
+        case TOPLEVEL::insert::none:
             value = 0;
             break;
-        case EFFECT::type::reverb:
+        case TOPLEVEL::insert::reverb:
             Revlimit reverb;
             value = reverb.getlimits(getData);
             break;
-        case EFFECT::type::echo:
+        case TOPLEVEL::insert::echo:
             Echolimit echo;
             value = echo.getlimits(getData);
             break;
-        case EFFECT::type::chorus:
+        case TOPLEVEL::insert::chorus:
             Choruslimit chorus;
             value = chorus.getlimits(getData);
             break;
-        case EFFECT::type::phaser:
+        case TOPLEVEL::insert::phaser:
             Phaserlimit phaser;
             value = phaser.getlimits(getData);
             break;
-        case EFFECT::type::alienWah:
+        case TOPLEVEL::insert::alienWah:
             Alienlimit alien;
             value = alien.getlimits(getData);
             break;
-        case EFFECT::type::distortion:
+        case TOPLEVEL::insert::distortion:
             Distlimit dist;
             value = dist.getlimits(getData);
             break;
-        case EFFECT::type::eq:
+        case TOPLEVEL::insert::eq:
             EQlimit EQ;
             value = EQ.getlimits(getData);
             break;
-        case EFFECT::type::dynFilter:
+        case TOPLEVEL::insert::dynFilter:
             Dynamlimit dyn;
             value = dyn.getlimits(getData);
             break;
         default:
-            value = EFFECT::type::count - EFFECT::type::none;
+            value = TOPLEVEL::insert::count - TOPLEVEL::insert::none;
             break;
     }
     return value;
