@@ -1,10 +1,12 @@
 # I can't find these spelling errors in source code using grep tool.
 # So overriding them.
+spelling-error-in-binary usr/bin/yoshimi buil build
 spelling-error-in-binary usr/bin/yoshimi controlL control
 spelling-error-in-binary usr/bin/yoshimi defaulH default
 spelling-error-in-binary usr/bin/yoshimi ment meant
 spelling-error-in-binary usr/bin/yoshimi pres press
 spelling-error-in-binary usr/bin/yoshimi TeH The
+spelling-error-in-binary usr/lib/lv2/yoshimi.lv2/yoshimi_lv2.so buil build
 spelling-error-in-binary usr/lib/lv2/yoshimi.lv2/yoshimi_lv2.so CONTROLL CONTROL
 spelling-error-in-binary usr/lib/lv2/yoshimi.lv2/yoshimi_lv2.so defaulH default
 spelling-error-in-binary usr/lib/lv2/yoshimi.lv2/yoshimi_lv2.so ment meant
