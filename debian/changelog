@@ -1,3 +1,9 @@
+yoshimi (2.2.0-2) unstable; urgency=medium
+
+  * Fix ftbfs build on riscv64 (Closes: #1011451)
+
+ -- Dennis Braun <d_braun@kabelmail.de>  Wed, 25 May 2022 21:47:31 +0200
+
 yoshimi (2.2.0-1) unstable; urgency=medium
 
   * New upstream version 2.2.0
