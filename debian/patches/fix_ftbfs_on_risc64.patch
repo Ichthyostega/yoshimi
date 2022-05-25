@@ -1,0 +1,14 @@
+Description: Fix ftbfs build on riscv64
+Author: Bo YU <tsu.yubo@gmail.com>
+Forwarded: yes
+
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -143,6 +143,7 @@
+ 
+ find_package (PkgConfig REQUIRED)
+ 
++set(THREADS_PREFER_PTHREAD_FLAG ON)
+ find_package(Threads REQUIRED)
+ 
+ check_c_source_compiles (
