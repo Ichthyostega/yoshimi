@@ -125,6 +125,9 @@ void yoshimiSigHandler(int sig)
 
 static void *mainThread(void *arg)
 {
+#ifndef GUI_FLTK
+    bShowGui = false; // just to be sure
+#endif
     sem_post((sem_t *)arg);
     map<SynthEngine *, MusicClient *>::iterator it;
 
@@ -211,6 +214,7 @@ static void *mainThread(void *arg)
         while (firstSynth == NULL); // just wait
     }
 
+
     if (firstRuntime->autoInstance)
         newBlock();
     while (firstRuntime->runSynth)
@@ -256,11 +260,27 @@ static void *mainThread(void *arg)
                     if (guiMaster->masterwindow)
                     {
                         guiMaster->checkBuffer();
-                        Fl::check();
                     }
                 }
                 else
                     GuiThreadMsg::processGuiMessages();
+                Fl::wait(33333);
+
+                if (splashSet)
+                {
+                    if (showSplash)
+                    {
+                        winSplash.show(); // keeps it in front;
+                    }
+                    if (time(&here_and_now) < 0) // no time?
+                        here_and_now = old_father_time + timeout;
+                    if ((here_and_now - old_father_time) >= timeout)
+                    {
+                        splashSet = false;
+                        winSplash.hide();
+                    }
+                }
+
             }
 #endif
         }
@@ -274,32 +294,8 @@ static void *mainThread(void *arg)
             configuring = false;
             startInstance = testInstance; // to prevent repeats!
         }
-        else
-        {
-#ifdef GUI_FLTK
-            if (bShowGui)
-            {
-                if (splashSet)
-                {
-                    if (showSplash)
-                    {
-                        winSplash.show(); // keeps it in front;
-                        usleep(1000);
-                    }
-                    if (time(&here_and_now) < 0) // no time?
-                        here_and_now = old_father_time + timeout;
-                    if ((here_and_now - old_father_time) >= timeout)
-                    {
-                        splashSet = false;
-                        winSplash.hide();
-                    }
-                }
-                Fl::wait(0.033333);
-            }
-            else
-#endif
-                usleep(33333);
-        }
+        if (!bShowGui)
+            usleep(33333);
     }
 
     if (waitForTest)
