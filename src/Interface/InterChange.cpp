@@ -861,11 +861,21 @@ int InterChange::indirectMain(CommandBlock *getData, SynthEngine *synth, unsigne
         case MAIN::control::loadFileFromList:
             break; // do nothing here
 
-        case MAIN::control::defaultPart: // clear part
+        case MAIN::control::defaultPart: // clear entire part
             if (write)
             {
                 undoRedoClear();
-                doClearPart(value);
+                synth->part[value]->reset(value);
+                synth->getRuntime().sessionSeen[TOPLEVEL::XML::Instrument] = false;
+                getData->data.source &= ~TOPLEVEL::action::lowPrio;
+            }
+            break;
+
+        case MAIN::control::defaultInstrument: // clear part's instrument
+            if (write)
+            {
+                undoRedoClear();
+                doClearPartInstrument(value);
                 synth->getRuntime().sessionSeen[TOPLEVEL::XML::Instrument] = false;
                 getData->data.source &= ~TOPLEVEL::action::lowPrio;
             }
@@ -1945,7 +1955,7 @@ void InterChange::returns(CommandBlock *getData)
 }
 
 
-void InterChange::doClearPart(int npart)
+void InterChange::doClearPartInstrument(int npart)
 {
     synth->part[npart]->defaultsinstrument();
     synth->part[npart]->cleanup();
@@ -3291,7 +3301,17 @@ void InterChange::commandMain(CommandBlock *getData)
             getData->data.source = TOPLEVEL::action::noAction;
             break;
 
-        case MAIN::control::defaultPart: // doClearPart
+        case MAIN::control::defaultPart: // clear entire part
+            if (write)
+            {
+                synth->partonoffWrite(value_int, -1);
+                getData->data.source = TOPLEVEL::action::lowPrio;
+            }
+            else
+                getData->data.source = TOPLEVEL::action::noAction;
+            break;
+
+        case MAIN::control::defaultInstrument: // clear part's instrument
             if (write)
             {
                 synth->partonoffWrite(value_int, -1);
