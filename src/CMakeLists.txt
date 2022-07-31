@@ -35,6 +35,13 @@ add_definitions(-std=gnu++14) # various versions of cmake
 
 add_definitions(-Wall)
 
+# avoid exporting any (spurious) symbols in EXE and Plugin
+# Note: the two LV2 descriptors are already marked visibility=default in LV2 headers
+cmake_policy (SET CMP0063 NEW)
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
+
+
 # vvv
 #add_definitions(-Wpedantic) # full ISO spec
 #add_definitions(-Werror) # warnings as errors
@@ -45,7 +52,7 @@ add_definitions(-Wall)
 #add_definitions(-Wno-deprecated)
 # ^^^ comment these out on release pushes
 
-set (YOSHIMI_VERSION "2.2.0")
+set (YOSHIMI_VERSION "2.2.1")
 
 add_definitions (-DMIN_CONFIG_MAJOR=2)
 add_definitions (-DMIN_CONFIG_MINOR=0)
@@ -143,6 +150,7 @@ endif ()
 
 find_package (PkgConfig REQUIRED)
 
+set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 check_c_source_compiles (

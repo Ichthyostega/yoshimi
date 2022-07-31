@@ -1298,7 +1298,12 @@ string DataText::resolveMain(CommandBlock *getData, bool addValue)
 
         case MAIN::control::defaultPart:
             showValue = false;
-            contstr = "Part " + to_string(value_int + 1) + " cleared";
+            contstr = "Part " + to_string(value_int + 1) + " completely cleared";
+            break;
+
+        case MAIN::control::defaultInstrument:
+            showValue = false;
+            contstr = "Part " + to_string(value_int + 1) + " instrument cleared";
             break;
 
         case MAIN::control::exportPadSynthSamples:

@@ -64,7 +64,8 @@ class Part
 
         inline float pannedVolLeft(void) { return volume * pangainL; }
         inline float pannedVolRight(void) { return volume * pangainR; }
-        void defaults(void);
+        void reset(int npart);
+        void defaults(int npart);
         void setNoteMap(int keyshift);
         void defaultsinstrument(void);
         void cleanup(void);
@@ -184,6 +185,7 @@ class Part
         void startLegato          (int pos, size_t item, size_t currItem, Note);
         void startLegatoPortamento(int pos, size_t item, size_t currItem, Note);
         float computeKitItemCrossfade(size_t item, int midiNote, float inputVelocity);
+        void incrementItemsPlaying(int pos, size_t currItem);
 
         Samples& tmpoutl;
         Samples& tmpoutr;

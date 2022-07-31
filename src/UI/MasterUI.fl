@@ -11,7 +11,6 @@ comment {MasterUI.cc} {in_source not_in_header
 comment {Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009-2011, Alan Calvert
-Copyright 2014-2021, Will Godfrey & others
 Copyright 2014-2022, Will Godfrey & others
 
 This file is part of yoshimi, which is free software: you can redistribute
@@ -179,8 +178,6 @@ class FilerLine {: {public Fl_Group}
         }
       }
       Fl_Button name {
-        callback {//std::cout << "pressed " << n << std::endl;
-//lineitem = n;}
         xywh {25 0 415 21} box NO_BOX color 7 labelsize 12 align 20
       }
       Fl_Button nametop {
@@ -262,7 +259,9 @@ class KeyHandle {: {public Fl_Box}
     else if (event == FL_SHORTCUT)
     {
         auto key = Fl::event_key();
-        if (key == 'z')
+        if (key == FL_Escape)
+            ev = 1;
+        else if (key == 'z')
         {
             if (Fl::event_state() == 327680) //ctrl + shift
             {
@@ -418,8 +417,14 @@ class MasterUI {: {private GuiUpdates}
       openedit = false;
       make_window();
       bool foundWindows = Showmaster();
-      if (partui)
-          partui->checkEngines();
+
+      partui = new PartUI(0, 0, 0, 0);
+      partuigroup->add(partui); // why?
+      partui->init(synth->part[npart], npart, bankui);
+      partui->kitRtext(true);
+      partui->redraw();
+
+      partui->checkEngines();
       if (instance > 0)
           foundWindows = true; //  not relevant for later windows
       //std::cout << "Found windows " << int(foundWindows) << std::endl;
@@ -606,11 +611,6 @@ class MasterUI {: {private GuiUpdates}
             * to offer the INTERNAL name first rather than a possibly
             * confusing external filename.
             */
-            if (!fetchData(0, PART::control::enable, activePart))
-            {
-                alert(synth, "Active part disabled");
-                return;
-            }
             string newname = synth->part[activePart]->Pname;
             if (newname == DEFAULT_NAME)
             {
@@ -642,8 +642,7 @@ class MasterUI {: {private GuiUpdates}
                 alert(synth, "Active part disabled");
                 return;
             }
-            if (query("", "Yes", "No", "Clear parameters of instrument " + to_string(npart + 1) + "?") > 1)
-                send_data(TOPLEVEL::action::forceUpdate, MAIN::control::defaultPart,partui->npart, TOPLEVEL::type::Integer, TOPLEVEL::section::main);
+            partui->instrumentReset->do_callback();
             break;
         case 14: // search
         if (!fetchData(0, PART::control::enable, activePart))
@@ -1164,7 +1163,7 @@ class MasterUI {: {private GuiUpdates}
                 if (adsynenabledcheck->value() == 1)
                 {
                     showparameters(0,0);
-                    checkEngines();
+                    partui->checkEngines();
                     seteditname();
                 }
                 else
@@ -1180,7 +1179,7 @@ class MasterUI {: {private GuiUpdates}
                 if (subsynenabledcheck->value() == 1)
                 {
                 showparameters(0,1);
-                checkEngines();
+                partui->checkEngines();
                 seteditname();
                 }
                 else
@@ -1197,7 +1196,7 @@ class MasterUI {: {private GuiUpdates}
                 if (padsynenabledcheck->value() == 1)
                 {
                     showparameters(0,2);
-                    checkEngines();
+                    partui->checkEngines();
                     seteditname();
                     lastkey = -1;
                 }
@@ -2995,15 +2994,15 @@ Alan Calvert started the project}
             if ((getData->data.source & TOPLEVEL::action::noAction) != TOPLEVEL::action::fromGUI)
                 activePart = value_int;
 
-            partNew(activePart);
+            partSwitch(activePart);
             updatepanel();
-            if (openedit)
+            /*if (openedit)
             {
                 partui->Showedit();
                 openedit = false;
             }
             else
-                partui->instrumenteditwindow->hide();
+                partui->instrumenteditwindow->hide();*/
             }
             break;
 
@@ -3223,7 +3222,8 @@ Alan Calvert started the project}
                 setMasterLabel(findLeafName(name) + " - State");
             break;
         case MAIN::control::defaultPart:
-            partNew(activePart);
+        case MAIN::control::defaultInstrument:
+            partSwitch(activePart);
             updatepanel();
             break;
         case MAIN::control::masterReset:
@@ -3234,7 +3234,7 @@ Alan Calvert started the project}
                 resetPartsClip();
             }
             else if (newpart < NUM_MIDI_PARTS)
-                partNew(newpart);
+                partSwitch(newpart);
             setMasterLabel("");
             break;
 
@@ -3330,6 +3330,7 @@ Alan Calvert started the project}
     int result = 0;
     while(querywindow->shown())
     {
+        querywindow->show(); // keep it on top
         queryRtext();
         if (yesQ->value())
             result = 3;
@@ -3400,6 +3401,7 @@ Alan Calvert started the project}
     size_t pos = 1;
     while (textwindow->shown())
     {
+        textwindow->show(); // keep it on top
         textinRtext();
         result = string(textLine->value());
         Fl::wait();
@@ -3512,24 +3514,25 @@ Alan Calvert started the project}
   }
   Function {updatepanel(bool full = false)} {} {
     code {//
-    for (int npart = 0; npart < partmax; ++npart)
+    for (int part = 0; part < partmax; ++part)
     {
-        if (npart < NUM_MIDI_CHANNELS)
-            panellistitem[npart]->refresh();
-        vectorui->setInstrumentLabel(npart);
+        if (part < NUM_MIDI_CHANNELS) // will be orred with panel group
+            panellistitem[part]->refresh();
+        vectorui->setInstrumentLabel(part);
     }
 
-    if (partmax == 64)
+    if (partmax == (NUM_MIDI_CHANNELS * 4))
     {
+        Panelgroups->value(npart / NUM_MIDI_CHANNELS);
         Panelgroups->show();
-        //Panelgroups->value(0);
     }
     else
         Panelgroups->hide();
-    if (partmax == 32)
+
+    if (partmax == (NUM_MIDI_CHANNELS * 2))
     {
+        Panelsmallgroups->value(npart / NUM_MIDI_CHANNELS);
         Panelsmallgroups->show();
-        //Panelsmallgroups->value(0);
     }
     else
         Panelsmallgroups->hide();
@@ -3560,64 +3563,87 @@ Alan Calvert started the project}
         synth->getRuntime().channelSwitchCC = 128;
         CSspinner->hide();
         CSpend->hide();
-    };
+    }
     panelwindow->changed();} {}
   }
-  Function {partNew(int _npart)} {} {
+  Function {partSwitch(int next)} {} {
     code {//
-    int nval = _npart;
-    partuigroup->remove(partui);
-    delete partui;
-    partui = new PartUI(0, 0, 0, 0);
-    partuigroup->add(partui);
-    partui->init(synth->part[nval], nval, bankui);
-    partui->kitRtext(true);
+    if (npart != next)
+    {
+        npartcounter->value(next + 1);
+        npartcounter->redraw();
+        updatelistitem(npart); // deselect old one
+        npart = next;
+    }
+    updatelistitem(next); // select and/or modify
+    activePart = npart;
+    partui->rebuild(npart);
     partui->redraw();
-    npartcounter->value(nval + 1);
-    npartcounter->redraw();
-    updatelistitem(nval);
-    activePart = nval;
-    npart = nval;
-    partVol->value(synth->part[npart]->Pvolume);
-    partPan->value(synth->part[npart]->Ppanning);
-    partVelOffset->value(synth->part[npart]->Pveloffs);
-    partVelSense->value(synth->part[npart]->Pvelsns);
-    partui->setinstrumentlabel();
-    partMidiCh->value(synth->part[npart]->Prcvchn + 1);
-    minKeyCount->value(synth->part[npart]->Pminkey);
-    maxKeyCount->value(synth->part[npart]->Pmaxkey);
-
-    sysEff1->value(synth->Psysefxvol[0][npart]);
-    sysEff2->value(synth->Psysefxvol[1][npart]);
-    sysEff3->value(synth->Psysefxvol[2][npart]);
-    sysEff4->value(synth->Psysefxvol[3][npart]);
-
-
-    int tmp = synth->ReadPartKeyMode(npart);
-    if (tmp > 1)
-        partKeymode->value(2);
-    else
-        partKeymode->value(tmp);
-    if (tmp > 1 && synth->part[npart]->Pdrummode != 0)
-        modepatch->color(91);
-    else
-        modepatch->color(29);
-    modepatch->redraw();
 
     partEnable->value(synth->part[npart]->Penabled == 1);
     if (partEnable->value() == 1)
         partControls->activate();
     else
         partControls->deactivate();
-    partui->checkEngines();} {}
+    refreshControls(npart);
+    masterwindow->redraw();} {}
+  }
+  Function {updateEngines(int engine, string instrumentName)} {} {
+    code {//
+        if (engine & 1) // addsynth
+        instrumentaddbox->color(ADD_COLOUR);
+    else
+        instrumentaddbox->color(BASE_COLOUR);
+
+    if (engine & 2) // subsynth
+        instrumentsubbox->color(SUB_COLOUR);
+    else
+        instrumentsubbox->color(BASE_COLOUR);
+
+    if (engine & 4) // padsynth
+        instrumentpadbox->color(PAD_COLOUR);
+    else
+        instrumentpadbox->color(BASE_COLOUR);
+
+    instrumentaddbox->damage(1);
+    instrumentsubbox->damage(1);
+    instrumentpadbox->damage(1);
+    instrumentlabel->copy_label(instrumentName.c_str());
+    instrumentlabel->damage(1);
+
+    if (npart >= panelgroup && npart < (panelgroup + NUM_MIDI_CHANNELS))
+    {
+        int num = npart % NUM_MIDI_CHANNELS;
+        if (engine & 1)
+            panellistitem[num]->partadd->color(ADD_COLOUR);
+        else
+            panellistitem[num]->partadd->color(FL_BACKGROUND_COLOR);
+        if (engine & 2)
+            panellistitem[num]->partsub->color(SUB_COLOUR);
+        else
+            panellistitem[num]->partsub->color(FL_BACKGROUND_COLOR);
+        if (engine & 4)
+            panellistitem[num]->partpad->color(PAD_COLOUR);
+        else
+            panellistitem[num]->partpad->color(FL_BACKGROUND_COLOR);
+
+        panellistitem[num]->partadd->damage(1);
+        panellistitem[num]->partsub->damage(1);
+        panellistitem[num]->partpad->damage(1);
+        panellistitem[num]->partname->copy_label(instrumentName.c_str());
+    }} {}
   }
   Function {updatepart()} {} {
     code {//
     if (checkmaxparts())
     {
-        npart = 0;
-        npartcounter->value(npart + 1);
-        npartcounter->do_callback();
+        if (npart >= partmax)
+        {
+            npart %= NUM_MIDI_CHANNELS;
+            npart += (partmax - NUM_MIDI_CHANNELS);
+            npartcounter->value(npart + 1);
+            npartcounter->do_callback();
+        }
         maxparts->value(partmax);
         maxparts->redraw();
         return;
@@ -3625,29 +3651,49 @@ Alan Calvert started the project}
 
     partEnable->value(synth->partonoffRead(npart));
 
+    maxparts->value(partmax);
+    maxparts->redraw();
+    npartcounter->value(npart + 1);
+    activePart = npart;
+    npartcounter->redraw();
+    refreshControls(npart);} {}
+  }
+  Function {refreshControls(int npart)} {} {
+    code {//
     partVol->value(synth->part[npart]->Pvolume);
     partPan->value(synth->part[npart]->Ppanning);
     partVelOffset->value(synth->part[npart]->Pveloffs);
     partVelSense->value(synth->part[npart]->Pvelsns);
-
+    partui->setinstrumentlabel();
+    partMidiCh->value(synth->part[npart]->Prcvchn + 1);
     partKeyLimit->value(synth->part[npart]->Pkeylimit);
     partKeyShift->value(synth->part[npart]->Pkeyshift - 64);
     minKeyCount->value(synth->part[npart]->Pminkey);
     maxKeyCount->value(synth->part[npart]->Pmaxkey);
     partPortamento->value(synth->part[npart]->ctl->portamento.portamento);
 
-    partKeymode->value(synth->part[npart]->Pkeymode & MIDI_NOT_LEGATO);
-    maxparts->value(partmax);
-    maxparts->redraw();
-    npartcounter->value(npart + 1);
-    activePart = npart;
-    npartcounter->redraw();
+    sysEff1->value(synth->Psysefxvol[0][npart]);
+    sysEff2->value(synth->Psysefxvol[1][npart]);
+    sysEff3->value(synth->Psysefxvol[2][npart]);
+    sysEff4->value(synth->Psysefxvol[3][npart]);
+
+    int tmp = synth->ReadPartKeyMode(npart);
+    if (tmp > PART_MONO)
+        partKeymode->value(PART_LEGATO);
+    else
+        partKeymode->value(tmp);
+    if (tmp > PART_MONO && synth->part[npart]->Pdrummode != 0)
+        modepatch->color(91);
+    else
+        modepatch->color(29);
+    modepatch->redraw();
+
     partui->checkEngines();} {}
   }
-  Function {updatepartprogram(int _npart)} {} {
+  Function {updatepartprogram(int next)} {} {
     code {//
     if (vectorui)
-        vectorui->setInstrumentLabel(_npart);
+        vectorui->setInstrumentLabel(next);
 
     if (partui->part->Prcvchn <  NUM_MIDI_CHANNELS)
     {
@@ -3659,7 +3705,7 @@ Alan Calvert started the project}
          partMidiCh->textcolor(FL_WHITE);
          partMidiCh->redraw();
     }
-    partNew(_npart);} {}
+    partSwitch(next);} {}
   }
   Function {updateeffects(int data)} {} {
     code {//
@@ -3700,11 +3746,6 @@ Alan Calvert started the project}
         syseffectui->refresh(synth->sysefx[nsyseff], TOPLEVEL::section::systemEffects, nsyseff);
         showSysEfxUI();
     }} {}
-  }
-  Function {updatecontrollers(int _npart)} {} {
-    code {//
-    if (npart == _npart)
-        partui->ctlmidirefresh();} {}
   }
   Function {setMasterLabel(string name)} {} {
     code {//
@@ -3768,9 +3809,8 @@ Alan Calvert started the project}
     panning_law->value(fetchData(0, MAIN::control::panLawType, TOPLEVEL::section::main));
 
     npartcounter->value((synth->getRuntime().currentPart) + 1);
-    int nval = synth->getRuntime().currentPart;
-    partNew(nval);
-    activePart = nval;
+    int next = synth->getRuntime().currentPart;
+    partSwitch(next);
 
     nsyseff = 0;
     syseffnocounter->value(nsyseff + 1);
@@ -3955,8 +3995,8 @@ Alan Calvert started the project}
   Function {setPartWindowTitle(string prefix)} {return_type string
   } {
     code {//
-    string extension = " - Part " + asString(partui->npart + 1) + " " + partui->part->Pname;
-    if (partui->part->Pkitmode)
+    string extension = " - Part " + asString(npart + 1) + " " + synth->part[npart]->Pname;
+    if (synth->part[npart]->Pkitmode)
     {
         extension += ", Kit ";
         if (partui->lastkititem >= 0)
@@ -4091,6 +4131,11 @@ bpmfallback->format(format);} {}
     else
         vectorui->vectorwindow->hide();
 
+     if (lastSeen(synth, "Part-effects"))
+        partui->Showefx();
+    else
+        partui->partfx->hide();
+
     if (lastSeen(synth, "Part-controllers"))
         partui->Showctl();
     else
@@ -4105,6 +4150,11 @@ bpmfallback->format(format);} {}
         partui->Showctlmidi();
     else
         partui->ctlmidi->hide();
+
+    if (lastSeen(synth, "Part-kit"))
+        partui->Showkit();
+    else
+        partui->instrumentkitlist->hide();
 
     if (lastSeen(synth, "Part-edit"))
         partui->Showedit();
@@ -4197,6 +4247,23 @@ bpmfallback->format(format);} {}
         msgRtext();
         lastmsgW = message->w();
         msgSeen = true;
+    }
+
+    if (syseffectui->visible() && sysefftype->value() == 8)
+    {
+        if(syseffectui->filterwindow != NULL)
+        {
+            if (syseffectui->filterwindow->visible())
+                syseffectui->filtRtext();
+        }
+    }
+    else if (inseffectui->visible() && insefftype->value() == 8)
+    {
+        if(inseffectui->filterwindow != NULL)
+        {
+            if (inseffectui->filterwindow->visible())
+                inseffectui->filtRtext();
+        }
     }
 
     if (syseffsendwindow->visible() &&  syseffsendwindow->w() != lastsyseffW)

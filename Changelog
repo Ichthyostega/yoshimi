@@ -1,11 +1,87 @@
-yoshimi 2.2.0
+yoshimi 2.2.1
 
+2022-7-25 Will
+bn2146
+* Updated HTML manual
+* Updated docs
+* Set release version 2.2.1
+
+2022-7-20 Will
+bn2145
+* Disabled 'Escape' key if main window has focus.
+* Added Hugh's 'Nostalgia' to Synth bank.
+* Added 'Ride' to Drums bank
+
+2022-7-14 Will
+bn2144
+* BugFix: kitmode GUI engines not upodating correctly.
+
+2022-6-22 Will
+bn2143
+* Applied Hermann's dynamic symbols patch.
+* Minor HTML guide updates.
+
+2022-6-18 Will
+bn2142
+* Enabled whole part reset for part button and dropdown menu.
+  (holding down Ctrl)
+* Updated HTML user guide.
+
+2022-6-17 Will
+bn2141
+* Added reset button to part edit window.
+  Re-arranged the window's layout to accomode this.
+* Updated User Guide.
+* Changed defaultPart to more accurate defaultInstrument.
+
+2022-6-1 Will
+bn2140
+* BugFix: Changed effects not highlighted.
+* Corrected some window title bars.
+* Part kit window and part effects window visible status
+  now remembered over Yoshimi shutdown and restart.
+
+2022-5-31 Will
+bn2139
+* Merged in part UI improvements from newGUIpart.
+
+2022-5-28 Will
+bn2138
+* Moved master/mixer engine updates from partUI to masterUI.
+* Consolidated partnew/updatepart duplicated settings.
+
+2022-5-24 Will
+bn2137
+* Partially reverted last change in main.cpp.
+
+2022-5-23 Will
+bn2136
+* Small refinements in Main, SynthEngine, MiscGui, LV2.
+
+2022-5-21 Will
+bn2135
+* BugFix: GUI not updating key shift, key limit, portamento
+  when changing part selection.
+
+2022-5-20 Will
+bn2134
+* Metadata updates.
+
+2022-5-18 Will
+bn2133
+* BugFix: Mixer Panel not clearing previous selected part.
+* BugFix: DynFilter filter insert not keeping in scale on resizes.
+* BugFix: Main window not resizing DynFilter filter text.
+* Adjusted some effects control positions.
+
+2022-5-15 Will
+bn2132
 * Final cleanups and adjustments.
 * Commented out cmake testing definitions.
 * Set release version 2.2.0
 
 2022-5-13 Will
-bn2130
+bn2131
 * Corrected some entries in textLists.h
   Adjusted User Guide to match.
 * Set release candidate 2.2.0 rc3
