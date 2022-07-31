@@ -1,3 +1,11 @@
+yoshimi (2.2.1-1) UNRELEASED; urgency=medium
+
+  * New upstream version 2.2.1
+  * Drop patches applied by upstream
+  * Update lintian-overrides
+
+ -- Dennis Braun <d_braun@kabelmail.de>  Sun, 31 Jul 2022 22:48:31 +0200
+
 yoshimi (2.2.0-2) unstable; urgency=medium
 
   * Fix ftbfs on riscv64 (Closes: #1011451)
