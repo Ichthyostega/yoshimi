@@ -1,0 +1,4 @@
+# False positive
+source-is-missing [doc/yoshimi_user_guide/bank/bank.html]
+source-is-missing [doc/yoshimi_user_guide/introduction/introduction.html]
+source-is-missing [doc/yoshimi_user_guide/pad/pad.html]
