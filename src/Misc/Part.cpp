@@ -118,12 +118,27 @@ Part::Part(uchar id, Microtonal *microtonal_, fft::Calc& fft_, SynthEngine *_syn
         partnote[i].time = 0;
     }
     cleanup();
+    PmapOffset = 0; // this only needs to be set once
+    /*
+     * Do we actually need the following two?
+     * defaults is called for all parts at startup by Config.cpp
+     * and Pname is then set to the default name when defaults
+     * calls defaultsinstrument
+     */
     Pname.clear();
-    defaults();
+    defaults(0);
 }
 
 
-void Part::defaults(void)
+void Part::reset(int npart)
+{
+    cleanup();
+    defaults(npart);
+    synth->setPartMap(npart);
+    synth->partonoffWrite(npart, 1);
+}
+
+void Part::defaults(int npart)
 {
     Penabled = 0;
     Pminkey = 0;
@@ -134,8 +149,6 @@ void Part::defaults(void)
     setVolume(96);
     TransVolume = 128; // ensure it always gets set
     Pkeyshift = 64;
-    PmapOffset = 0;
-    Prcvchn = 0;
     oldFilterState = -1;
     oldBendState = -1;
     oldVolumeState = -1;
@@ -154,6 +167,7 @@ void Part::defaults(void)
     busy = false;
     defaultsinstrument();
     ctl->resetall();
+    Prcvchn = npart % NUM_MIDI_CHANNELS;
     setNoteMap(0);
 }
 
@@ -370,15 +384,23 @@ namespace { // Helpers to handle the tree kinds of KitItemNotes uniformly...
     template<class NOTE>
     inline void connectNewLegatoNote(NOTE*& oldNote
                                     ,NOTE*& newNote
-                                    ,Note note)
+                                    ,Note noteData)
     {   if (oldNote)
         {   // spawn new note as clone from previous note
             newNote = new NOTE(*oldNote);
             // instruct both notes to perform a short "legato" crossfade
-            newNote->legatoFadeIn(note);
+            newNote->legatoFadeIn(noteData);
             oldNote->legatoFadeOut();
         }
     }
+
+    template<class NOTE>
+    inline void activateLegatoPortamento(NOTE*& activeNote, Note noteData)
+    {
+        if (activeNote)
+            activeNote->performPortamento(noteData);
+    }
+
 }//(End)KitItemNote helpers
 
 
@@ -404,11 +426,7 @@ void Part::startNewNotes(int pos, size_t item, size_t currItem, Note note, bool 
         (kit[item].Psendtoparteffect < NUM_PART_EFX)? kit[item].Psendtoparteffect
                                                     : NUM_PART_EFX; // direct to Part-output
 
-    if ( partnote[pos].kitItem[currItem].adnote
-       ||partnote[pos].kitItem[currItem].subnote
-       ||partnote[pos].kitItem[currItem].padnote
-       )
-        partnote[pos].itemsplaying++;
+    incrementItemsPlaying(pos,currItem);
 }
 
 
@@ -434,12 +452,7 @@ void Part::startLegato(int pos, size_t item, size_t currItem, Note note)
                                                     : NUM_PART_EFX; // direct to Part-output
 
     partnote[prevPos].status = KEY_RELEASED; // treat legato crossfade similar to envelope-release
-
-    if ( partnote[pos].kitItem[currItem].adnote
-       ||partnote[pos].kitItem[currItem].subnote
-       ||partnote[pos].kitItem[currItem].padnote
-       )
-        partnote[pos].itemsplaying++;
+    incrementItemsPlaying(pos,currItem);
 }
 
 
@@ -447,16 +460,26 @@ void Part::startLegato(int pos, size_t item, size_t currItem, Note note)
 void Part::startLegatoPortamento(int pos, size_t item, size_t currItem, Note note)
 {
     if (kit[item].Padenabled)
-        partnote[pos].kitItem[currItem].adnote->
-            performPortamento(note);
+        activateLegatoPortamento(partnote[pos].kitItem[currItem].adnote, note);
     if (kit[item].Psubenabled)
-        partnote[pos].kitItem[currItem].subnote->
-            performPortamento(note);
+        activateLegatoPortamento(partnote[pos].kitItem[currItem].subnote, note);
     if (kit[item].Ppadenabled)
-        partnote[pos].kitItem[currItem].padnote->
-            performPortamento(note);
+        activateLegatoPortamento(partnote[pos].kitItem[currItem].padnote, note);
+
+    incrementItemsPlaying(pos,currItem);
 }
 
+
+
+// After allocating a new note or activating Legato/Portamento: keep track of the kitItem-Slots actually activated
+void Part::incrementItemsPlaying(int pos, size_t currItem)
+{
+    if ( partnote[pos].kitItem[currItem].adnote
+       ||partnote[pos].kitItem[currItem].subnote
+       ||partnote[pos].kitItem[currItem].padnote
+       )
+        partnote[pos].itemsplaying++;
+}
 
 
 // Modified velocity for the given kit item to blend the overlap with the neighbouring item
@@ -621,6 +644,7 @@ void Part::NoteOn(int note, int velocity, bool renote)
         partnote[pos].note = note;
         partnote[pos].keyATtype = PART::aftertouchType::off;
         partnote[pos].keyATvalue = 0;
+        partnote[pos].itemsplaying = 0;
 
         if (performLegato)
         {
@@ -666,7 +690,6 @@ void Part::NoteOn(int note, int velocity, bool renote)
         }
         else
         {// start regular notes or a new chain of legato notes
-            partnote[pos].itemsplaying = 0;
             if (Pkitmode == 0)
                 // non-Kit mode: init Add-, Sub and PAD-notes...
                 startNewNotes(pos,0,0, Note{note,noteFreq,vel}, portamento);
@@ -1601,7 +1624,7 @@ void Part::getfromXML(XMLwrapper *xml)
 
     if (xml->enterbranch("INSTRUMENT"))
     {
-        Pname = ""; // clear out any previous name
+        Pname.clear(); // erase any previous name
         getfromXMLinstrument(xml);
         xml->exitbranch();
     }
