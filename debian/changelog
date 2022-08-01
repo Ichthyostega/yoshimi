@@ -1,10 +1,10 @@
-yoshimi (2.2.1-1) UNRELEASED; urgency=medium
+yoshimi (2.2.1-1) unstable; urgency=medium
 
   * New upstream version 2.2.1
   * Drop patches applied by upstream
   * Update lintian-overrides
 
- -- Dennis Braun <d_braun@kabelmail.de>  Sun, 31 Jul 2022 22:48:31 +0200
+ -- Dennis Braun <d_braun@kabelmail.de>  Mon, 01 Aug 2022 22:50:32 +0200
 
 yoshimi (2.2.0-2) unstable; urgency=medium
 
