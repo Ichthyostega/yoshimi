@@ -1,8 +1,8 @@
-yoshimi (2.2.2-1) UNRELEASED; urgency=medium
+yoshimi (2.2.2-1) unstable; urgency=medium
 
   * New upstream version 2.2.2
 
- -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Tue, 06 Sep 2022 22:03:24 +0200
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Tue, 06 Sep 2022 22:10:41 +0200
 
 yoshimi (2.2.1-1) unstable; urgency=medium
 
