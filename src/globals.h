@@ -210,7 +210,6 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
 
     enum control : unsigned char {
         // insert any new entries here
-
         /*
          * the following values must never appear in any other sections
          */
@@ -230,19 +229,7 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
     // inserts are here as they are split between many
     // sections but must remain distinct.
     enum insert : unsigned char {
-        none = 0,
-        reverb,
-        echo,
-        chorus,
-        phaser,
-        alienWah,
-        distortion,
-        eq,
-        dynFilter,
-        // any new effects should go here
-        count, // this must be the last type!
-
-        LFOgroup, // 10
+        LFOgroup = 0,
         filterGroup,
         envelopeGroup,
         envelopePointAdd,
@@ -250,12 +237,13 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         envelopePointChange,
         oscillatorGroup,
         harmonicAmplitude,
-        harmonicPhaseBandwidth, // this should be split in two
+        harmonicPhase,
+        harmonicBandwidth,
         resonanceGroup,
         resonanceGraphInsert,
         systemEffectSend,
         partEffectSelect,
-        kitGroup //23
+        kitGroup
     };
 
     enum insertType : unsigned char {
@@ -1087,6 +1075,20 @@ namespace EFFECT // usage EFFECT::control::level
         effectType,
         effectDestination, // insert only
         effectEnable // system only
+    };
+
+    enum type : unsigned char { // sits above part kits
+        none = NUM_KIT_ITEMS,
+        reverb,
+        echo,
+        chorus,
+        phaser,
+        alienWah,
+        distortion,
+        eq,
+        dynFilter,
+        // any new effects should go here
+        count, // this must be the last type!
     };
 }
 
