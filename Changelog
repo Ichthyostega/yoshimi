@@ -1,4 +1,54 @@
-yoshimi 2.2.1
+yoshimi 2.2.2
+
+2022-9-1 Will
+bn2154
+* Updated meta-data
+* Updated HTML guide
+* Set release version 2.2.2
+
+2022-8-29 Kristian
+bn2153-a
+* Removed redundant (time wasting) code from LV2.
+
+2022-8-27 Will
+bn2153
+* Re-ordered retry attempts in MusicClient.cpp to avoid occasional lockups.
+
+2022-8-21 Will
+bn2152
+* Split harmonicPhaseBandwidth label
+  SubSynth -> harmonicBandwidth
+  Add/PadSynth -> harmonicPhase
+
+2022-8-20 Kristian
+bn2151a
+* BugFix: phase randomness not recognised by modulators.
+
+2022-8-17 Will
+bn2151
+* Fixed MIDI-learn regressions.
+  Settings saved, but not received.
+* Suppressed clang compliler warnings.
+* Doc updates.
+
+bn2150 (branch tempeff)
+* Effect control labels now taken back out of inserts and
+  as a group now sit immediately above kit numbers.
+
+2022-8-16 Will
+bn2149
+* Increased size of char array to suppress compiler warnings.
+* Changed direct comparison to strcmp( to suppress compiler warnings.
+* Commented out #include <optional> to suppress compiler warnings.
+
+2022-8-12 Will
+bn2148
+* Attempt to improve EQ graph display.
+* Small code cleanups and doc corrections.
+
+2022-8-4 Will
+bn2147
+* Minor GUI updates.
 
 2022-7-25 Will
 bn2146
