@@ -52,7 +52,7 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 #add_definitions(-Wno-deprecated)
 # ^^^ comment these out on release pushes
 
-set (YOSHIMI_VERSION "2.2.1")
+set (YOSHIMI_VERSION "2.2.2.1")
 
 add_definitions (-DMIN_CONFIG_MAJOR=2)
 add_definitions (-DMIN_CONFIG_MINOR=0)
@@ -462,6 +462,10 @@ target_link_libraries (yoshimi ${ExternLibraries})
 
 if (ARGP_LIB)
     target_link_libraries (yoshimi ${ARGP_LIB})
+endif ()
+
+if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "riscv64")
+    target_link_libraries (yoshimi atomic)
 endif ()
 
 install (TARGETS yoshimi RUNTIME DESTINATION bin)
