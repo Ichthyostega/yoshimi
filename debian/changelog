@@ -1,3 +1,16 @@
+yoshimi (2.2.2.1-1) unstable; urgency=medium
+
+  * New upstream version 2.2.2.1
+    (Closes: #1019471)
+
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Mon, 12 Sep 2022 23:39:18 +0200
+
+yoshimi (2.2.2-1) unstable; urgency=medium
+
+  * New upstream version 2.2.2
+
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Tue, 06 Sep 2022 22:10:41 +0200
+
 yoshimi (2.2.1-1~buster) Lumiera-buster-tool; urgency=low
 
   * New upstream minor release 2.2.1

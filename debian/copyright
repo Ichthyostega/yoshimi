@@ -8,7 +8,7 @@ Copyright: 2009-2011, Alan Calvert
            2014, Andrew Deryabin <andrewderyabin@gmail.com>
            2009, James Morris
            2002-2009, Nasca Octavian Paul and others
-           2014-2021, Will Godfrey & others
+           2014-2022, Will Godfrey & others
 License: GPL-2+
 
 Files: src/DSP/*
@@ -75,20 +75,20 @@ Copyright: 2009-2011, Alan Calvert
            2017, Jesper Lloyd
            2002-2009, Nasca Octavian Paul and others
            2016, Rob Couto & Will Godfrey
-           2014-2021, Will Godfrey and others
+           2014-2022, Will Godfrey and others
 License: LGPL-2+
 
 Files: debian/*
 Copyright: 2010-2011, Alessio Treglia <alessio@debian.org>
            2010-2017, Jaromír Mikeš <mira.mikes@seznam.cz>
            2019, Olivier Humbert <trebmuh@tuxfamily.org>
-           2020-2021, Dennis Braun <d_braun@kabelmail.de>
+           2020-2022, Dennis Braun <d_braun@kabelmail.de>
 License: GPL-2+
 
 Files: src/UI/ParametersUI.fl
        src/UI/VectorUI.fl
 Copyright: 2011, Alan Calvert
-           2014-2021, Will Godfrey
+           2014-2022, Will Godfrey
 License: GPL-3+
 
 Files: banks/Drums/0004-Natural?Drum?Kit.xiz
@@ -106,7 +106,7 @@ Copyright: 2009-2011, Alan Calvert
            2017, Jesper Lloyd
            2002-2009, Nasca O. PAUL and others
            2013, Nikita Zlobin
-           2014-2021, Will Godfrey & others
+           2014-2022, Will Godfrey & others
 License: GPL-2+ or LGPL-2+
 
 Files: Util/YoshimiSplash.svg
