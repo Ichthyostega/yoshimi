@@ -4,79 +4,16 @@ Upstream-Contact: yoshimi-user@lists.sourceforge.net
 Source: https://sourceforge.net/projects/yoshimi/files/
 
 Files: *
-Copyright: 2009-2011, Alan Calvert
-           2014, Andrew Deryabin <andrewderyabin@gmail.com>
-           2009, James Morris
-           2002-2009, Nasca Octavian Paul and others
-           2014-2022, Will Godfrey & others
-License: GPL-2+
-
-Files: src/DSP/*
-       src/Effects/*
-       src/Interface/Data2Text.cpp
-       src/Interface/Data2Text.h
-       src/Interface/InterChange.cpp
-       src/Interface/InterChange.h
-       src/Interface/MidiDecode.cpp
-       src/Interface/MidiDecode.h
-       src/Interface/MidiLearn.cpp
-       src/Interface/MidiLearn.h
-       src/Interface/RingBuffer.h
-       src/Misc/Bank.cpp
-       src/Misc/Bank.h
-       src/Misc/Config.h
-       src/Misc/FileMgrFuncs.h
-       src/Misc/Microtonal.cpp
-       src/Misc/Microtonal.h
-       src/Misc/Part.cpp
-       src/Misc/Part.h
-       src/Misc/RandomGen.h
-       src/Misc/Splash.cpp
-       src/Misc/Splash.h
-       src/Misc/SplashPngHex
-       src/Misc/SynthEngine.cpp
-       src/Misc/SynthEngine.h
-       src/Misc/WavFile.cpp
-       src/Misc/WavFile.h
-       src/Misc/WaveShapeSamples.h
-       src/Misc/XMLwrapper.cpp
-       src/Misc/XMLwrapper.h
-       src/Params/*
-       src/Synth/*
-       src/UI/ADnoteUI.fl
-       src/UI/BankUI.fl
-       src/UI/ConfigUI.fl
-       src/UI/DynamicTooltip.cpp
-       src/UI/DynamicTooltip.h
-       src/UI/EffUI.fl
-       src/UI/EnvelopeUI.fl
-       src/UI/FilterUI.fl
-       src/UI/LFOUI.fl
-       src/UI/MasterMiscUI.fl
-       src/UI/MicrotonalUI.fl
-       src/UI/MidiLearnUI.fl
-       src/UI/MiscGui.cpp
-       src/UI/MiscGui.h
-       src/UI/OscilGenUI.fl
-       src/UI/PADnoteUI.fl
-       src/UI/PartUI.fl
-       src/UI/PresetsUI.fl
-       src/UI/ResonanceUI.fl
-       src/UI/SUBnoteUI.fl
-       src/UI/VirKeyboardUI.fl
-       src/UI/WidgetMWSlider.cpp
-       src/UI/WidgetMWSlider.h
-       src/UI/WidgetPDial.cpp
-       src/UI/WidgetPDial.h
-       src/globals.h
-Copyright: 2009-2011, Alan Calvert
+Copyright: 2002-2009, Nasca Octavian Paul and others
+           2009-2011, Alan Calvert
            2009, James Morris
            2012-2013, Jeremy Jongepier and others
+           2013, Nikita Zlobin
+           2016, Rob Couto
            2017, Jesper Lloyd
-           2002-2009, Nasca Octavian Paul and others
-           2016, Rob Couto & Will Godfrey
-           2014-2022, Will Godfrey and others
-License: LGPL-2+
+           2014, Andrew Deryabin <andrewderyabin@gmail.com>
+           2014-2022, Will Godfrey & others
+License: GPL-2+
 
 Files: debian/*
 Copyright: 2010-2011, Alessio Treglia <alessio@debian.org>
@@ -96,18 +33,6 @@ Files: banks/Drums/0004-Natural?Drum?Kit.xiz
        banks/Drums/0006-HiHat?closed?-?variable?decay.xiz
 Copyright: 2012, Dario Straulino
 License: GPL-3
-
-Files: src/Misc/Config.cpp
-       src/UI/MasterUI.fl
-Copyright: 2009-2011, Alan Calvert
-           2014, Andrew Deryabin
-           2003-2004, Benno Senoner and Christian Schoenebeck
-           2005-2008, Christian Schoenebeck
-           2017, Jesper Lloyd
-           2002-2009, Nasca O. PAUL and others
-           2013, Nikita Zlobin
-           2014-2022, Will Godfrey & others
-License: GPL-2+ or LGPL-2+
 
 Files: Util/YoshimiSplash.svg
 Copyright: 2006, Arun Kulshreshtha
