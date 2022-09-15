@@ -8,7 +8,7 @@ Forwarded: not-needed
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/doc/yoshimi_user_guide/index.html b/doc/yoshimi_user_guide/index.html
-index 5456c5b..1035bea 100644
+index ed3459d..3e533a6 100644
 --- a/doc/yoshimi_user_guide/index.html
 +++ b/doc/yoshimi_user_guide/index.html
 @@ -4,7 +4,7 @@
