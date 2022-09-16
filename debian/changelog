@@ -1,3 +1,13 @@
+yoshimi (2.2.2.1-2~buster) Lumiera-buster-tool; urgency=low
+
+  * Yoshimi anniversary version 2.2.2
+  * upstream bugfix version 2.2.2.1
+  * bump Debian-Standard to v4.6.1 (no changes required)
+  * Rebuild/Backport for Debian/Buster(oldstable).
+  * unofficial DEB package by Ichthyostega
+
+ -- Hermann Vosseler <deb@ichthyostega.de>  Fri, 16 Sep 2022 20:55:42 +0200
+
 yoshimi (2.2.2.1-1) unstable; urgency=medium
 
   * New upstream version 2.2.2.1
