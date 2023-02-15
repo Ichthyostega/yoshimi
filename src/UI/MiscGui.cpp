@@ -1,7 +1,7 @@
 /*
     MiscGui.cpp - common link between GUI and synth
 
-    Copyright 2016-2022 Will Godfrey & others
+    Copyright 2016-2023 Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -80,7 +80,7 @@ void collect_data(SynthEngine *synth, float value, unsigned char action, unsigne
 {
     if (part < NUM_MIDI_PARTS && engine == PART::engine::padSynth)
     {
-        if (collect_readData(synth, 0, PART::control::partBusy, part))
+        if (collect_readData(synth, 0, TOPLEVEL::control::partBusy, part))
         {
             alert(synth, "Part " + to_string(part + 1) + " is busy");
             return;
@@ -257,6 +257,26 @@ void GuiUpdates::decode_updates(SynthEngine *synth, CommandBlock *getData)
     unsigned char miscmsg = getData->data.miscmsg;
 
 //    synth->CBtest(getData);
+    if (getData->data.control == TOPLEVEL::control::copyPaste)
+    {
+        if (getData->data.type == TOPLEVEL::type::Adjust)
+            return; // just looking
+        if (npart == TOPLEVEL::section::systemEffects || npart == TOPLEVEL::section::insertEffects)
+        {
+            synth->getGuiMaster()->paste(getData);
+            return;
+        }
+        else if (npart <= TOPLEVEL::section::part64)
+        {
+            synth->getGuiMaster()->partui->paste(getData);
+            return;
+        }
+        else
+        {
+            std::cout << "no copy/paste valid" << std::endl;
+            return;
+        }
+    }
 
     if (control == TOPLEVEL::control::textMessage) // just show a non-modal message
     {
@@ -294,6 +314,12 @@ void GuiUpdates::decode_updates(SynthEngine *synth, CommandBlock *getData)
         return;
     }
 
+    bool allowPartUpdate = false;
+    int GUIpart = synth->getGuiMaster()->npartcounter->value() -1;
+    if (GUIpart == npart)
+    {
+        allowPartUpdate = true;
+    }
     if (kititem >= EFFECT::type::none && kititem < EFFECT::type::count) // effects
     {
         if (npart == TOPLEVEL::section::systemEffects)
@@ -314,7 +340,7 @@ void GuiUpdates::decode_updates(SynthEngine *synth, CommandBlock *getData)
             else
                 synth->getGuiMaster()->inseffectui->returns_update(getData);
         }
-        else if (npart < NUM_MIDI_PARTS)
+        else if (npart < NUM_MIDI_PARTS && allowPartUpdate)
         {
             if (engine != synth->getGuiMaster()->partui->ninseff)
                 return;
@@ -346,13 +372,13 @@ void GuiUpdates::decode_updates(SynthEngine *synth, CommandBlock *getData)
     /*
      * we are managing some part-related controls from here
     */
-    if (npart < NUM_MIDI_PARTS && (kititem & engine & insert) == UNUSED)
+    if (npart < NUM_MIDI_PARTS && (kititem & engine & insert) == UNUSED && allowPartUpdate)
     {
         if (synth->getGuiMaster()->part_group_returns(getData))
             return;
     }
 
-    if (npart >= NUM_MIDI_PARTS)
+    if (npart >= NUM_MIDI_PARTS || !allowPartUpdate)
         return; // invalid part number
 
     if (kititem >= NUM_KIT_ITEMS && kititem != UNUSED)

@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2014-2021, Will Godfrey
+    Copyright 2014-2022, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -119,17 +119,6 @@ XMLwrapper::XMLwrapper(SynthEngine *_synth, bool _isYoshi, bool includeBase) :
             addparU("active_instances", synth->getRuntime().activeInstance);
             addpar("show_CLI_context", synth->getRuntime().showCLIcontext);
             addpar("gzip_compression", synth->getRuntime().GzipCompression);
-
-            for (int i = 0; i < MAX_PRESET_DIRS; ++i)
-            {
-                if (synth->getRuntime().presetsDirlist[i].size())
-                {
-                    beginbranch("PRESETSROOT",i);
-                    addparstr("presets_root", synth->getRuntime().presetsDirlist[i]);
-                    endbranch();
-                }
-            }
-
         endbranch();
         return;
     }
@@ -392,6 +381,10 @@ char *XMLwrapper::getXMLdata()
 
         case TOPLEVEL::XML::History:
             addparstr("XMLtype", "Recent Files");
+            break;
+
+        case TOPLEVEL::XML::PresetDirs:
+            addparstr("XMLtype", "Preset Directories");
             break;
 
         default:

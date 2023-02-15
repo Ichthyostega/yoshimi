@@ -1,4 +1,129 @@
-yoshimi 2.2.2.1
+yoshimi 2.2.3
+
+2020-2-13 Will
+bn 2177
+Updated docs
+Set release version 2.2.3
+
+2020-2-12 Will
+bn 2176
+CLI paste now updates adsynth voice correctly.
+Set version as 2.2.3 rc3
+
+2023-2-11 Will
+bn 2176
+BugFix: formant filter window not updating centre frequency
+and octave range numeric entries.
+Set version as 2.2.3 rc2
+
+2023-2-8 Will
+bn 2175
+Small code cleanups.
+Commented out various code 'cout' lines.
+User Guide updates.
+Set version as 2.2.3 rc1
+
+2023-2-3 Will
+bn 2174
+Formant filter counters now start at 1 (not zero)
+Improved CLI access the formant filter.
+
+2023-2-1 Will
+bn 2173
+BugFix: MIDI-learn and CLI mixing up EQ filter bands.
+In CLI Changed EQ Band control name to Number to avoid
+    confusion with Bank controls.
+BugFix MIDI-learn changing the GUI of whichever part is visible
+    while correctly changing the actual parameters.
+
+2023-1-31 Will
+bn 2172
+BugFix: MIDI-learn saving but not recognising saved effects controls.
+
+2023-1-29
+bn 2171
+Further cleanups on CLI
+EQ Band numbers now start from 1.
+Halted further improvements to deal with serious fault with
+MIDI-learn and all effects.
+
+2023-1-28
+bn 2170
+Revised and simpified CLI format filter commands.
+CLI now identifes editing and unused vowel.
+Fixed desktop metainfo error.
+
+2023-1-26
+bn 2169
+BugFix: LV2 needed UnifiedPresets.h but doesn't use it!
+Finally solved effects window text resize issue.
+Updated User Guide.
+Various doc updates.
+
+2023-1-21
+bn 2168
+Formant filter unused vowel warning now same
+    style as legato mode warning.
+Added the following instruments
+    Wood Block
+    Finger Snap
+    Cello
+Various code cleaups
+Corrected date of previous build
+
+2023-1-15
+bn 2167
+Resolved issues with effects formant filter.
+
+2023-1-12
+bn 2166
+Brought in latest work from copyPaste branch.
+
+2023-1-7 Will
+bn2165
+Revised formant filter GUI so unused vowels are identified.
+
+2023-1-3 Will
+bn2164
+BugFix: When filter type is analog low 1 or high 1, filter Q knob
+was switching to active when changing other filter controls.
+
+2022-11-9 Will
+bn2163
+Reverted default Audio to Jack as workround for pulseaudio issue.
+
+2022-11-8 Will
+bn2162
+BugFix: old preset list was overwriting new one.
+
+bn2161
+Instances now have independent preset directory choice.
+Previously these were all slaved to firstSynth.
+
+2022-11-7 Will
+bn2160
+Merged in copyPaste so branches don't get out of sync.
+Fixed CLI regression - not importing Scala keymaps.
+BugFix: scale imports not reporting names when loaded.
+Modifed TextMsgBuffer.h to provide non-destructive read.
+
+
+2022-10-22 Will
+bn2159
+* moved down top few control values for MIDI-learn
+* moved partBusy control from part section to top level
+* removed some (now redundant) code
+
+* forgot to update Control Numbers file :(
+
+2022-10-15 Will
+bn2158
+* BugFix: System effect dynfilter filter window not resizing text.
+
+2022-9-26 Will
+bn2157
+* applied temporary fix for wrong EQ graph on loading.
+* added some additional code comments.
 
 2022-9-12 Will
 bn2156

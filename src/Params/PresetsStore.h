@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2010, Alan Calvert
-    Copyright 2018-2019 Will Godfrey
+    Copyright 2018-2022 Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -29,8 +29,10 @@
 #include "Misc/Config.h"
 
 #include <string>
+#include <vector>
 
 using std::string;
+using std::vector;
 
 #define MAX_PRESETTYPE_SIZE 30
 
@@ -52,27 +54,19 @@ class PresetsStore
 
         // presets stuff
         void copypreset(XMLwrapper *xml, const string& type, const string& name);
-        bool pastepreset(XMLwrapper *xml, int npreset);
-        void deletepreset(int npreset);
+        bool pastepreset(XMLwrapper *xml, size_t npreset);
+        void deletepreset(size_t npreset);
 
-        struct presetstruct {
-            string file;
-            string name;
-        };
-        presetstruct presets[MAX_PRESETS];
+        vector<string> presets;
 
-        void rescanforpresets(const string& type, int root);
+        void rescanforpresets(const string& type);
 
     private:
-        void clearpresets(void);
-
         struct _clipboard{
             char *data;
             string type;
         };
         static _clipboard clipboard;
-
-        const string preset_extension;
 
         SynthEngine *synth;
 };

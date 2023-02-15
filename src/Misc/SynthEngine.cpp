@@ -1640,7 +1640,7 @@ int SynthEngine::SetSystemValue(int type, int value)
             { // this is far from ideal !!!
                 string label = Runtime.testCCvalue(value);if (label != "")
                 {
-                    parameter = textMsgBuffer.push(label);;
+                    parameter = textMsgBuffer.push(label);
                     value = 128;
                 }
                 cmd = CONFIG::control::extendedProgramChangeCC;
@@ -3777,7 +3777,7 @@ float SynthEngine::getConfigLimits(CommandBlock *getData)
 }
 
 
-void SynthEngine::CBtest(CommandBlock *candidate)
+void SynthEngine::CBtest(CommandBlock *candidate, bool miscmsg)
 {
     std::cout << "\n value " << candidate->data.value
             << "\n type " << int(candidate->data.type)
@@ -3790,4 +3790,6 @@ void SynthEngine::CBtest(CommandBlock *candidate)
             << "\n parameter " << int(candidate->data.parameter)
             << "\n offset " << int(candidate->data.offset)
             << std::endl;
+    if (!miscmsg)
+        std::cout << ">" << textMsgBuffer.fetch(candidate->data.miscmsg, false) << "<" << std::endl;
 }

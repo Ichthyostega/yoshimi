@@ -11,7 +11,7 @@ comment {EffUI.cc} {in_source not_in_header
 comment {Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009-2010, Alan Calvert
-Copyright 2016-2022, Will Godfrey & others
+Copyright 2016-2023, Will Godfrey & others
 
 This file is part of yoshimi, which is free software: you can redistribute
 it and/or modify it under the terms of the GNU General Public
@@ -208,8 +208,7 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
     code {//
     eff = NULL;
     filterwindow = NULL;
-    fwin_filterui = NULL;
-    lastfiltW = 0;} {}
+    fwin_filterui = NULL;} {}
   }
   Function {~EffUI()} {} {
     code {//
@@ -974,7 +973,7 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
   }
   Function {make_eq_window()} {} {
     Fl_Window effeqwindow {
-      xywh {878 791 380 95} type Double box PLASTIC_UP_BOX color 221 labelfont 1 hide
+      xywh {753 685 380 100} type Double box PLASTIC_UP_BOX color 221 labelfont 1 hide
       class Fl_Group
     } {
       Fl_Text_Display eqname {
@@ -992,12 +991,19 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
       Fl_Counter bandcounter {
         label Band
         callback {//
-        send_data(TOPLEVEL::action::forceUpdate, 1, o->value(), (EFFECT::type::eq), TOPLEVEL::type::Integer);}
-        tooltip {Band no.} xywh {263 20 45 15} type Simple labelsize 11 align 1 minimum 0 maximum 1 step 1 textsize 11
-        code0 {o->bounds(0,MAX_EQ_BANDS-1);}
+        send_data(TOPLEVEL::action::forceUpdate, 1, o->value() - 1, (EFFECT::type::eq), TOPLEVEL::type::Integer);}
+        tooltip {Band no.} xywh {263 20 45 15} type Simple labelsize 11 align 1 minimum 0 maximum 1 step 1 value 1 textsize 11
+        code0 {o->bounds(1,MAX_EQ_BANDS);}
       }
+      Fl_Choice typechoice {
+        label Type
+        callback {//
+        send_data(TOPLEVEL::action::forceUpdate, 10, o->value(), (EFFECT::type::eq), TOPLEVEL::type::Integer);}
+        tooltip Type xywh {323 20 40 15} down_box BORDER_BOX labelsize 11 align 1 when 6 textfont 1 textsize 9
+        code0 {o->add("Off");o->add("Lp1");o->add("Hp1");o->add("Lp2");o->add("Hp2");o->add("Bp2");o->add("N2");o->add("Pk");o->add("LSh");o->add("HSh");}
+      } {}
       Fl_Group bandgroup {
-        xywh {241 40 134 50} box ENGRAVED_FRAME
+        xywh {241 40 134 50} box ENGRAVED_FRAME deactivate
       } {
         Fl_Dial freqdial {
           label Freq
@@ -1027,17 +1033,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
           label Stages
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, 14, o->value(), (EFFECT::type::eq), TOPLEVEL::type::Integer);}
-          tooltip {Additional filter stages} xywh {337 60 30 15} type Simple labelsize 10 minimum 1 maximum 127 step 1 textfont 1 textsize 11
-          code0 {o->bounds(0,MAX_FILTER_STAGES-1);}
+          tooltip {Additional filter stages} xywh {337 60 30 15} type Simple labelsize 10 minimum 1 maximum 127 step 1 value 1 textfont 1 textsize 11
+          code0 {o->bounds(0,MAX_FILTER_STAGES - 1);}
+        }
+        Fl_Text_Display extra {
+          label Extra
+          xywh {334 60 35 0} labelsize 11 textsize 9
         }
       }
-      Fl_Choice typechoice {
-        label Type
-        callback {//
-        send_data(TOPLEVEL::action::forceUpdate, 10, o->value(), (EFFECT::type::eq), TOPLEVEL::type::Integer);}
-        tooltip Type xywh {323 20 40 15} down_box BORDER_BOX labelsize 11 align 1 when 6 textfont 1 textsize 9
-        code0 {o->add("Off");o->add("Lp1");o->add("Hp1");o->add("Lp2");o->add("Hp2");o->add("Bp2");o->add("N2");o->add("Pk");o->add("LSh");o->add("HSh");}
-      } {}
       Fl_Box eqgraph {
         xywh {45 10 190 75} box BORDER_BOX color 178
         class EQGraph
@@ -1166,7 +1169,7 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
     Fl_Window filterwindow {
       label {Filter Parameters for DynFilter Eff.}
       callback {//
-    filterclose->do_callback();} open
+    filterclose->do_callback();}
       xywh {1109 779 285 110} type Double hide resizable
       code0 {filtDW = o->w(); filtDH = o->h();}
       code1 {o->size_range(filtDW, filtDH, 0, 0, 0, 0, 1);}
@@ -1189,7 +1192,12 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
   Function {send_data(int action, int control, float value, int group, int type)} {} {
     code {//
     type |= TOPLEVEL::type::Write;
-    collect_data(synth, value, action, type, control, npart, group, neff);} {}
+    int parameter = UNUSED;
+    if (group == EFFECT::type::eq)
+    {
+        parameter = bandcounter->value() - 1;
+    }
+    collect_data(synth, value, action, type, control, npart, group, neff, UNUSED, parameter);} {}
   }
   Function {fetchData(float value, int control, int part, int kititem = UNUSED, int engine = UNUSED, int insert = UNUSED, int parameter = UNUSED, int offset = UNUSED, int miscmsg = UNUSED, int request = UNUSED)} {return_type float
   } {
@@ -1204,12 +1212,13 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
     unsigned char efftype = getData->data.kit;
     unsigned char effnum = getData->data.engine;
     bool isdynfilter = (effnum == (EFFECT::type::dynFilter));
+    unsigned char eqband =  getData->data.parameter;
     unsigned char secondary = getData->data.offset;
 
     int textCol = 14;
     if (fetchData(0, EFFECT::control::changed, getData->data.part, efftype, effnum) != 0)
-        textCol = FL_BLUE;
-    //cout << "colour " << textCol << endl;
+    textCol = FL_BLUE;
+    //std::cout << "colour " << textCol << std::endl;
     switch(efftype)
     {
         case EFFECT::type::none:
@@ -1561,12 +1570,13 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
             {
                 eqp0->value(value);
             }
-            else if (control == EFFECT::control::panning) // band numnber here!
+            else if (control == EFFECT::control::panning) // band number here!
             {
                 eqband = value_int;
-                EQbandUpdate();
+                bandcounter->value(eqband + 1);
+                EQbandUpdate(eqband);
             }
-            else
+            else if (bandcounter->value() == eqband + 1)
             {
                 switch (control)
                 {
@@ -1893,8 +1903,12 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         {
             eqband = 0;
             int type = eff->geteffectpar(10);
+            if (type > 0)
+                bandgroup->activate();
+            else
+                bandgroup->activate();
             eqp0->value(eff->geteffectpar(0));
-            bandcounter->value(eqband);
+            bandcounter->value(eqband + 1);
             typechoice->value(type);
             freqdial->value(eff->geteffectpar(11));
             gaindial->value(eff->geteffectpar(12));
@@ -2132,9 +2146,12 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
                 qdial->labelsize(size11);
                 stagescounter->labelsize(size);
                     stagescounter->textsize(size11);
+                    extra->labelsize(size);
 
                 typechoice->labelsize(size11);
                     typechoice->textsize(size9);
+
+                effeqwindow->redraw();
                 break;
             case 8: // dynfilter
                 dfname->labelsize(size12);
@@ -2175,15 +2192,11 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
     }
     checkSane(fetchX, fetchY, fetchW, fetchH, filtDW, filtDH);
     filterwindow->resize(fetchX, fetchY, fetchW, fetchH);
-    filterwindow->show();
-    lastfiltW = 0;} {}
+    filtRtext();
+    filterwindow->show();} {}
   }
   Function {filtRtext()} {} {
     code {//
-    if (lastfiltW == filterwindow->w())
-        return;
-    lastfiltW = filterwindow->w();
-
     float dScale = filterwindow->w() / filtDW;
     if (dScale < 1.0f)
         dScale = 1.0f;
@@ -2194,10 +2207,9 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
 
     filterwindow->redraw();} {}
   }
-  Function {EQbandUpdate()} {} {
+  Function {EQbandUpdate(int eqband)} {} {
     code {//
-    int npb = eqband * 5 + 10;
-
+    int npb = (eqband) * 5 + 10;
     int type = eff->geteffectpar(npb);
     typechoice->value(type);
 
@@ -2241,7 +2253,5 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
   decl {float filtDW;} {private local
   }
   decl {float filtDH;} {private local
-  }
-  decl {int lastfiltW;} {private local
   }
 }
