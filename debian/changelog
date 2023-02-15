@@ -1,14 +1,18 @@
-yoshimi (2.2.3-1ppa1~xenial) xenial; urgency=low
+yoshimi (2.2.3-1ppa1~trusty) trusty; urgency=low
 
   * New upstream minor release 2.2.3
   * unofficial DEB package by Ichthyostega
-  * Rebuild/Backport for Ubuntu/Xenial (16.04 LTS)
+  * Build for Ubuntu/Trusty (14.04 LTS)
+  * As of 2/2023, this is the latest (major) Yoshimi release
   * use GCC-9 from ppa:ubuntu-toolchain-r/test
-  * tweaks to allow build on this somewhat old platform
+  * tweaks to allow build on this rather old platform
     * force build with -fPIC
     * lower debhelper and compliance level
+    * disable FLTK code guarded by Fl::is_scheme
+      in WidgetCheckButton, since this scheme specific tweaks
+      are seemingly not supported on this old version
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Wed, 15 Feb 2023 01:16:23 +0100
+ -- Hermann Vosseler <deb@ichthyostega.de>  Wed, 15 Feb 2023 01:23:55 +0100
 
 yoshimi (2.2.2.1-2~buster) Lumiera-buster-tool; urgency=low
 
