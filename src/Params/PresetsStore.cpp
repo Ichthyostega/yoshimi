@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2010, Alan Calvert
-    Copyright 2017-2019 Will Godfrey
+    Copyright 2017-2022 Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -24,7 +24,6 @@
 */
 
 #include <dirent.h>
-//#include <iostream>
 
 #include "Misc/XMLwrapper.h"
 #include "Params/PresetsStore.h"
@@ -34,23 +33,16 @@
 using file::make_legit_filename;
 
 
-extern SynthEngine *firstSynth;
-
 PresetsStore::_clipboard PresetsStore::clipboard;
 
 
 PresetsStore::PresetsStore(SynthEngine *_synth) :
-    preset_extension(".xpz"),
     synth(_synth)
 {
     clipboard.data = NULL;
     clipboard.type.clear();
 
-    for (int i = 0; i < MAX_PRESETS; ++i)
-    {
-        presets[i].file.clear();
-        presets[i].name.clear();
-    }
+    presets.clear();
 }
 
 
@@ -62,7 +54,7 @@ PresetsStore::~PresetsStore()
         free(_data);
 
     }
-    clearpresets();
+    presets.clear();
 }
 
 
@@ -86,10 +78,9 @@ bool PresetsStore::pasteclipboard(XMLwrapper *xml)
     {
         xml->putXMLdata(clipboard.data);
         if (synth->getRuntime().effectChange != UNUSED)
-            synth->getRuntime().effectChange |= 0xff0000; // temporary fix
+            synth->getRuntime().effectChange |= 0xff0000; // temporary fix - fills in effect header
         return true;
     }
-    synth->getRuntime().effectChange = UNUSED; // temporary fix
     return false;
 }
 
@@ -104,88 +95,15 @@ bool PresetsStore::checkclipboardtype(const string& type)
 }
 
 
-void PresetsStore::clearpresets(void)
+void PresetsStore::rescanforpresets(const string& type)
 {
-    for (int i = 0; i < MAX_PRESETS; ++i)
+    string dirname = synth->getRuntime().presetsDirlist[synth->getRuntime().presetsRootID];
+    if (!dirname.empty())
     {
-        presets[i].file.clear();
-        presets[i].name.clear();
-    }
-}
-
-
-void PresetsStore::rescanforpresets(const string& type, int root)
-{
-    for (int i = 0; i < MAX_PRESETS; ++i)
-    {
-        presets[i].file.clear();
-        presets[i].name.clear();
-    }
-    int presetk = 0;
-    string ftype = "." + type + preset_extension;
-
-    //std::cout << "type " << type << std::endl;
-    string altType = "";
-    if (type == "Padsyth")
-        altType = ".ADnoteParameters" + preset_extension;
-    else if (type == "Padsythn")
-        altType = ".ADnoteParametersn" + preset_extension;
-    else if (type == "Psubsyth")
-        altType = ".SUBnoteParameters" + preset_extension;
-    else if (type == "Ppadsyth")
-        altType = ".PADnoteParameters" + preset_extension;
-    string dirname = firstSynth->getRuntime().presetsDirlist[root];
-    if (dirname.empty())
-        return;
-    //std::cout << "Preset root " << dirname << std::endl;
-    DIR *dir = opendir(dirname.c_str());
-    if (dir == NULL)
-        return;
-
-    struct dirent *fn;
-    while ((fn = readdir(dir)))
-    {
-        string filename = string(fn->d_name);
-        //std::cout << "file " << filename << std::endl;
-        if (filename.find(ftype) == string::npos)
+        file::presetsList(dirname, type, presets);
+        if(presets.size() > 1)
         {
-            if (altType.empty() || filename.find(altType) == string::npos)
-                continue;
-        }
-        if (dirname.at(dirname.size() - 1) != '/')
-            dirname += "/";
-        presets[presetk].file = dirname + filename;
-
-        size_t endpos = filename.find(ftype);
-        if (endpos == string::npos)
-            if (!altType.empty())
-                endpos = filename.find(altType);
-        presets[presetk].name = filename.substr(0, endpos);
-//        std::cout << "Preset name " << presets[presetk].name << std::endl;
-        presetk++;
-        if (presetk >= MAX_PRESETS)
-            return;
-    }
-    closedir(dir);
-
-    // sort the presets
-    bool check = true;
-    while (check)
-    {
-        check = false;
-        for (int j = 0; j < MAX_PRESETS - 1; ++j)
-        {
-            for (int i = j + 1; i < MAX_PRESETS; ++i)
-            {
-                if (presets[i].name.empty() || presets[j].name.empty())
-                    continue;
-                if (strcasecmp(presets[i].name.c_str(), presets[j].name.c_str()) < 0)
-                {
-                    presets[i].file.swap(presets[j].file);
-                    presets[i].name.swap(presets[j].name);
-                    check = true;
-                }
-            }
+            sort(presets.begin(), presets.end());
         }
     }
 }
@@ -193,37 +111,37 @@ void PresetsStore::rescanforpresets(const string& type, int root)
 
 void PresetsStore::copypreset(XMLwrapper *xml, const string& type, const string& name)
 {
-    if (firstSynth->getRuntime().presetsDirlist[0].empty())
+    if (synth->getRuntime().presetsDirlist[0].empty())
         return;
     synth->getRuntime().xmlType = TOPLEVEL::XML::Presets;
     synth->getRuntime().Log(name);
     string tmpfilename = name;
     make_legit_filename(tmpfilename);
-    string dirname = firstSynth->getRuntime().presetsDirlist[synth->getRuntime().currentPreset];
+    string dirname = synth->getRuntime().presetsDirlist[synth->getRuntime().presetsRootID];
     if (dirname.find_last_of("/") != (dirname.size() - 1))
         dirname += "/";
-    xml->saveXMLfile(dirname + tmpfilename + "." + type + preset_extension);
+    xml->saveXMLfile(dirname + tmpfilename + "." + type + EXTEN::presets);
 }
 
 
-bool PresetsStore::pastepreset(XMLwrapper *xml, int npreset)
+bool PresetsStore::pastepreset(XMLwrapper *xml, size_t npreset)
 {
-    if (npreset >= MAX_PRESETS || npreset < 1)
+    if (npreset > presets.size() || npreset < 1)
         return false;
     npreset--;
-    if (presets[npreset].file.empty())
+    if (presets[npreset].empty())
         return false;
     if (synth->getRuntime().effectChange != UNUSED)
-        synth->getRuntime().effectChange |= 0xff0000; // temporary fix
-    return xml->loadXMLfile(presets[npreset].file);
+        synth->getRuntime().effectChange |= 0xff0000; // temporary fix - fills in effect header
+    return xml->loadXMLfile(presets[npreset]);
 }
 
 
-void PresetsStore::deletepreset(int npreset)
+void PresetsStore::deletepreset(size_t npreset)
 {
-    if (npreset >= MAX_PRESETS || npreset < 1)
+    if (npreset >= presets.size() || npreset < 1)
         return;
     npreset--;
-    if (!presets[npreset].file.empty())
-        remove(presets[npreset].file.c_str());
+    if (!presets[npreset].empty())
+        file::deleteFile(presets[npreset]);
 }

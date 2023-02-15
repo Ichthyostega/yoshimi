@@ -21,6 +21,8 @@
 #include <iostream>
 #include <stdlib.h>
 
+#include<bits/stdc++.h>
+
 #include "Interface/Text2Data.h"
 #include "Interface/TextLists.h"
 #include "Interface/InterChange.h"
@@ -49,8 +51,6 @@ void TextData::encodeAll(SynthEngine *_synth, string &sentCommand, CommandBlock 
         return;
     }
     encodeLoop(source, allData);
-
-    //cout << "Control " << int(allData.data.control) << "  Part " << int(allData.data.part) << "  Kit " << int(allData.data.kit) << "  Engine " << int(allData.data.engine) << "  Insert " << int(allData.data.insert) << "  Parameter " << int(allData.data.parameter) << "  Offset " << int(allData.data.offset) << endl;
 
     /*
      * If we later decide to be able to set and read values
@@ -127,7 +127,11 @@ bool TextData::findCharNum(string &line, unsigned char &value)
 
 bool TextData::findAndStep(std::string &line, std::string text, bool step)
 {
-    size_t pos = line.find(text);
+    // now case insensitive
+    transform(text.begin(), text.end(), text.begin(), ::tolower);
+    std::string lineCopy = line;
+    transform(lineCopy.begin(), lineCopy.end(), lineCopy.begin(), ::tolower);
+    size_t pos = lineCopy.find(text);
     if (pos != string::npos && pos < 3) // allow leading spaces
     {
         if (step)
@@ -147,7 +151,7 @@ int TextData::findListEntry(std::string &line, int step, std::string list [])
     bool found = false;
     std::string test;
     do {
-        test = func::stringCaps(list [count], 1);
+        test = list [count];
         size_t split = test.find(" ");
         if (split != string::npos)
             test = test.substr(0, split);
@@ -592,19 +596,17 @@ void TextData::encodeEffects(std::string &source, CommandBlock &allData)
             }
         }
 
-        unsigned char efftype = findListEntry(source, 1, fx_list);
-        if (efftype >= EFFECT::type::count - EFFECT::type::none)
+        unsigned char efftype = findListEntry(source, 1, fx_list) + EFFECT::type::none;
+        if (efftype >= EFFECT::type::count || efftype <= EFFECT::type::none)
         {
             log(source, "effect type out of range");
             return;
         }
-        int effpos = efftype + EFFECT::type::none;
-        allData.data.kit = efftype + EFFECT::type::none;
+        allData.data.kit = efftype;
 
         // now need to do actual control
         unsigned char result = UNUSED;
-        std::cout << "effpos " << effpos << std::endl;
-        switch (effpos)
+        switch (efftype)
         {
             case EFFECT::type::reverb:
                 result = findListEntry(source, 2, reverblist);
@@ -636,10 +638,27 @@ void TextData::encodeEffects(std::string &source, CommandBlock &allData)
                 if (result > 5) // extra line
                     result -= 1;
                 break;
+
             case EFFECT::type::eq:
+                if (findAndStep(source, "(Band", true))
+                {
+                    unsigned char tmp;
+                    if (findCharNum(source, tmp))
+                    allData.data.parameter = tmp;
+                }
                 result = findListEntry(source, 2, eqlist);
-                if (result > 2) // extra line
-                    result -= 1;
+                if (result > 0)
+                {
+                    if (result > 2)
+                        result += 7; // internal numbers start from 10
+                    if (findAndStep(source, "(Band", true))
+                    {
+                        unsigned char tmp;
+                        if (findCharNum(source, tmp))
+                            allData.data.parameter = tmp;
+                    }
+                }
+
                 break;
             case EFFECT::type::dynFilter:
                 result = findListEntry(source, 2, dynfilterlist);
@@ -650,7 +669,7 @@ void TextData::encodeEffects(std::string &source, CommandBlock &allData)
                 log(source, "effect control out of range");
                 return;
         }
-
+        //allData.data.kit = EFFECT::type::
         allData.data.control = result;
         return;
     }

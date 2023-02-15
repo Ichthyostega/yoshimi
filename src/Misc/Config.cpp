@@ -5,7 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
     Copyright 2013, Nikita Zlobin
-    Copyright 2014-2021, Will Godfrey & others
+    Copyright 2014-2022, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -141,7 +141,7 @@ Config::Config(SynthEngine *_synth, std::list<string>& allArgs, bool isLV2Plugin
     currentRoot(0),
     bankHighlight(false),
     lastBankPart(UNUSED),
-    currentPreset(0),
+    presetsRootID(0),
     tempBank(0),
     tempRoot(0),
     VUcount(0),
@@ -246,13 +246,6 @@ void Config::flushLog(void)
             LogList.pop_front();
         }
     }
-}
-
-
-void Config::clearPresetsDirlist(void)
-{
-    for (int i = 0; i < MAX_PRESET_DIRS; ++i)
-        presetsDirlist[i].clear();
 }
 
 
@@ -383,6 +376,7 @@ bool Config::loadConfig(void)
             }
         }
     }
+    loadPresetsList();
 
     //cout << "Session Stage " << sessionStage << endl;
 
@@ -490,42 +484,39 @@ bool Config::extractBaseParameters(XMLwrapper *xml)
         activeInstance = xml->getparU("active_instances", 0);
     else
         activeInstance = 1;
-    handlePadSynthBuild = xml->getparU("handle_padsynth_build",1, 0,2);  // 0 = blocking/muted, 1 = background thread (=default), 2 = auto-Apply on param change
+    handlePadSynthBuild = xml->getparU("handle_padsynth_build", 1, 0, 2);  // 0 = blocking/muted, 1 = background thread (=default), 2 = auto-Apply on param change
     showCLIcontext = xml->getpar("show_CLI_context", 1, 0, 2);
     GzipCompression = xml->getpar("gzip_compression", GzipCompression, 0, 9);
 
     // get preset dirs
     int count = 0;
     bool found = false;
-    for (int i = 0; i < MAX_PRESET_DIRS; ++i)
+    if (!isRegularFile(file::localDir() + "/presetDirs"))
     {
-        if (xml->enterbranch("PRESETSROOT", i))
+        for (int i = 0; i < MAX_PRESET_DIRS; ++i)
         {
-            string dir = xml->getparstr("presets_root");
-            if (isDirectory(dir))
+            if (xml->enterbranch("PRESETSROOT", i))
             {
-                presetsDirlist[count] = dir;
-                found = true;
-                ++count;
+                string dir = xml->getparstr("presets_root");
+                if (isDirectory(dir))
+                {
+                    presetsDirlist[count] = dir;
+                    found = true;
+                    ++count;
+                }
+                xml->exitbranch();
             }
-            xml->exitbranch();
+        }
+
+        if (!found)
+        {
+            defaultPresets();
+            presetsRootID = 0;
+            configChanged = true; // give the user the choice
+
+            savePresetsList(); // move these to new location
         }
     }
-    if (!found)
-    {
-        defaultPresets();
-        currentPreset = 0;
-        configChanged = true; // give the user the choice
-    }
-
-    // the following three retained here for compatibility with old config type
-    if (!rateChanged)
-        Samplerate = xml->getpar("sample_rate", Samplerate, 44100, 192000);
-    if (!bufferChanged)
-        Buffersize = xml->getpar("sound_buffer_size", Buffersize, MIN_BUFFER_SIZE, MAX_BUFFER_SIZE);
-    if (!oscilChanged)
-        Oscilsize = xml->getpar("oscil_size", Oscilsize, MIN_OSCIL_SIZE, MAX_OSCIL_SIZE);
-
 
     xml->exitbranch(); // BaseParameters
     return true;
@@ -580,25 +571,9 @@ bool Config::extractConfigData(XMLwrapper *xml)
         VirKeybLayout = xml->getpar("virtual_keyboard_layout", VirKeybLayout, 1, 6) - 1;
         xmlmax = xml->getpar("full_parameters", xmlmax, 0, 1);
 
-        // get legacy preset dirs
-        int count = 0;
-        for (int i = 0; i < MAX_PRESET_DIRS; ++i)
-        {
-            if (xml->enterbranch("PRESETSROOT", i))
-            {
-                string dir = xml->getparstr("presets_root");
-                if (isDirectory(dir))
-                {
-                    presetsDirlist[count] = dir;
-                    ++count;
-                }
-                xml->exitbranch();
-            }
-        }
-
         bankHighlight = xml->getparbool("bank_highlight", bankHighlight);
-
-        currentPreset = xml->getpar("presetsCurrentRootID", currentPreset, 0, MAX_PRESETS);
+        loadPresetsList();
+        presetsRootID = xml->getpar("presetsCurrentRootID", presetsRootID, 0, MAX_PRESETS);
 
         Interpolation = xml->getpar("interpolation", Interpolation, 0, 1);
 
@@ -708,7 +683,7 @@ void Config::addConfigXML(XMLwrapper *xml)
 
     xml->addparbool("bank_highlight", bankHighlight);
 
-    xml->addpar("presetsCurrentRootID", currentPreset);
+    xml->addpar("presetsCurrentRootID", presetsRootID);
 
     xml->addpar("interpolation", Interpolation);
 
@@ -812,6 +787,82 @@ end_game:
     if (xml)
         delete xml;
     return ok;
+}
+
+
+bool Config::loadPresetsList(void)
+{
+    string presetDirname = file::localDir()  + "/presetDirs";
+    if (!isRegularFile(presetDirname))
+    {
+        Log("Missing preset directories file");
+        return false;
+    }
+    xmlType = TOPLEVEL::XML::PresetDirs;
+
+    XMLwrapper *xml = new XMLwrapper(synth, true);
+    if (!xml)
+    {
+        Log("loadPresetDirs failed xml allocation");
+        return false;
+    }
+    xml->loadXMLfile(presetDirname);
+
+    if (!xml->enterbranch("PRESETDIRS"))
+    {
+        Log("loadPresetDirsData, no PRESETDIRS branch");
+        delete xml;
+        return false;
+    }
+    int count = 0;
+    bool ok = false;
+    do
+    {
+        if (xml->enterbranch("XMZ_FILE", count))
+        {
+            presetsDirlist[count] = xml->getparstr("dir");
+            xml->exitbranch();
+            ok = true;
+        }
+        else
+            ok = false;
+        ++count;
+    }
+    while (ok);
+    xml->endbranch();
+    delete xml;
+
+    return true;
+}
+
+
+bool Config::savePresetsList(void)
+{
+    string presetDirname = file::localDir()  + "/presetDirs";
+    xmlType = TOPLEVEL::XML::PresetDirs;
+
+    XMLwrapper *xml = new XMLwrapper(synth, true);
+    if (!xml)
+    {
+        Log("savePresetDirs failed xml allocation");
+        return false;
+    }
+    xml->beginbranch("PRESETDIRS");
+    {
+        int count = 0;
+        while (!presetsDirlist[count].empty())
+        {
+            xml->beginbranch("XMZ_FILE", count);
+                xml->addparstr("dir", presetsDirlist[count]);
+            xml->endbranch();
+            ++count;
+        }
+    }
+    xml->endbranch();
+    if (!xml->saveXMLfile(presetDirname))
+        Log("Failed to save data to " + presetDirname);
+    delete xml;
+    return true;
 }
 
 
