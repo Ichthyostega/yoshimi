@@ -1,1 +1,5 @@
 fix_privacy_breach_in_index_html.patch
+0002-VERSION-HIV.old.patch
+0003-Research-revert-the-changed-anti-denormal-handling.patch
+0004-Research-Revert-Fix-inconsistent-envelope-timing-und.patch
+0005-Research-Revert-Fix-missing-phase-randomness-when-im.patch
