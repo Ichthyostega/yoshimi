@@ -50,6 +50,8 @@
     <p>
     When the formant window is selected, the <em>FilterType</em> list is replaced by an Edit button, and clicking on this opens the window shown. These controls are <em>additional</em> to the others and adjust individual formants and the vowels they are contained in.  Also, remember that the formant filter interacts with the filter envelope.
     <br><br>
+    There are six vowels each with 12 formants, although you can chose to use only 2 or 3 of these.
+    <br><br>
     For a deep understanding of formant filtering there is a highly detailed Wikipedia article <a href="https://en.wikipedia.org/wiki/Formant">Here</a>.
     </p>
     <p>
@@ -64,7 +66,7 @@
         <b>Vw.Cl</b> (vowel clearness) The amount of overlap when vowels transition.
       </li>
       <li>
-        <b>Vowel no.</b> The vowel being edited.
+        <b>Vowel no.</b> The vowel being edited. If you are editing one that isn't in the current sequence it will have a redish background.
       </li>
       <li>
         <b>Formant</b> The formant being edited.
@@ -88,7 +90,7 @@
         <b>Vowel</b> The vowel number at the sequence position shown.
       </li>
       <li>
-        <b>Strch</b> (stretch) Changes the time of the overall sequence.
+        <b>Stretch</b> Changes the time and width of lower frequency formants relative to higher ones.
       </li>
       <li>
         <b>Neg.Input</b> Inverts the input from the Envelope and/or LFO.
@@ -100,6 +102,10 @@
         <b>Oct.</b> (octaves) The pitch range of the complete filter.
       </li>
     </ul>
+    <b>Note</b>
+    <div class="tab">
+    Although the sequence size sets the number of active vowels it doesn't detirmine which ones can be selected for any sequence position. If you have three vowels active (the default) you could have vowels 6, 3, 4 at positions 1, 2, 3 respectively.
+    </div>
     </p>
     <p>
     <h4>The Formant Graph</h4>

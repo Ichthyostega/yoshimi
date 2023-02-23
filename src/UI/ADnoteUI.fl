@@ -1,5 +1,5 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0305
+version 1.0308
 header_name {.h}
 code_name {.cc}
 comment {ADNoteUI.h} {not_in_source in_header
@@ -11,7 +11,7 @@ comment {ADNoteUI.cc} {in_source not_in_header
 comment {Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009-2011, Alan Calvert
-Copyright 2014-2021, Will Godfrey
+Copyright 2014-2023, Will Godfrey
 
 This file is part of yoshimi, which is free software: you can redistribute
 it and/or modify it under the terms of the GNU General Public
@@ -1144,7 +1144,7 @@ send_data(0, ADDVOICE::control::bypassGlobalFilter, o->value(), TOPLEVEL::type::
               int x = int(o->value());
               send_data(TOPLEVEL::action::forceUpdate, ADDVOICE::control::soundType, x, TOPLEVEL::type::Integer);}
             tooltip {Oscillator Type (sound/noise)} xywh {8 454 74 18} down_box BORDER_BOX selection_color 49 labelsize 10 when 6 textfont 1 textsize 10
-            code0 {o->add("Sound");o->add("Whit Ns");o->add("Pink Ns");;o->add("Spot Ns");}
+            code0 {o->add("Sound");o->add("Whit Ns");o->add("Pink Ns");o->add("Spot Ns");}
             code1 {o->value(pars->VoicePar[nvoice].Type);}
             code2 {if (pars->VoicePar[nvoice].Type!=0) voicemodegroup->deactivate();}
             code3 {if (pars->VoicePar[nvoice].PVoice >= 0) o->deactivate();}
@@ -1600,6 +1600,21 @@ send_data(0, ADDVOICE::control::bypassGlobalFilter, o->value(), TOPLEVEL::type::
             update_osclabels();
             break;
     }} {}
+  }
+  Function {paste(CommandBlock *getData)} {} {
+    code {//
+       /* switch (getData->data.insert)
+        {
+            case TOPLEVEL::insert::resonanceGroup:
+            {
+                if (resui)
+                    resui->refresh();
+                break;
+            }
+        }*/
+       getData->data.spare1 = getData->data.spare0; // suppress "unused" warning
+       //std::cout << "in addvoice" << std::endl;
+        ;} {}
   }
   Function {update_osclabels()} {} {
     code {//
@@ -2550,6 +2565,20 @@ o->hide();}
 
     }} {}
   }
+  Function {paste(CommandBlock *getData)} {} {
+    code {//
+        switch (getData->data.insert)
+        {
+            case TOPLEVEL::insert::resonanceGroup:
+            {
+                if (resui)
+                    resui->refresh();
+                break;
+            }
+        }
+        //std::cout << "in addsynth" << std::endl;
+        ;} {}
+  }
   Function {ADnoteUI(ADnoteParameters *parameters, int npart_, int kititem_)} {} {
     code {//
         synth = parameters->getSynthEngine();
@@ -2826,7 +2855,7 @@ o->hide();}
 
     float dScale = ADnoteVoiceList->w() / float(listDW);
     if (dScale < 0.2f)
-        dScale = 0.2f;;
+        dScale = 0.2f;
 
     for (int i = 0; i < NUM_VOICES; ++i)
     {

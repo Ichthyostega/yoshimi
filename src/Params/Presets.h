@@ -28,6 +28,7 @@
 
 #include "Misc/XMLwrapper.h"
 #include "Params/PresetsStore.h"
+#include <vector>
 
 class SynthEngine;
 
@@ -64,7 +65,7 @@ class Presets
         bool checkclipboardtype(void);
         void deletepreset(int npreset);
         void setelement(int n);
-        void rescanforpresets(int root);
+        void rescanforpresets(void);
 
         SynthEngine *getSynthEngine() {return synth;}
 

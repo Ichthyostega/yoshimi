@@ -11,7 +11,7 @@ comment {PartUI.cc} {in_source not_in_header
 comment {Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009-2011, Alan Calvert
-Copyright 2014-2022, Will Godfrey
+Copyright 2014-2023, Will Godfrey
 
 This file is part of yoshimi, which is free software: you can redistribute
 it and/or modify it under the terms of the GNU General Public
@@ -29,7 +29,7 @@ Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 This file is derivative of ZynAddSubFX original code.
 
-} {selected in_source in_header
+} {in_source in_header
 }
 
 decl {\#include <FL/fl_ask.H>
@@ -339,7 +339,7 @@ class PartKitItem {: {public Fl_Group}
   }
 }
 
-class PartUI {: {public Fl_Group, PartUI_}
+class PartUI {selected : {public Fl_Group, PartUI_}
 } {
   Function {make_window()} {} {
     Fl_Window instrumentkitlist {
@@ -721,7 +721,7 @@ class PartUI {: {public Fl_Group, PartUI_}
         label P
         callback {//
         synth->getGuiMaster()->getPresetsUi()->paste(part->partefx[ninseff], inseffectui);
-        synth->getRuntime().effectChange = npart | (ninseff << 8); // temporary fix}
+        synth->getRuntime().effectChange = npart | (ninseff << (EFFECT::type::dynFilter - EFFECT::type::none)); // temporary fix - for what?}
         xywh {346 19 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 7
       }
       Fl_Check_Button bypasseff {
@@ -1334,9 +1334,9 @@ class PartUI {: {public Fl_Group, PartUI_}
     string text;
     if (miscmsg != NO_MSG)
         text = textMsgBuffer.fetch(miscmsg);
-
     if (npart != newpart)
         return;
+
     bool sameEff = (engine == ninseff);
     bool kitType = (insert == TOPLEVEL::insert::kitGroup);
     if (!kitType)
@@ -1437,7 +1437,7 @@ class PartUI {: {public Fl_Group, PartUI_}
             break;
         case PART::control::minNote:
         case PART::control::minToLastKey: // this will have been modified for last key press
-            partkititem[kititem]->minkcounter->value(valInt);;
+            partkititem[kititem]->minkcounter->value(valInt);
             break;
 
         case PART::control::maxNote:
@@ -1486,7 +1486,10 @@ class PartUI {: {public Fl_Group, PartUI_}
             if (sameEff)
                 inseffectui->UpdatePresetColour(parameter, insefftype->value());
             else
+            {
                 lastfxW = 0;
+                lastDynFiltW = 0;
+            }
             break;
 
         case PART::control::effectType:
@@ -1494,7 +1497,8 @@ class PartUI {: {public Fl_Group, PartUI_}
             {
                 insefftype->value(valInt);
                 part->partefx[engine]->geteffect();
-                inseffectui->UpdatePresetColour(parameter, insefftype->value());
+                inseffectui->UpdatePresetColour(0, insefftype->value());
+                // changing effect type always sets default values
                 inseffectui->refresh(part->partefx[engine], npart, engine);
                 fxRtext();
             }
@@ -1658,6 +1662,103 @@ class PartUI {: {public Fl_Group, PartUI_}
     if (control == PART::control::enableAdd || control == PART::control::enableSub || control == PART::control::enablePad)
     checkEngines();} {}
   }
+  Function {paste(CommandBlock *getData)} {} {
+    code {//
+        int kititem = getData->data.kit;
+        int engine = getData->data.engine;
+
+        if (kititem >= EFFECT::type::none && kititem < EFFECT::type::count)
+        {
+            bool show = partfx->visible() && engine == ninseff;
+            effectsrefresh();
+            if (show)
+                partfx->show();
+            return;
+        }
+
+        if (kititem != lastkititem)
+            return; // only update engines if current kititem
+
+        if (engine >= PART::engine::addVoice1 && engine < PART::engine::addVoiceModEnd)
+        {
+            int voiceNum = engine - PART::engine::addVoice1;
+            if (adnoteui->ADnoteVoice && voiceNum == adnoteui->nvoice)
+            {
+                if(adnoteui->ADnoteVoice->visible())
+                {
+                    //std::cout << "here" << std::endl;
+                    adnoteui->editVoice(voiceNum);
+                }
+            }
+            return;
+        }
+
+        if (engine == PART::engine::addSynth)
+        {
+            if (getData->data.insert == TOPLEVEL::insert::resonanceGroup)
+            {
+                //std::cout << "in Resonance" << std::endl;
+                if (adnoteui)
+                    adnoteui->paste(getData);
+                return;
+            }
+            //std::cout << "add top level " << engine << std::endl;
+            bool show = false;
+            if (adnoteui != NULL)
+            {
+                show = adnoteui->ADnoteGlobalParameters->visible();
+                delete adnoteui;
+                adnoteui = NULL;
+            }
+            adnoteui = new ADnoteUI(part->kit[kititem].adpars, npart, 0);
+            if (show)
+                adnoteui ->ShowGlobal();
+            return;
+        }
+        //std::cout << "Next section" << std::endl;
+
+        if (engine == PART::engine::subSynth)
+        {
+
+            //std::cout << "sub top level" << std::endl;
+            bool show = false;
+            if (subnoteui != NULL)
+            {
+                show = subnoteui->SUBparameters->visible();
+                delete subnoteui;
+                subnoteui = NULL;
+            }
+            subnoteui = new SUBnoteUI(part->kit[kititem].subpars, npart, 0);
+            if (show)
+                subnoteui->Showsub();
+            return;
+        }
+
+        if (engine == PART::engine::padSynth)
+        {
+            if (getData->data.insert == TOPLEVEL::insert::resonanceGroup)
+            {
+                if (padnoteui)
+                    padnoteui->paste(getData);
+                return;
+            }
+            //std::cout << "pad top level" << std::endl;
+            bool show = false;
+            if (padnoteui != NULL)
+            {
+                show = padnoteui->padnotewindow->visible();
+                delete padnoteui;
+                padnoteui = NULL;
+            }
+            if (part->kit[kititem].padpars)
+            padnoteui = new PADnoteUI(part->kit[kititem].padpars);
+            if (show)
+                padnoteui->Showpad();
+            return;
+        }
+
+        std::cout << "invalid paste" << std::endl;} {}
+  }
   Function {PartUI(int x,int y, int w, int h, const char *label=0):Fl_Group(x,y,w,h,label)} {} {
     code {//
     part = NULL;
@@ -1671,6 +1772,7 @@ class PartUI {: {public Fl_Group, PartUI_}
     ctlmidiSeen = false;
     atSeen = false;
     lastfxW = 0;
+    lastDynFiltW = 0;
     lastkitW = 0;
     lastmidiW = 0;
     lastatW = 0;
@@ -1752,9 +1854,10 @@ class PartUI {: {public Fl_Group, PartUI_}
     code {//
         partfx->copy_label(synth->getGuiMaster()->setPartWindowTitle("Part Effects").c_str());
         setEffNum();
-        bool res = fetchData(0, EFFECT::control::changed, npart,  (EFFECT::type::none) + insefftype->value(), inseffnocounter->value() - 1);
+        bool res = fetchData(0, EFFECT::control::changed, npart,  EFFECT::type::none + insefftype->value(), inseffnocounter->value() - 1);
         inseffectui->UpdatePresetColour(res, insefftype->value());
-        lastfxW = 0;} {}
+        lastfxW = 0;
+        lastDynFiltW = 0;} {}
   }
   Function {kitrefresh()} {} {
     code {//
@@ -2285,12 +2388,18 @@ class PartUI {: {public Fl_Group, PartUI_}
         editRtext();
     if (partfx->visible())
     {
-        if (insefftype->value() == 8) // dynfilter
+        if (insefftype->value() == (EFFECT::type::dynFilter - EFFECT::type::none))
         {
             if(inseffectui->filterwindow != NULL)
             {
                 if(inseffectui->filterwindow->visible())
-                    inseffectui->filtRtext();
+                {
+                    if (lastDynFiltW != inseffectui->filterwindow->w())
+                    {
+                      inseffectui->filtRtext();
+                      lastDynFiltW = inseffectui->filterwindow->w();
+                    }
+                }
             }
         }
         fxRtext();
@@ -2483,7 +2592,7 @@ class PartUI {: {public Fl_Group, PartUI_}
   }
   Function {fxRtext()} {} {
     code {//
-    if (lastfxW < 3)
+    if (lastfxW < 12)
     {
         ++lastfxW;
         return;
@@ -2686,6 +2795,8 @@ class PartUI {: {public Fl_Group, PartUI_}
   decl {bool kitSeen;} {private local
   }
   decl {int lastfxW;} {private local
+  }
+  decl {int lastDynFiltW;} {private local
   }
   decl {int lastkitW;} {private local
   }
