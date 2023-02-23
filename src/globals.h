@@ -56,7 +56,7 @@ typedef unsigned int  uint;
 // sizes
 #define COMMAND_SIZE 252
 #define MAX_HISTORY 25
-#define MAX_PRESETS 1000
+#define MAX_PRESETS 128
 #define MAX_PRESET_DIRS 128
 #define MAX_BANK_ROOT_DIRS 128
 #define MAX_BANKS_IN_ROOT 128
@@ -110,7 +110,7 @@ typedef unsigned int  uint;
 
 // these were previously (pointlessly) user configurable
 #define NUM_VOICES 8
-#define POLYPHONY 60
+#define POLYPHONY 60 // per part!
 #define PART_DEFAULT_LIMIT 20
 #define NUM_SYS_EFX 4
 #define NUM_INS_EFX 8
@@ -126,7 +126,7 @@ typedef unsigned int  uint;
 #define DEFAULT_NAME "Simple Sound"
 #define UNTITLED "No Title"
 
-#define DEFAULT_AUDIO alsa_audio
+#define DEFAULT_AUDIO jack_audio
 #define DEFAULT_MIDI alsa_midi
 
 #define FORCED_EXIT 16
@@ -161,7 +161,6 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         part64 = 63, // between these two
 
         undoMark = 68, // 44
-        copyPaste = 72, // 48 (not yet!)
         vector = 192, // CO
         midiLearn = 216, // D8
         midiIn,
@@ -199,7 +198,7 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
             fromCLI,
             fromGUI,
             // space for any other sources
-            noAction = 15, // internal use
+            noAction = 15, // internal use (also a mask for the above)
             // remaining used bit-wise
             forceUpdate = 32,
             loop = 64, // internal use
@@ -212,10 +211,13 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         // insert any new entries here
         /*
          * the following values must never appear in any other sections
+         * they are all callable from any section
          */
-        unrecognised = 253, // FD
+        copyPaste =  251, // FB
+        partBusy, // internally generated - read only
+        unrecognised,
         textMessage,
-        forceExit // this is effective from *any* section!
+        forceExit
     };
 
     enum msgResponse : unsigned char {
@@ -272,7 +274,8 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         Config,
         MasterConfig,
         Bank,
-        History
+        History,
+        PresetDirs
     };
 }
 
@@ -389,16 +392,6 @@ namespace VECTOR // usage VECTOR::control::name
     };
 }
 
-namespace COPYPASTE // usage COPYPASTE::control::toClipboard
-{
-    enum control : unsigned char { // not yet implemented
-        toClipboard = 0,
-        toFile,
-        fromClipboard,
-        fromFile
-    };
-}
-
 namespace MIDILEARN // usage MIDILEARN::control::block
 {
     enum control : unsigned char {
@@ -420,10 +413,10 @@ namespace MIDILEARN // usage MIDILEARN::control::block
         sendRefreshRequest, // currently GUI only
         reportActivity = 24,
         clearAll = 96,
-        loadList = 241,
+        loadList = 128,
         loadFromRecent,
-        saveList = 245,
-        cancelLearn = 250,
+        saveList,
+        cancelLearn,
         learned
     };
 }
@@ -472,9 +465,11 @@ namespace MIDI // usage MIDI::control::noteOn
         soloType,
         soloCC,
 
-        pitchWheel = 640,
-        channelPressure,
-        keyPressure,
+        // the following are generated internally for MIDI-learn and
+        // are deliberately well outside the range on normal MIDI
+        pitchWheel = 640, // seen as 128
+        channelPressure,  // 129
+        keyPressure,      // 130
 
         programchange = 999,
 
@@ -664,7 +659,6 @@ namespace PART // usage PART::control::volume
         instrumentName,
         instrumentType,
         defaultInstrumentCopyright, // this needs to be split into two for load/save
-        partBusy = 252 // internally generated - read only
     };
 
     enum kitType : unsigned char {

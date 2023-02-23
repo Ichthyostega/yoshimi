@@ -4,7 +4,7 @@
     Copyright 2016-2019, Will Godfrey & others
     Copyright 2020-2020, Kristian Amlie, Will Godfrey, & others
     Copyright 2021, Will Godfrey, Rainer Hans Liffers, & others
-    Copyright 2022, Will Godfrey, Ichthyostega & others
+    Copyright 2023, Will Godfrey, Ichthyostega & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -320,6 +320,38 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
     (void) guiTo; // suppress warning when headless build
     unsigned char newMsg = false;//NO_MSG;
 
+    if (control == TOPLEVEL::control::copyPaste)
+    {
+        string name = synth->unifiedpresets.section(synth, getData);
+        if (type == TOPLEVEL::type::Adjust) // list (actually zero)
+        {
+            textMsgBuffer.push(name);
+        }
+        else if (type & TOPLEVEL::type::Learnable) // load
+        {
+            // this comes *after* the relative section has been loaded.
+            if (getData->data.part == TOPLEVEL::section::systemEffects)
+            {
+                synth->syseffEnable[synth->syseffnum] = getData->data.spare0;
+            }
+            else if (getData->data.part == TOPLEVEL::section::insertEffects)
+            {
+                int tmp = getData->data.spare0;
+                if (tmp >=254)
+                    tmp = tmp - 256;
+                synth->Pinsparts[value] = tmp;
+            }
+            else if (getData->data.part <= TOPLEVEL::section::part64)
+            {
+                synth->partonoffWrite(getData->data.part, 2);
+            }
+        }
+#ifdef GUI_FLTK
+        toGUI.write(getData->bytes);
+#endif
+        return; // currently only sending this to the GUI
+    }
+
     if (switchNum == TOPLEVEL::section::main && control == MAIN::control::loadFileFromList)
     {
         int result = synth->LoadNumbered(kititem, engine);
@@ -333,6 +365,7 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
                 case TOPLEVEL::XML::Instrument:
                 {
                     control = MAIN::control::loadInstrumentByName;
+                    //std::cout << "List ins load" << std::endl;
                     getData->data.kit = insert;
                     break;
                 }
@@ -691,6 +724,7 @@ int InterChange::indirectMain(CommandBlock *getData, SynthEngine *synth, unsigne
         {
             unsigned int result = synth->setProgramFromBank(getData);
             text = textMsgBuffer.fetch(result & NO_MSG);
+            //std::cout << "Indirect bank ins load" << std::endl;
             if (result < 0x1000)
             {
                 if (synth->getRuntime().bankHighlight)
@@ -708,6 +742,7 @@ int InterChange::indirectMain(CommandBlock *getData, SynthEngine *synth, unsigne
         case MAIN::control::loadInstrumentByName:
         {
             getData->data.miscmsg = textMsgBuffer.push(text);
+            //std::cout << "Indirect ins load" << std::endl;
             unsigned int result = synth->setProgramByName(getData);
             text = textMsgBuffer.fetch(result & NO_MSG);
             synth->getRuntime().lastBankPart = UNUSED;
@@ -1386,16 +1421,16 @@ int InterChange::indirectConfig(CommandBlock *getData, SynthEngine *synth, unsig
             if (isOK)
             {
                 int i = 0;
-                while (!firstSynth->getRuntime().presetsDirlist[i].empty())
-                    ++i;        //candidate->data.type |= TOPLEVEL::type::Write;
-        //candidate->data.source = TOPLEVEL::action::forceUpdate;
+                while (!synth->getRuntime().presetsDirlist[i].empty())
+                    ++i;
                 if (i > (MAX_PRESETS - 2))
                     text = " FAILED preset list full";
                 else
                 {
-                    firstSynth->getRuntime().presetsDirlist[i] = text;
+                    synth->getRuntime().presetsDirlist[i] = text;
                     text = "ed " + text;
                 }
+                synth->getRuntime().savePresetsList();
             }
             newMsg = true;
             synth->getRuntime().configChanged = true;
@@ -1404,14 +1439,14 @@ int InterChange::indirectConfig(CommandBlock *getData, SynthEngine *synth, unsig
         case CONFIG::control::removePresetRootDir:
         {
             int i = value;
-            text = firstSynth->getRuntime().presetsDirlist[i];
-            while (!firstSynth->getRuntime().presetsDirlist[i + 1].empty())
+            text = synth->getRuntime().presetsDirlist[i];
+            while (!synth->getRuntime().presetsDirlist[i + 1].empty())
             {
-                firstSynth->getRuntime().presetsDirlist[i] = firstSynth->getRuntime().presetsDirlist[i + 1];
+                synth->getRuntime().presetsDirlist[i] = synth->getRuntime().presetsDirlist[i + 1];
                 ++i;
             }
-            firstSynth->getRuntime().presetsDirlist[i] = "";
-            synth->getRuntime().currentPreset = 0;
+            synth->getRuntime().presetsDirlist[i] = "";
+            synth->getRuntime().presetsRootID = 0;
             newMsg = true;
             synth->getRuntime().configChanged = true;
             break;
@@ -1420,12 +1455,12 @@ int InterChange::indirectConfig(CommandBlock *getData, SynthEngine *synth, unsig
         {
             if (write)
             {
-                synth->getRuntime().currentPreset = value;
+                synth->getRuntime().presetsRootID = value;
                 synth->getRuntime().configChanged = true;
             }
             else
-                value = synth->getRuntime().currentPreset = value;
-            text = firstSynth->getRuntime().presetsDirlist[value];
+                value = synth->getRuntime().presetsRootID = value;
+            text = synth->getRuntime().presetsDirlist[value];
             newMsg = true;
             break;
         }
@@ -1691,7 +1726,7 @@ float InterChange::readAllData(CommandBlock *getData)
     bool indirect = ((getData->data.source & TOPLEVEL::action::muteAndLoop) == TOPLEVEL::action::lowPrio);
     if (npart < NUM_MIDI_PARTS && synth->part[npart]->busy)
     {
-        getData->data.control = PART::control::partBusy; // part busy message
+        getData->data.control = TOPLEVEL::control::partBusy; // part busy message
         getData->data.kit = UNUSED;
         getData->data.engine = UNUSED;
         getData->data.insert = UNUSED;
@@ -1726,7 +1761,7 @@ float InterChange::readAllData(CommandBlock *getData)
 
 void InterChange::resolveReplies(CommandBlock *getData)
 {
-    //synth->CBtest(getData);
+    //synth->CBtest(getData, false);
 
     unsigned char source = getData->data.source & TOPLEVEL::action::noAction;
     // making sure there are no stray top bits.
@@ -1839,12 +1874,16 @@ void InterChange::mediate()
             more = true;
         }
 
-         // temporary fix block
-         // TODO find a better place to put this out of the main process!
+         /*
+          * temporary fix block
+          * this is just for preset paste
+
+          TODO find a better place to put this out of the main process!
+          */
 
         int effpar = synth->getRuntime().effectChange;
         if (effpar > 0xffff)
-        {
+        { std::cout << "In interchange temp fix" << std::endl;
 #ifdef GUI_FLTK
             if (synth->getRuntime().showGui)
             {
@@ -1917,6 +1956,8 @@ void InterChange::historyActionCheck(CommandBlock *getData)
 void InterChange::returns(CommandBlock *getData)
 {
     synth->getRuntime().finishedCLI = true; // belt and braces :)
+    //std::cout << "Returns ins" << std::endl;
+    //synth->CBtest(getData);
     if ((getData->data.source & TOPLEVEL::action::noAction) == TOPLEVEL::action::noAction)
         return; // no further action
 
@@ -1940,7 +1981,10 @@ void InterChange::returns(CommandBlock *getData)
                 if (type & TOPLEVEL::type::Write)
                 {
                     if (tmp != TOPLEVEL::action::fromGUI)
+                    {
                         toGUI.write(getData->bytes);
+                        //std::cout << "Main toGUI" << std::endl;
+                    }
                     if (cameFrom == 1)
                         synth->getRuntime().Log("Undo:");
                     else if (cameFrom == 2)
@@ -2016,11 +2060,31 @@ bool InterChange::commandSendReal(CommandBlock *getData)
         }
     }
 
-    if ((getData->data.source & TOPLEVEL::action::muteAndLoop) == TOPLEVEL::action::lowPrio)
-        return true; // indirect transfer
-
+    unsigned char value = getData->data.value;
     unsigned char type = getData->data.type;
     unsigned char control = getData->data.control;
+    if ((getData->data.source & TOPLEVEL::action::muteAndLoop) == TOPLEVEL::action::lowPrio)
+    {
+        if (control == TOPLEVEL::control::copyPaste && (type & TOPLEVEL::type::Learnable))
+        {
+            if (getData->data.part == TOPLEVEL::section::systemEffects)
+            {
+                getData->data.spare0 = synth->syseffEnable[value];
+                synth->syseffEnable[synth->syseffnum] = 0; // off
+            }
+            else if (getData->data.part == TOPLEVEL::section::insertEffects)
+            {
+                getData->data.spare0 = synth->Pinsparts[value];
+                synth->Pinsparts[value] = -1; // effectively off
+            }
+            else if (getData->data.part <= TOPLEVEL::section::part64)
+            {
+                synth->partonoffWrite(getData->data.part, -1); // off
+            }
+        }
+        return true; // indirect transfer
+    }
+
     unsigned char kititem = getData->data.kit;
     unsigned char effSend = getData->data.kit;
     unsigned char engine = getData->data.engine;
@@ -2087,13 +2151,13 @@ bool InterChange::commandSendReal(CommandBlock *getData)
     if (part->busy && engine == PART::engine::padSynth)
     {
         getData->data.type &= ~TOPLEVEL::type::Write; // turn it into a read
-        getData->data.control = PART::control::partBusy;
+        getData->data.control = TOPLEVEL::control::partBusy;
         getData->data.kit = UNUSED;
         getData->data.engine = UNUSED;
         getData->data.insert = UNUSED;
         return false;
     }
-    if (control == PART::control::partBusy)
+    if (control == TOPLEVEL::control::partBusy)
     {
         getData->data.value = part->busy;
         return false;
@@ -3255,11 +3319,13 @@ void InterChange::commandMain(CommandBlock *getData)
 
         case MAIN::control::loadInstrumentFromBank:
             synth->partonoffLock(kititem, -1);
+            //std::cout << "Main bank ins load" << std::endl;
             getData->data.source |= TOPLEVEL::action::lowPrio;
             break;
 
         case MAIN::control::loadInstrumentByName:
             synth->partonoffLock(kititem, -1);
+            //std::cout << "Main ins load" << std::endl;
             getData->data.source |= TOPLEVEL::action::lowPrio;
             break;
 
@@ -3947,7 +4013,6 @@ void InterChange::commandPart(CommandBlock *getData)
                 part->partefx[effNum]->changeeffect(value_int);
             else
                 value = part->partefx[effNum]->geteffect();
-            getData->data.parameter = (part->partefx[effNum]->geteffectpar(-1) != 0);
             getData->data.offset = 0;
             break;
         case PART::control::effectDestination:
@@ -6512,7 +6577,7 @@ void InterChange::envelopeReadWrite(CommandBlock *getData, EnvelopeParams *pars)
         }
         else
             val = pars->Pfreemode;
-        getData->data.value = pars->Pfreemode;;
+        getData->data.value = pars->Pfreemode;
         return;
     }
     else if (getData->data.control == ENVELOPEINSERT::control::edit)
@@ -6879,12 +6944,10 @@ void InterChange::commandSysIns(CommandBlock *getData)
                     if (isSysEff)
                     {
                         synth->sysefx[effnum]->changeeffect(value_int);
-                        getData->data.parameter = (synth->sysefx[effnum]->geteffectpar(-1) != 0);
                     }
                     else
                     {
                         synth->insefx[effnum]->changeeffect(value_int);
-                        getData->data.parameter = (synth->insefx[effnum]->geteffectpar(-1) != 0);
                     }
                     getData->data.offset = 0;
                 }
@@ -6968,7 +7031,7 @@ void InterChange::commandEffects(CommandBlock *getData)
 
     if (control != PART::control::effectType && effSend != (eff->geteffect() + EFFECT::type::none)) // geteffect not yet converted
     {
-        if ((getData->data.source & TOPLEVEL::action::noAction) != TOPLEVEL::action::fromMIDI)
+        if ((getData->data.source & TOPLEVEL::action::noAction) != TOPLEVEL::action::fromMIDI && control != TOPLEVEL::control::copyPaste)
             synth->getRuntime().Log("Not Available"); // TODO sort this better for CLI as well as MIDI
         getData->data.source = TOPLEVEL::action::noAction;
         return;
@@ -6998,17 +7061,26 @@ void InterChange::commandEffects(CommandBlock *getData)
         if (effSend == EFFECT::type::eq)
         /*
          * specific to EQ
-         * Control 1 is not a saved parameter, but a band index.
+         * Control 1 is not a normal parameter, but a band index.
          * Also, EQ does not have presets, and 16 is the control
          * for the band 1 frequency parameter
         */
         {
+            unsigned char band = getData->data.parameter;
             if (control <= 1)
                 eff->seteffectpar(control, value_int);
             else
             {
-                eff->seteffectpar(control + (eff->geteffectpar(1) * 5), value_int);
-                getData->data.parameter = eff->geteffectpar(1);
+                if (band != UNUSED)
+                {
+                   eff->seteffectpar(1, band); // should always be the case
+                }
+                else
+                {
+                    band = eff->geteffectpar(1);
+                    getData->data.parameter = band;
+                }
+                eff->seteffectpar(control + (band * 5), value_int);
             }
         }
         else

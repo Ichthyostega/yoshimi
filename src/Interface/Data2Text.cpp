@@ -1,7 +1,7 @@
 /*
     Data2Text.cpp - conversion of commandBlock entries to text
 
-    Copyright 2021 - 2022 Will Godfrey
+    Copyright 2021 - 2023 Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -482,13 +482,13 @@ string DataText::resolveMicrotonal(CommandBlock *getData, bool addValue)
         case SCALES::control::name:
             contstr = "Name: ";
             if (addValue)
-                contstr += textMsgBuffer.fetch(lrint(value));
+                contstr += textMsgBuffer.fetch(getData->data.miscmsg, false);
             showValue = false;
             break;
         case SCALES::control::comment:
             contstr = "Description: ";
             if (addValue)
-                contstr += textMsgBuffer.fetch(lrint(value));
+                contstr += textMsgBuffer.fetch(getData->data.miscmsg, false);
             showValue = false;
             break;
         case SCALES::control::retune:
@@ -1695,7 +1695,7 @@ string DataText::resolvePart(CommandBlock *getData, bool addValue)
             contstr = "Cleared controllers";
             break;
 
-        case PART::control::partBusy:
+        case TOPLEVEL::control::partBusy:
             showValue = false;
             if (value_bool)
                 contstr = "is busy";
@@ -3097,12 +3097,27 @@ string DataText::filterControl(CommandBlock *getData, bool addValue)
             contstr = "Unrecognised";
             break;
     }
-    string extra = "";
     if (control >= FILTERINSERT::control::formantFrequency && control <= FILTERINSERT::control::formantAmplitude)
-        extra = "Vowel " + to_string(nvowel) + " Formant " + to_string(nformant) + " ";
+    {
+        contstr = "Vowel " + to_string(nvowel) + " Formant " + to_string(nformant + 1) + " "+ contstr;
+    }
+    else if (control == FILTERINSERT::control::sequencePosition)
+    {
+        if (addValue)
+        {
+            contstr += " Value " + to_string(value_int + 1);
+        }
+        showValue = false;
+    }
     else if (control == FILTERINSERT::control::vowelPositionInSequence)
-        extra = "Seq Pos " + to_string(nseqpos) + " ";
-    contstr = extra + contstr;
+    {
+        contstr = "Seq Pos " + to_string(nseqpos + 1) + " " + contstr;
+        if (addValue)
+        {
+            contstr += " Value " + to_string(value_int + 1);
+        }
+        showValue = false;
+    }
     return contstr;
 }
 
@@ -3535,10 +3550,15 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
         case EFFECT::type::eq:
         {
             effname = " EQ ";
-            if (control > 1)
+            if (control == 1)
             {
-                if (offset)
-                    effname += "(Band " + to_string(int(parameter)) + ") ";
+                contstr = " " + to_string(int(value) + 1);
+                showValue = false;
+            }
+            else if (control > 1)
+            {
+                if (offset > 0)
+                    effname += "(Band " + to_string(int(parameter) + 1) + ") ";
                 if (ref > 10)
                     ref -= 7;
                 else    // there is no 3 to 9 in the list names

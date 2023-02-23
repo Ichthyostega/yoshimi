@@ -28,7 +28,6 @@
 #include "Misc/SynthEngine.h"
 #include "Params/Presets.h"
 
-extern SynthEngine *firstSynth;
 
 Presets::Presets(SynthEngine *_synth) :
     nelement(-1),
@@ -49,6 +48,7 @@ void Presets::copy(const char *name)
 {
     XMLwrapper *xml = new XMLwrapper(synth);
     // used only for the clipboard
+    bool oldMin = xml->minimal;
     if (name == NULL)
         xml->minimal = false;
 
@@ -72,8 +72,8 @@ void Presets::copy(const char *name)
     if (name == NULL)
         synth->getPresetsStore().copyclipboard(xml, type);
     else
-        firstSynth->getPresetsStore().copypreset(xml, type,name);
-
+        synth->getPresetsStore().copypreset(xml, type, name);
+    xml->minimal = oldMin;
     delete(xml);
     nelement = -1;
 }
@@ -100,14 +100,14 @@ void Presets::paste(int npreset)
             delete(xml);
             return;
         }
-        if (!firstSynth->getPresetsStore().pasteclipboard(xml))
+        if (!synth->getPresetsStore().pasteclipboard(xml))
         {
             delete(xml);
             nelement = -1;
             return;
         }
     } else {
-        if (!firstSynth->getPresetsStore().pastepreset(xml, npreset))
+        if (!synth->getPresetsStore().pastepreset(xml, npreset))
         {
             delete(xml);
             nelement = -1;
@@ -115,18 +115,7 @@ void Presets::paste(int npreset)
         }
     }
 
-    string altType = "";
-    if (string(type) == "Padsyth")
-        altType = "ADnoteParameters";
-    else if (string(type) == "Padsythn")
-        altType = "ADnoteParametersn";
-    else if (string(type) == "Psubsyth")
-        altType = "SUBnoteParameters";
-    else if (string(type) == "Ppadsyth")
-        altType = "PADnoteParameters";
-
     if (xml->enterbranch(type) == 0)
-        if (altType.empty() || xml->enterbranch(altType) == 0)
     {
         nelement = -1;
         delete(xml);
@@ -167,17 +156,17 @@ void Presets::setelement(int n)
 }
 
 
-void Presets::rescanforpresets(int root)
+void Presets::rescanforpresets(void)
 {
     char type[MAX_PRESETTYPE_SIZE];
     strcpy(type, this->type);
     if (nelement != -1)
         strcat(type, "n");
-    firstSynth->getPresetsStore().rescanforpresets(type, root);
+    synth->getPresetsStore().rescanforpresets(type);
 }
 
 
 void Presets::deletepreset(int npreset)
 {
-    firstSynth->getPresetsStore().deletepreset(npreset);
+    synth->getPresetsStore().deletepreset(npreset);
 }

@@ -1,5 +1,5 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0304
+version 1.0308
 header_name {.h}
 code_name {.cc}
 comment {PresetsUI.h} {not_in_source in_header
@@ -11,7 +11,7 @@ comment {PresetsUI.cc} {in_source not_in_header
 comment {Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009-2010, Alan Calvert
-Copyright 2017-2020, Will Godfrey
+Copyright 2017-2022, Will Godfrey
 
 This file is part of yoshimi, which is free software: you can redistribute
 it and/or modify it under the terms of the GNU General Public
@@ -38,6 +38,9 @@ decl {\#include <FL/fl_ask.H>} {public local
 decl {\#include <string>} {public global
 }
 
+decl {\#include <vector>} {public global
+}
+
 decl {\#include <unistd.h>} {public global
 }
 
@@ -45,9 +48,6 @@ decl {\#include "Params/Presets.h"} {public local
 }
 
 decl {\#include "Misc/SynthEngine.h"} {public global
-}
-
-decl {extern SynthEngine *firstSynth;} {public local
 }
 
 decl {\#include "MasterUI.h"} {private global
@@ -290,14 +290,17 @@ o->hide();}
     code {//
     copybrowse->clear();
     pastebrowse->clear();
-    p->rescanforpresets(synth->getRuntime().currentPreset);
-    for (int i = 0; i < MAX_PRESETS; ++i)
+    p->rescanforpresets();
+    size_t i = 0;
+    while (i < synth->getPresetsStore().presets.size())
     {
-        string name = firstSynth->getPresetsStore().presets[i].name;
+        string name = file::findLeafName(synth->getPresetsStore().presets[i]);
         if (name.empty())
             break;
+        name = name.substr(0, name.find('.'));
         copybrowse->add(name.c_str());
         pastebrowse->add(name.c_str());
+        ++i;
     }
     int  W, H, X, Y, O;
     loadWin(synth, W, H, X, Y, O, "PresetWin");

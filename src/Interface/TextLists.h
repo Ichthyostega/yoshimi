@@ -1,7 +1,7 @@
 /*
     TextLists.h
 
-    Copyright 2019-2021, Will Godfrey
+    Copyright 2019-2023, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -29,7 +29,7 @@
  * is set so you can then step back up the level tree.
  * It is also possible to zero it so that you immediately go to
  * the top level. Therefore, the sequence is important.
- * 19 bits are currently defined out of a possible 32.
+ * 21 bits are currently defined out of a possible 32.
  *
  * Top, AllFX and InsFX MUST be the first three
  */
@@ -55,6 +55,7 @@ namespace LEVEL{
         Resonance,
         LFO, // amp/freq/filt
         Filter, // params only (slightly confused with env)
+        Formant, // in the formant editor itself
         Envelope, // amp/freq/filt/ (Sub only) band
         Test, // special ops for Yoshimi-testsuite
     };
@@ -100,9 +101,11 @@ namespace LISTS {
     addmod,
     waveform,
     lfo,
+    formant,
     filter,
     envelope,
     reverb,
+    section,
     echo,
     chorus,
     phaser,
@@ -704,23 +707,28 @@ static std::string filterlist [] = {
     "high",     "high pass",
     "band",     "band pass",
     "stop",     "band stop",
-    "","",
-    " - formant editor -",   "(shows V current vowel, F current formant)",
+    " - formant -","",
+    "EDit ...",     "enter editor context level",
+    "@end","@end"
+};
+
+static std::string formantlist [] = {
+    "","(shows V current vowel, and F current formant)",
     "Invert <s>",       "invert effect of LFOs, envelopes (ON, OFF)",
-    "FCenter <n>",      "center frequency of sequence",
-    "FRange <n>",       "octave range of formants",
+    "CEnter <n>",       "center frequency of sequence",
+    "Range <n>",        "octave range of formants",
     "Expand <n>",       "stretch overall sequence time",
     "Lucidity <n>",     "clarity of vowels",
     "Morph <n>",        "speed of change between formants",
-    "SIze <n>",         "number of vowels in sequence",
+    "Size <n>",         "number of vowels in sequence",
     "COunt <n>",        "number of formants in vowels",
-    "VOwel <n>",        "vowel being processed",
-    "Point <n1> <n2>",  "vowel n1 at sequence position n2",
+    "Vowel <n>",        "vowel being processed",
+    "Point <n1> <n2>",  "sequence position n1 vowel n2 value",
     "FOrmant <n>",      "formant being processed",
     " - per formant -","",
-    "  FFrequency <n>", "center frequency of formant",
-    "  FQ <n>",         "bandwidth of formant",
-    "  FGain <n>",      "amplitude of formant",
+    "  FRequency <n>", "center frequency of formant",
+    "  Q <n>",         "bandwidth of formant",
+    "  Gain <n>",      "amplitude of formant",
     "@end","@end"
 };
 
@@ -858,13 +866,13 @@ static std::string distortionlist [] = {
 
 static std::string eqlist [] = {
     "LEVel <n>",        "intensity",
-    "BANd <n>",         "EQ band number for following controls",
+    "EQBand <n>",       "EQ band number for following controls",
     "FILter <s>",       "filter type",
     "-","(LP1, HP1, LP2, HP2, NOT, PEA, LOW, HIG)",
     "FREquency <n>",    "cutoff/band frequency",
     "GAIn <n>",         "makeup gain",
     "Q <n>",            "filter Q",
-    "STAges <n>",       "filter stages",
+    "STAges <n>",       "extra filter stages",
     "@end","@end"
 };
 
@@ -945,6 +953,7 @@ static std::string noteslist [] = { // from 21
 
 static std::string loadlist [] = {
     "Instrument <s>",   "instrument to current part from named file",
+    "SECtion [s]",      "to current copy/paste context - no name = from clipboard",
     "Default",          "default copyright to current part",
     "SCale <s>",        "scale settings from named file",
     "VEctor [n] <s>",   "vector to channel n (or saved) from named file",
@@ -956,6 +965,7 @@ static std::string loadlist [] = {
 
 static std::string savelist [] = {
     "Instrument <s>",   "current part to named file",
+    "SECtion [s]",      "from current copy/paste context - no name = to clipboard",
     "Default",          "current part copyright as default",
     "SCale <s>",        "current scale settings to named file",
     "VEctor <n> <s>",   "vector on channel n to named file",
@@ -977,6 +987,7 @@ static std::string listlist [] = {
     "Keymap",           "microtonal scale keyboard map",
     "Config",           "current configuration",
     "MLearn [s <n>]",   "midi learned controls ('@' n for full details on one line)",
+    "SECtion [s]",      "copy/paste section presets",
     "History [s]",      "recent files (Patchsets, SCales, STates, Vectors, MLearn)",
     "Effects [s]",      "effect types ('all' include preset numbers and names)",
     "PREsets",          "all the presets for the currently selected effect",
@@ -1090,7 +1101,7 @@ static std::string effphaser [] = {"LEV", "PAN", "FRE", "RAN", "WAV", "SHI", "DE
 static std::string effalienwah [] = {"LEV", "PAN", "FRE", "RAN", "WAV", "SHI", "DEP", "FEE", "DEL", "CRO", "REL", "none11", "none12", "none13", "none14", "none15", "none16", "BPM", "@end"};
 static std::string effdistortion [] = {"LEV", "PAN", "MIX", "DRI", "OUT", "WAV", "INV", "LOW", "HIG", "STE", "FIL", "@end"};
 static std::string effdistypes [] = {"ATAn", "ASYm1", "POWer", "SINe", "QNTs", "ZIGzag", "LMT", "ULMt", "LLMt", "ILMt", "CLIp", "AS2", "PO2", "SGM", "@end"};
-static std::string effeq [] = {"LEV", "BAN", "FIL", "FRE", "GAI", "Q", "STA"};
+static std::string effeq [] = {"LEV", "EQB", "FIL", "FRE", "GAI", "Q", "STA"};
 static std::string eqtypes [] = {"OFF", "LP1", "HP1", "LP2", "HP2", "BP2", "NOT", "PEAk", "LOW shelf", "HIGh shelf", "@end"};
 static std::string effdynamicfilter [] = {"LEV", "PAN", "FRE", "RAN", "WAV", "SHI", "DEP", "SEN", "INV", "RAT", "FIL", "none11", "none12", "none13", "none14", "none15", "none16", "BPM", "@end"};
 
