@@ -8,7 +8,7 @@ Copyright: 2009-2011, Alan Calvert
            2014, Andrew Deryabin <andrewderyabin@gmail.com>
            2009, James Morris
            2002-2009, Nasca Octavian Paul and others
-           2014-2022, Will Godfrey & others
+           2014-2023, Will Godfrey & others
 License: GPL-2+
 
 Files: src/DSP/*
@@ -75,14 +75,14 @@ Copyright: 2009-2011, Alan Calvert
            2017, Jesper Lloyd
            2002-2009, Nasca Octavian Paul and others
            2016, Rob Couto & Will Godfrey
-           2014-2020, Will Godfrey and others
+           2014-2023, Will Godfrey and others
 License: LGPL-2+
 
 Files: debian/*
 Copyright: 2010-2011, Alessio Treglia <alessio@debian.org>
            2010-2017, Jaromír Mikeš <mira.mikes@seznam.cz>
            2019, Olivier Humbert <trebmuh@tuxfamily.org>
-           2020-2022, Dennis Braun <snd@debian.org>
+           2020-2023, Dennis Braun <snd@debian.org>
 License: GPL-2+
 
 Files: src/UI/ParametersUI.fl
@@ -106,7 +106,7 @@ Copyright: 2009-2011, Alan Calvert
            2017, Jesper Lloyd
            2002-2009, Nasca O. PAUL and others
            2013, Nikita Zlobin
-           2014-2020, Will Godfrey & others
+           2014-2023, Will Godfrey & others
 License: GPL-2+ or LGPL-2+
 
 Files: Util/YoshimiSplash.svg
