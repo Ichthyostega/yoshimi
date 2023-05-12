@@ -1,13 +1,17 @@
-yoshimi (2.2.3-1) unstable; urgency=medium
+yoshimi (2.3.0~RC3-1~buster) Lumiera-buster-tool; urgency=low
 
-  * New upstream version 2.2.3
-  * Change my email address
-  * Replace obsolete B-Ds
+  * New upstream major release 2.3
+  * ATTENTION: this is Release Candidate RC3
+  * Rebuild/Backport for Debian/Buster(oldstable).
+  * unofficial DEB package by Ichthyostega
+
+  [ Dennis Braun ]
+  * Change packager email address
   * Bump Standards-Version to 4.6.2
-  * Bump d/copyright years
+  * Bump debian/copyright years
   * Refresh lintian-overrides
 
- -- Dennis Braun <snd@debian.org>  Fri, 24 Feb 2023 22:02:23 +0100
+ -- Hermann Vosseler <deb@ichthyostega.de>  Sat, 13 May 2023 01:26:43 +0200
 
 yoshimi (2.2.3-1~buster) Lumiera-buster-tool; urgency=low
 
