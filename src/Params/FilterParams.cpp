@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2019, Will Godfrey
+    Copyright 2019-2023, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -22,7 +22,6 @@
 
     This file is derivative of ZynAddSubFX original code.
 
-    Modified May 2019
 */
 
 #include "Misc/XMLwrapper.h"
@@ -34,7 +33,7 @@ using func::asDecibel;
 using func::power;
 
 
-FilterParams::FilterParams(unsigned char Ptype_, unsigned char Pfreq_, unsigned  char Pq_, unsigned char Pfreqtrackoffset_, SynthEngine *_synth) :
+FilterParams::FilterParams(unsigned char Ptype_, float Pfreq_, float Pq_, unsigned char Pfreqtrackoffset_, SynthEngine *_synth) :
     Presets(_synth),
     changed(false),
     Dtype(Ptype_),
@@ -53,26 +52,26 @@ void FilterParams::defaults(void)
     Pfreq = Dfreq;
     Pq = Dq;
 
-    Pstages = 0;
-    Pfreqtrack = 64;
+    Pstages = FILTDEF::stages.def;
+    Pfreqtrack = FILTDEF::freqTrack.def;
     Pfreqtrackoffset = Dfreqtrackoffset;
-    Pgain = 64;
-    Pcategory = 0;
+    Pgain = FILTDEF::gain.def;
+    Pcategory = FILTDEF::category.def;
 
-    Pnumformants = 3;
-    Pformantslowness = 64;
+    Pnumformants = FILTDEF::formCount.def;
+    Pformantslowness = FILTDEF::formSpeed.def;
     for (int j = 0; j < FF_MAX_VOWELS; ++j)
         defaults(j);
 
-    Psequencesize = 3;
+    Psequencesize = FILTDEF::sequenceSize.def;
     for (int i = 0; i < FF_MAX_SEQUENCE; ++i)
         Psequence[i].nvowel = i % FF_MAX_VOWELS;
 
-    Psequencestretch = 40;
-    Psequencereversed = 0;
-    Pcenterfreq = 64; // 1 kHz
-    Poctavesfreq = 64;
-    Pvowelclearness = 64;
+    Psequencestretch = FILTDEF::formStretch.def;
+    Psequencereversed = FILTSWITCH::sequenceReverse;
+    Pcenterfreq = FILTDEF::formCentre.def; // 1 kHz
+    Poctavesfreq = FILTDEF::formOctave.def;
+    Pvowelclearness = FILTDEF::formClear.def;
 }
 
 
@@ -82,8 +81,9 @@ void FilterParams::defaults(int n)
     for (int i = 0; i < FF_MAX_FORMANTS; ++i)
     {
         Pvowels[j].formants[i].freq = synth->randomINT() >> 24; // some random freqs
-        Pvowels[j].formants[i].q = 64;
-        Pvowels[j].formants[i].amp = 127;
+        Pvowels[j].formants[i].firstF = Pvowels[j].formants[i].freq; // the only time we set this
+        Pvowels[j].formants[i].q = FILTDEF::formQ.def;
+        Pvowels[j].formants[i].amp = FILTDEF::formAmp.def;
     }
 }
 
@@ -143,7 +143,7 @@ float FilterParams::getq(void)
 
 float FilterParams::getfreqtracking(float notefreq)
 {
-    if (Pfreqtrackoffset != 0)
+    if (Pfreqtrackoffset != FILTSWITCH::trackRange)
     {
         // In this setting freq.tracking's range is: 0% to 198%
         // 100% for value 64
@@ -168,14 +168,14 @@ float FilterParams::getgain(void)
 // Get the center frequency of the formant's graph
 float FilterParams::getcenterfreq(void)
 {
-    return 10000.0f * power<10>(-(1.0f - Pcenterfreq / 127.0f) * 2.0f);
+    return 10000.0f * power<10>(-(1.0f - Pcenterfreq / FILTDEF::formCentre.max) * 2.0f);
 }
 
 
 // Get the number of octave that the formant functions applies to
 float FilterParams::getoctavesfreq(void)
 {
-    return 0.25f + 10.0f * Poctavesfreq / 127.0f;
+    return 0.25f + 10.0f * Poctavesfreq / FILTDEF::formOctave.max;
 }
 
 
@@ -279,9 +279,10 @@ void FilterParams::add2XMLsection(XMLwrapper *xml,int n)
     for (int nformant = 0; nformant < FF_MAX_FORMANTS; ++nformant)
     {
         xml->beginbranch("FORMANT",nformant);
-        xml->addpar("freq",Pvowels[nvowel].formants[nformant].freq);
-        xml->addpar("amp",Pvowels[nvowel].formants[nformant].amp);
-        xml->addpar("q",Pvowels[nvowel].formants[nformant].q);
+        xml->addparcombi("first_freq",Pvowels[nvowel].formants[nformant].firstF);
+        xml->addparcombi("freq",Pvowels[nvowel].formants[nformant].freq);
+        xml->addparcombi("amp",Pvowels[nvowel].formants[nformant].amp);
+        xml->addparcombi("q",Pvowels[nvowel].formants[nformant].q);
         xml->endbranch();
     }
 }
@@ -292,20 +293,20 @@ void FilterParams::add2XML(XMLwrapper *xml)
     //filter parameters
     xml->addpar("category",Pcategory);
     xml->addpar("type",Ptype);
-    xml->addpar("freq",Pfreq);
-    xml->addpar("q",Pq);
+    xml->addparcombi("freq",Pfreq);
+    xml->addparcombi("q",Pq);
     xml->addpar("stages",Pstages);
-    xml->addpar("freq_track",Pfreqtrack);
+    xml->addparcombi("freq_track",Pfreqtrack);
     xml->addparbool("freqtrackoffset",Pfreqtrackoffset);
-    xml->addpar("gain",Pgain);
+    xml->addparcombi("gain",Pgain);
 
     //formant filter parameters
     if ((Pcategory==1)||(!xml->minimal))
     {
         xml->beginbranch("FORMANT_FILTER");
         xml->addpar("num_formants",Pnumformants);
-        xml->addpar("formant_slowness",Pformantslowness);
-        xml->addpar("vowel_clearness",Pvowelclearness);
+        xml->addparcombi("formant_slowness",Pformantslowness);
+        xml->addparcombi("vowel_clearness",Pvowelclearness);
         xml->addpar("center_freq",Pcenterfreq);
         xml->addpar("octaves_freq",Poctavesfreq);
         for (int nvowel=0;nvowel<FF_MAX_VOWELS;nvowel++)
@@ -315,7 +316,7 @@ void FilterParams::add2XML(XMLwrapper *xml)
             xml->endbranch();
         }
         xml->addpar("sequence_size",Psequencesize);
-        xml->addpar("sequence_stretch",Psequencestretch);
+        xml->addparcombi("sequence_stretch",Psequencestretch);
         xml->addparbool("sequence_reversed",Psequencereversed);
         for (int nseq=0;nseq<FF_MAX_SEQUENCE;nseq++)
         {
@@ -335,12 +336,14 @@ void FilterParams::getfromXMLsection(XMLwrapper *xml,int n)
     {
         if (xml->enterbranch("FORMANT",nformant) == 0)
             continue;
+        Pvowels[nvowel].formants[nformant].firstF =
+            xml->getparcombi("first_freq",Pvowels[nvowel].formants[nformant].firstF,FILTDEF::formFreq.min,FILTDEF::formFreq.max);
         Pvowels[nvowel].formants[nformant].freq =
-            xml->getpar127("freq",Pvowels[nvowel].formants[nformant].freq);
+            xml->getparcombi("freq",Pvowels[nvowel].formants[nformant].freq,FILTDEF::formFreq.min,FILTDEF::formFreq.max);
         Pvowels[nvowel].formants[nformant].amp =
-            xml->getpar127("amp",Pvowels[nvowel].formants[nformant].amp);
+            xml->getparcombi("amp",Pvowels[nvowel].formants[nformant].amp,FILTDEF::formAmp.min,FILTDEF::formAmp.max);
         Pvowels[nvowel].formants[nformant].q =
-            xml->getpar127("q",Pvowels[nvowel].formants[nformant].q);
+            xml->getparcombi("q",Pvowels[nvowel].formants[nformant].q,FILTDEF::formQ.min,FILTDEF::formQ.max);
         xml->exitbranch();
     }
 }
@@ -351,19 +354,19 @@ void FilterParams::getfromXML(XMLwrapper *xml)
     // filter parameters
     Pcategory = xml->getpar127("category",Pcategory);
     Ptype = xml->getpar127("type",Ptype);
-    Pfreq = xml->getpar127("freq",Pfreq);
-    Pq = xml->getpar127("q",Pq);
+    Pfreq = xml->getparcombi("freq",Pfreq,FILTDEF::addFreq.min,FILTDEF::addFreq.max);
+    Pq = xml->getparcombi("q",Pq,FILTDEF::qVal.min,FILTDEF::qVal.max);
     Pstages = xml->getpar127("stages",Pstages);
-    Pfreqtrack = xml->getpar127("freq_track",Pfreqtrack);
+    Pfreqtrack = xml->getparcombi("freq_track",Pfreqtrack,FILTDEF::freqTrack.min,FILTDEF::freqTrack.max);
     Pfreqtrackoffset = xml->getparbool("freqtrackoffset", Pfreqtrackoffset);
-    Pgain = xml->getpar127("gain",Pgain);
+    Pgain = xml->getparcombi("gain",Pgain,FILTDEF::gain.min,FILTDEF::gain.max);
 
     // formant filter parameters
     if (xml->enterbranch("FORMANT_FILTER"))
     {
         Pnumformants = xml->getpar127("num_formants",Pnumformants);
-        Pformantslowness = xml->getpar127("formant_slowness",Pformantslowness);
-        Pvowelclearness = xml->getpar127("vowel_clearness",Pvowelclearness);
+        Pformantslowness = xml->getparcombi("formant_slowness",Pformantslowness,FILTDEF::formSpeed.min,FILTDEF::formSpeed.max);
+        Pvowelclearness = xml->getparcombi("vowel_clearness",Pvowelclearness,FILTDEF::formClear.min,FILTDEF::formClear.max);
         Pcenterfreq = xml->getpar127("center_freq",Pcenterfreq);
         Poctavesfreq = xml->getpar127("octaves_freq",Poctavesfreq);
 
@@ -375,7 +378,7 @@ void FilterParams::getfromXML(XMLwrapper *xml)
             xml->exitbranch();
         }
         Psequencesize = xml->getpar127("sequence_size",Psequencesize);
-        Psequencestretch = xml->getpar127("sequence_stretch",Psequencestretch);
+        Psequencestretch = xml->getparcombi("sequence_stretch",Psequencestretch,FILTDEF::formStretch.min,FILTDEF::formStretch.max);
         Psequencereversed = xml->getparbool("sequence_reversed",Psequencereversed);
         for (int nseq = 0; nseq < FF_MAX_SEQUENCE;nseq++)
         {
@@ -404,7 +407,7 @@ float filterLimit::getFilterLimits(CommandBlock *getData)
     int min = 0;
     int max = 127;
     float def = 64;
-    type |= TOPLEVEL::type::Integer;
+    //type |= TOPLEVEL::type::Integer;
     unsigned char learnable = TOPLEVEL::type::Learnable;
     type |= learnable;
 
@@ -412,99 +415,116 @@ float filterLimit::getFilterLimits(CommandBlock *getData)
     {
         case FILTERINSERT::control::centerFrequency:
             if (effType == EFFECT::type::dynFilter)
-                def = 45;
+                def = FILTDEF::dynFreq.def;
             else if (engine == PART::engine::subSynth)
-                def = 80;
+                def = FILTDEF::subFreq.def;
             else if (engine >= PART::engine::addVoice1)
-                def = 50;
+                def = FILTDEF::voiceFreq.def;
             else
-                def = 94;
+                def = FILTDEF::padFreq.def;
+            type &= ~TOPLEVEL::type::Integer;
             break;
         case FILTERINSERT::control::Q:
             if (engine >= PART::engine::addVoice1)
-                def = 60;
-            else if (effType != EFFECT::type::dynFilter)
-                def = 40;
-            break; // for dynFilter it's the default 64
+                def = FILTDEF::voiceQval.def;
+            else if (effType == EFFECT::type::dynFilter)
+                def = FILTDEF::dynQval.def;
+            else
+                def = FILTDEF::qVal.def;
+            type &= ~TOPLEVEL::type::Integer;
+            break;
         case FILTERINSERT::control::frequencyTracking:
+            def = FILTDEF::freqTrack.def;
             break;
         case FILTERINSERT::control::velocitySensitivity:
             if (engine >= PART::engine::addVoice1)
-                def = 0;
+                def = FILTDEF::voiceVelSense.def;
+            else
+                def = FILTDEF::velSense.def;
             break;
         case FILTERINSERT::control::velocityCurve:
+            def = FILTDEF::velFuncSense.def;
             break;
         case FILTERINSERT::control::gain:
+            def = FILTDEF::gain.def;
             break;
         case FILTERINSERT::control::stages:
             if (effType == EFFECT::type::dynFilter)
-                def = 1;
+                def = FILTDEF::dynStages.def;
             else
-                def = 0;
-            max = 4;
+                def = FILTDEF::stages.def;
+            max = FILTDEF::stages.max;
             type &= ~learnable;
             break;
         case FILTERINSERT::control::baseType:
-            max = 2;
-            def = 0;
+            max = FILTDEF::category.max;
+            def = FILTDEF::category.def;
             type &= ~learnable;
             break;
         case FILTERINSERT::control::analogType:
-            max = 8;
-            def = 2;
+            max = FILTDEF::analogType.max;
+            def = FILTDEF::analogType.def;
             type &= ~learnable;
             break;
         case FILTERINSERT::control::stateVariableType:
-            max = 3;
-            def = 0;
+            max = FILTDEF::stVarfType.max;
+            def = FILTDEF::stVarfType.def;
             type &= ~learnable;
             break;
         case FILTERINSERT::control::frequencyTrackingRange:
-            max = 1;
-            def = 0;
+            max = true;
+            def = FILTSWITCH::trackRange;
             type &= ~learnable;
             break;
         case FILTERINSERT::control::formantSlowness:
+            def = FILTDEF::formSpeed.def;
             break;
         case FILTERINSERT::control::formantClearness:
+            def = FILTDEF::formClear.def;
             break;
         case FILTERINSERT::control::formantFrequency:
             if (request == TOPLEVEL::type::Default)
                 type |= TOPLEVEL::type::Error;
-            // it's random so inhibit default
+            // it's random so inhibit default *** change this!
+            type &= ~TOPLEVEL::type::Integer;
             break;
         case FILTERINSERT::control::formantQ:
+            def = FILTDEF::formQ.def;
+            type &= ~TOPLEVEL::type::Integer;
             break;
         case FILTERINSERT::control::formantAmplitude:
-            def = 127;
+            def = FILTDEF::formAmp.def;
             break;
         case FILTERINSERT::control::formantStretch:
-            def = 40;
+            def = FILTDEF::formStretch.def;
             break;
         case FILTERINSERT::control::formantCenter:
+            def = FILTDEF::formCentre.def;
+            type &= ~TOPLEVEL::type::Integer;
             break;
         case FILTERINSERT::control::formantOctave:
+            def = FILTDEF::formOctave.def;
             break;
         case FILTERINSERT::control::numberOfFormants:
-            min = 1;
-            max = 12;
-            def = 3;
+            min = FILTDEF::formCount.min;
+            max = FILTDEF::formCount.max;
+            def = FILTDEF::formCount.def;
             type &= ~learnable;
             break;
         case FILTERINSERT::control::vowelNumber:
-            max = 5;
-            def = 0;
+            max = FILTDEF::formVowel.max;
+            def = FILTDEF::formVowel.def;
             type &= ~learnable;
             break;
         case FILTERINSERT::control::formantNumber:
-            max = 11;
-            def = 0;
+            max = FILTDEF::formCount.max;
+            def = FILTDEF::formCount.def;
             type &= ~learnable;
             break;
         case FILTERINSERT::control::sequenceSize:
-            min = 1;
-            max = 8;
-            def = 3;
+            min = FILTDEF::sequenceSize.min;
+            max = FILTDEF::sequenceSize.max;
+            def = FILTDEF::sequenceSize.def;
             type &= ~learnable;
             break;
         case FILTERINSERT::control::sequencePosition:
@@ -516,8 +536,8 @@ float filterLimit::getFilterLimits(CommandBlock *getData)
             type &= ~learnable;
             break;
         case FILTERINSERT::control::negateInput:
-            max = 1;
-            def = 0;
+            max = true;
+            def =FILTSWITCH::sequenceReverse;
             type &= ~learnable;
             break;
          default:

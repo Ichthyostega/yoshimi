@@ -1,7 +1,7 @@
 /*
     MiscGui.h - common link between GUI and synth
 
-    Copyright 2016-2021 Will Godfrey & others
+    Copyright 2016-2023 Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -27,6 +27,8 @@
 #include "Misc/SynthEngine.h"
 #include "Misc/FileMgrFuncs.h"
 #include "Misc/FormatFuncs.h"
+
+#include "UI/Themes.h"
 
 using file::saveText;
 using file::loadText;
@@ -123,14 +125,17 @@ enum ValueType {
     VC_RandWalkSpread,
 };
 
-float collect_readData(SynthEngine *synth, float value, unsigned char control, unsigned char part, unsigned char kititem = 0xff, unsigned char engine = 0xff, unsigned char insert = 0xff, unsigned char parameter = 0xff, unsigned char offset = 0xff, unsigned char miscmsg = 0xff, unsigned char request = 0xff);
+float collect_readData(SynthEngine *synth, float value, unsigned char control, unsigned char part, unsigned char kititem = UNUSED, unsigned char engine = UNUSED, unsigned char insert = UNUSED, unsigned char parameter = UNUSED, unsigned char offset = UNUSED, unsigned char miscmsg = UNUSED, unsigned char request = UNUSED);
 
-void collect_data(SynthEngine *synth, float value, unsigned char action, unsigned char type, unsigned char control, unsigned char part, unsigned char kititem = 0xff, unsigned char engine = 0xff, unsigned char insert = 0xff, unsigned char parameter = 0xff, unsigned char offset = 0xff, unsigned char miscmsg = 0xff);
+void collect_data(SynthEngine *synth, float value, unsigned char action, unsigned char type, unsigned char control, unsigned char part, unsigned char kititem = UNUSED, unsigned char engine = UNUSED, unsigned char insert = UNUSED, unsigned char parameter = UNUSED, unsigned char offset = UNUSED, unsigned char miscmsg = UNUSED);
 
 void alert(SynthEngine *synth, string message);
 int choice(SynthEngine *synth, string one, string two, string three, string message);
 string setfiler(SynthEngine *synth, string title, string name, bool save, int extension);
 string input_text(SynthEngine *synth, string label, string text);
+
+int setSlider(float current, float normal);
+int setKnob(float current, float normal);
 
 string convert_value(ValueType type, float val);
 
@@ -272,7 +277,7 @@ inline void checkSane(int& x, int& y, int& w, int& h, int defW, int defH, bool h
         }
     }
 
-    if ((x + w) > maxW) // postion
+    if ((x + w) > maxW) // position
     {
         x = maxW - w;
         if (x < 5)

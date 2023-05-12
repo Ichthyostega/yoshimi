@@ -120,8 +120,8 @@ int mwheel_val_slider::_handle(int res, int event)
         if (Fl::event_state(FL_CTRL) != 0)
         {
             step_size *= step();
-            if (range > 256) // Scale stepping for large ranges
-                step_size *= 50;
+            if (range > 2560) // Scale stepping for large ranges
+                step_size *= 10;
         } else {
             step_size *= range / 20;
         }
@@ -133,7 +133,8 @@ int mwheel_val_slider::_handle(int res, int event)
     }
     case FL_PUSH:
         Fl::belowmouse(this);
-        do_callback();
+        if (Fl::event_button() == 3)
+            do_callback(); // this causes two calls with other buttons
         res = 1;
         break;
     }
@@ -169,7 +170,23 @@ mwheel_slider::mwheel_slider(int x, int y, int w, int h, const char *l)
 
 void mwheel_slider::draw()
 {
+    /*
+     * Colour control here is a pretty nasty hack but I can't
+     * find any better way to do it :(
+     * Will G.
+     */
+
+/*
+    // Slider peg colour - don't need to hack this bit!
+    // Found it easy enough to do it in the main code.
+*/
+
+    unsigned char r,g,b;
+    Fl::get_color(slider_track, r, g, b);
+    Fl::set_color(0, r, g, b);
     Fl_Slider::draw();
+    Fl::get_color(gen_text, r, g, b);
+    Fl::set_color(0, r, g, b);
 }
 
 int mwheel_slider::handle(int event)

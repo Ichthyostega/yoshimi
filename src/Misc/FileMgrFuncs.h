@@ -1,7 +1,7 @@
 /*
     FileMgr.h - all file operations
 
-    Copyright 2019-2022 Will Godfrey and others.
+    Copyright 2019-2023 Will Godfrey and others.
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -76,6 +76,7 @@ const string vector =        ".xvy";
 const string mlearn =        ".xly";
 const string MSwave =        ".wav";
 const string lists =         ".list";
+const string theme =         ".clr";
 
 }//(End)namespace EXTEN
 
@@ -162,6 +163,7 @@ inline bool isDirectory(const string& chkpath)
     }
     return false;
 }
+
 
 /* performs specific OS command
  * optionally returning a multi-line response
@@ -280,7 +282,7 @@ inline string findExtension(const string& name)
         return "";
     string exten = name.substr(point);
     if (exten.find('/') != string::npos)
-        return ""; // not acceptible as an extension!
+        return ""; // not acceptable as an extension!
     return exten;
 }
 
@@ -376,7 +378,7 @@ inline bool copyFile(const string& source, const string& destination, char optio
         return 1;
     std::ofstream outfile (destination, std::ios::out|std::ios::binary);
     if (!outfile.is_open())
-        return 1;
+        return 3;
 
     std::streampos size = infile.tellg();
     char *memblock = new char [size];
@@ -661,7 +663,7 @@ inline char * loadGzipped(const string& _filename, string * report)
         }
     }
     gzclose(gzf);
-    //*report = "it looks like we sucessfully loaded" + filename;
+    //*report = "it looks like we successfully loaded" + filename;
     return data;
 }
 
@@ -830,6 +832,48 @@ inline string configDir(void)
     }
     return config;
 }
+
+/*
+ * Tries to find the most relevant entry for example files.
+ * "leafname" can include a subdirectory such as "themes/demo"
+ * The build path is likely to be the most recent but either
+ * of .local or the distro install path could be next.
+ */
+inline string findExampleFile(string leafname)
+{
+    string dir = localPath();
+    string fullname = "";
+    if (!dir.empty())
+    {
+        string tmp = dir + "/examples/" + leafname;
+        if (isRegularFile(tmp))
+            fullname = tmp;
+    }
+    if (fullname.empty())
+    {
+        dir = localDir();
+        if (!dir.empty())
+        {
+            string tmp = dir + "/themes/" + leafname;
+            if (isRegularFile(tmp))
+                fullname = tmp;
+        }
+        if (fullname.empty())
+        {
+            string tmp = "/usr/local/share/yoshimi/examples/" + leafname;
+            if (isRegularFile(tmp))
+                fullname = tmp;
+        }
+        if (fullname.empty())
+        {
+            string tmp = "/usr/share/yoshimi/examples/" + leafname;
+            if (isRegularFile(tmp))
+                fullname = tmp;
+        }
+    }
+    return fullname;
+}
+
 
 }//(End)namespace file
 #endif /*FILEMGR_H*/

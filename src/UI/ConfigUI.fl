@@ -1,11 +1,14 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0305
+version 1.0308
 header_name {.h}
 code_name {.cpp}
+decl {\#include <cmath>} {public local
+}
+
 comment {Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009-2011, Alan Calvert
-Copyright 2014 -2022, Will Godfrey
+Copyright 2014 -2023, Will Godfrey
 
 This file is part of yoshimi, which is free software: you can redistribute
 it and/or modify it under the terms of the GNU General Public
@@ -26,7 +29,7 @@ This file is derivative of ZynAddSubFX original code.
 } {selected in_source in_header
 }
 
-decl {\#include <cmath>} {public local
+decl {\#include <iostream>} {public local
 }
 
 decl {\#include "Misc/Config.h"} {public local
@@ -53,6 +56,9 @@ decl {\#include "Misc/FileMgrFuncs.h"} {private local
 decl {\#include "Misc/NumericFuncs.h"} {private local
 }
 
+decl {\#include "Misc/FormatFuncs.h"} {private local
+}
+
 decl {\#include "Misc/TextMsgBuffer.h"
 
     namespace { // Implementation details...
@@ -68,7 +74,7 @@ class ConfigUI {} {
     Fl_Window configwindow {
       label {Yoshimi Settings}
       callback {close->do_callback();}
-      xywh {821 82 390 330} type Double hide resizable
+      xywh {1157 24 390 330} type Double hide resizable
       code0 {o->copy_label(synth->makeUniqueName("Settings").c_str());}
       code1 {if (synth->getIsLV2Plugin()){jackTab->deactivate();alsaTab->deactivate();}}
       code2 {confDW = o->w();confDH = o->h();}
@@ -82,11 +88,13 @@ patch2->hide();
 patch3->hide();
 patch4->hide();
 patch5->hide();
+patch6->hide();
 switchesTab->hide();
 jackTab->hide();
 alsaTab->hide();
-midiTab->hide();}
-        xywh {5 5 91 22} box THIN_UP_FRAME selection_color 47 labelsize 12
+midiTab->hide();
+themeTab->hide();}
+        xywh {5 5 91 22} box THIN_UP_FRAME selection_color 47 labelsize 12 labelcolor 64
       }
       Fl_Button Tab2 {
         label {&Switches}
@@ -95,11 +103,14 @@ patch2->show();
 patch1->hide();
 patch3->hide();
 patch4->hide();
-patch5->hide();mainTab->hide();
+patch5->hide();
+patch6->hide();
+mainTab->hide();
 jackTab->hide();
 alsaTab->hide();
-midiTab->hide();}
-        xywh {98 5 66 22} box THIN_UP_FRAME selection_color 47 labelsize 12
+midiTab->hide();
+themeTab->hide();}
+        xywh {98 5 66 22} box THIN_UP_FRAME selection_color 47 labelsize 12 labelcolor 64
       }
       Fl_Button Tab3 {
         label {&Jack}
@@ -108,11 +119,14 @@ patch3->show();
 patch1->hide();
 patch2->hide();
 patch4->hide();
-patch5->hide();mainTab->hide();
+patch5->hide();
+patch6->hide();
+mainTab->hide();
 switchesTab->hide();
 alsaTab->hide();
-midiTab->hide();}
-        xywh {166 5 38 22} box THIN_UP_FRAME selection_color 47 labelsize 12
+midiTab->hide();
+themeTab->hide();}
+        xywh {166 5 38 22} box THIN_UP_FRAME selection_color 47 labelsize 12 labelcolor 64
       }
       Fl_Button Tab4 {
         label {&Alsa}
@@ -122,11 +136,13 @@ patch1->hide();
 patch2->hide();
 patch3->hide();
 patch5->hide();
+patch6->hide();
 mainTab->hide();
 switchesTab->hide();
 jackTab->hide();
-midiTab->hide();}
-        xywh {206 5 38 22} box THIN_UP_FRAME selection_color 47 labelsize 12
+midiTab->hide();
+themeTab->hide();}
+        xywh {206 5 38 22} box THIN_UP_FRAME selection_color 47 labelsize 12 labelcolor 64
       }
       Fl_Button Tab5 {
         label {MIDI &CCs}
@@ -136,23 +152,43 @@ patch1->hide();
 patch2->hide();
 patch3->hide();
 patch4->hide();
+patch6->hide();
 mainTab->hide();
 switchesTab->hide();
 jackTab->hide();
-alsaTab->hide();}
-        xywh {246 5 58 22} box THIN_UP_FRAME selection_color 47 labelsize 12
+alsaTab->hide();
+themeTab->hide();}
+        xywh {246 5 58 22} box THIN_UP_FRAME selection_color 47 labelsize 12 labelcolor 64
+      }
+      Fl_Button Tab6 {
+        label {&Theme}
+        callback {themeTab->show();
+patch6->show();
+patch1->hide();
+patch2->hide();
+patch3->hide();
+patch4->hide();
+patch5->hide();
+mainTab->hide();
+switchesTab->hide();
+jackTab->hide();
+alsaTab->hide();
+midiTab->hide();
+fillThemes();
+;}
+        xywh {305 5 58 22} box THIN_UP_FRAME selection_color 47 labelsize 12 labelcolor 64
       }
       Fl_Group configTabs {
-        xywh {5 5 385 298}
+        xywh {5 5 385 298} labelcolor 64
       } {
         Fl_Group mainTab {
-          xywh {5 25 382 277} box THIN_UP_BOX labelsize 12
+          xywh {5 25 382 277} box THIN_UP_BOX labelsize 12 labelcolor 64 hide
         } {
           Fl_Choice buff_size {
             label {* Internal Buffer Size}
             callback {//
                         send_data(0, CONFIG::control::bufferSize, 16 << o->value(), TOPLEVEL::type::Integer);}
-            tooltip {Number of samples. Smaller has more accurate internal timings but this may change some sounds.} xywh {245 34 105 20} down_box BORDER_BOX labelsize 12 textfont 1 textsize 12
+            tooltip {Number of samples. Smaller has more accurate internal timings but this may change some sounds.} xywh {245 34 105 20} down_box BORDER_BOX labelsize 12 labelcolor 64 textfont 1 textsize 12 textcolor 64
             code0 {o->add("16");o->add("32");o->add("64");o->add("128");o->add("256");o->add("512");o->add("1024");o->add("2048");o->add("4096");o->add("8192");}
             code1 {o->value(func::bitFindHigh(synth->getRuntime().Buffersize) - 4);}
             code2 {//if (synth->getIsLV2Plugin()) o->deactivate();}
@@ -161,7 +197,7 @@ alsaTab->hide();}
             label {* AddSynth Oscillator Size}
             callback {//
                         send_data(0, CONFIG::control::oscillatorSize, 256 << o->value(), TOPLEVEL::type::Integer);}
-            tooltip {ADSynth Oscillator Size (samples)} xywh {245 58 105 20} down_box BORDER_BOX labelsize 12 textfont 1 textsize 12
+            tooltip {ADSynth Oscillator Size (samples)} xywh {245 58 105 20} down_box BORDER_BOX labelsize 12 labelcolor 64 textfont 1 textsize 12 textcolor 64
             code0 {o->add("256");o->add("512");o->add("1024");o->add("2048");o->add("4096");o->add("8192");o->add("16384");}
             code1 {o->value(func::bitFindHigh(synth->getRuntime().Oscilsize) - 8);}
           } {}
@@ -169,7 +205,7 @@ alsaTab->hide();}
             label {PadSynth Interpolation}
             callback {//
                         send_data(0, CONFIG::control::padSynthInterpolation, o->value(), TOPLEVEL::type::Integer);}
-            xywh {245 82 105 20} down_box BORDER_BOX labelsize 12 textfont 1 textsize 12
+            xywh {245 82 105 20} down_box BORDER_BOX labelsize 12 labelcolor 64 textfont 1 textsize 12 textcolor 64
             code0 {o->add("Linear(fast)");o->add("Cubic(slow)");}
             code1 {o->value(synth->getRuntime().Interpolation);}
           } {}
@@ -177,7 +213,7 @@ alsaTab->hide();}
             label {PadSynth Wavetable Build Mode}
             callback {//
                         send_data(0, CONFIG::control::handlePadSynthBuild, o->value(), TOPLEVEL::type::Integer);}
-            tooltip {How to rebuild wavetable after changes: Trigger manually and mute part (legacy), build in background and activate when ready, or automatically trigger background build on each parameter change (expensive)} xywh {245 106 105 20} down_box BORDER_BOX labelsize 12 textfont 1 textsize 12
+            tooltip {How to rebuild wavetable after changes: Trigger manually and mute part (legacy), build in background and activate when ready, or automatically trigger background build on each parameter change (expensive)} xywh {245 106 105 20} down_box BORDER_BOX labelsize 12 labelcolor 64 textfont 1 textsize 12 textcolor 64
             code0 {o->add("Muted");o->add("Background");o->add("Auto-Apply");}
             code1 {o->value(synth->getRuntime().handlePadSynthBuild);}
           } {}
@@ -185,7 +221,7 @@ alsaTab->hide();}
             label {Virtual Keyboard Layout}
             callback {//
                         send_data(0, CONFIG::control::virtualKeyboardLayout, o->value(), TOPLEVEL::type::Integer);}
-            xywh {245 130 105 20} down_box BORDER_BOX labelsize 12 textfont 1 textsize 12
+            xywh {245 130 105 20} down_box BORDER_BOX labelsize 12 labelcolor 64 textfont 1 textsize 12 textcolor 64
             code0 {o->add("QWERTY");o->add("Dvorak");o->add("QWERTZ");o->add("AZERTY");}
             code1 {o->value(synth->getRuntime().VirKeybLayout);}
           } {}
@@ -193,7 +229,7 @@ alsaTab->hide();}
             label {Send reports to:}
             callback {//
                         send_data(TOPLEVEL::action::forceUpdate, CONFIG::control::reportsDestination, o->value(), TOPLEVEL::type::Integer);}
-            tooltip {Some system errors always go to stdout} xywh {200 178 150 20} down_box BORDER_BOX labelsize 12 textfont 1 textsize 12
+            tooltip {Some system errors always go to stdout} xywh {200 178 150 20} down_box BORDER_BOX labelsize 12 labelcolor 64 textfont 1 textsize 12 textcolor 64
             code0 {o->add("stdout");o->add("Console Window");}
             code1 {o->value(synth->getRuntime().toConsole);}
           } {}
@@ -202,7 +238,7 @@ alsaTab->hide();}
             callback {//
                         send_data(0, CONFIG::control::logTextSize, o->value(), TOPLEVEL::type::Integer);
                         synth->getGuiMaster()->yoshiLog->setLogText(o->value());}
-            tooltip {Console Font Size} xywh {285 202 64 20} type Simple labelsize 12 align 4 minimum 11 maximum 100 step 1 value 12 textfont 1 textsize 12
+            tooltip {Console Font Size} xywh {260 202 90 20} type Simple labelsize 12 labelcolor 64 align 4 minimum 11 maximum 100 step 1 value 12 textfont 1 textsize 12 textcolor 64
             code1 {o->value(synth->getRuntime().consoleTextSize);}
             code2 {if (synth->getRuntime().toConsole) o->activate(); else o->deactivate();}
           }
@@ -210,7 +246,7 @@ alsaTab->hide();}
             label {XML Compression Level}
             callback {//
                         send_data(0, CONFIG::control::XMLcompressionLevel, o->value(), TOPLEVEL::type::Integer);}
-            tooltip {gzip compression level (0 - uncompressed)} xywh {285 154 64 20} type Simple labelsize 12 align 4 minimum 0 maximum 9 step 1 textfont 1 textsize 12
+            tooltip {gzip compression level (0 - uncompressed)} xywh {260 154 90 20} type Simple labelsize 12 labelcolor 64 align 4 minimum 0 maximum 9 step 1 textfont 1 textsize 12 textcolor 64
             code0 {o->value(synth->getRuntime().GzipCompression);}
             code1 {if (synth->getUniqueId() != 0) o->hide();}
           }
@@ -218,7 +254,7 @@ alsaTab->hide();}
             label {Saved Instrument Format}
             callback {//
                         send_data(0, CONFIG::control::savedInstrumentFormat, o->value() + 1, TOPLEVEL::type::Integer);}
-            tooltip {Yoshimi format includes Controllers and Humanise} xywh {200 226 150 20} down_box BORDER_BOX labelsize 12 textfont 1 textsize 12
+            tooltip {Yoshimi format includes Controllers and Humanise} xywh {200 226 150 20} down_box BORDER_BOX labelsize 12 labelcolor 64 textfont 1 textsize 12 textcolor 64
             code0 {o->add("Legacy");o->add("Yoshimi");o->add("Both");}
             code1 {o->value(synth->getRuntime().instrumentFormat - 1);}
           } {}
@@ -227,24 +263,24 @@ alsaTab->hide();}
             callback {//
     int style = 2 - int(o->value());
     synth->getGuiMaster()->changepanelstyle(style);}
-            tooltip {Select single row or compact format} xywh {200 250 150 20} down_box BORDER_BOX labelsize 12 textfont 1 textsize 12
+            tooltip {Select single row or compact format} xywh {200 250 150 20} down_box BORDER_BOX labelsize 12 labelcolor 64 textfont 1 textsize 12 textcolor 64
             code0 {o->add("2 row x 8 entries");o->add("1 row x 16 entries");}
             code1 {o->value(synth->getRuntime().single_row_panel);}
           } {}
           Fl_Box settingsNote {
             label {* Changing these settings requires a restart}
-            xywh {38 276 306 17} labelfont 1 labelsize 12 labelcolor 38 align 128
+            xywh {38 276 306 17} labelfont 1 labelsize 12 labelcolor 64 align 128
             code0 {if (synth->getUniqueId() != 0) o->hide();}
           }
         }
         Fl_Group switchesTab {
-          xywh {5 25 382 277} box THIN_UP_BOX labelsize 12 hide
+          xywh {5 25 382 277} box THIN_UP_BOX labelsize 12 labelcolor 64 hide
         } {
           Fl_Check_Button bankHighlight {
             label {Enable Bank Highlight}
             callback {//
                         send_data(0, CONFIG::control::enableHighlight, o->value(), TOPLEVEL::type::Integer);}
-            tooltip {Show the last patch fetched from or saved to a bank} xywh {190 40 27 25} down_box DOWN_BOX labelsize 12 align 4
+            tooltip {Show the last patch fetched from or saved to a bank} xywh {190 40 27 25} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
             code0 {o->value(synth->getRuntime().bankHighlight);}
             class Fl_Check_Button2
           }
@@ -252,7 +288,7 @@ alsaTab->hide();}
             label {Hide Non Fatal Errors}
             callback {//
                         send_data(0, CONFIG::control::hideNonFatalErrors, o->value(), TOPLEVEL::type::Integer);}
-            xywh {190 60 27 25} down_box DOWN_BOX labelsize 12 align 4
+            xywh {190 60 27 25} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
             code0 {o->value(synth->getRuntime().hideErrors);}
             code1 {if (synth->getIsLV2Plugin()) o->deactivate();}
             class Fl_Check_Button2
@@ -261,7 +297,7 @@ alsaTab->hide();}
             label {Show Splash Screen}
             callback {//
                         send_data(0, CONFIG::control::showSplash, o->value(), TOPLEVEL::type::Integer);}
-            xywh {190 80 27 25} down_box DOWN_BOX labelsize 12 align 4
+            xywh {190 80 27 25} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
             code0 {o->value(synth->getRuntime().showSplash);}
             code1 {if (synth->getUniqueId() != 0) o->hide(); else if (synth->getIsLV2Plugin()) o->deactivate();}
             class Fl_Check_Button2
@@ -270,7 +306,7 @@ alsaTab->hide();}
             label {Log XML Headers}
             callback {//
                         send_data(0, CONFIG::control::logXMLheaders, o->value(), TOPLEVEL::type::Integer);}
-            xywh {190 100 27 25} down_box DOWN_BOX labelsize 12 align 4
+            xywh {190 100 27 25} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
             code0 {o->value(synth->getRuntime().logXMLheaders);}
             code1 {if (synth->getIsLV2Plugin()) o->deactivate();}
             class Fl_Check_Button2
@@ -279,7 +315,7 @@ alsaTab->hide();}
             label {Log Load times}
             callback {//
                         send_data(0, CONFIG::control::logInstrumentLoadTimes, o->value(), TOPLEVEL::type::Integer);}
-            xywh {190 120 27 25} down_box DOWN_BOX labelsize 12 align 4
+            xywh {190 120 27 25} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
             code0 {o->value(synth->getRuntime().showTimes);}
             class Fl_Check_Button2
           }
@@ -287,7 +323,7 @@ alsaTab->hide();}
             label {Retain all Data}
             callback {//
                         send_data(0, CONFIG::control::saveAllXMLdata, o->value(), TOPLEVEL::type::Integer);}
-            tooltip {Include all data in XML files, even inactive settings} xywh {190 140 27 25} down_box DOWN_BOX labelsize 12 align 4
+            tooltip {Include all data in XML files, even inactive settings} xywh {190 140 27 25} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
             code0 {o->value(synth->getRuntime().xmlmax);}
             class Fl_Check_Button2
           }
@@ -302,7 +338,7 @@ alsaTab->hide();}
                             send_data(0, CONFIG::control::enableGUI, o->value(), TOPLEVEL::type::Integer);
                         else
                             o->value(1);}
-            tooltip {Enable starting with this graphical interface} xywh {190 160 27 25} down_box DOWN_BOX labelsize 12 align 4
+            tooltip {Enable starting with this graphical interface} xywh {190 160 27 25} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
             code0 {o->value(synth->getRuntime().showGui);}
             code1 {if (synth->getUniqueId() != 0) o->hide(); else if (synth->getIsLV2Plugin()) o->deactivate();}
             class Fl_Check_Button2
@@ -311,7 +347,7 @@ alsaTab->hide();}
             label {* Enable CLI}
             callback {//
                         send_data(0, CONFIG::control::enableCLI, o->value(), TOPLEVEL::type::Integer);}
-            tooltip {Enable starting with interactive command line interface} xywh {190 180 27 25} down_box DOWN_BOX labelsize 12 align 4
+            tooltip {Enable starting with interactive command line interface} xywh {190 180 27 25} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
             code0 {o->value(synth->getRuntime().showCli);}
             code1 {if (synth->getUniqueId() != 0) o->hide(); else if (synth->getIsLV2Plugin()) o->deactivate();}
             class Fl_Check_Button2
@@ -320,7 +356,7 @@ alsaTab->hide();}
             label {Enable Auto Instance}
             callback {//
                         send_data(0, CONFIG::control::enableAutoInstance, o->value(), TOPLEVEL::type::Integer);}
-            tooltip {Allow main instance to start all those open when last closed.} xywh {190 200 27 25} down_box DOWN_BOX labelsize 12 align 4
+            tooltip {Allow main instance to start all those open when last closed.} xywh {190 200 27 25} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
             code0 {o->value(synth->getRuntime().autoInstance);}
             code1 {if (synth->getUniqueId() != 0) o->hide(); else if (synth->getIsLV2Plugin()) o->deactivate();}
             class Fl_Check_Button2
@@ -329,7 +365,7 @@ alsaTab->hide();}
             label {* Enable Single Master}
             callback {//
           send_data(0, CONFIG::control::enableSinglePath, o->value(), TOPLEVEL::type::Integer);}
-            tooltip {Redirect new start from desktop to create new instance instead.} xywh {190 220 27 25} down_box DOWN_BOX labelsize 12 align 4
+            tooltip {Redirect new start from desktop to create new instance instead.} xywh {190 220 27 25} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
             code0 {o->value(fetchData(0, CONFIG::control::enableSinglePath, TOPLEVEL::section::config));}
             class Fl_Check_Button2
           }
@@ -338,23 +374,23 @@ alsaTab->hide();}
             callback {//
                         send_data(0, CONFIG::control::defaultStateStart, o->value(), TOPLEVEL::type::Integer);}
             tooltip {If you change this you must re-save the default state
-or when that loads it will revert to the previous value} xywh {190 250 27 25} down_box DOWN_BOX labelsize 12 align 4
+or when that loads it will revert to the previous value} xywh {190 250 27 25} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
             code0 {o->value(synth->getRuntime().loadDefaultState);}
             code1 {if (synth->getIsLV2Plugin()) o->deactivate();}
             class Fl_Check_Button2
           }
-          Fl_Group {} {open
+          Fl_Group {} {
             tooltip {When locked new entries will not not be added or change the list order} xywh {230 70 130 180} box EMBOSSED_FRAME
           } {
             Fl_Text_Display historyLocks {
               label {History Locks}
-              xywh {278 110 50 1} box NO_BOX labelsize 12 align 129 textsize 12
+              xywh {278 110 50 1} box NO_BOX labelsize 12 labelcolor 64 align 129 textsize 12 textcolor 64
             }
             Fl_Check_Button H_instrument {
               label Instrument
               callback {//
                        send_data(TOPLEVEL::action::lowPrio, CONFIG::control::historyLock, o->value(), TOPLEVEL::type::Integer, TOPLEVEL::section::config,TOPLEVEL::XML::Instrument);}
-              xywh {240 120 27 25} down_box DOWN_BOX labelsize 12 align 8
+              xywh {240 120 27 25} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 8
               code0 {o->value(_SYS_::F2B(fetchData(0, CONFIG::control::historyLock, TOPLEVEL::section::config, TOPLEVEL::XML::Instrument, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, TOPLEVEL::action::lowPrio)));}
               class Fl_Check_Button2
             }
@@ -362,7 +398,7 @@ or when that loads it will revert to the previous value} xywh {190 250 27 25} do
               label {Patch Set}
               callback {//
                        send_data(TOPLEVEL::action::lowPrio, CONFIG::control::historyLock, o->value(), TOPLEVEL::type::Integer, TOPLEVEL::section::config,TOPLEVEL::XML::Patch);}
-              xywh {240 140 27 25} down_box DOWN_BOX labelsize 12 align 8
+              xywh {240 140 27 25} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 8
               code0 {o->value(_SYS_::F2B(fetchData(0, CONFIG::control::historyLock, TOPLEVEL::section::config, TOPLEVEL::XML::Patch, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, TOPLEVEL::action::lowPrio)));}
               class Fl_Check_Button2
             }
@@ -370,7 +406,7 @@ or when that loads it will revert to the previous value} xywh {190 250 27 25} do
               label Scale
               callback {//
                        send_data(TOPLEVEL::action::lowPrio, CONFIG::control::historyLock, o->value(), TOPLEVEL::type::Integer, TOPLEVEL::section::config,TOPLEVEL::XML::Scale);}
-              xywh {240 160 27 25} down_box DOWN_BOX labelsize 12 align 8
+              xywh {240 160 27 25} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 8
               code0 {o->value(_SYS_::F2B(fetchData(0, CONFIG::control::historyLock, TOPLEVEL::section::config, TOPLEVEL::XML::Scale, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, TOPLEVEL::action::lowPrio)));}
               class Fl_Check_Button2
             }
@@ -378,7 +414,7 @@ or when that loads it will revert to the previous value} xywh {190 250 27 25} do
               label State
               callback {//
                        send_data(TOPLEVEL::action::lowPrio, CONFIG::control::historyLock, o->value(), TOPLEVEL::type::Integer, TOPLEVEL::section::config,TOPLEVEL::XML::State);}
-              xywh {240 180 27 25} down_box DOWN_BOX labelsize 12 align 8
+              xywh {240 180 27 25} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 8
               code0 {o->value(_SYS_::F2B(fetchData(0, CONFIG::control::historyLock, TOPLEVEL::section::config, TOPLEVEL::XML::State, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, TOPLEVEL::action::lowPrio)));}
               class Fl_Check_Button2
             }
@@ -386,7 +422,7 @@ or when that loads it will revert to the previous value} xywh {190 250 27 25} do
               label Vector
               callback {//
                        send_data(TOPLEVEL::action::lowPrio, CONFIG::control::historyLock, o->value(), TOPLEVEL::type::Integer, TOPLEVEL::section::config,TOPLEVEL::XML::Vector);}
-              xywh {240 200 27 25} down_box DOWN_BOX labelsize 12 align 8
+              xywh {240 200 27 25} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 8
               code0 {o->value(_SYS_::F2B(fetchData(0, CONFIG::control::historyLock, TOPLEVEL::section::config, TOPLEVEL::XML::Vector, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, TOPLEVEL::action::lowPrio)));}
               class Fl_Check_Button2
             }
@@ -394,32 +430,32 @@ or when that loads it will revert to the previous value} xywh {190 250 27 25} do
               label {Midi Learn}
               callback {//
                        send_data(TOPLEVEL::action::lowPrio, CONFIG::control::historyLock, o->value(), TOPLEVEL::type::Integer, TOPLEVEL::section::config,TOPLEVEL::XML::MLearn);}
-              xywh {240 220 27 25} down_box DOWN_BOX labelsize 12 align 8
+              xywh {240 220 27 25} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 8
               code0 {o->value(_SYS_::F2B(fetchData(0, CONFIG::control::historyLock, TOPLEVEL::section::config, TOPLEVEL::XML::MLearn, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, TOPLEVEL::action::lowPrio)));}
               class Fl_Check_Button2
             }
           }
           Fl_Box switchesNote {
             label {* Changing these settings requires a restart}
-            xywh {38 276 306 17} labelfont 1 labelsize 12 labelcolor 38 align 128
+            xywh {38 276 306 17} labelfont 1 labelsize 12 labelcolor 64 align 128
           }
         }
         Fl_Group jackTab {
-          xywh {5 25 385 277} box THIN_UP_BOX labelsize 12 hide
+          xywh {5 25 382 277} box THIN_UP_BOX labelsize 12 labelcolor 64 hide
         } {
           Fl_Input jackSource {
             label {Jack MIDI Source}
             callback {//
                         string tmp = string(o->value());
                         send_data(TOPLEVEL::action::lowPrio, CONFIG::control::jackMidiSource, 0, TOPLEVEL::type::Integer, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(tmp));}
-            tooltip {Device Jack tries to connect to for input.} xywh {195 62 120 22} labelsize 12 textfont 1 textsize 12
+            tooltip {Device Jack tries to connect to for input.} xywh {195 62 120 22} labelsize 12 labelcolor 64 textfont 1 textsize 12 textcolor 64
             code0 {o->value(synth->getRuntime().jackMidiDevice.c_str());}
           }
           Fl_Check_Button jackMidi {
             label {Set as preferred MIDI}
             callback {//
                         send_data(TOPLEVEL::action::forceUpdate, CONFIG::control::jackPreferredMidi, o->value(), TOPLEVEL::type::Integer);}
-            xywh {195 88 37 26} down_box DOWN_BOX labelsize 12 align 4
+            xywh {195 88 37 26} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
             code0 {if (synth->getRuntime().midiEngine == jack_midi) o->value(1);}
             class Fl_Check_Button2
           }
@@ -428,14 +464,14 @@ or when that loads it will revert to the previous value} xywh {190 250 27 25} do
             callback {//
                         string tmp = string(o->value());
                         send_data(TOPLEVEL::action::lowPrio, CONFIG::control::jackServer, 0, TOPLEVEL::type::Integer, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(tmp));}
-            tooltip {Name of the jack server to connect to - default, ...} xywh {195 182 120 22} labelsize 12 textfont 1 textsize 12
+            tooltip {Name of the jack server to connect to - default, ...} xywh {195 182 120 22} labelsize 12 labelcolor 64 textfont 1 textsize 12 textcolor 64
             code0 {o->value(synth->getRuntime().jackServer.c_str());}
           }
           Fl_Check_Button jackAudio {
             label {Set as preferred audio}
             callback {//
                         send_data(TOPLEVEL::action::forceUpdate, CONFIG::control::jackPreferredAudio, o->value(), TOPLEVEL::type::Integer);}
-            xywh {195 209 37 26} down_box DOWN_BOX labelsize 12 align 4
+            xywh {195 209 37 26} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
             code0 {if (synth->getRuntime().audioEngine == jack_audio) o->value(1);}
             class Fl_Check_Button2
           }
@@ -443,17 +479,17 @@ or when that loads it will revert to the previous value} xywh {190 250 27 25} do
             label {Autoconnect audio}
             callback {//
                         send_data(0, CONFIG::control::jackAutoConnectAudio, o->value(), TOPLEVEL::type::Integer);}
-            xywh {195 233 37 26} down_box DOWN_BOX labelsize 12 align 4
+            xywh {195 233 37 26} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
             code0 {o->value(synth->getRuntime().connectJackaudio);}
             class Fl_Check_Button2
           }
           Fl_Box jackNote {
             label {Changing settings requires a restart}
-            xywh {60 276 267 17} labelfont 1 labelsize 12 labelcolor 38 align 128
+            xywh {60 276 267 17} labelfont 1 labelsize 12 labelcolor 64 align 128
           }
         }
         Fl_Group alsaTab {
-          xywh {5 25 384 277} box THIN_UP_BOX labelsize 12 hide
+          xywh {5 25 382 277} box THIN_UP_BOX labelsize 12 labelcolor 64 hide
         } {
           Fl_Choice alsaType {
             label {Alsa Connection Type}
@@ -464,7 +500,7 @@ else
 
 
 send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer, TOPLEVEL::section::config);}
-            xywh {195 45 120 22} box DOWN_BOX down_box BORDER_BOX labelsize 12 textfont 1 textsize 12
+            xywh {195 45 120 22} box DOWN_BOX down_box BORDER_BOX labelsize 12 labelcolor 64 textfont 1 textsize 12 textcolor 64
             code0 {o->add("Fixed");o->add("Search");o->add("External");}
           } {}
           Fl_Input alsaSource {
@@ -472,14 +508,14 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
             callback {//
                         string tmp = string(o->value());
                         send_data(TOPLEVEL::action::lowPrio, CONFIG::control::alsaMidiSource, 0, TOPLEVEL::type::Integer, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(tmp));}
-            tooltip {Device Alsa tries to connect to for input.} xywh {195 80 120 22} labelsize 12 textfont 1 textsize 12
+            tooltip {Device Alsa tries to connect to for input.} xywh {195 80 120 22} labelsize 12 labelcolor 64 textfont 1 textsize 12 textcolor 64
             code0 {o->value(synth->getRuntime().alsaMidiDevice.c_str());}
           }
           Fl_Check_Button alsaMidi {
             label {Set as preferred MIDI}
             callback {//
                         send_data(TOPLEVEL::action::forceUpdate, CONFIG::control::alsaPreferredMidi, o->value(), TOPLEVEL::type::Integer);}
-            xywh {195 110 37 26} down_box DOWN_BOX labelsize 12 align 4
+            xywh {195 110 37 26} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
             code0 {if (synth->getRuntime().midiEngine == alsa_midi) o->value(1);}
             class Fl_Check_Button2
           }
@@ -488,14 +524,14 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
             callback {//
                         string tmp = string(o->value());
                         send_data(TOPLEVEL::action::lowPrio, CONFIG::control::alsaAudioDevice, 0, TOPLEVEL::type::Integer, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(tmp));}
-            tooltip {Alsa audio device - default, hw:0, ...} xywh {195 143 120 22} labelsize 12 textfont 1 textsize 12
+            tooltip {Alsa audio device - default, hw:0, ...} xywh {195 143 120 22} labelsize 12 labelcolor 64 textfont 1 textsize 12 textcolor 64
             code0 {o->value(synth->getRuntime().alsaAudioDevice.c_str());}
           }
           Fl_Choice alsaSamplerate {
             label {Sample Rate}
             callback {//
     send_data(0, CONFIG::control::alsaSampleRate, o->value(), TOPLEVEL::type::Integer);}
-            xywh {195 199 80 22} down_box BORDER_BOX labelsize 12 textfont 1 textsize 12
+            xywh {195 199 80 22} down_box BORDER_BOX labelsize 12 labelcolor 64 textfont 1 textsize 12 textcolor 64
             code0 {o->add("192000");o->add("96000");o->add("48000");o->add("44100");}
             code1 {o->value(convertSrate(synth->getRuntime().Samplerate));}
           } {}
@@ -503,13 +539,13 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
             label {Set as preferred audio}
             callback {//
                         send_data(TOPLEVEL::action::forceUpdate, CONFIG::control::alsaPreferredAudio, o->value(), TOPLEVEL::type::Integer);}
-            xywh {195 169 37 26} down_box DOWN_BOX labelsize 12 align 4
+            xywh {195 169 37 26} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
             code0 {if (synth->getRuntime().audioEngine == alsa_audio) o->value(1);}
             class Fl_Check_Button2
           }
           Fl_Box alsaNote {
             label {Changing settings requires a restart}
-            xywh {60 276 267 17} labelfont 1 labelsize 12 labelcolor 38 align 128
+            xywh {60 276 267 17} labelfont 1 labelsize 12 labelcolor 64 align 128
           }
         }
         Fl_Group midiTab {
@@ -536,7 +572,7 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
                             BankRoot->value(BankRootvalue);
                             BankRoot->activate();
                         }*/}
-          tooltip {MIDI CC preferences} xywh {5 25 381 275} box THIN_UP_BOX labelsize 12 hide
+          tooltip {MIDI CC preferences} xywh {5 25 382 277} box THIN_UP_BOX labelsize 12 hide
           code0 {EPCvalue = synth->getRuntime().midi_upper_voice_C;}
           code1 {BankRootvalue = synth->getRuntime().midi_bank_root;}
         } {
@@ -576,7 +612,7 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
                             alert(synth, "In use for " + name);
                         }
                         send_data(0, CONFIG::control::bankRootCC, candidate, TOPLEVEL::type::Integer);}
-            tooltip {CC0 = msb, CC32 = lsb} xywh {234 57 53 18} down_box BORDER_BOX labelsize 12 align 132 textfont 1 textsize 12
+            tooltip {CC0 = msb, CC32 = lsb} xywh {234 57 53 18} down_box BORDER_BOX labelsize 12 labelcolor 64 align 132 textfont 1 textsize 12 textcolor 64
             code0 {o->add("LSB");o->add("MSB");o->add("Off");}
             code1 {int bankRoot = synth->getRuntime().midi_bank_root;}
             code2 {if (bankRoot == 32) o->value(0); else if (bankRoot == 0) o->value(1); else o->value(2);}
@@ -618,7 +654,7 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
                             alert(synth, "In use for " + name);
                         }
                         send_data(0, CONFIG::control::bankCC, candidate, TOPLEVEL::type::Integer);}
-            tooltip {CC0 = msb, CC32 = lsb} xywh {235 80 53 18} down_box BORDER_BOX labelsize 12 align 132 textfont 1 textsize 12
+            tooltip {CC0 = msb, CC32 = lsb} xywh {235 80 53 18} down_box BORDER_BOX labelsize 12 labelcolor 64 align 132 textfont 1 textsize 12 textcolor 64
             code0 {o->add("LSB");o->add("MSB");o->add("Off");}
             code1 {if (synth->getRuntime().midi_bank_C == 32) o->value(0); else if (synth->getRuntime().midi_bank_C == 0) o->value(1); else o->value(2);}
             code2 {oldBank = o->value();}
@@ -627,7 +663,7 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
             label {Enable Program Change}
             callback {//
                         send_data(0, CONFIG::control::enableProgramChange, o->value(), TOPLEVEL::type::Integer);}
-            tooltip {MIDI program change enable/disable} xywh {234 110 18 18} down_box DOWN_BOX value 1 labelsize 12 align 4
+            tooltip {MIDI program change enable/disable} xywh {234 110 18 18} down_box DOWN_BOX value 1 selection_color 64 labelsize 12 labelcolor 64 align 4
             code0 {o->value(synth->getRuntime().EnableProgChange);}
             class Fl_Check_Button2
           }
@@ -635,7 +671,7 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
             label {Extended Program Change CC}
             callback {//
                         Epend->show();}
-            xywh {235 180 50 18} labelsize 12 minimum 0 maximum 119 value 110 textfont 1 textsize 12
+            xywh {235 180 50 18} labelsize 12 labelcolor 64 minimum 0 maximum 119 value 110 textfont 1 textsize 12 textcolor 64
             code0 {EPCvalue = synth->getRuntime().midi_upper_voice_C;}
             code1 {if (EPCvalue < 128) o->value(EPCvalue); else o->value(110);}
             class WidgetSpinner
@@ -663,7 +699,7 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
                         EPCvalue = candidate;
                         o->hide();
                         send_data(0, CONFIG::control::extendedProgramChangeCC, EPCvalue, TOPLEVEL::type::Integer);}
-            tooltip {Click to set} xywh {300 180 70 20} box PLASTIC_UP_BOX color 90 labelsize 12 hide
+            tooltip {Click to set} xywh {300 180 70 20} box PLASTIC_UP_BOX color 90 labelsize 12 labelcolor 64 hide
           }
           Fl_Check_Button Epcheck {
             label {Enable Extended Program Change}
@@ -683,7 +719,7 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
                             EPCvalue = 128;
                         }
                         EPCspinner->redraw();}
-            xywh {234 160 18 18} down_box DOWN_BOX labelsize 12 align 4
+            xywh {234 160 18 18} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
             code0 {o->value((synth->getRuntime().midi_upper_voice_C < 128));}
             code1 {if (o->value() == 0) EPCspinner->deactivate();}
             class Fl_Check_Button2
@@ -692,7 +728,7 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
             label {Enable Incoming NRPNs}
             callback {//
                         send_data(0, CONFIG::control::enableNRPNs, o->value(), TOPLEVEL::type::Integer);}
-            xywh {234 210 18 18} down_box DOWN_BOX labelsize 12 align 4
+            xywh {234 210 18 18} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
             code0 {o->value(synth->getRuntime().enable_NRPN);}
             class Fl_Check_Button2
           }
@@ -700,7 +736,7 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
             label {Ignore Reset all CCs}
             callback {//
                         send_data(0, CONFIG::control::ignoreResetAllCCs, o->value(), TOPLEVEL::type::Integer);}
-            xywh {234 230 18 18} down_box DOWN_BOX labelsize 12 align 4
+            xywh {234 230 18 18} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
             code0 {o->value(synth->getRuntime().ignoreResetCCs);}
             class Fl_Check_Button2
           }
@@ -708,7 +744,7 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
             label {Log Incoming Events}
             callback {//
                         send_data(0, CONFIG::control::logIncomingCCs, o->value(), TOPLEVEL::type::Integer);}
-            xywh {234 250 18 18} down_box DOWN_BOX labelsize 12 align 4
+            xywh {234 250 18 18} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
             code0 {o->value(synth->getRuntime().monitorCCin);}
             class Fl_Check_Button2
           }
@@ -716,19 +752,150 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
             label {Show Learn Editor}
             callback {//
                         send_data(0, CONFIG::control::showLearnEditor, o->value(), TOPLEVEL::type::Integer);}
-            tooltip {Open the MIDI learn window for editing when a new CC has been learned} xywh {234 270 18 18} down_box DOWN_BOX labelsize 12 align 4
+            tooltip {Open the MIDI learn window for editing when a new CC has been learned} xywh {234 270 18 18} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
             code0 {o->value(synth->getRuntime().showLearnedCC);}
             class Fl_Check_Button2
           }
         }
-      }
-      Fl_Button close {
-        label {Close Unsaved}
-        callback {//
-         configwindow->hide();
-         configSeen = false;
-         saveWin(synth, configwindow->w(), configwindow->h(),configwindow->x(), configwindow->y(), false, "Config")}
-        xywh {275 305 105 20} box THIN_UP_BOX labelsize 12
+        Fl_Group themeTab {
+          callback {//}
+          xywh {5 25 382 277} box THIN_UP_BOX
+        } {
+          Fl_Browser theme_browser {
+            label Themes
+            callback {//
+        if (!o->value())
+            return;
+        int result = o->value();
+        if (result < 0)
+            return;
+        string line = string(o->text(result));
+        if (line == "classic")
+        {
+            setClassicTable();
+        }
+        else
+        {
+            string fileName = file::localDir()+ "/themes/" + line + EXTEN::theme;
+            int errLine = setUserTable(fileName);
+            if (errLine != -1)
+                themeError(errLine);
+
+            //synth->getRuntime().remoteGuiTheme = file::localDir()+ "/themes/" + line + ".clr";
+        }
+        currentTheme->copy_label(line.c_str());
+        curTheme = line;
+        while (defTheme.at(defTheme.length() - 1) < '!') // tidy up
+            defTheme.pop_back(); // deals with spurious trailing whitespace
+
+       if (line == defTheme)
+        {
+            nuTheme->deactivate();
+        }
+        else
+        {
+            nuTheme->activate();
+        }
+        synth->getGuiMaster()->theme();
+        //send_data(TOPLEVEL::action::muteAndLoop | TOPLEVEL::action::forceUpdate, MAIN::control::masterResetAndMlearn, 0, TOPLEVEL::type::Integer, TOPLEVEL::section::main);}
+            xywh {40 50 190 215} type Select labelcolor 64 align 1 textcolor 64
+          }
+          Fl_Button themeImport {
+            label {Import Theme}
+            callback {//
+        string filename = setfiler(synth,"", "", false, TOPLEVEL::XML::Themes);
+        if (filename.empty())
+        {
+            //synth->getRuntime().Log("Can't find " + filename);
+            return;
+        }
+        filename += EXTEN::theme;
+        string newfile = file::localDir() + "/themes/" + file::findLeafName(filename) + EXTEN::theme;
+        int result = file::copyFile(filename, newfile,1);
+        if (result == 0)
+        {
+            fillThemes();
+        }
+        else
+        {
+           synth->getRuntime().Log("Failed to install " + filename);
+        }}
+            xywh {255 51 100 20} box GTK_THIN_UP_BOX color 198 labelsize 12 labelcolor 64
+          }
+          Fl_Button themeExport {
+            label {Export Theme}
+            callback {//
+            string source = file::localDir() + "/themes/" + curTheme + EXTEN::theme;
+            string filename = setfiler(synth,"", curTheme, true, TOPLEVEL::XML::Themes);
+            size_t found = filename.find(file::localDir());
+            if (found!=std::string::npos)
+            {
+                alert(synth, "Can't export on top of internal themes");
+                return;
+            }
+            if (filename.empty())
+            {
+                //synth->getRuntime().Log("Nothing to export " + filename);
+                return;
+            }
+            filename += EXTEN::theme;
+            if (file::copyFile(source, filename, 0))
+            {
+                synth->getRuntime().Log("Failed to export " + filename);
+            }
+        ;}
+            xywh {255 89 100 20} box GTK_THIN_UP_BOX color 198 labelsize 12 labelcolor 64
+          }
+          Fl_Box storedLabel {
+            label {Default Theme}
+            xywh {288 115 35 17} labelsize 12 labelcolor 64
+          }
+          Fl_Box storedTheme {
+            label {Default Theme}
+            xywh {255 132 100 20} box THIN_DOWN_BOX color 7 labelsize 12 labelcolor 64
+          }
+          Fl_Group nuTheme {
+            xywh {242 158 123 106} deactivate
+          } {
+            Fl_Box currentLabel {
+              label {Current Theme}
+              xywh {288 168 35 17} labelsize 12 labelcolor 64
+            }
+            Fl_Box currentTheme {
+              label {Current Theme}
+              xywh {255 187 100 20} box THIN_DOWN_BOX color 7 labelsize 12 labelcolor 64
+            }
+            Fl_Button setAsStored {
+              label {Make Default}
+              callback {//
+        string name = curTheme + EXTEN::theme;
+        string file = file::localDir() + "/themes/ID/current.txt";
+        file::saveText(name, file);
+        defTheme = curTheme;
+        storedTheme->copy_label(defTheme.c_str());
+        nuTheme->deactivate();}
+              xywh {255 220 100 20} box PLASTIC_THIN_UP_BOX color 228 labelsize 12 labelcolor 64
+            }
+          }
+        }
+        Fl_Box patch1 {
+          xywh {6 24 89 3} box FLAT_BOX labelcolor 64
+        }
+        Fl_Box patch2 {
+          xywh {98 24 65 3} box FLAT_BOX labelcolor 64
+        }
+        Fl_Box patch3 {
+          xywh {166 24 37 3} box FLAT_BOX labelcolor 64
+        }
+        Fl_Box patch4 {
+          xywh {206 24 37 3} box FLAT_BOX labelcolor 64
+        }
+        Fl_Box patch5 {
+          xywh {246 24 57 3} box FLAT_BOX labelcolor 64
+        }
+        Fl_Box patch6 {
+          xywh {305 24 57 3} box FLAT_BOX labelcolor 64
+        }
       }
       Fl_Button save {
         label {Save and Close}
@@ -737,28 +904,21 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
          configwindow->hide();
          configSeen = false;
          saveWin(synth, configwindow->w(), configwindow->h(),configwindow->x(), configwindow->y(), false, "Config")}
-        xywh {155 305 105 20} box THIN_UP_BOX labelsize 12
+        xywh {150 306 105 20} box THIN_UP_BOX color 196 labelsize 12 labelcolor 64
       }
-      Fl_Box patch1 {
-        xywh {6 24 89 3} box FLAT_BOX
-      }
-      Fl_Box patch2 {
-        xywh {98 24 65 3} box FLAT_BOX
-      }
-      Fl_Box patch3 {
-        xywh {166 24 37 3} box FLAT_BOX
-      }
-      Fl_Box patch4 {
-        xywh {206 24 37 3} box FLAT_BOX
-      }
-      Fl_Box patch5 {
-        xywh {246 24 57 3} box FLAT_BOX
+      Fl_Button close {
+        label {Close Unsaved}
+        callback {//
+         configwindow->hide();
+         configSeen = false;
+         saveWin(synth, configwindow->w(), configwindow->h(),configwindow->x(), configwindow->y(), false, "Config")}
+        xywh {270 306 105 20} box THIN_UP_BOX color 196 labelsize 12 labelcolor 64
       }
     }
     Fl_Window presets {
       label Presets
       callback {pClose->do_callback();}
-      xywh {5 437 460 295} type Double hide resizable
+      xywh {5 437 460 270} type Double hide resizable
       code0 {o->copy_label(synth->makeUniqueName("Presets").c_str());}
       code1 {preDW = o->w();preDH = o->h();}
       code2 {o->size_range(preDW, preDH, 0, 0, 0, 0, 1);}
@@ -766,7 +926,7 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
       Fl_Browser presetbrowse {
         callback {//
                     activatebutton_presetdir(o->value() != 0);}
-        tooltip {Click on an entry to make it the readable one.} xywh {5 5 450 200} type Hold labelsize 12 textsize 12
+        tooltip {Click on an entry to make it the readable one.} xywh {5 5 450 200} type Hold labelsize 12 labelcolor 64 textsize 12 textcolor 64
       }
       Fl_Button addpreset {
         label {Add preset directory...}
@@ -778,37 +938,30 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
                     send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate,CONFIG::control::addPresetRootDir, 0, TOPLEVEL::type::Integer, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(dirname));
                     if (presetbrowse->size() >= MAX_PRESET_DIRS)
                         o->deactivate();}
-        xywh {10 220 85 35} box THIN_UP_BOX labelsize 12 align 128
+        xywh {10 220 85 35} box GTK_THIN_UP_BOX color 198 labelsize 12 labelcolor 64 align 128
       }
       Fl_Button removepresetbutton {
         label {Remove preset dir...}
         callback {//
                     if (presetbrowse->value() != 0)
                         send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate,CONFIG::control::removePresetRootDir, presetbrowse->value() - 1, TOPLEVEL::type::Integer);}
-        xywh {115 220 85 35} box THIN_UP_BOX labelsize 12 align 128
+        xywh {115 220 85 35} box PLASTIC_UP_BOX color 228 labelsize 12 labelcolor 64 align 128
         code0 {o->deactivate();}
       }
       Fl_Button makedefaultpresetbutton {
         label {Make Current}
         callback {//
                     send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate,CONFIG::control::currentPresetRoot, presetbrowse->value() - 1, TOPLEVEL::type::Integer);}
-        xywh {220 220 85 35} box THIN_UP_BOX labelsize 12 align 128
+        xywh {220 220 85 35} box PLASTIC_UP_BOX color 228 labelsize 12 labelcolor 64 align 128
         code0 {o->deactivate();}
       }
-      Fl_Button pSave {
-        label {Save and Close}
-        callback {//
-                    synth->getRuntime().saveConfig();
-                    presets->hide();}
-        xywh {208 268 118 20} box THIN_UP_BOX labelsize 12
-      }
       Fl_Button pClose {
-        label {Close Unsaved}
+        label Close
         callback {//
         saveWin(synth, presets->w(), presets->h(), presets->x(), presets->y(), false, "Config-presets");
         presetsSeen = false;
         presets->hide();}
-        xywh {334 268 118 20} box THIN_UP_BOX labelsize 12
+        xywh {362 220 85 35} box THIN_UP_BOX color 196 labelsize 12 labelcolor 64
       }
     }
   }
@@ -1072,12 +1225,17 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
   Function {ConfigUI(SynthEngine *_synth)} {} {
     code {//
             synth = _synth;
+            manageThemes();
             make_window();
             readpresetcfg();
             configSeen = false;
             presetsSeen = false;
             selectedRootID = -1;
-            Tab1->do_callback();} {}
+            Tab1->do_callback();
+            string name = file::loadText(file::localDir() + "/themes/ID/current.txt");
+            size_t pos = name.rfind('.');
+            defTheme = name.substr(0, pos);
+            curTheme = defTheme;} {}
   }
   Function {~ConfigUI()} {} {
     code {//
@@ -1090,6 +1248,536 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
             saveWin(synth, configwindow->w(), configwindow->h(),configwindow->x(), configwindow->y(), true, "Config");
         configwindow->hide();
         delete configwindow;} {}
+  }
+  Function {fillNative()} {} {
+    code {//
+        for (int i = 0; i < 256; ++i)
+        {
+            getNativeLine(i);
+        }
+        ;} {}
+  }
+  Function {getNativeLine(int line)} {} {
+    code {//
+        unsigned char rt, gt, bt;
+        Fl::get_color(line, rt, gt, bt);
+        nativeTable[line] = int(rt);
+        nativeTable[line + 256] = int(gt);
+        nativeTable[line + 512] = int(bt);
+        ;} {}
+  }
+  Function {fillThemes()} {return_type int
+  } {
+    code {//
+        string sourceDir = file::localDir() + "/themes/";
+        std::list<string> themes;
+        int count = file::listDir(&themes, sourceDir);
+        if (count == 0)
+            return 0;
+        themes.sort();
+        theme_browser->clear();
+        std::list<string>::iterator itr = themes.begin();
+        while (itr != themes.end())
+        {
+            string text = file::findExtension(*itr);
+            if (text == ".clr")
+            {
+                text = *itr;
+                size_t pos = text.find(".clr");
+                text = text.substr(0, pos);
+                theme_browser->add(text.c_str());
+            }
+            ++itr;
+        }
+        storedTheme->copy_label(defTheme.c_str());
+        currentTheme->copy_label(curTheme.c_str());
+        return count;
+        ;} {}
+  }
+  Function {manageThemes()} {} {
+    code {//
+        static bool seen = false;
+        if (!seen)
+        {
+            fillNative();
+            seen = true;
+
+            if (!file::isRegularFile(file::localDir() + "/themes/demo.clr"))
+            {
+                string demo = file::findExampleFile("themes/demo.clr");
+                if (!demo.empty())
+                    file::copyFile(demo, file::localDir() + "/themes/demo.clr", 1);
+            }
+
+        }
+
+       /*
+        * Note: Fluid screws up text with control values and @
+        * so we enter them as char(n)
+        */
+
+      // prints the native colour table
+      /*unsigned char RR,GG,BB;
+      for (int i = 0; i < 256; ++i)
+      {
+          Fl::get_color(i, RR, GG, BB);
+          std::cout << '"'<< int(RR) << "," << int(GG) << "," << int(BB) << '"' << "," << std::endl;
+      }*/
+
+      int colour2find = 0;
+      if (colour2find > 0) // for testing
+      {
+          unsigned char rt,gt,bt;
+          Fl::get_color(colour2find, rt, gt, bt);
+          std::cout << "r " << int(rt) << " g " << int(gt) << " b " << int(bt) << std::endl;
+      }
+      if (!checkVersions())
+      {
+          setClassicTable();
+          return;
+      }
+
+      if (findRemote()) // externally CLI sourced
+          return;
+
+      string themeDir = file::localDir() + "/themes/";
+
+      string currentTheme = file::loadText(themeDir+"ID/current.txt");
+      while (currentTheme.at(currentTheme.length() - 1) < '!') // tidy up
+          currentTheme.pop_back(); // deals with spurious trailing whitespace
+
+      if (currentTheme != "classic.clr")
+      {
+          string fileName = themeDir+ currentTheme;
+          if (file::isRegularFile(fileName))
+          {
+                int errLine = setUserTable(fileName);
+                if (errLine != -1)
+                    themeError(errLine);
+                return;
+          }
+      }
+      setClassicTable();
+
+      //Fl::set_color(196, 127, 145, 191); // for testing
+
+      ;} {}
+  }
+  Function {checkVersions()} {return_type bool
+  } {
+    code {//
+        string themeDir = file::localDir() + "/themes/";
+        file::createDir(themeDir);
+        file::createDir(themeDir + "ID");
+        int build_ID = synth->getRuntime().build_ID;
+        int theme_ID = 0;
+        string defaultName = "classic.clr";
+        bool ok = true;
+        if (!file::isRegularFile(themeDir + defaultName))
+            ok = false;
+        if (ok)
+        {
+            if(!file::isRegularFile(themeDir +"ID/version"))
+                ok = false;
+            else
+                theme_ID = func::string2int(file::loadText(themeDir + "ID/version"));
+        }
+        if (ok)
+        {
+            if (build_ID > theme_ID)
+                ok = false;
+        }
+        if (ok)
+        {
+            string filename = themeDir +"ID/" + "current.txt";
+            if(!file::isRegularFile(filename))
+                ok = false;
+        }
+
+        if (ok)
+            return true;
+
+        file::saveText(to_string(build_ID), themeDir + "ID/version");
+        string res = themeDir + "ID/version";
+        //std::cout << "version>" << res << std::endl;
+        string colourText;
+        int info = 0;
+        do {
+            colourText += (colourPreamble[info] + char(10));
+            ++info;
+            if (info > 100)
+            {
+                std::cout << "failed preamble" << std::endl;
+            }
+        } while(colourPreamble[info] != "END");
+
+        int data = 0;
+        do {
+            colourText += (colourData[data] + char(10));
+            ++data;
+            if (data > 200)
+            {
+                std::cout << "failed data" << std::endl;
+            }
+        }  while(colourData[data] != "END");
+
+        file::saveText(defaultName + char(10), themeDir + "ID/current.txt");
+        file::saveText(colourText, themeDir + defaultName);
+        return false;} {}
+  }
+  Function {findRemote()} {return_type bool
+  } {
+    code {//
+       bool ok = true;
+       string currentTheme = synth->getRuntime().remoteGuiTheme;
+       if ((!file::isRegularFile(currentTheme)))
+       {
+           return false;
+       }
+       if (!currentTheme.empty())
+       {
+           int errLine = setUserTable(currentTheme);
+           if (errLine != -1)
+           {
+               themeError(errLine);
+               ok = false;
+           }
+       }
+       return ok;} {}
+  }
+  Function {setNativeTable()} {} {
+    code {//
+        for (int i = 0; i < 256; ++i)
+            setNativeLine(i);
+        ;} {}
+  }
+  Function {setNativeLine(int line)} {} {
+    code {//;
+        unsigned char R, G, B;
+        R = nativeTable[line];
+        G = nativeTable[line + 256];
+        B = nativeTable[line + 512];
+        Fl::set_color(line, R, G, B);
+        ;} {}
+  }
+  Function {setClassicTable()} {return_type bool
+  } {
+    code {//
+        setGreyScale(colourData[0]);
+        int lineCount = 0;
+        while (colourData[lineCount + 1].substr(0, 7) != "-------")
+        {
+            setColourLine(colourData[lineCount + 1], lineCount, 1); // we don't want the greyscale line!
+            ++ lineCount;
+        }
+        return true;} {}
+  }
+  Function {setUserTable(string table)} {return_type int
+  } {
+    code {//
+        string colourText = loadText(table);
+        std::size_t nextPos;
+
+        // strip out preamble text
+        string text = "";
+        int lineCount = 0;
+        int totalCount = 1;
+        while (text.substr(0, 7) != "-------")
+        {
+            nextPos = colourText.find(char(10));
+            if (nextPos == std::string::npos)
+            {
+                return -2;
+            }
+
+            text = colourText.substr(0, nextPos);
+            colourText = colourText.substr(nextPos + 1);
+            ++lineCount;
+            ++totalCount;
+        }
+        if (text.substr(0, 7) != "-------")
+        {
+            return -2;
+        }
+
+        int dataStart = totalCount;
+        if (colourText.at(0) == char(64)) // all native colour table
+        {
+            setNativeTable();
+            return -1; // doesn't matter if there's no more to the file
+        }
+
+        nextPos = colourText.find(char(10));
+        int scaletype = setGreyScale(colourText.substr(0, nextPos));
+        if (scaletype == 0)
+        {
+            return totalCount;
+        }
+
+        ++totalCount; // allow for greyscale line
+        colourText = colourText.substr(nextPos + 1);
+        lineCount = 0;
+        int test = 0;
+        do {
+            if ((totalCount - dataStart) == COLOURLIST && colourText.substr(0, 7) != "=======")
+            {
+                return -3; // missing marker
+            }
+
+            nextPos = colourText.find(char(10));
+            if (nextPos == std::string::npos)
+            {
+                return -4; // too short
+            }
+
+            text = colourText.substr(0, nextPos);
+            if (text.at(0) == char(64))
+            {
+                int actual_line = colourNumbers[lineCount];
+                setNativeLine(actual_line);
+            }
+            else
+            {
+                test = setColourLine(colourText.substr(0, nextPos), lineCount, scaletype);
+            }
+
+            if (test == -1)
+            {
+                if (colourText.substr(0, 7) == "-------")
+                    return -4; // old style too short
+                return totalCount;
+            }
+
+            ++lineCount;
+            ++totalCount;
+            colourText = colourText.substr(nextPos + 1);
+        } while(colourText.substr(0, 7) != "=======");
+
+        if ((totalCount - dataStart) < COLOURLIST)
+        {
+            return -4; // too short
+        }
+        return -1;
+        ;} {}
+  }
+  Function {setGreyTint(string text, float &R, float &G, float &B)} {return_type bool
+  } {
+    code {//
+        float r,g,b;
+        if (!isdigit(text.at(0)))
+        {
+            return false;
+        }
+        size_t nextPos = text.find(",");
+        r = string2int(text.substr(0, nextPos));
+        if (r > 255 || r < 0)
+            return false;
+        r = (r-127) / 511.0f;
+
+        text = text.substr(nextPos + 1);
+        nextPos = text.find(",");
+        if (nextPos == std::string::npos)
+        {
+            return false;
+        }
+        if (!isdigit(text.at(0)))
+        {
+            return false;
+        }
+        g = string2int(text.substr(0, nextPos));
+        if (g > 255 || g < 0)
+            return false;
+        g = (g-127) / 511.0f;
+
+        text = text.substr(nextPos + 1);
+        nextPos = text.find(",");
+        if (nextPos == std::string::npos)
+        {
+            return false;
+        }
+        if (!isdigit(text.at(0)))
+        {
+            return false;
+        }
+        b = string2int(text.substr(0, nextPos));
+        if (b > 255 || b < 0)
+            return false;
+        b = (b-127) / 511.0;
+
+        float offset = (r+g+b) / 3;
+        R = 1+r - offset;
+        if (R < 0)
+            R = 0;
+        G = 1+g - offset;
+        if (G < 0)
+            G = 0;
+        B = 1+b - offset;
+        if (B < 0)
+            B = 0;
+        return true;} {}
+  }
+  Function {setGreyScale(string text)} {return_type int
+  } {
+    code {//
+        size_t nextPos = text.find(",");
+        if (nextPos == std::string::npos)
+        {
+            return 0;
+        }
+
+        if (!isdigit(text.at(0)))
+        {
+            return 0;
+        }
+
+        int min = string2int(text.substr(0, nextPos));
+        if (min < 0 || min > 255)
+        {
+            return 0;
+        }
+
+        text = text.substr(nextPos + 1);
+        nextPos = text.find(",");
+        if (nextPos == std::string::npos)
+        {
+            return 0;
+        }
+
+        if (!isdigit(text.at(0)))
+        {
+            return 0;
+        }
+
+        int max = string2int(text.substr(0, nextPos));
+
+        if (max < 0 || max > 255)
+        {
+            return 0;
+        }
+
+        if (min == 127 && max == 127)
+            return 2; // this sets a totally grey colourmap
+                      // useful for testing contrast
+
+        float Rmult, Gmult, Bmult = 1;
+        bool useTint = false;
+        {
+            text = text.substr(nextPos + 1);
+            if(isdigit(text.at(0)))
+            {
+                if (setGreyTint(text,Rmult,Gmult,Bmult))
+                    useTint = true;
+                else
+                    synth->getRuntime().Log("Invalid grey tint");
+            }
+        }
+
+        float greyRange;
+        if (max > min)
+        {
+           greyRange =  (max - min) / 23;
+           for (int i = 0; i < 24; ++i)
+           {
+                int diff = (min + int(i * greyRange)) + 1;
+                if (useTint)
+                {
+                    int r = diff*Rmult;
+                    if (r > 255)
+                        r = 255;
+                    else if (r < 0)
+                        r = 0;
+                    int g = diff*Gmult;
+                    if (g > 255)
+                        g = 255;
+                    else if (g < 0)
+                        g = 0;
+                    int b = diff*Bmult;
+                    if (b > 255)
+                        b = 255;
+                    else if (b < 0)
+                        b = 0;
+                    Fl::set_color(i + 32, r, g, b);
+                }
+                else
+                    Fl::set_color(i + 32, diff, diff, diff);
+           }
+        }
+        else
+        {
+           greyRange = (min - max) / 23;
+           for (int i = 0; i < 24; ++i)
+           {
+               int diff = (min - int(i * greyRange)) - 1 ;
+               if (useTint)
+                {
+                    int r = diff*Rmult;
+                    if (r > 255)
+                        r = 255;
+                    else if (r < 0)
+                        r = 0;
+                    int g = diff*Gmult;
+                    if (g > 255)
+                        g = 255;
+                    else if (g < 0)
+                        g = 0;
+                    int b = diff*Bmult;
+                    if (b > 255)
+                        b = 255;
+                    else if (b < 0)
+                        b = 0;
+                    Fl::set_color(i + 32, r, g, b);
+                }
+                else
+                    Fl::set_color(i + 32, diff, diff, diff);
+           }
+       }
+  return 1;
+  ;} {}
+  }
+  Function {setColourLine(string text, int item, int type)} {return_type int
+  } {
+    code {//
+        size_t nextPos = text.find(",");
+        if (nextPos == std::string::npos)
+            return -1;
+        if (text.at(0) == char(35))
+        {
+            text = text.substr(1,nextPos);
+            unsigned int hexNumber;
+            sscanf(text.c_str(), "%x", &hexNumber);
+            Fl::set_color(colourNumbers[item],hexNumber * 256);
+            return 0;
+        }
+        if (!isdigit(text.at(0)))
+            return -1;
+        int red = string2int(text.substr(0, nextPos));
+        if (red < 0 || red > 255)
+            return -1;
+
+        text = text.substr(nextPos + 1);
+        nextPos = text.find(",");
+        if (nextPos == std::string::npos)
+            return -1;
+        if (!isdigit(text.at(0)))
+            return -1;
+        int green = string2int(text.substr(0, nextPos));
+        if (green < 0 || green > 255)
+            return -1;
+
+        text = text.substr(nextPos + 1);
+        if (!isdigit(text.at(0)))
+            return -1;
+        int blue = string2int(text); // don't need comma test here
+        if (blue < 0 || blue > 255)
+            return -1;
+        if (type == 2)
+        {
+            int grey = (red+green+blue)/3;
+            red = green = blue = grey;
+        }
+        Fl::set_color(colourNumbers[item], red, green, blue);
+        return 0;
+        ;} {}
   }
   Function {activatebutton_presetdir(bool active)} {} {
     code {//
@@ -1104,9 +1792,21 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
                 makedefaultpresetbutton->deactivate();
             }} {}
   }
+  Function {themeError(int errLine)} {} {
+    code {//
+        if (errLine == -2)
+            synth->getRuntime().Log("Theme: Missing data start marker");
+        else if (errLine == -3)
+            synth->getRuntime().Log("Theme: Missing data end marker");
+        else if (errLine == -4)
+            synth->getRuntime().Log("Theme: Short file");
+        else
+            synth->getRuntime().Log("Theme: Failed at line " + std::to_string(errLine));
+        ;} {}
+  }
   Function {recoverID()} {return_type int
   } {
-    code {//
+    code {// No longer using this. Why not?
             if (selectedRootID >= 0)
             {
                 return selectedRootID;
@@ -1421,6 +2121,18 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
     midiMon->labelsize(size);
     midiLearned->labelsize(size);
 //
+    Tab6->labelsize(size);
+    themeImport->labelsize(size);
+    themeExport->labelsize(size);
+    theme_browser->labelsize(size);
+        theme_browser->textsize(size);
+    themeImport->labelsize(size);
+    storedLabel->labelsize(size);
+    storedTheme->labelsize(size);
+    currentLabel->labelsize(size);
+    currentTheme->labelsize(size);
+    setAsStored->labelsize(size);
+//
     close->labelsize(size);
     save->labelsize(size);
 
@@ -1440,7 +2152,6 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
     addpreset->labelsize(size);
     removepresetbutton->labelsize(size);
     makedefaultpresetbutton->labelsize(size);
-    pSave->labelsize(size);
     pClose->labelsize(size);
 
     presetbrowse->textsize(size);
@@ -1482,5 +2193,11 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
   decl {bool configSeen;} {private local
   }
   decl {bool presetsSeen;} {private local
+  }
+  decl {string defTheme;} {private local
+  }
+  decl {string curTheme;} {private local
+  }
+  decl {int nativeTable[768];} {private local
   }
 }

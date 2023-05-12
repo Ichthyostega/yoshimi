@@ -1,5 +1,5 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0304
+version 1.0308
 header_name {.h}
 code_name {.cc}
 comment {VirKeyboard.h} {not_in_source in_header
@@ -12,7 +12,7 @@ comment {
 Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009-2010, Alan Calvert
-Copyright 2014-2020, Will Godfrey
+Copyright 2014-2023, Will Godfrey
 
 This file is part of yoshimi, which is free software: you can redistribute
 it and/or modify it under the terms of the GNU General Public
@@ -58,6 +58,18 @@ decl {\#include "UI/WidgetMWSlider.h"} {public local
 }
 
 decl {const int keyspos[12]={0,-1,1,-2,2,3,-4,4,-5,5,-6,6};} {private local
+}
+
+decl {\#define WHITE_KEY_COLOUR 0xFAF0E600} {public local
+}
+
+decl {\#define WHITE_KEY_PRESSED 0xBEB4AA00} {public local
+}
+
+decl {\#define BLACK_KEY_COLOUR 0x01010100} {public local
+}
+
+decl {\#define BLACK_KEY_PRESSED 0x70807000} {public local
 }
 
 decl {const int keysoct1qwerty[]={'q','2','w','3','e','r','5','t','6','y','7','u','i','9','o','0','p','[','=',']','\\\\',FL_Enter,0};} {private local
@@ -121,10 +133,10 @@ class VirKeys {: {public Fl_Box}
     int i;
     if (damage() != 1)
     {
-        fl_color(250, 240, 230);
+        fl_color(WHITE_KEY_COLOUR);
         fl_rectf(ox, oy, lx, ly);
 
-        fl_color(FL_BLACK);
+        fl_color(BLACK_KEY_COLOUR);
         fl_line(ox, oy, ox + lx, oy);
         fl_line(ox, oy + ly, ox + lx, oy + ly);
         for (i = 0; i < N_OCT * 7 + 1; ++i)
@@ -144,9 +156,9 @@ class VirKeys {: {public Fl_Box}
         if (kv >= 0)
         {   // white keys
             if (pressed[i] == 0)
-                fl_color(250, 240, 230);
+                fl_color(WHITE_KEY_COLOUR);
             else
-                fl_color(FL_BLUE);
+                fl_color(WHITE_KEY_PRESSED);
             fl_rectf(ox + (kv + 7 * noct) * (*keyWhite) + 3, oy + ly * 3 / 5 + 2,
                         (*keyWhite) - 4, ly * 2 / 5 - 3);
         }
@@ -154,10 +166,10 @@ class VirKeys {: {public Fl_Box}
         {   // black keys
             kv = keyspos[(i + 1) % 12];
             if (pressed[i] == 0)
-                fl_color(FL_BLACK);
+                fl_color(BLACK_KEY_COLOUR);
             else
-                fl_color(FL_BLUE);
-            fl_rectf(ox + (kv + 7 * noct) * (*keyWhite) - (*keyBlack) / 2 + 2, oy + 2,
+                fl_color(BLACK_KEY_PRESSED);
+            fl_rectf(ox + 1 + (kv + 7 * noct) * (*keyWhite) - (*keyBlack) / 2, oy + 2,
                         (*keyBlack) - 3, ly * 3 / 5 - 5);
         }
     }} {}
@@ -335,13 +347,13 @@ class VirKeyboard {} {
       label {Yoshimi Virtual Keyboard}
       callback {//
       virtClose->do_callback();}
-      tooltip {+ Shift to hold or release keys} xywh {1085 88 650 130} type Double hide resizable
+      tooltip {+ Shift to hold or release keys} xywh {1092 64 650 130} type Double hide resizable
       code0 {virtDW = o->w(); virtDH = o->h();}
       code1 {o->size_range(virtDW, virtDH, 0, 0, 0, 0, 1);}
     } {
       Fl_Box virkeys {
         label Keyboard
-        xywh {32 10 587 80} box FLAT_BOX color 17
+        xywh {32 10 587 80} box FLAT_BOX
         code0 {o->init(synth, scaledWhite, scaledBlack);}
         class VirKeys
       }
@@ -382,11 +394,13 @@ z x c v b n m ...} xywh {365 110 45 15} type Simple labelsize 10 align 4 when 6 
         callback {//
         if (Fl::event_button() == 3)
             o->value(100);
-        virkeys->midivel=(int) o->value();
+        virkeys->midivel=int(o->value());
+        o->selection_color(setSlider(o->value(), 100));
         virkeys->take_focus();}
         tooltip Velocity xywh {96 106 110 16} type {Horz Knob} box FLAT_BOX labelsize 10 align 1 minimum 1 maximum 127 step 1
         code0 {o->value(virkeys->midivel);}
-        class mwheel_val_slider_rev
+        code1 {o->selection_color(setSlider(o->value(), 100));}
+        class mwheel_slider_rev
       }
       Fl_Counter octave {
         label Octave
@@ -407,7 +421,7 @@ z x c v b n m ...} xywh {365 110 45 15} type Simple labelsize 10 align 4 when 6 
         saveWin(synth, virkeyboardwindow->w(), virkeyboardwindow->h(), virkeyboardwindow->x(), virkeyboardwindow->y(), false, "Midi-virtualkeyboard");
         virtSeen = false;
     	lastvirtW = 0;}
-        xywh {452 101 55 20} box THIN_UP_BOX labelsize 12
+        xywh {452 101 55 20} box THIN_UP_BOX color 196 labelsize 12
       }
       Fl_Slider controlslider {
         callback {//
@@ -421,7 +435,7 @@ z x c v b n m ...} xywh {365 110 45 15} type Simple labelsize 10 align 4 when 6 
         }
         virkeys->take_focus();
         send_data(TOPLEVEL::action::fromMIDI, 2, oldcontrol, TOPLEVEL::type::Integer, virkeys->midich, midictl);}
-        tooltip {Controller value} xywh {628 10 18 112} type {Vert Fill} box ENGRAVED_BOX color 229 labelsize 8 align 5 maximum 127 step 1 value 64
+        tooltip {Controller value} xywh {628 10 18 112} type {Vert Fill} box ENGRAVED_BOX color 230 selection_color 65 labelsize 8 align 5 maximum 127 step 1 value 64
         code0 {o->value(127 - oldcontrol);}
         code1 {o->setValueType(VC_plainReverse); o->useCustomTip(true);}
         class mwheel_slider
@@ -450,14 +464,15 @@ z x c v b n m ...} xywh {365 110 45 15} type Simple labelsize 10 align 4 when 6 
         callback {//
         if (Fl::event_button() == 3)
              o->value(0);
+        o->selection_color(setKnob(o->value(),0));
         virkeys->rndvelocity=(int) o->value();}
         tooltip {Velocity Randomness} xywh {221 106 20 21} box ROUND_UP_BOX labelsize 10 align 129 maximum 127 step 1
         code0 {o->value(virkeys->rndvelocity);}
         code1 {o->setValueType(VC_percent127);}
+        code2 {o->selection_color(setKnob(o->value(),0));}
         class WidgetPDial
       }
       Fl_Spinner midichannel {
-        class WidgetSpinner
         label {MIDI Channel}
         callback {//
         relaseallkeys();
@@ -468,6 +483,7 @@ z x c v b n m ...} xywh {365 110 45 15} type Simple labelsize 10 align 4 when 6 
         virkeys->take_focus();}
         xywh {45 106 36 17} labelsize 10 align 1 maximum 16 textsize 10
         code0 {o->value(virkeys->midich + 1);}
+        class WidgetSpinner
       }
       Fl_Slider pitchwheel {
         callback {//
@@ -478,11 +494,13 @@ z x c v b n m ...} xywh {365 110 45 15} type Simple labelsize 10 align 4 when 6 
             o->value(old);
             o->damage();
         }
+        o->selection_color(setSlider(o->value(),0));
         virkeys->take_focus();
-        send_data(0, MIDI::control::controller, -old, TOPLEVEL::type::Integer, virkeys->midich, MIDI::CC::pitchWheelInner)}
-        tooltip {Pitch Wheel} xywh {6 10 18 112} labelsize 8 align 1 minimum -8192 maximum 8191 step 1
+        send_data(0, MIDI::control::controller, -old, TOPLEVEL::type::Integer, virkeys->midich, MIDI::CC::pitchWheelInner);}
+        tooltip {Pitch Wheel} xywh {6 10 18 112} color 65 selection_color 64 labelsize 8 labelcolor 64 align 1 minimum -8192 maximum 8191 step 1
         code0 {o->value(virkeys->pitchWh);}
         code1 {o->setValueType(VC_pitchWheel); o->useCustomTip(true);}
+        code2 {o->selection_color(setSlider(o->value(),0));}
         class mwheel_slider
       }
     }
