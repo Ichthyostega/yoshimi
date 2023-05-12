@@ -102,7 +102,6 @@ InterChange::InterChange(SynthEngine *_synth) :
     returnsBuffer(),
     syncWrite(false),
     lowPrioWrite(false),
-    tick(0),
     sortResultsThreadHandle(0),
     swapRoot1(UNUSED),
     swapBank1(UNUSED),
@@ -118,6 +117,8 @@ InterChange::InterChange(SynthEngine *_synth) :
     undoStart = false;
     cameFrom = envControl::input;
     undoMarker.data.part = TOPLEVEL::section::undoMark;
+
+    sem_init(&sortResultsThreadSemaphore, 0, 0);
 }
 
 
@@ -146,6 +147,10 @@ bool InterChange::Init()
     }
 }
 
+void InterChange::spinSortResultsThread()
+{
+    sem_post(&sortResultsThreadSemaphore);
+}
 
 void *InterChange::_sortResultsThread(void *arg)
 {
@@ -157,22 +162,6 @@ void *InterChange::sortResultsThread(void)
 {
     while (synth->getRuntime().runSynth)
     {
-        /*
-         * To maintain portability we synthesise a very simple low accuracy
-         * timer based on the loop time of this function. As it makes no system
-         * calls apart from usleep() it is lightweight and should have no thread
-         * safety issues. It is used mostly for low priority timeouts.
-         */
-        ++ tick;
-
-        /*if (!(tick & 8191))
-        {
-            if (tick & 16383)
-                std::cout << "Tick" << std::endl;
-            else
-                std::cout << "Tock" << std::endl;
-        }*/
-
         CommandBlock getData;
 
         /* It is possible that several operations initiated from
@@ -197,8 +186,8 @@ void *InterChange::sortResultsThread(void)
             else
                 resolveReplies(&getData);
         }
-            usleep(80); // actually gives around 120 uS
 
+        sem_wait(&sortResultsThreadSemaphore);
     }
     return NULL;
 }
@@ -206,9 +195,14 @@ void *InterChange::sortResultsThread(void)
 
 InterChange::~InterChange()
 {
-    if (sortResultsThreadHandle)
+    if (sortResultsThreadHandle) {
+        // Get it to quit.
+        spinSortResultsThread();
         pthread_join(sortResultsThreadHandle, 0);
+    }
     undoRedoClear();
+
+    sem_destroy(&sortResultsThreadSemaphore);
 }
 
 
@@ -228,7 +222,7 @@ void InterChange::muteQueueWrite(CommandBlock *getData)
     }
     if (synth->audioOut.load() == _SYS_::mute::Idle)
     {
-        synth->audioOut.store(_SYS_::mute::Pending);
+        synth->audioOutStore(_SYS_::mute::Pending);
     }
 }
 
@@ -1448,7 +1442,7 @@ int InterChange::indirectConfig(CommandBlock *getData, SynthEngine *synth, unsig
             synth->getRuntime().presetsDirlist[i] = "";
             synth->getRuntime().presetsRootID = 0;
             newMsg = true;
-            synth->getRuntime().configChanged = true;
+            synth->getRuntime().savePresetsList();
             break;
         }
         case CONFIG::control::currentPresetRoot:
@@ -1582,7 +1576,7 @@ int InterChange::indirectPart(CommandBlock *getData, SynthEngine *synth, unsigne
                 if (write)
                 {
                     part->Pname = text;
-                    if (part->Poriginal.empty())
+                    if (part->Poriginal.empty() || part->Poriginal == UNTITLED)
                         part->Poriginal = text;
                     guiTo = true;
                 }
@@ -1996,6 +1990,7 @@ void InterChange::returns(CommandBlock *getData)
     }
     if (!decodeLoopback.write(getData->bytes))
         synth->getRuntime().Log("Unable to write to decodeLoopback buffer");
+    spinSortResultsThread();
 }
 
 
@@ -5992,19 +5987,19 @@ void InterChange::commandResonance(CommandBlock *getData, Resonance *respar)
     {
         case RESONANCE::control::maxDb:
             if (write)
-                respar->PmaxdB = value_int;
+                respar->PmaxdB = value;
             else
                 value = respar->PmaxdB;
             break;
         case RESONANCE::control::centerFrequency:
             if (write)
-                respar->Pcenterfreq = value_int;
+                respar->Pcenterfreq = value;
             else
                 value = respar->Pcenterfreq;
             break;
         case RESONANCE::control::octaves:
             if (write)
-                respar->Poctavesfreq = value_int;
+                respar->Poctavesfreq = value;
             else
                 value = respar->Poctavesfreq;
             break;
@@ -6560,7 +6555,8 @@ void InterChange::commandEnvelope(CommandBlock *getData)
 
 void InterChange::envelopeReadWrite(CommandBlock *getData, EnvelopeParams *pars)
 {
-    int val = int(getData->data.value) & 0x7f; // redo not currently restoring correct values
+    //int val = int(getData->data.value) & 0x7f; // redo not currently restoring correct values
+    float val = getData->data.value;
     bool write = (getData->data.type & TOPLEVEL::type::Write) > 0;
     unsigned char insert = getData->data.insert;
     unsigned char Xincrement = getData->data.offset;
@@ -6580,21 +6576,59 @@ void InterChange::envelopeReadWrite(CommandBlock *getData, EnvelopeParams *pars)
         getData->data.value = pars->Pfreemode;
         return;
     }
-    else if (getData->data.control == ENVELOPEINSERT::control::edit)
-        return; // only of interest to the GUI
+    //else if (getData->data.control == ENVELOPEINSERT::control::edit)
+        //return; // only of interest to the GUI
 
 
-    int envpoints = pars->Penvpoints;
+    size_t envpoints = pars->Penvpoints;
 
     if (pars->Pfreemode)
     {
-        if (insert == TOPLEVEL::insert::envelopePointAdd)
-            envelopePointAdd(getData, pars);
-        else if (insert == TOPLEVEL::insert::envelopePointDelete)
-            envelopePointDelete(getData, pars);
-        else if (insert == TOPLEVEL::insert::envelopePointChange)
-            envelopePointChange(getData, pars);
-        return;
+        bool doReturn = true;
+        switch (insert)
+        {
+            case TOPLEVEL::insert::envelopePointAdd:
+                envelopePointAdd(getData, pars);
+                break;
+            case TOPLEVEL::insert::envelopePointDelete:
+                envelopePointDelete(getData, pars);
+                break;
+            case TOPLEVEL::insert::envelopePointChange:
+                envelopePointChange(getData, pars);
+                break;
+            default:
+            {
+                if (getData->data.control == ENVELOPEINSERT::control::points)
+                {
+                    if (!pars->Pfreemode)
+                    {
+                        val = UNUSED;
+                        Xincrement = UNUSED;
+                    }
+                    else
+                    {
+                        val = envpoints;
+                        Xincrement = envpoints; // don't really need this now
+                    }
+                }
+                else if (getData->data.control == ENVELOPEINSERT::control::sustainPoint)
+                {
+                    if (write)
+                        pars->Penvsustain = val<0? 0 : val;
+                    else
+                        val = pars->Penvsustain;
+                }
+                else
+                    doReturn = false;
+            }
+            break;
+        }
+        if (doReturn) // some controls are common to both
+        {
+            getData->data.value = val;
+            getData->data.offset = Xincrement;
+            return;
+        }
     }
     else if (insert != TOPLEVEL::insert::envelopeGroup)
     {
@@ -6673,23 +6707,9 @@ void InterChange::envelopeReadWrite(CommandBlock *getData, EnvelopeParams *pars)
         case ENVELOPEINSERT::control::edit:
             break;
 
-        case ENVELOPEINSERT::control::points:
-            if (!pars->Pfreemode)
-            {
-                val = UNUSED;
-                Xincrement = UNUSED;
-            }
-            else
-            {
-                val = envpoints;
-                Xincrement = envpoints; // don't really need this now
-            }
-            break;
-        case ENVELOPEINSERT::control::sustainPoint:
-            if (write)
-                pars->Penvsustain = val;
-            else
-                val = pars->Penvsustain;
+        default:
+            val = UNUSED;
+            Xincrement = UNUSED;
             break;
     }
     if (write)
@@ -6708,7 +6728,7 @@ void InterChange::envelopePointAdd(CommandBlock *getData, EnvelopeParams *pars)
     unsigned char Xincrement = getData->data.offset;
     float val = getData->data.value;
     bool write = (getData->data.type & TOPLEVEL::type::Write) > 0;
-    int envpoints = pars->Penvpoints;
+    size_t envpoints = pars->Penvpoints;
 
 
         if (!write || point == 0 || point >= envpoints)
@@ -6726,7 +6746,8 @@ void InterChange::envelopePointAdd(CommandBlock *getData, EnvelopeParams *pars)
                     addFixed2undo(getData);
 
                 pars->Penvpoints += 1;
-                for (int i = envpoints; i >= point; -- i)
+                assert (0 < point && point < envpoints);
+                for (size_t i = envpoints; i >= point; -- i)
                 {
                     pars->Penvdt[i + 1] = pars->Penvdt[i];
                     pars->Penvval[i + 1] = pars->Penvval[i];
@@ -6759,8 +6780,10 @@ void InterChange::envelopePointAdd(CommandBlock *getData, EnvelopeParams *pars)
         }
         else
         {
+            assert (0 < point && point < envpoints);
+            assert (3 < envpoints);
             envpoints -= 1;
-            for (int i = point; i < envpoints; ++ i)
+            for (size_t i = point; i < envpoints; ++ i)
             {
                 pars->Penvdt[i] = pars->Penvdt[i + 1];
                 pars->Penvval[i] = pars->Penvval[i + 1];
@@ -6781,7 +6804,7 @@ void InterChange::envelopePointDelete(CommandBlock *getData, EnvelopeParams *par
     unsigned char Xincrement = getData->data.offset;
     float val = getData->data.value;
     bool write = (getData->data.type & TOPLEVEL::type::Write) > 0;
-    int envpoints = pars->Penvpoints;
+    size_t envpoints = pars->Penvpoints;
 
         if (!write || point == 0 || point >= envpoints)
         {
@@ -6795,7 +6818,7 @@ void InterChange::envelopePointDelete(CommandBlock *getData, EnvelopeParams *par
             if (envpoints < MAX_ENVELOPE_POINTS)
             {
                 pars->Penvpoints += 1;
-                for (int i = envpoints; i >= point; -- i)
+                for (size_t i = envpoints; i >= point; -- i)
                 {
                     pars->Penvdt[i + 1] = pars->Penvdt[i];
                     pars->Penvval[i + 1] = pars->Penvval[i];
@@ -6836,8 +6859,10 @@ void InterChange::envelopePointDelete(CommandBlock *getData, EnvelopeParams *par
                 getData->data.value = pars->Penvval[point];
                 addFixed2undo(getData);
             }
+            assert (0 < point && point < envpoints);
+            assert (3 < envpoints);
             envpoints -= 1;
-            for (int i = point; i < envpoints; ++ i)
+            for (size_t i = point; i < envpoints; ++ i)
             {
                 pars->Penvdt[i] = pars->Penvdt[i + 1];
                 pars->Penvval[i] = pars->Penvval[i + 1];
@@ -6857,7 +6882,7 @@ void InterChange::envelopePointChange(CommandBlock *getData, EnvelopeParams *par
     unsigned char Xincrement = getData->data.offset;
     float val = getData->data.value;
     bool write = (getData->data.type & TOPLEVEL::type::Write) > 0;
-    int envpoints = pars->Penvpoints;
+    size_t envpoints = pars->Penvpoints;
 
     if (point >= envpoints)
     {
@@ -7468,7 +7493,7 @@ float InterChange::returnLimits(CommandBlock *getData)
             return value;
     }
 
-    // not sure where the following should realy be
+    // not sure where the following should really be
     if (npart == TOPLEVEL::section::systemEffects)
     {
         min = 0;

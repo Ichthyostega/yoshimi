@@ -51,7 +51,7 @@ typedef unsigned int  uint;
 #define Cshift2I 23
 
 // many of the following are for convenience and consistency
-// changing them is likely to have unpredicable consequences
+// changing them is likely to have unpredictable consequences
 
 // sizes
 #define COMMAND_SIZE 252
@@ -97,16 +97,6 @@ typedef unsigned int  uint;
 #define MAX_BUFFER_SIZE 8192
 #define NO_MSG 255 // these two may become different
 #define UNUSED 255
-
-// GUI colours
-#define ADD_COLOUR 0xdfafbf00
-#define BASE_COLOUR 0xfdf6e600
-#define SUB_COLOUR 0xafcfdf00
-#define PAD_COLOUR 0xcdddad00
-#define YOSHI_COLOUR 0x0000e100
-#define EXTOSC_COLOUR 0x8fbfdf00
-#define EXTVOICE_COLOUR 0x9fdf8f00
-#define MODOFF_COLOUR 0x80808000
 
 // these were previously (pointlessly) user configurable
 #define NUM_VOICES 8
@@ -255,6 +245,18 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         bandwidth
     };
 
+    enum filter :unsigned char {
+        Low1 = 0,
+        High1,
+        Low2,
+        High2,
+        Band2,
+        Notch2,
+        Peak2,
+        LowShelf2,
+        HighShelf2
+    };
+
     enum XML : unsigned char { // file and history types
         Instrument = 0, // individual externally sourced Instruments
         Patch, //      full instrument Patch Sets
@@ -275,7 +277,8 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         MasterConfig,
         Bank,
         History,
-        PresetDirs
+        PresetDirs,
+        Themes
     };
 }
 

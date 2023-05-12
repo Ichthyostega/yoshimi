@@ -5,7 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
     Copyright 2013, Nikita Zlobin
-    Copyright 2014-2022, Will Godfrey & others
+    Copyright 2014-2023, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -78,6 +78,7 @@ int          Config::showCLIcontext = 1;
 string jUuid = "";
 
 Config::Config(SynthEngine *_synth, std::list<string>& allArgs, bool isLV2Plugin) :
+    build_ID(BUILD_NUMBER),
     stateChanged(false),
     restoreJackSession(false),
     oldConfig(false),
@@ -892,7 +893,7 @@ void Config::StartupReport(const string& clientName)
 {
     bool fullInfo = (synth->getUniqueId() == 0);
     if (fullInfo)
-        Log("Build Number " + std::to_string(BUILD_NUMBER));
+        Log("Build Number " + std::to_string(build_ID));
     Log("Clientname: " + clientName);
     string report = "Audio: ";
     switch (audioEngine)
@@ -1428,6 +1429,13 @@ void Config::applyOptions(Config* settings, std::list<string>& allArgs)
                 settings->sessionStage = _SYS_::type::StartupFirst;
                 settings->configChanged = true;
                 settings->StateFile = line;
+            }
+            break;
+
+        case 'T':
+            if (!line.empty())
+            {
+                settings->remoteGuiTheme = line;
             }
             break;
 
