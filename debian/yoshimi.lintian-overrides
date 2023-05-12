@@ -1,13 +1,6 @@
 # I can't find these spelling errors in source code using grep tool.
 # So overriding them.
+spelling-error-in-binary CONTROLL CONTROL [usr/bin/yoshimi]
 spelling-error-in-binary CONTROLL CONTROL [usr/lib/lv2/yoshimi.lv2/yoshimi_lv2.so]
 spelling-error-in-binary TeH The [usr/bin/yoshimi]
 spelling-error-in-binary TeH The [usr/lib/lv2/yoshimi.lv2/yoshimi_lv2.so]
-spelling-error-in-binary buil build [usr/bin/yoshimi]
-spelling-error-in-binary buil build [usr/lib/lv2/yoshimi.lv2/yoshimi_lv2.so]
-spelling-error-in-binary controlL control [usr/bin/yoshimi]
-spelling-error-in-binary defaulH default [usr/bin/yoshimi]
-spelling-error-in-binary defaulH default [usr/lib/lv2/yoshimi.lv2/yoshimi_lv2.so]
-spelling-error-in-binary ment meant [usr/bin/yoshimi]
-spelling-error-in-binary ment meant [usr/lib/lv2/yoshimi.lv2/yoshimi_lv2.so]
-spelling-error-in-binary pres press [usr/bin/yoshimi]

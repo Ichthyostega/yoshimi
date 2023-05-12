@@ -3,8 +3,9 @@ Section: sound
 Priority: optional
 Maintainer: Debian Multimedia Maintainers <debian-multimedia@lists.debian.org>
 Uploaders:
- Dennis Braun <d_braun@kabelmail.de>,
+ Dennis Braun <snd@debian.org>,
  Jaromír Mikeš <mira.mikes@seznam.cz>,
+ IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>,
  Hermann Vosseler <deb@ichthyostega.de>
 Build-Depends:
  cmake,
@@ -15,12 +16,12 @@ Build-Depends:
  libcairo2-dev,
  libfftw3-dev,
  libfltk1.3-dev,
- libfontconfig1-dev,
- libgl1-mesa-dev | libgl-dev,
+ libfontconfig-dev | libfontconfig1-dev,
+ libgl-dev | libgl1-mesa-dev,
  libglu1-mesa-dev | libglu-dev,
  libjack-jackd2-dev | libjack-dev,
  libmxml-dev,
- libncurses5-dev,
+ libncurses-dev | libncurses5-dev,
  libreadline-dev,
  libx11-dev,
  libxext-dev,
@@ -28,7 +29,7 @@ Build-Depends:
  pkg-config,
  sharutils,
  zlib1g-dev,
-Standards-Version: 4.6.1
+Standards-Version: 4.6.2
 Rules-Requires-Root: no
 Vcs-Git: https://github.com/Ichthyostega/yoshimi.git -b deb
 Homepage: https://yoshimi.sourceforge.io
