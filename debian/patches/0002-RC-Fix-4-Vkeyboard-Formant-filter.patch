@@ -1,0 +1,554 @@
+From: willgodfrey <willgodfrey@musically.me.uk>
+Date: Sun, 14 May 2023 16:14:35 +0100
+Subject: RC-Fix-4 : Vkeyboard / Formant filter
+
+Changes from Release testing integrated as patch
+
+BugFix: V.keyboard not showing velocity setting in tooltip.
+BugFix: Formant filter frequency reset not using float.
+Formant filter now stores current frequency as pseudo default.
+Small adjustment to yoshimi.desktop file.
+Reinstated appdata file for older distros.
+Updated docs.
+Set version as 2.3.0 rc4
+---
+ Changelog                                          | 12 +++-
+ desktop/metainfo/yoshimi.metainfo.xml              |  2 +-
+ desktop/yoshimi.desktop.in                         |  9 +--
+ .../files/yoshimi_user_guide_version               |  2 +-
+ doc/yoshimi_user_guide/filter/filter.html          | 11 +++-
+ .../introduction/introduction.html                 |  2 +-
+ doc/yoshimi_user_guide/navigation/navigation.html  |  4 +-
+ src/CMakeLists.txt                                 |  4 +-
+ src/Misc/ConfBuild.h                               |  2 +-
+ src/Params/FilterParams.cpp                        |  6 +-
+ src/UI/FilterUI.fl                                 |  2 +-
+ src/UI/OscilGenUI.fl                               | 72 ++++++++++++++++++----
+ src/UI/VirKeyboardUI.fl                            |  1 +
+ 13 files changed, 99 insertions(+), 30 deletions(-)
+
+diff --git a/Changelog b/Changelog
+index ab5a5c9..188f4a5 100644
+--- a/Changelog
++++ b/Changelog
+@@ -1,4 +1,14 @@
+-yoshimi 2.3.0 rc3
++yoshimi 2.3.0 rc4
++
++2023-5-14 Will
++bn 2226
++BugFix: V.keyboard not showing velocity setting in tooltip.
++BugFix: Formant filter frequency reset not using float.
++Formant filter now stores current frequency as pseudo default.
++Small adjustment to yoshimi.desktop file.
++Reinstated appdata file for older distros.
++Updated docs.
++Set version as 2.3.0 rc4
+ 
+ 2023-5-11 Will
+ bn 2225
+diff --git a/desktop/metainfo/yoshimi.metainfo.xml b/desktop/metainfo/yoshimi.metainfo.xml
+index e669723..132c280 100644
+--- a/desktop/metainfo/yoshimi.metainfo.xml
++++ b/desktop/metainfo/yoshimi.metainfo.xml
+@@ -35,7 +35,7 @@
+    <launchable type="desktop-id">yoshimi.desktop</launchable>
+ 
+   <releases>
+-​    <release type="stable" version="2.3.0" date="2023-5-11" />
++​    <release type="stable" version="2.3.0" date="2023-5-12" />
+ ​  </releases>
+   <provides>
+     <binary>yoshimi</binary>
+diff --git a/desktop/yoshimi.desktop.in b/desktop/yoshimi.desktop.in
+index 8891a95..4bec66a 100644
+--- a/desktop/yoshimi.desktop.in
++++ b/desktop/yoshimi.desktop.in
+@@ -1,13 +1,14 @@
+ [Desktop Entry]
++Type=Application
++Version=1.0
+ Name=Yoshimi
+-GenericName=Synthesizer
+-GenericName[fr]=Synthétiseur
+ Comment=Real Time Synthesizer
+ Comment[fr]=Synthétiseur temps-réel
+-Icon=yoshimi
+-Type=Application
++GenericName=Synthesizer
++GenericName[fr]=Synthétiseur
+ Exec=yoshimi
+ TryExec=yoshimi
++Icon=yoshimi
+ Terminal=false
+ StartupNotify=true
+ Categories=Music;Midi;AudioVideo;X-Sound;Audio;X-Multitrack;X-Alsa;X-Jack;
+diff --git a/doc/yoshimi_user_guide/files/yoshimi_user_guide_version b/doc/yoshimi_user_guide/files/yoshimi_user_guide_version
+index 41b79b3..fb999fe 100644
+--- a/doc/yoshimi_user_guide/files/yoshimi_user_guide_version
++++ b/doc/yoshimi_user_guide/files/yoshimi_user_guide_version
+@@ -1 +1 @@
+-2.3.0 rc3
+\ No newline at end of file
++2.3.0 rc4
+\ No newline at end of file
+diff --git a/doc/yoshimi_user_guide/filter/filter.html b/doc/yoshimi_user_guide/filter/filter.html
+index 2fcd68e..eeb4aeb 100644
+--- a/doc/yoshimi_user_guide/filter/filter.html
++++ b/doc/yoshimi_user_guide/filter/filter.html
+@@ -72,7 +72,7 @@
+         <b>Formant</b> The formant being edited.
+       </li>
+       <li>
+-        <b>Freq</b> The frequency of the current formant. Uniquely this has no default value, and will be set randomly at the time the filter is created.
++        <b>Freq</b> The frequency of the current formant. Uniquely this has no default value. From Yoshimi V2.3.0 there is a  <a href="#pseudo">pseudo default</a>.
+       </li>
+       <li>
+         <b>Q</b> The current formant's Q factor.
+@@ -121,6 +121,15 @@
+     <br><br>
+     This is especially useful for controlling most of the formant features one-handed, quickly, while also playing on a keyboard.
+     </p>
++    <p>
++    <a id="pseudo"></a>
++    <h4>The Formant Pseudo Default</h4>
++    When a formant filter is first created the frequency control for each of the individual formants will be set randomly. However, with Yoshimi versions V2.3.0 and later, this setting becomes a pseudo default and the knob pointer colour will behave accordingly.
++    <br>
++    An extra wrinkle is that if this has been changed and the instrument is then saved, the saved copy will have the <em>current</em> value marked as the default, without affecting the running version.
++    <br>
++    Also, keep in mind that a reset, or switching to a different filter type always clears all filter settings and the formant freqency controls will gain new random values.
++    </p>
+     <!--<a href="../navigation/navigation.html">Next</a> (Navigation, Controls, Defaults)-->
+   </body>
+ </html>
+diff --git a/doc/yoshimi_user_guide/introduction/introduction.html b/doc/yoshimi_user_guide/introduction/introduction.html
+index d6e0f27..3f61ae0 100644
+--- a/doc/yoshimi_user_guide/introduction/introduction.html
++++ b/doc/yoshimi_user_guide/introduction/introduction.html
+@@ -22,7 +22,7 @@
+     You can have a <b>Kit</b> of up to 16 of these triple engine synthesisers with various overlapping key ranges. These enable you to create complex multi-layered sounds or small drum kits.
+     </p>
+     <p>
+-    This complete <b>Instrument</b> patch is then optionally passed through up to three effects such as <b>Reverb</b>, <b>Phaser</b> and <b>Equalisation</b>. From here output from this <b>Part</b> is given a number and assigned to an individual MIDI input channel, overall key range, Continuous Controller (CC) sensitivities and degree of polyphony.
++    This complete <b>Instrument</b> patch is then optionally passed through up to three effects such as <b>Reverb</b>, <b>Phaser</b> and <b>Equalisation</b>. From here output of this <b>Part</b> is given a number and assigned to an individual MIDI input channel, overall key range, Continuous Controller (CC) sensitivities and degree of polyphony.
+     </p>
+     <p>
+     Parts, can have further <b>Insertion</b> effects applied to them before being directed to either the main audio output, an individual output (if such is available), or both! The main output can have <b>System</b> effects combined from all active parts.
+diff --git a/doc/yoshimi_user_guide/navigation/navigation.html b/doc/yoshimi_user_guide/navigation/navigation.html
+index 993423b..0f51a64 100644
+--- a/doc/yoshimi_user_guide/navigation/navigation.html
++++ b/doc/yoshimi_user_guide/navigation/navigation.html
+@@ -45,14 +45,14 @@
+     </p>
+     <img src="images/defaults.png" alt="Default control settings" class="small">
+     <p>
+-    In current Yoshimi versions all sliders indicate that they are at the default position when the 'peg' has a green center, otherwise it will be red. Similarly most rotary knobs have black pointer line when at the default, and red when moved.<br>
++    In current Yoshimi versions all sliders indicate that they are at the default position when the 'peg' has a green center, otherwise it will be red. Similarly, rotary knobs have a black pointer line when at the default, and red when moved.<br>
+     Almost all of these controls have dynamic tooltips showing you what the current setting is. Also the default settings have been very carefully thought out - especially the ones deep in the synth <em>engines</em> so just enabling features can produce dramatic results.
+     </p>
+     <img src="../images/boundry.png" alt="divider" class="wideline">
+     <p>
+     Another enhancement is that we make a clear distinction between link buttons and action buttons.
+     <br><br>
+-     <b>Link</b> buttons are rectangular and pale green. They don't <em>change</em> any settings, just take to to another window where there is usually an expanded group of controls.
++     <b>Link</b> buttons are rectangular and pale green. They don't <em>change</em> any settings, just take you to another window where there is usually an expanded group of controls.
+      <br><br>
+      <b>Action</b> buttons are rounded and pale blue. These are the ones that make immediate changes such as enabling a synth engine.
+      <br><br>
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 9f501f7..84e9fc2 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -51,7 +51,7 @@ add_definitions(-Wextra)
+ add_definitions(-Wno-vla) # Nothing wrong with variable length arrays
+ # ^^^ comment these out on release pushes
+ 
+-set (YOSHIMI_VERSION "2.3.0 rc3")
++set (YOSHIMI_VERSION "2.3.0 rc4")
+ 
+ add_definitions (-DMIN_CONFIG_MAJOR=2)
+ add_definitions (-DMIN_CONFIG_MINOR=0)
+@@ -526,6 +526,8 @@ install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/yoshimi.svg
+     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps)
+ install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/yoshimi_alt.svg
+     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps)
++install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/metainfo/yoshimi.appdata.xml
++    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/metainfo)
+ install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/metainfo/yoshimi.metainfo.xml
+     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/metainfo)
+ install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/yoshimi.1
+diff --git a/src/Misc/ConfBuild.h b/src/Misc/ConfBuild.h
+index 7a8f542..d3bf8c1 100644
+--- a/src/Misc/ConfBuild.h
++++ b/src/Misc/ConfBuild.h
+@@ -2,4 +2,4 @@
+     ConfBuild.h
+ */
+ 
+-#define BUILD_NUMBER 2225
++#define BUILD_NUMBER 2226
+diff --git a/src/Params/FilterParams.cpp b/src/Params/FilterParams.cpp
+index 9b7933e..8121ec9 100644
+--- a/src/Params/FilterParams.cpp
++++ b/src/Params/FilterParams.cpp
+@@ -279,7 +279,6 @@ void FilterParams::add2XMLsection(XMLwrapper *xml,int n)
+     for (int nformant = 0; nformant < FF_MAX_FORMANTS; ++nformant)
+     {
+         xml->beginbranch("FORMANT",nformant);
+-        xml->addparcombi("first_freq",Pvowels[nvowel].formants[nformant].firstF);
+         xml->addparcombi("freq",Pvowels[nvowel].formants[nformant].freq);
+         xml->addparcombi("amp",Pvowels[nvowel].formants[nformant].amp);
+         xml->addparcombi("q",Pvowels[nvowel].formants[nformant].q);
+@@ -336,10 +335,11 @@ void FilterParams::getfromXMLsection(XMLwrapper *xml,int n)
+     {
+         if (xml->enterbranch("FORMANT",nformant) == 0)
+             continue;
+-        Pvowels[nvowel].formants[nformant].firstF =
+-            xml->getparcombi("first_freq",Pvowels[nvowel].formants[nformant].firstF,FILTDEF::formFreq.min,FILTDEF::formFreq.max);
+         Pvowels[nvowel].formants[nformant].freq =
+             xml->getparcombi("freq",Pvowels[nvowel].formants[nformant].freq,FILTDEF::formFreq.min,FILTDEF::formFreq.max);
++        Pvowels[nvowel].formants[nformant].firstF =Pvowels[nvowel].formants[nformant].freq;
++        // the saved setting becomes the new pseudo default value.
++
+         Pvowels[nvowel].formants[nformant].amp =
+             xml->getparcombi("amp",Pvowels[nvowel].formants[nformant].amp,FILTDEF::formAmp.min,FILTDEF::formAmp.max);
+         Pvowels[nvowel].formants[nformant].q =
+diff --git a/src/UI/FilterUI.fl b/src/UI/FilterUI.fl
+index a7bbbad..a462001 100644
+--- a/src/UI/FilterUI.fl
++++ b/src/UI/FilterUI.fl
+@@ -1407,6 +1407,6 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
+   }
+   decl {bool formantSeen;} {private local
+   }
+-  decl {int formFreqDef;} {private local
++  decl {float formFreqDef;} {private local
+   }
+ }
+diff --git a/src/UI/OscilGenUI.fl b/src/UI/OscilGenUI.fl
+index 33f3f44..e0abc4d 100644
+--- a/src/UI/OscilGenUI.fl
++++ b/src/UI/OscilGenUI.fl
+@@ -443,10 +443,13 @@ class Oscilharmonic {: {public Fl_Group}
+     end();
+     harmonic->show();} {}
+   }
+-  Function {refresh()} {} {
++  Function {refresh(int def = 0)} {} {
+     code {//
+     mag->value(64 - oscil->Phmag[n]);
+-    phase->value(64 - oscil->Phphase[n]);} {}
++    mag->selection_color(setSlider(mag->value(),def));
++    phase->value(64 - oscil->Phphase[n]);
++    phase->selection_color(setSlider(phase->value(),0));
++    ;} {}
+   }
+   Function {~Oscilharmonic()} {} {
+     code {//
+@@ -517,8 +520,10 @@ o->hide();}
+           } {}
+           Fl_Dial hrnddial {
+             callback {//
++            o->selection_color(setKnob(o->value(),64));
+             send_data(0, OSCILLATOR::control::harmonicAmplitudeRandomness, o->value(), TOPLEVEL::type::Integer);}
+             tooltip {Oscillator's harmonic randomness parameter} xywh {338 280 18 18} maximum 127 step 1
++            code0 {o->selection_color(setKnob(o->value(),64));}
+             class WidgetPDial
+           }
+         }
+@@ -547,10 +552,12 @@ o->hide();}
+           code0 {Oscilloscope *osc=new Oscilloscope(o->x(),o->y(),o->w(),o->h(), 170,"");}
+           code1 {osc->init(oscilSmp,1, synth);}
+         } {}
+-        Fl_Dial bfslider {
++        Fl_Dial bfknob {
+           callback {//
++          o->selection_color(setKnob(o->value(),0));
+           send_data(TOPLEVEL::action::forceUpdate, OSCILLATOR::control::baseFunctionParameter, o->value(), TOPLEVEL::type::Integer);}
+           tooltip {Base Function Parameter} xywh {520 280 20 20} labelcolor 64 minimum -64 maximum 63 step 1
++          code0 {o->selection_color(setKnob(o->value(),0));}
+           class WidgetPDial
+         }
+         Fl_Choice bftype {
+@@ -585,20 +592,26 @@ o->hide();}
+           } {
+             Fl_Dial bfmodpar1 {
+               callback {//
++            o->selection_color(setKnob(o->value(),64));
+             send_data(TOPLEVEL::action::forceUpdate, OSCILLATOR::control::baseModulationParameter1, o->value(), TOPLEVEL::type::Integer);}
+               tooltip {Oscillator's modulation parameter 1} xywh {654 280 17 17} maximum 127 step 1
++              code0 {o->selection_color(setKnob(o->value(),64));}
+               class WidgetPDial
+             }
+             Fl_Dial bfmodpar2 {
+               callback {//
++            o->selection_color(setKnob(o->value(),64));
+             send_data(TOPLEVEL::action::forceUpdate, OSCILLATOR::control::baseModulationParameter2, o->value(), TOPLEVEL::type::Integer);}
+               tooltip {Oscillator's modulation parameter 2} xywh {676 280 17 17} maximum 127 step 1
++              code0 {o->selection_color(setKnob(o->value(),64));}
+               class WidgetPDial
+             }
+             Fl_Dial bfmodpar3 {
+               callback {//
++            o->selection_color(setKnob(o->value(),32));
+             send_data(TOPLEVEL::action::forceUpdate, OSCILLATOR::control::baseModulationParameter3, o->value(), TOPLEVEL::type::Integer);}
+               tooltip {Oscillator's modulation parameter 3} xywh {698 280 17 17} maximum 127 step 1
++              code0 {o->selection_color(setKnob(o->value(),32));}
+               class WidgetPDial
+             }
+           }
+@@ -870,7 +883,7 @@ o->hide();}
+     else if (insert == TOPLEVEL::insert::harmonicPhase)
+     {
+         h[control]->phase->value(64 - value_int);
+-        h[control]->phase->selection_color(setSlider(value_int,64));
++        h[control]->phase->selection_color(setSlider(64 - value_int,64));
+     }
+ 
+     else
+@@ -888,6 +901,7 @@ o->hide();}
+ 
+             case OSCILLATOR::control::harmonicAmplitudeRandomness:
+                 hrnddial->value(value);
++                hrnddial->selection_color(setKnob(value,64));
+                 break;
+ 
+             case OSCILLATOR::control::harmonicRandomnessType:
+@@ -899,7 +913,8 @@ o->hide();}
+                 break;
+ 
+             case OSCILLATOR::control::baseFunctionParameter:
+-                bfslider->value(value);
++                bfknob->value(value);
++                bfknob->selection_color(setKnob(value,0));
+                 bfparval->value(value);
+                 baseSet = true;
+                 break;
+@@ -908,12 +923,12 @@ o->hide();}
+                 bftype->value(value);
+                 if (value < OSCILLATOR::wave::triangle || oscil->Pcurrentbasefunc > OSCILLATOR::wave::hyperSec)
+                 {
+-                    bfslider->deactivate();
++                    bfknob->deactivate();
+                     basefuncmodulation->deactivate();
+                 }
+                 else
+                 {
+-                    bfslider->activate();
++                    bfknob->activate();
+                     basefuncmodulation->activate();
+                 }
+                 baseSet = true;
+@@ -921,18 +936,21 @@ o->hide();}
+ 
+             case OSCILLATOR::control::baseModulationParameter1:
+                 bfmodpar1->value(value);
++                bfmodpar1->selection_color(setKnob(value,64));
+                 baseSet = true;
+                 redrawoscil();
+                 break;
+ 
+             case OSCILLATOR::control::baseModulationParameter2:
+                 bfmodpar2->value(value);
++                bfmodpar2->selection_color(setKnob(value,64));
+                 baseSet = true;
+                 redrawoscil();
+                 break;
+ 
+             case OSCILLATOR::control::baseModulationParameter3:
+                 bfmodpar3->value(value);
++                bfmodpar3->selection_color(setKnob(value,32));
+                 baseSet = true;
+                 redrawoscil();
+                 break;
+@@ -956,7 +974,9 @@ o->hide();}
+                     for (int i = 0; i<MAX_AD_HARMONICS; ++i)
+                     {
+                         h[i]->mag->value(0);
++                        h[i]->mag->selection_color(setSlider(0,0)); // we can fake these
+                         h[i]->phase->value(0);
++                        h[i]->phase->selection_color(setSlider(0,0));
+                     }
+                     harmonicshiftcounter->value(0);
+                     h[0]->mag->value(0);
+@@ -970,6 +990,7 @@ o->hide();}
+ 
+             case OSCILLATOR::control::waveshapeParameter:
+                 wshpar->value(value);
++                wshpar->selection_color(setKnob(value,0));
+                 wsparval->value(value);
+                 break;
+ 
+@@ -983,10 +1004,12 @@ o->hide();}
+ 
+             case OSCILLATOR::control::filterParameter1:
+                 filtervalue1->value(value);
++                filtervalue1->selection_color(setKnob(value,64));
+                 break;
+ 
+             case OSCILLATOR::control::filterParameter2:
+                 filtervalue2->value(value);
++                filtervalue2->selection_color(setKnob(value,64));
+                 break;
+ 
+             case OSCILLATOR::control::filterBeforeWaveshape:
+@@ -1003,14 +1026,17 @@ o->hide();}
+ 
+             case OSCILLATOR::control::modulationParameter1:
+                 modpar1->value(value);
++                modpar1->selection_color(setKnob(value,64));
+                 break;
+ 
+             case OSCILLATOR::control::modulationParameter2:
+                 modpar2->value(value);
++                modpar2->selection_color(setKnob(value,64));
+                 break;
+ 
+             case OSCILLATOR::control::modulationParameter3:
+                 modpar3->value(value);
++                modpar3->selection_color(setKnob(value,32));
+                 break;
+ 
+             case OSCILLATOR::control::modulationType:
+@@ -1023,6 +1049,7 @@ o->hide();}
+ 
+             case OSCILLATOR::control::spectrumAdjustParameter:
+                 sadjpar->value(value);
++                sadjpar->selection_color(setKnob(value,64));
+                 break;
+ 
+             case OSCILLATOR::control::spectrumAdjustType:
+@@ -1052,10 +1079,12 @@ o->hide();}
+ 
+             case OSCILLATOR::control::adaptiveHarmonicsBase:
+                 adhrbf->value(value);
++                adhrbf->selection_color(setKnob(value,128));
+                 break;
+ 
+             case OSCILLATOR::control::adaptiveHarmonicsPower:
+                 adhrpow->value(value);
++                adhrpow->selection_color(setKnob(value,100));
+                 break;
+ 
+             case OSCILLATOR::control::adaptiveHarmonicsType:
+@@ -1070,7 +1099,9 @@ o->hide();}
+                 for (int i = 0; i < MAX_AD_HARMONICS; ++i)
+                 {
+                     h[i]->mag->value(0);
++                    h[i]->mag->selection_color(setSlider(0,0)); // we can fake these
+                     h[i]->phase->value(0);
++                    h[i]->phase->selection_color(setSlider(0,0));
+                 }
+                 h[0]->mag->value(-63);
+                 // This is somewhat counter-intuitive.
+@@ -1079,7 +1110,8 @@ o->hide();}
+ 
+             case OSCILLATOR::control::convertToSine:
+                 bftype->value(0);
+-                for (int i = 0; i < MAX_AD_HARMONICS; ++i)
++                h[0]->refresh(-63);
++                for (int i = 1; i < MAX_AD_HARMONICS; ++i)
+                     h[i]->refresh();
+                 baseSet = true;
+                 set = false;
+@@ -1161,17 +1193,19 @@ o->hide();}
+     else
+         hrnddial->activate();
+     hrnddial->value(oscil->Pamprandpower);
++    hrnddial->selection_color(setKnob(hrnddial->value(),64));
+ 
+     if (oscil->Pcurrentbasefunc > OSCILLATOR::wave::hyperSec)
+         bftype->value(OSCILLATOR::wave::user);
+     else
+         bftype->value(oscil->Pcurrentbasefunc);
+     if (bftype->value() == OSCILLATOR::wave::sine)
+-        bfslider->deactivate();
++        bfknob->deactivate();
+     else
+-        bfslider->activate();
++        bfknob->activate();
+     bfparval->value(oscil->Pbasefuncpar-64);
+-    bfslider->value(oscil->Pbasefuncpar-64);
++    bfknob->value(oscil->Pbasefuncpar-64);
++    bfknob->selection_color(setKnob(bfknob->value(),0));
+ 
+     bfmodtype->value(oscil->Pbasefuncmodulation);
+     if (bfmodtype->value() == 0)
+@@ -1179,8 +1213,11 @@ o->hide();}
+     else
+         baseFuncPars->activate();
+     bfmodpar1->value(oscil->Pbasefuncmodulationpar1);
++    bfmodpar1->selection_color(setKnob(bfmodpar1->value(),64));
+     bfmodpar2->value(oscil->Pbasefuncmodulationpar2);
++    bfmodpar2->selection_color(setKnob(bfmodpar2->value(),64));
+     bfmodpar3->value(oscil->Pbasefuncmodulationpar3);
++    bfmodpar3->selection_color(setKnob(bfmodpar3->value(),32));
+ 
+     wshbutton->value(oscil->Pwaveshapingfunction);
+     if (wshbutton->value() == 0)
+@@ -1189,6 +1226,7 @@ o->hide();}
+         wshpar->activate();
+     wsparval->value(oscil->Pwaveshaping-64);
+     wshpar->value(oscil->Pwaveshaping-64);
++    wshpar->selection_color(setKnob(wshpar->value(),0));
+ 
+     fltbutton->value(oscil->Pfiltertype);
+     if (fltbutton->value() == 0)
+@@ -1196,7 +1234,9 @@ o->hide();}
+     else
+         filterGroup->activate();
+     filtervalue1->value(oscil->Pfilterpar1);
++    filtervalue1->selection_color(setKnob(filtervalue1->value(),64));
+     filtervalue2->value(oscil->Pfilterpar2);
++    filtervalue2->selection_color(setKnob(filtervalue2->value(),64));
+     filterpref->value(oscil->Pfilterbeforews);
+ 
+     modtype->value(oscil->Pmodulation);
+@@ -1205,8 +1245,11 @@ o->hide();}
+     else
+         modulationGroup->activate();
+     modpar1->value(oscil->Pmodulationpar1);
++    modpar1->selection_color(setKnob(modpar1->value(),64));
+     modpar2->value(oscil->Pmodulationpar2);
++    modpar2->selection_color(setKnob(modpar2->value(),64));
+     modpar3->value(oscil->Pmodulationpar3);
++    modpar3->selection_color(setKnob(modpar3->value(),32));
+ 
+     sabutton->value(oscil->Psatype);
+     if (sabutton->value() == 0)
+@@ -1214,7 +1257,7 @@ o->hide();}
+     else
+         sadjpar->activate();
+     sadjpar->value(oscil->Psapar);
+-
++    sadjpar->selection_color(setKnob(sadjpar->value(),64));
+     harmonicshiftcounter->value(oscil->Pharmonicshift);
+     harmonicshiftpre->value(oscil->Pharmonicshiftfirst);
+ 
+@@ -1224,10 +1267,13 @@ o->hide();}
+     else
+         adaptiveGroup->activate();
+     adhrbf->value(oscil->Padaptiveharmonicsbasefreq);
++    adhrbf->selection_color(setKnob(adhrbf->value(),128));
+     adhrpow->value(oscil->Padaptiveharmonicspower);
++    adhrpow->selection_color(setKnob(adhrpow->value(),100));
+     adhrtype->value(oscil->Padaptiveharmonicspar);
+ 
+-    for (int i=0;i<MAX_AD_HARMONICS;i++)
++    h[0]->refresh(-63);
++    for (int i=1;i<MAX_AD_HARMONICS;i++)
+         h[i]->refresh();
+ 
+     oscilSmp->prepare();
+diff --git a/src/UI/VirKeyboardUI.fl b/src/UI/VirKeyboardUI.fl
+index 02037ef..6a66e3f 100644
+--- a/src/UI/VirKeyboardUI.fl
++++ b/src/UI/VirKeyboardUI.fl
+@@ -400,6 +400,7 @@ z x c v b n m ...} xywh {365 110 45 15} type Simple labelsize 10 align 4 when 6
+         tooltip Velocity xywh {96 106 110 16} type {Horz Knob} box FLAT_BOX labelsize 10 align 1 minimum 1 maximum 127 step 1
+         code0 {o->value(virkeys->midivel);}
+         code1 {o->selection_color(setSlider(o->value(), 100));}
++        code3 {o->setValueType(VC_plainValue);o->useCustomTip(true);}
+         class mwheel_slider_rev
+       }
+       Fl_Counter octave {
