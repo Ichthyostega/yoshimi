@@ -1,0 +1,338 @@
+From: willgodfrey <willgodfrey@musically.me.uk>
+Date: Wed, 17 May 2023 17:08:01 +0100
+Subject: RC-Fix-7 : GUI fixes / MIDI-learn / User Guide
+
+Further last-minute fixes from release testing integrated as patch
+
+NOTE: Will also added some new instruments; these are left out here
+      to allow for a quick rebuild and rollout
+
+Changed MIDI-learn 7bit NRPN warning colour to warning background.
+Created "Midilearn activity indicator" entry in themes.
+Correction to User Guide AlienWah Delay description.
+Set version as 2.3.0 rc7
+---
+ Changelog                                          | 10 ++++++-
+ banks/Bass/.bankdir                                |  2 +-
+ banks/Guitar/.bankdir                              |  2 +-
+ banks/Strings/.bankdir                             |  2 +-
+ doc/examples/themes/demo.clr                       |  2 +-
+ doc/examples/themes/retro_classic.clr              |  2 +-
+ doc/yoshimi_user_guide/effects/effects.html        |  2 +-
+ .../files/yoshimi_user_guide_version               |  2 +-
+ doc/yoshimi_user_guide/miscellany.html             | 29 +++++++++++++++++-
+ src/CMakeLists.txt                                 |  2 +-
+ src/Interface/MidiLearn.cpp                        |  4 +--
+ src/Misc/ConfBuild.h                               |  2 +-
+ src/UI/MidiLearnUI.fl                              | 35 ++++++++++++----------
+ src/UI/Themes.h                                    |  6 ++--
+ 14 files changed, 71 insertions(+), 31 deletions(-)
+
+diff --git a/Changelog b/Changelog
+index d80c627..365e7ac 100644
+--- a/Changelog
++++ b/Changelog
+@@ -1,4 +1,12 @@
+-yoshimi 2.3.0 rc6
++yoshimi 2.3.0 rc7
++
++2023-5-17 Will
++bn 2229
++Changed MIDI-learn 7bit NRPN warning colour to warning background.
++Created "Midilearn activity indicator" entry in themes.
++Correction to User Guide AlienWah Delay description.
++Added instruments to banks from Art Horan.
++Set version as 2.3.0 rc7
+ 
+ 2023-5-16 Will
+ bn 2228
+diff --git a/banks/Bass/.bankdir b/banks/Bass/.bankdir
+index 77d6f4c..470e74b 100644
+--- a/banks/Bass/.bankdir
++++ b/banks/Bass/.bankdir
+@@ -1 +1 @@
+-0.0.0
++2.3.0 rc6
+\ No newline at end of file
+diff --git a/banks/Guitar/.bankdir b/banks/Guitar/.bankdir
+index 4d9029a..470e74b 100644
+--- a/banks/Guitar/.bankdir
++++ b/banks/Guitar/.bankdir
+@@ -1 +1 @@
+-2.1.1 M
+\ No newline at end of file
++2.3.0 rc6
+\ No newline at end of file
+diff --git a/banks/Strings/.bankdir b/banks/Strings/.bankdir
+index 4d9029a..470e74b 100644
+--- a/banks/Strings/.bankdir
++++ b/banks/Strings/.bankdir
+@@ -1 +1 @@
+-2.1.1 M
+\ No newline at end of file
++2.3.0 rc6
+\ No newline at end of file
+diff --git a/doc/examples/themes/demo.clr b/doc/examples/themes/demo.clr
+index 00b50cd..c241782 100644
+--- a/doc/examples/themes/demo.clr
++++ b/doc/examples/themes/demo.clr
+@@ -26,7 +26,7 @@
+ 255,250,0, General text
+ 255,255,255, Inverse text
+ 100,255,155, About window heading text
+-0,0,0, RESERVED
++0,255,0, Midilearn activity indicator
+ 100,140,130, Midilearn text background
+ 200,120,255, Learnable text
+ 0,255,255, Solo selected
+diff --git a/doc/examples/themes/retro_classic.clr b/doc/examples/themes/retro_classic.clr
+index c659ea1..fc0df44 100644
+--- a/doc/examples/themes/retro_classic.clr
++++ b/doc/examples/themes/retro_classic.clr
+@@ -28,7 +28,7 @@ This would corrupt the colour map.
+ 0,0,0, General text
+ 255,255,255, Inverse text
+ 0,0,255, About window heading text
+-0,0,0, RESERVED
++0,255,0, Midilearn activity indicator
+ 191,255,255, Midilearn text background
+ 50,50,200, Learnable text
+ 0,0,255, Solo selected
+diff --git a/doc/yoshimi_user_guide/effects/effects.html b/doc/yoshimi_user_guide/effects/effects.html
+index 8345b35..11e65e9 100644
+--- a/doc/yoshimi_user_guide/effects/effects.html
++++ b/doc/yoshimi_user_guide/effects/effects.html
+@@ -267,7 +267,7 @@
+             <b>Fb</b> Feedback
+         </li>
+         <li>
+-            <b>Delay</b> Delay of before the feedback. Low delay will give more of a wha wha effect (0 to 100)
++            <b>Delay</b> Delay before the feedback. Low delay will give more of a wha wha effect (0 to 100)
+         </li>
+         <li>
+             <b>L/R</b> Left / Right effect routing. Leftmost: left to left, right to right; middle: left+right to centre; rightmost: left to right, right to left
+diff --git a/doc/yoshimi_user_guide/files/yoshimi_user_guide_version b/doc/yoshimi_user_guide/files/yoshimi_user_guide_version
+index 470e74b..c480816 100644
+--- a/doc/yoshimi_user_guide/files/yoshimi_user_guide_version
++++ b/doc/yoshimi_user_guide/files/yoshimi_user_guide_version
+@@ -1 +1 @@
+-2.3.0 rc6
+\ No newline at end of file
++2.3.0 rc7
+\ No newline at end of file
+diff --git a/doc/yoshimi_user_guide/miscellany.html b/doc/yoshimi_user_guide/miscellany.html
+index 6f484cd..7cf99d4 100644
+--- a/doc/yoshimi_user_guide/miscellany.html
++++ b/doc/yoshimi_user_guide/miscellany.html
+@@ -17,7 +17,7 @@
+     </div>
+     New users will have all the default ones that were available at the time they <b>first</b> run Yoshimi. These will all be copied to <b><em>.local/share/found</em></b>.
+     <br><br>
+-    For existing users, these are not automatically transferred to <b><em>.local/share/found</em></b> This is to avoid overwriting changes you may have made yourself. However, you may wish to copy them manually. If so, check you don't inadvertently create duplicates.
++    For existing users, these are <b>Not</b> automatically transferred to <b><em>.local/share/found</em></b> This is to avoid overwriting changes you may have made yourself. However, you may wish to copy them manually. If so, check you don't inadvertently create duplicates.
+     <br><br>
+     <b>V 1.7.4</b><br>
+     Will Godfrey Companion<br>
+@@ -101,6 +101,10 @@
+     </div>
+     <br>
+     <b>V 2.3.0</b><br>
++    Bass
++    <div class="tab">
++    upright bass
++    </div>
+     Drums
+     <div class="tab">
+     Ride Crash
+@@ -108,6 +112,29 @@
+     <div class="tab">
+     Soft Shaker
+     </div>
++    Guitar
++    <div class="tab">
++    acoustic guitar
++    </div>
++    <div class="tab">
++    electric guitar
++    </div>
++    <div class="tab">
++    electric 2
++    </div>
++    <div class="tab">
++    folk guitar
++    </div>
++    <div class="tab">
++    resonator
++    </div>
++    <div class="tab">
++    resonator 2
++    </div>
++    Strings
++    <div class="tab">
++    stringish
++    </div>
+     </p>
+ 
+   </body>
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 27f88bd..722bdbb 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -51,7 +51,7 @@ add_definitions(-Wextra)
+ add_definitions(-Wno-vla) # Nothing wrong with variable length arrays
+ # ^^^ comment these out on release pushes
+ 
+-set (YOSHIMI_VERSION "2.3.0 rc6")
++set (YOSHIMI_VERSION "2.3.0 rc7")
+ 
+ add_definitions (-DMIN_CONFIG_MAJOR=2)
+ add_definitions (-DMIN_CONFIG_MINOR=0)
+diff --git a/src/Interface/MidiLearn.cpp b/src/Interface/MidiLearn.cpp
+index 44ac835..6dec254 100644
+--- a/src/Interface/MidiLearn.cpp
++++ b/src/Interface/MidiLearn.cpp
+@@ -2,7 +2,7 @@
+     MidiLearn.cpp
+ 
+     Copyright 2016-2020, Will Godfrey
+-    Copyright 2021, Will Godfrey, Rainer Hans Liffers
++    Copyright 2021-2023, Will Godfrey, Rainer Hans Liffers
+ 
+     This file is part of yoshimi, which is free software: you can redistribute
+     it and/or modify it under the terms of the GNU General Public
+@@ -20,7 +20,7 @@
+ 
+ */
+ 
+-const int fromString = 3;
++const int fromString = 1;
+ /*
+  * 0 = use numbers
+  * 1 = use string
+diff --git a/src/Misc/ConfBuild.h b/src/Misc/ConfBuild.h
+index 7dc9570..459ecca 100644
+--- a/src/Misc/ConfBuild.h
++++ b/src/Misc/ConfBuild.h
+@@ -2,4 +2,4 @@
+     ConfBuild.h
+ */
+ 
+-#define BUILD_NUMBER 2228
++#define BUILD_NUMBER 2229
+diff --git a/src/UI/MidiLearnUI.fl b/src/UI/MidiLearnUI.fl
+index f001ce8..ae83bf4 100644
+--- a/src/UI/MidiLearnUI.fl
++++ b/src/UI/MidiLearnUI.fl
+@@ -83,20 +83,25 @@ class MidiLearnKitItem {: {public Fl_Group}
+       } {
+         Fl_Spinner CCcounter {
+           callback {send_data(0, MIDILEARN::control::CCorChannel);}
+-          tooltip {Continuous Controller to recognise} xywh {80 0 43 15} labelsize 12 labelcolor 64 minimum 0 maximum 129 value 14 textsize 12 textcolor 64
++          tooltip {Continuous Controller to recognise} xywh {80 0 43 15} labelsize 12 minimum 0 maximum 129 value 14 textsize 12 textcolor 64
+           class WidgetSpinner
+         }
+         Fl_Button {} {
+-          callback {// does nothing - hides spinner arrows}
+-          xywh {114 0 15 16} box FLAT_BOX down_box FLAT_BOX labelcolor 64
++          callback {// does nothing - hides CC arrows}
++          xywh {112 0 15 16} box FLAT_BOX down_box FLAT_BOX
+         }
+         Fl_Button nrpn {
+           label {8888 h}
+           tooltip {NRPN value} xywh {76 0 49 15} box THIN_DOWN_BOX down_box THIN_DOWN_BOX color 247 selection_color 7 labelsize 12 labelcolor 64 hide
+         }
+-        Fl_Light_Button sevenbit {
+-          callback {send_data(0, MIDILEARN::control::sevenBit);}
+-          tooltip {Set for 7bit NRPN} xywh {59 0 13 15} box NO_BOX color 28 selection_color 1 labelcolor 64 hide
++        Fl_Button sevenbit {
++          callback {//
++              if (o->value() != 0)
++                  o->value(0);
++              else
++                  o->value(1);
++              send_data(0, MIDILEARN::control::sevenBit);}
++          tooltip {Set for 7bit NRPN} xywh {61 1 10 13} box DOWN_BOX color 44 selection_color 91 labelcolor 64 hide
+         }
+         Fl_Choice channelchoice {
+           callback {send_data(0, 48);}
+@@ -183,32 +188,32 @@ class MidiLearnKitItem {: {public Fl_Group}
+           tooltip {Stop any later lines (or system controls) responding to this CC/Channel pair} xywh {360 0 20 15} down_box DOWN_BOX selection_color 64 labelfont 1 labelcolor 64 align 4
+           class Fl_Check_Button2
+         }
+-        Fl_Light_Button activity {
++        Fl_Button activity {
+           callback {//
+           if (o->value() != 0)
+               o->value(0);
+           else
+               o->value(1);}
+-          xywh {180 0 13 15} box NO_BOX color 15 selection_color 2 labelcolor 64
++          tooltip {MIDI incoming} xywh {181 1 10 13} box DOWN_BOX color 44 selection_color 79
+         }
+         Fl_Spinner minval {
+           callback {send_data(0, MIDILEARN::control::minimum);}
+-          tooltip {Minimum % to pass on} xywh {197 0 52 15} type Float labelsize 12 labelcolor 64 minimum 0 step 0.5 value 0 textsize 12 textcolor 64
++          tooltip {Minimum % to pass on} xywh {197 0 52 15} type Float labelsize 12 minimum 0 step 0.5 value 0 textsize 12 textcolor 64
+           class WidgetSpinner
+         }
+         Fl_Button {} {
+-          callback {// does nothing - hides spinner arrows}
+-          xywh {240 0 15 16} box FLAT_BOX down_box FLAT_BOX labelcolor 64
++          callback {// does nothing - hides Min arrows}
++          xywh {238 0 15 16} box FLAT_BOX down_box FLAT_BOX
+         }
+         Fl_Spinner maxval {
+           callback {//
+           send_data(0, MIDILEARN::control::maximum);}
+-          tooltip {Maximum % to pass on} xywh {261 0 52 15} type Float labelsize 12 labelcolor 64 minimum 0 step 0.5 value 100 textsize 12 textcolor 64
++          tooltip {Maximum % to pass on} xywh {261 0 52 15} type Float labelsize 12 minimum 0 step 0.5 value 100 textsize 12 textcolor 64
+           class WidgetSpinner
+         }
+         Fl_Button {} {
+-          callback {// does nothing - hides spinner arrows}
+-          xywh {303 0 15 16} box FLAT_BOX down_box FLAT_BOX labelcolor 64
++          callback {// does nothing - hides Max arrows}
++          xywh {302 0 15 16} box FLAT_BOX down_box FLAT_BOX
+         }
+         Fl_Button commandName {
+           label text
+@@ -337,7 +342,7 @@ class MidiLearnKitItem {: {public Fl_Group}
+         minval->textsize(size12);
+     maxval->labelsize(size12);
+         maxval->textsize(size12);
+-    mutecheck->labelsize(size12);
++    mutecheck->labelsize(size14);
+     commandName->labelsize(int(10 * dScale));
+ 
+      midilearnkititem->redraw();} {}
+diff --git a/src/UI/Themes.h b/src/UI/Themes.h
+index 4d9ee05..88da6e6 100644
+--- a/src/UI/Themes.h
++++ b/src/UI/Themes.h
+@@ -92,7 +92,7 @@ const int slider_peg_default = 70;
+ const int spectrum_line = 71;
+ const int reserved_1 = 72;
+ const int bank_export = 78;
+-const int reserved_2 = 79;
++const int midi_active = 79;
+ const int slider_peg_changed = 80;
+ const int env_line_sel = 81;
+ const int pad_apply = 82;
+@@ -229,7 +229,7 @@ const unsigned char colourNumbers [COLOURLIST] = {
+     gen_text,
+     gen_opp_text,
+     contrib,
+-    reserved_2,
++    midi_active,
+     midi_text_back,
+     learnable_text,
+     solo_select,
+@@ -356,7 +356,7 @@ static std::string colourData [] = {
+     "0,0,0, General text",
+     "255,255,255, Inverse text",
+     "0,0,255, About window heading text",
+-    "0,0,0, RESERVED",
++    "0,255,0, Midilearn activity indicator",
+     "191,255,255, Midilearn text background",
+     "0,0,255, Learnable text",
+     "0,0,255, Solo selected",
