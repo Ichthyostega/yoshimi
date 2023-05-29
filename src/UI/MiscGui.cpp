@@ -96,6 +96,7 @@ void collect_data(SynthEngine *synth, float value, unsigned char action, unsigne
     putData.data.parameter = parameter;
     putData.data.offset = offset;
     putData.data.miscmsg = miscmsg;
+    //synth->CBtest(&putData);
     if (action == TOPLEVEL::action::fromMIDI)
         type = type | 1; // faking MIDI from virtual keyboard
     else
@@ -129,8 +130,9 @@ void collect_data(SynthEngine *synth, float value, unsigned char action, unsigne
                         type = TOPLEVEL::type::Learnable;
                     }
                 }
-                else
+                else if (insert != TOPLEVEL::insert::filterGroup  || parameter == UNUSED)
                 {
+                    std::cout << "setting for button 3";
                     putData.data.value = newValue;
                     type = TOPLEVEL::type::Write;
                     action |= TOPLEVEL::action::forceUpdate;
@@ -146,7 +148,7 @@ void collect_data(SynthEngine *synth, float value, unsigned char action, unsigne
 
     putData.data.type = type;
     putData.data.source = action;
-    //cout << "collect_data value " << value << "  action " << int(action)  << "  type " << int(type) << "  control " << int(control) << "  part " << int(part) << "  kit " << int(kititem) << "  engine " << int(engine) << "  insert " << int(insert)  << "  par " << int(parameter) << " offset " << int(offset) << " msg " << int(miscmsg) << endl;
+
     if (!synth->interchange.fromGUI.write(putData.bytes))
         synth->getRuntime().Log("Unable to write to fromGUI buffer.");
 }
@@ -256,7 +258,7 @@ void GuiUpdates::decode_updates(SynthEngine *synth, CommandBlock *getData)
     unsigned char parameter = getData->data.parameter;
     unsigned char miscmsg = getData->data.miscmsg;
 
-//    synth->CBtest(getData);
+    //synth->CBtest(getData);
     if (getData->data.control == TOPLEVEL::control::copyPaste)
     {
         if (getData->data.type == TOPLEVEL::type::Adjust)
@@ -320,8 +322,9 @@ void GuiUpdates::decode_updates(SynthEngine *synth, CommandBlock *getData)
     {
         allowPartUpdate = true;
     }
-    if (kititem >= EFFECT::type::none && kititem < EFFECT::type::count) // effects
-    {
+
+    if (npart != TOPLEVEL::section::main && kititem >= EFFECT::type::none && kititem < EFFECT::type::count) // effects
+    { // maybe we should go to main first?
         if (npart == TOPLEVEL::section::systemEffects)
         {
             if (engine != synth->getGuiMaster()->nsyseff)
@@ -627,8 +630,25 @@ void GuiUpdates::decode_updates(SynthEngine *synth, CommandBlock *getData)
     }
 }
 
-// static string freqBPMStr(float val)
-// This has been moved as bpm2text in Misc/NumericFuncs.h with other BPM shared functions
+
+// for setting slider peg colour
+int setSlider(float current, float normal)
+{
+    if (lrint(current) == lrint(normal))
+        return slider_peg_default;
+    else
+       return slider_peg_changed;
+}
+
+
+// for setting knob pointer colour
+int setKnob(float current, float normal)
+{
+    if ((current - normal) < 0.0005 && (normal - current) < 0.0005)
+        return knob_point;
+    else
+       return knob_point_change;
+}
 
 
 string convert_value(ValueType type, float val)
@@ -1250,7 +1270,7 @@ void custom_graph_dimensions(ValueType vt, int& w, int& h)
 
 inline void grid(int x, int y, int w, int h, int sections)
 {
-        fl_color(FL_GRAY);
+        fl_color(tooltip_grid);
 
         int j = 1;
         int gDist = h / sections;
@@ -1284,7 +1304,7 @@ void custom_graphics(ValueType vt, float val,int W,int H)
         /* Grid */
         grid(x0,y0,_w,_h, 4);
         /*Function curve*/
-        fl_color(FL_BLUE);
+        fl_color(tooltip_curve);
         if ((int)val == 127)
         {   // in this case velF will always return 1.0
             y = y0 - _h;
@@ -1307,7 +1327,7 @@ void custom_graphics(ValueType vt, float val,int W,int H)
     {
         p = power<10>((val - 32.0f) / 48.0f); //clearness param
         grid(x0,y0,_w,_h,10);
-        fl_color(FL_BLUE);
+        fl_color(tooltip_curve);
         fl_begin_line();
         x = 0;
         float frac = 1.0f / (float)_w;
@@ -1347,10 +1367,10 @@ void custom_graphics(ValueType vt, float val,int W,int H)
         for (i = 0; i < 4; i++) /* 10x / 10%, 100x / 1% ... */
         {
             y = ry * (i + 1);
-            fl_color(169,169,169);
+            fl_color(tooltip_grid);
             fl_line(x0, cy - y, x0 + _w, cy - y);
             fl_line(x0, cy + y, x0 + _w, cy + y);
-            fl_color(0,0,0);
+            fl_color(tooltip_faint_text);
             fl_draw(xMarkers[i].c_str(), x0 - 28, (cy - y - 4), 24, 12,
                     Fl_Align(FL_ALIGN_RIGHT));
             fl_draw(xMarkers[i + 4].c_str(), x0 - 28, (cy + y - 4), 24, 12,
@@ -1359,7 +1379,7 @@ void custom_graphics(ValueType vt, float val,int W,int H)
 
         /* Hz lines */
 
-        fl_color(196,196,196); /* Lighter inner lines*/
+        fl_color(tooltip_grid); /* Lighter inner lines*/
 
         for (i = 10;i != 0; i *= 10)
         {
@@ -1379,9 +1399,9 @@ void custom_graphics(ValueType vt, float val,int W,int H)
         for (i = 0; i < 4; i++) /* 20, 100, 1k, 10k */
         {
             x = x0 + (i == 0 ?  0 : ((float)i + 1 - lg1020) * rx);
-            fl_color(127,127,127); /* Darker boundary lines */
+            fl_color(tooltip_major_grid); /* Darker boundary lines */
             fl_line(x, y0, x, y0 - _h);
-            fl_color(FL_BLACK);
+            fl_color(tooltip_text);
             fl_draw(hzMarkers[i].c_str(), x - 20, y0 + 4, 40, 12,
                     Fl_Align(FL_ALIGN_CENTER));
         }
@@ -1389,11 +1409,11 @@ void custom_graphics(ValueType vt, float val,int W,int H)
         fl_draw("Hz", x0 + _w, y0 + 4, 20, 12, Fl_Align(FL_ALIGN_LEFT));
 
         /* Vertical center line */
-        fl_color(64,64,64);
+        fl_color(38);
         fl_line(x0 - margin, cy, x0 + _w, cy);
 
         /* Function curve */
-        fl_color(FL_BLUE);
+        fl_color(tooltip_curve);
         if ((int)val == 0)
         {
             fl_line(x0, cy, x0 + _w, cy);

@@ -79,15 +79,16 @@ eff = eff_;
         khzval = -1;} {}
   }
   Function {draw_freq_line(float freq, int type)} {} {
-    code {fl_color(FL_GRAY);
+    code {//
+        fl_color(EQ_grid);
         float freqx = getfreqpos(freq);
 
         if (type == 0)
         {
             if (active_r())
-                fl_color(FL_WHITE);
+                fl_color(EQ_major_grid);
             else
-                fl_color(205, 205, 205);
+                fl_color(EQ_grid);
         }
 
         if (freqx > 0.0 && freqx < 1.0)
@@ -100,13 +101,13 @@ eff = eff_;
         float freqx;
         fl_line_style(0, int(1 * lx / 190.0f));
         if (active_r())
-            fl_color(0, 70, 150);
+            fl_color(EQ_back);
         else
-            fl_color(80, 120, 160);
+            fl_color(EQ_back_off);
         fl_rectf(ox, oy, lx, ly);
 
         // draw the lines
-        fl_color(FL_GRAY);
+        fl_color(EQ_grid);
         fl_line(ox + 2, oy + ly / 2, ox + lx - 2, oy + ly / 2);
 
         freqx = getfreqpos(1000.0);
@@ -149,10 +150,10 @@ eff = eff_;
 
         fl_line_style(0, int(2 * lx / 190.0f));
         // draw the frequency response
-        if (active_r())
-            fl_color(FL_YELLOW);
-        else
-            fl_color(200, 200, 80);
+        //if (active_r())
+            fl_color(EQ_line);
+        //else
+            //fl_color(EQ_line_off);
         oiy = getresponse(ly, getfreqx(0.0));
         float half_samplerate_f = synth->samplerate_f * 0.5f;
         int oix = 0;
@@ -232,43 +233,54 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
   }
   Function {make_null_window()} {} {
     Fl_Window effnullwindow {
-      xywh {912 927 380 95} type Double box PLASTIC_THIN_UP_BOX color 221 hide
+      xywh {912 927 380 95} type Double box PLASTIC_THIN_UP_BOX color 223 hide
       class Fl_Group
     } {
       Fl_Text_Display noeffect {
         label {No Effects Applied}
-        xywh {120 35 10 20} box NO_BOX labelfont 1 labelcolor 37 align 8
+        xywh {120 35 10 20} box NO_BOX labelfont 1 labelcolor 64 align 8 textcolor 64
       }
     }
   }
   Function {make_reverb_window()} {} {
     Fl_Window effreverbwindow {
-      xywh {880 45 380 95} type Double box PLASTIC_UP_BOX color 221 labelsize 12 align 33 hide
+      xywh {839 53 380 95} type Double box PLASTIC_UP_BOX color 223 labelsize 12 labelcolor 64 align 33 hide
       class Fl_Group
     } {
       Fl_Text_Display revname {
         label {Reverb }
-        xywh {10 10 0 20} box NO_BOX labelfont 1 labelsize 12 labelcolor 36 align 8
+        xywh {10 10 0 20} box NO_BOX labelfont 1 labelsize 12 labelcolor 64 align 8 textcolor 64
       }
       Fl_Choice revp {
         label Preset
         callback {//
         send_data(TOPLEVEL::action::forceUpdate, 16, o->value(), (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
-        xywh {115 13 90 15} down_box BORDER_BOX color 14 selection_color 0 labelsize 11 textfont 1 textsize 10 textcolor 7
+        xywh {115 13 90 15} box UP_BOX down_box BORDER_BOX selection_color 49 labelsize 11 labelcolor 64 textfont 1 textsize 10 textcolor 188
         code0 {o->add("Cathedral 1");o->add("Cathedral 2");o->add("Cathedral 3");o->add("Hall 1");o->add("Hall 2");o->add("Room 1");o->add("Room 2");o->add("Basement");o->add("Tunnel");o->add("Echoed 1");o->add("Echoed 2");o->add("Very Long 1");o->add("Very Long 2");}
       } {}
       Fl_Choice revp10 {
         label Type
         callback {//
         send_data(TOPLEVEL::action::forceUpdate, 10, o->value(), (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
-        xywh {240 13 75 15} down_box BORDER_BOX color 14 labelsize 11 textfont 1 textsize 10 textcolor 7
+        xywh {240 13 75 15} box UP_BOX down_box BORDER_BOX selection_color 49 labelsize 11 labelcolor 64 textfont 1 textsize 10 textcolor 188
         code0 {o->add("Random");o->add("Freeverb");o->add("Bandwidth");}
       } {}
       Fl_Dial revp0 {
         label Vol
         callback {//
-        send_data(0, 0, o->value(), (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
-        tooltip {Effect volume} xywh {10 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int butt = 0;
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = reverbPresets[presetNum][butt];
+            if (eff->insertion != 0) // D/W
+            {
+                value = value / 2;
+            }
+        }
+
+        send_data(0, butt, value, (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
+        tooltip {Effect volume} xywh {10 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         code1 {o->setValueType(VC_FXReverbVol);}
         class WidgetPDial
       }
@@ -276,8 +288,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Pan
         callback {//
         int butt = 1;
-        send_data(0, butt, o->value(), (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
-        xywh {45 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = reverbPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
+        xywh {45 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127
         code1 {o->setValueType(VC_PanningStd);}
         class WidgetPDial
       }
@@ -285,17 +303,29 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Time
         callback {//
         int butt = 2;
-        send_data(0, butt, o->value(), (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
-        tooltip {Duration of effect} xywh {80 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = reverbPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
+        tooltip {Duration of effect} xywh {80 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127
         code1 {o->setValueType(VC_FXReverbTime);}
         class WidgetPDial
       }
       Fl_Dial revp3 {
         label {I.del}
         callback {//
-        int butt = 3;
-        send_data(0, butt, o->value(), (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
-        tooltip {Initial delay} xywh {120 40 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127
+        int butt = 3;;
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = reverbPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
+        tooltip {Initial delay} xywh {120 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 when 4 maximum 127
         code0 {o->setValueType(VC_FXReverbIDelay);}
         class WidgetPDial
       }
@@ -303,8 +333,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label {I.delfb}
         callback {//
         int butt = 4;
-        send_data(0, butt, o->value(), (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
-        tooltip {Initial delay feedback} xywh {155 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = reverbPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
+        tooltip {Initial delay feedback} xywh {155 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127
         code0 {o->setValueType(VC_percent128);}
         class WidgetPDial
       }
@@ -312,8 +348,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label BW
         callback {//
         int butt = 12;
-        send_data(0, butt, o->value(), (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
-        xywh {200 40 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127 deactivate
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = reverbPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
+        xywh {200 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 when 4 maximum 127 deactivate
         code0 {if (eff->geteffectpar(10)==2) o->activate();}
         code1 {o->setValueType(VC_FXReverbBandwidth);}
         class WidgetPDial
@@ -322,16 +364,28 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label {E/R}
         callback {//
         int butt = 6;
-        send_data(0, butt, o->value(), (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
-        xywh {235 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127 deactivate
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = reverbPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
+        xywh {235 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 deactivate
         class WidgetPDial
       }
       Fl_Dial revp7 {
         label LPF
         callback {//
         int butt = 7;
-        send_data(0, butt, o->value(), (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
-        tooltip {Low pass filter} xywh {270 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = reverbPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
+        tooltip {Low pass filter} xywh {270 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127
         code0 {o->setValueType(VC_FXReverbLowPass);}
         class WidgetPDial
       }
@@ -339,8 +393,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label HPF
         callback {//
         int butt = 8;
-        send_data(0, butt, o->value(), (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
-        tooltip {High pass filter} xywh {305 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = reverbPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
+        tooltip {High pass filter} xywh {305 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127
         code0 {o->setValueType(VC_FXReverbHighPass);}
         class WidgetPDial
       }
@@ -348,8 +408,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Damp
         callback {//
         int butt = 9;
-        send_data(0, butt, o->value(), (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
-        tooltip Dampening xywh {340 40 30 30} box ROUND_UP_BOX labelsize 11 minimum 64 maximum 127 step 1
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = reverbPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
+        tooltip Dampening xywh {340 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 minimum 64 maximum 127 step 1
         code0 {o->setValueType(VC_percent64_127);}
         class WidgetPDial
       }
@@ -357,8 +423,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label {R.S.}
         callback {//
         int butt = 11;
-        send_data(0, butt, o->value(), (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
-        tooltip RoomSize xywh {342 8 25 25} box ROUND_UP_BOX labelsize 10 align 4 minimum 1 maximum 127 step 1
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = reverbPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::reverb), TOPLEVEL::type::Integer);}
+        tooltip RoomSize xywh {342 8 25 25} box ROUND_UP_BOX labelsize 10 labelcolor 64 align 4 minimum 1 maximum 127 step 1
         code0 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
@@ -366,25 +438,37 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
   }
   Function {make_echo_window()} {} {
     Fl_Window effechowindow {
-      xywh {880 169 380 95} type Double box PLASTIC_UP_BOX color 221 labelfont 1 labelsize 12 hide
+      xywh {782 171 380 95} type Double box PLASTIC_UP_BOX color 223 labelfont 1 labelsize 12 hide
       class Fl_Group
     } {
       Fl_Text_Display echoname {
         label Echo
-        xywh {10 10 0 20} box NO_BOX labelfont 1 labelsize 12 align 8
+        xywh {10 10 0 20} box NO_BOX labelfont 1 labelsize 12 labelcolor 64 align 8 textcolor 64
       }
       Fl_Choice echop {
         label Preset
         callback {//
         send_data(TOPLEVEL::action::forceUpdate, 16, o->value(), (EFFECT::type::echo), TOPLEVEL::type::Integer);}
-        xywh {102 13 96 15} down_box BORDER_BOX color 14 selection_color 0 labelsize 11 textfont 1 textsize 10 textcolor 7
+        xywh {102 13 96 15} box UP_BOX down_box BORDER_BOX selection_color 49 labelsize 11 labelcolor 64 textfont 1 textsize 10 textcolor 188
         code0 {o->add("Echo 1");o->add("Echo 2");o->add("Echo 3");o->add("Echo 4");o->add("Simple Echo");o->add("Canyon");o->add("Panning Echo 1");o->add("Panning Echo 2");o->add("Feedback Echo 3");}
       } {}
       Fl_Dial echop0 {
         label Vol
         callback {//
-        send_data(0, 0, o->value(), (EFFECT::type::echo), TOPLEVEL::type::Integer);}
-        tooltip {Effect volume} xywh {10 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int butt = 0;
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = echoPresets[presetNum][butt];
+            if (eff->insertion != 0) // D/W
+            {
+                value = value / 2;
+            }
+        }
+
+        send_data(0, butt, value, (EFFECT::type::echo), TOPLEVEL::type::Integer);
+//        send_data(0, 0, o->value(), (EFFECT::type::echo), TOPLEVEL::type::Integer);}
+        tooltip {Effect volume} xywh {10 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         code0 {o->setValueType(VC_FXEchoVol);}
         class WidgetPDial
       }
@@ -392,8 +476,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Pan
         callback {//
         int butt = 1;
-        send_data(0, butt, o->value(), (EFFECT::type::echo), TOPLEVEL::type::Integer);}
-        xywh {64 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = echoPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::echo), TOPLEVEL::type::Integer);}
+        xywh {64 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         code0 {o->setValueType(VC_PanningStd);}
         class WidgetPDial
       }
@@ -401,8 +491,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Delay
         callback {//
         int butt = 2;
-        send_data(0, butt, o->value(), (EFFECT::type::echo), TOPLEVEL::type::Integer);}
-        xywh {118 40 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = echoPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::echo), TOPLEVEL::type::Integer);}
+        xywh {118 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 when 4 maximum 127 step 1
         code0 {o->setValueType(eff->geteffectpar(EFFECT::control::bpm) ? VC_FXlfofreqBPM : VC_FXEchoDelay);}
         class WidgetPDial
       }
@@ -410,8 +506,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label {LRdl.}
         callback {//
         int butt = 3;
-        send_data(0, butt, o->value(), (EFFECT::type::echo), TOPLEVEL::type::Integer);}
-        tooltip {Delay between L/R} xywh {172 40 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = echoPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::echo), TOPLEVEL::type::Integer);}
+        tooltip {Delay between L/R} xywh {172 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 when 4 maximum 127 step 1
         code0 {o->setValueType(VC_FXEchoLRdel);}
         class WidgetPDial
       }
@@ -419,8 +521,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label {LRc.}
         callback {//
         int butt = 4;
-        send_data(0, butt, o->value(), (EFFECT::type::echo), TOPLEVEL::type::Integer);}
-        tooltip {L/R crossover} xywh {226 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = echoPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::echo), TOPLEVEL::type::Integer);}
+        tooltip {L/R crossover} xywh {226 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         code0 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
@@ -428,8 +536,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label {Fb.}
         callback {//
         int butt = 5;
-        send_data(0, butt, o->value(), (EFFECT::type::echo), TOPLEVEL::type::Integer);}
-        tooltip Feedback xywh {280 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = echoPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::echo), TOPLEVEL::type::Integer);}
+        tooltip Feedback xywh {280 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         code0 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
@@ -437,8 +551,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Damp
         callback {//
         int butt = 6;
-        send_data(0, butt, o->value(), (EFFECT::type::echo), TOPLEVEL::type::Integer);}
-        tooltip Dampening xywh {334 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = echoPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::echo), TOPLEVEL::type::Integer);}
+        tooltip Dampening xywh {334 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         code0 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
@@ -446,38 +566,45 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label BPM
         callback {//
         send_data(0, EFFECT::control::bpm, o->value(), (EFFECT::type::echo), TOPLEVEL::type::Integer);}
-        tooltip {Synchronize the frequency to a multiple of the BPM. Note that the delay is capped at 5 seconds, even if the tempo is slower than this.} xywh {325 10 45 15} down_box DOWN_BOX labelsize 11
+        tooltip {Synchronize the frequency to a multiple of the BPM. Note that the delay is capped at 5 seconds, even if the tempo is slower than this.} xywh {325 10 45 15} down_box DOWN_BOX selection_color 64 labelsize 11 labelcolor 64
       }
     }
   }
   Function {make_chorus_window()} {} {
     Fl_Window effchoruswindow {
-      xywh {879 294 380 95} type Double box PLASTIC_UP_BOX color 221 labelfont 1 hide
+      xywh {712 188 380 95} type Double box PLASTIC_UP_BOX color 223 labelfont 1 hide
       class Fl_Group
     } {
       Fl_Text_Display chorusname {
         label Chorus
-        xywh {10 10 0 20} box NO_BOX labelfont 1 labelsize 12 align 8
+        xywh {10 10 0 20} box NO_BOX labelfont 1 labelsize 12 labelcolor 64 align 8 textcolor 64
       }
       Fl_Choice chorusp {
         label Preset
         callback {//
         send_data(TOPLEVEL::action::forceUpdate, 16, o->value(), (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
-        xywh {121 13 96 16} down_box BORDER_BOX color 14 selection_color 0 labelsize 11 textfont 1 textsize 10 textcolor 7
+        xywh {121 13 96 16} box UP_BOX down_box BORDER_BOX selection_color 49 labelsize 11 labelcolor 64 textfont 1 textsize 10 textcolor 188
         code0 {o->add("Chorus 1");o->add("Chorus 2");o->add("Chorus 3");o->add("Celeste 1");o->add("Celeste 2");o->add("Flange 1");o->add("Flange 2");o->add("Flange 3");o->add("Flange 4");o->add("Flange 5");}
       } {}
       Fl_Choice chorusp4 {
         label {LFO type}
         callback {//
         send_data(0, 4, o->value(), (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
-        tooltip {LFO function} xywh {189 65 43 15} down_box BORDER_BOX labelsize 10 align 2 textfont 1 textsize 9
+        tooltip {LFO function} xywh {189 65 43 15} box UP_BOX down_box BORDER_BOX selection_color 49 labelsize 10 labelcolor 64 align 2 textfont 1 textsize 9 textcolor 188
         code0 {o->add("Sine");o->add("Tri");}
       } {}
       Fl_Dial chorusp0 {
         label Vol
         callback {//
-        send_data(0, 0, o->value(), (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
-        xywh {10 49 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int butt = 0;
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = chorusPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
+        xywh {10 49 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127
         code0 {o->setValueType(VC_FXdefaultVol);}
         class WidgetPDial
       }
@@ -485,8 +612,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Pan
         callback {//
         int butt = 1;
-        send_data(0, butt, o->value(), (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
-        xywh {45 49 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = chorusPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
+        xywh {45 49 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127
         code0 {o->setValueType(VC_PanningStd);}
         class WidgetPDial
       }
@@ -494,16 +627,28 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Freq
         callback {//
         int butt = 2;
-        send_data(0, butt, o->value(), (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
-        tooltip {LFO frequency} xywh {85 49 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = chorusPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
+        tooltip {LFO frequency} xywh {85 49 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127
         code0 {o->setValueType(eff->geteffectpar(EFFECT::control::bpm) ? VC_FXlfofreqBPM : VC_FXlfofreq);}
         class WidgetPDial
       }
       Fl_Dial chorusp18 {
         label Start
         callback {//
-        send_data(0, EFFECT::control::bpmStart, o->value(), (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
-        tooltip {Start of LFO phase relative to start of beat. This has no effect unless you are syncing to a song position, using MIDI or a plugin host.} xywh {120 50 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = 0;
+        }
+
+        send_data(0, EFFECT::control::bpmStart, value, (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
+        tooltip {Start of LFO phase relative to start of beat. This has no effect unless you are syncing to a song position, using MIDI or a plugin host.} xywh {120 50 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 when 4 maximum 127
         code0 {o->setValueType(VC_PhaseOffset);}
         code1 {if (eff->geteffectpar(EFFECT::control::bpm)) o->activate(); else o->deactivate();}
         class WidgetPDial
@@ -512,8 +657,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Rnd
         callback {//
         int butt = 3;
-        send_data(0, butt, o->value(), (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
-        tooltip {LFO randomness} xywh {155 49 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = chorusPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
+        tooltip {LFO randomness} xywh {155 49 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 when 4 maximum 127
         code0 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
@@ -521,8 +672,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label {St.df}
         callback {//
         int butt = 5;
-        send_data(0, butt, o->value(), (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
-        tooltip {L/R phase shift} xywh {237 49 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = chorusPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
+        tooltip {L/R phase shift} xywh {237 49 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127
         code0 {o->setValueType(VC_FXlfoStereo);}
         class WidgetPDial
       }
@@ -530,8 +687,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Dpth
         callback {//
         int butt = 6;
-        send_data(0, butt, o->value(), (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
-        tooltip {LFO depth} xywh {272 49 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = chorusPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
+        tooltip {LFO depth} xywh {272 49 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127
         code0 {o->setValueType(VC_FXChorusDepth);}
         class WidgetPDial
       }
@@ -539,17 +702,29 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Delay
         callback {//
         int butt = 7;
-        send_data(0, butt, o->value(), (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
-        xywh {307 49 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = chorusPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
+        xywh {307 49 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127
         code0 {o->setValueType(VC_FXChorusDelay);}
         class WidgetPDial
       }
       Fl_Dial chorusp8 {
         label Fb
         callback {//
-        int butt =8;
-        send_data(0, butt, o->value(), (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
-        tooltip Feedback xywh {342 49 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int butt = 8;
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = chorusPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
+        tooltip Feedback xywh {342 49 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127
         code0 {o->setValueType(VC_FXdefaultFb);}
         class WidgetPDial
       }
@@ -557,8 +732,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label {L/R}
         callback {//
         int butt = 9;
-        send_data(0, butt, o->value(), (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
-        tooltip {Channel routing} xywh {254 15 30 30} box ROUND_UP_BOX labelsize 11 align 1 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = chorusPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
+        tooltip {Channel routing} xywh {254 15 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 align 1 maximum 127
         code0 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
@@ -566,7 +747,7 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Flange
         callback {//
         send_data(0, 10, o->value(), (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
-        xywh {120 10 55 20} box THIN_UP_BOX down_box DOWN_BOX color 230 labelfont 1 labelsize 10 hide deactivate
+        xywh {120 10 55 20} box THIN_UP_BOX down_box DOWN_BOX color 223 selection_color 64 labelfont 1 labelsize 10 labelcolor 64 hide deactivate
         code0 {o->value(eff->geteffectpar(10));}
         class Fl_Check_Button2
       }
@@ -574,45 +755,52 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Subtract
         callback {//
         send_data(0, 11, o->value(), (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
-        tooltip {Inverts the output} xywh {300 19 70 16} down_box DOWN_BOX color 230 labelsize 11
+        tooltip {Inverts the output} xywh {300 19 70 16} down_box DOWN_BOX color 223 selection_color 64 labelsize 11 labelcolor 64
         class Fl_Check_Button2
       }
       Fl_Check_Button chorusp17 {
         label BPM
         callback {//
         send_data(0, EFFECT::control::bpm, o->value(), (EFFECT::type::chorus), TOPLEVEL::type::Integer);}
-        tooltip {Synchronize the frequency to a multiple of the BPM.} xywh {190 45 50 15} down_box DOWN_BOX labelsize 11
+        tooltip {Synchronize the frequency to a multiple of the BPM.} xywh {190 45 50 15} down_box DOWN_BOX selection_color 64 labelsize 11 labelcolor 64
       }
     }
   }
   Function {make_phaser_window()} {} {
     Fl_Window effphaserwindow {
-      xywh {878 419 380 95} type Double box PLASTIC_UP_BOX color 221 labelsize 11 hide
+      xywh {1121 411 380 95} type Double box PLASTIC_UP_BOX color 223 labelsize 11 hide
       class Fl_Group
     } {
       Fl_Text_Display phasername {
         label Phaser
-        xywh {10 10 0 20} box NO_BOX labelfont 1 labelsize 12 align 8
+        xywh {10 10 0 20} box NO_BOX labelfont 1 labelsize 12 labelcolor 64 align 8 textcolor 64
       }
       Fl_Choice phaserp {
         label Preset
         callback {//
         send_data(TOPLEVEL::action::forceUpdate, 16, o->value(), (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
-        xywh {65 21 82 15} box UP_BOX down_box BORDER_BOX color 14 selection_color 0 labelsize 11 align 1 textfont 1 textsize 10 textcolor 7
+        xywh {65 21 82 15} box UP_BOX down_box BORDER_BOX selection_color 49 labelsize 11 labelcolor 64 align 1 textfont 1 textsize 10 textcolor 188
         code0 {o->add("Phaser 1");o->add("Phaser 2");o->add("Phaser 3");o->add("Phaser 4");o->add("Phaser 5");o->add("Phaser 6");o->add("APhaser 1");o->add("APhaser 2");o->add("APhaser 3");o->add("APhaser 4");o->add("APhaser 5");o->add("APhaser 6");}
       } {}
       Fl_Choice phaserp4 {
         label {LFO Type}
         callback {//
         send_data(0, 4, o->value(), (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
-        tooltip {LFO function} xywh {199 65 43 15} down_box BORDER_BOX labelsize 10 align 2 textfont 1 textsize 9
+        tooltip {LFO function} xywh {199 65 43 15} box UP_BOX down_box BORDER_BOX selection_color 49 labelsize 10 labelcolor 64 align 2 textfont 1 textsize 9 textcolor 188
         code0 {o->add("Sine");o->add("Tri");}
       } {}
       Fl_Dial phaserp0 {
         label Vol
         callback {//
-        send_data(0, 0, o->value(), (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
-        tooltip {Effect volume} xywh {8 50 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int butt = 0;
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = phaserPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
+        tooltip {Effect volume} xywh {8 50 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         code0 {o->setValueType(VC_FXdefaultVol);}
         class WidgetPDial
       }
@@ -620,8 +808,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Pan
         callback {//
         int butt = 1;
-        send_data(0, butt, o->value(), (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
-        xywh {46 50 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = phaserPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
+        xywh {46 50 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         code0 {o->setValueType(VC_PanningStd);}
         class WidgetPDial
       }
@@ -629,16 +823,29 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Freq
         callback {//
         int butt = 2;
-        send_data(0, butt, o->value(), (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
-        tooltip {LFO frequency} xywh {84 50 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = phaserPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
+        tooltip {LFO frequency} xywh {84 50 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         code0 {o->setValueType(eff->geteffectpar(EFFECT::control::bpm) ? VC_FXlfofreqBPM : VC_FXlfofreq);}
         class WidgetPDial
       }
       Fl_Dial phaserp18 {
         label Start
         callback {//
-        send_data(0, EFFECT::control::bpmStart, o->value(), (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
-        tooltip {Start of LFO phase relative to start of beat. This has no effect unless you are syncing to a song position, using MIDI or a plugin host.} xywh {125 50 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127
+        int butt = 18;
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = 0;
+        }
+
+        send_data(0, butt, value, (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
+        tooltip {Start of LFO phase relative to start of beat. This has no effect unless you are syncing to a song position, using MIDI or a plugin host.} xywh {125 50 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 when 4 maximum 127 step 1
         code0 {o->setValueType(VC_PhaseOffset);}
         code1 {if (eff->geteffectpar(EFFECT::control::bpm)) o->activate(); else o->deactivate();}
         class WidgetPDial
@@ -647,8 +854,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Rnd
         callback {//
         int butt = 3;
-        send_data(0, butt, o->value(), (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
-        tooltip {LFO randomness} xywh {165 50 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = phaserPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
+        tooltip {LFO randomness} xywh {165 50 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 when 4 maximum 127 step 1
         code0 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
@@ -656,7 +869,7 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label BPM
         callback {//
         send_data(0, EFFECT::control::bpm, o->value(), (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
-        tooltip {Synchronize the frequency to a multiple of the BPM.} xywh {200 47 17 15} down_box DOWN_BOX labelsize 11 align 8
+        tooltip {Synchronize the frequency to a multiple of the BPM.} xywh {200 47 17 15} down_box DOWN_BOX selection_color 64 labelsize 11 labelcolor 64 align 8
         code0 {o->value(eff->geteffectpar(EFFECT::control::bpm));}
         class Fl_Check_Button2
       }
@@ -664,8 +877,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label {St.df}
         callback {//
         int butt = 5;
-        send_data(0, butt, o->value(), (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
-        tooltip {Left/Right channel phase shift} xywh {248 50 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = phaserPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
+        tooltip {Left/Right channel phase shift} xywh {248 50 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         code0 {o->setValueType(VC_FXlfoStereo);}
         class WidgetPDial
       }
@@ -673,8 +892,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Depth
         callback {//
         int butt = 6;
-        send_data(0, butt, o->value(), (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
-        tooltip {LFO depth} xywh {191 15 30 30} box ROUND_UP_BOX labelsize 11 align 1 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = phaserPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
+        tooltip {LFO depth} xywh {191 15 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 align 1 maximum 127 step 1
         code0 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
@@ -682,8 +907,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Fb
         callback {//
         int butt = 7;
-        send_data(0, butt, o->value(), (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
-        tooltip Feedback xywh {286 50 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = phaserPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
+        tooltip Feedback xywh {286 50 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         code0 {o->setValueType(VC_FXdefaultFb);}
         class WidgetPDial
       }
@@ -691,14 +922,20 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Stages
         callback {//
         send_data(0, 8, o->value(), (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
-        xywh {326 63 45 15} type Simple labelsize 11 minimum 1 maximum 12 step 1 textfont 1 textsize 11
+        xywh {326 63 45 15} type Simple labelsize 11 labelcolor 64 minimum 1 maximum 12 step 1 textfont 1 textsize 11 textcolor 64
       }
       Fl_Dial phaserp9 {
         label {L/R}
         callback {//
         int butt = 9;
-        send_data(0, butt, o->value(), (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
-        tooltip {Channel routing} xywh {229 15 30 30} box ROUND_UP_BOX labelsize 11 align 1 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = phaserPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
+        tooltip {Channel routing} xywh {229 15 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 align 1 maximum 127 step 1
         code0 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
@@ -706,15 +943,21 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label {Sub.}
         callback {//
         send_data(0, 10, o->value(), (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
-        tooltip {Inverts the output} xywh {356 42 17 16} down_box DOWN_BOX color 230 labelsize 11 align 4
+        tooltip {Inverts the output} xywh {356 42 17 16} down_box DOWN_BOX color 223 selection_color 64 labelsize 11 labelcolor 64 align 4
         class Fl_Check_Button2
       }
       Fl_Dial phaserp11 {
         label Phase
         callback {//
         int butt = 11;
-        send_data(0, butt, o->value(), (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
-        xywh {150 15 30 30} box ROUND_UP_BOX labelsize 11 align 1 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = phaserPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
+        xywh {150 15 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 align 1 maximum 127 step 1
         code0 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
@@ -722,15 +965,21 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Hyper
         callback {//
         send_data(0, 12, o->value(), (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
-        tooltip {Hyper-sine} xywh {356 26 17 15} down_box DOWN_BOX labelsize 11 align 4 deactivate
+        tooltip {Hyper-sine} xywh {356 26 17 15} down_box DOWN_BOX selection_color 64 labelsize 11 labelcolor 64 align 4 deactivate
         class Fl_Check_Button2
       }
       Fl_Dial phaserp13 {
         label Dist
         callback {//
         int butt = 13;
-        send_data(0, butt, o->value(), (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
-        tooltip Distortion xywh {267 15 30 30} box ROUND_UP_BOX labelsize 11 align 1 maximum 127 deactivate
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = phaserPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
+        tooltip Distortion xywh {267 15 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 align 1 maximum 127 step 1 deactivate
         code0 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
@@ -738,55 +987,78 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Analog
         callback {//
         send_data(TOPLEVEL::action::forceUpdate, 14, o->value(), (EFFECT::type::phaser), TOPLEVEL::type::Integer);}
-        tooltip {Emulates FET} xywh {356 10 17 15} down_box DOWN_BOX labelsize 11 align 4
+        tooltip {Emulates FET} xywh {356 10 17 15} down_box DOWN_BOX selection_color 64 labelsize 11 labelcolor 64 align 4
         class Fl_Check_Button2
       }
     }
   }
   Function {make_alienwah_window()} {} {
     Fl_Window effalienwahwindow {
-      xywh {877 543 380 95} type Double box PLASTIC_UP_BOX color 221 labelfont 1 hide
+      xywh {877 543 380 95} type Double box PLASTIC_UP_BOX color 223 labelfont 1 hide
       class Fl_Group
     } {
       Fl_Text_Display alienname {
         label AlienWah
-        xywh {10 10 0 20} box NO_BOX labelfont 1 labelsize 12 align 8
+        xywh {10 10 0 20} box NO_BOX labelfont 1 labelsize 12 labelcolor 64 align 8 textcolor 64
       }
       Fl_Choice awp {
         label Preset
         callback {//
         send_data(TOPLEVEL::action::forceUpdate, 16, o->value(), (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
-        xywh {135 13 96 15} down_box BORDER_BOX color 14 selection_color 0 labelsize 11 textfont 1 textsize 10 textcolor 7
+        xywh {135 13 96 15} box UP_BOX down_box BORDER_BOX selection_color 49 labelsize 11 labelcolor 64 textfont 1 textsize 10 textcolor 188
         code0 {o->add("Alienwah 1");o->add("Alienwah 2");o->add("Alienwah 3");o->add("Alienwah 4");}
       } {}
       Fl_Choice awp4 {
         label {LFO type}
         callback {//
         send_data(0, 4, o->value(), (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
-        tooltip {LFO function} xywh {185 65 43 15} down_box BORDER_BOX labelsize 10 align 2 textfont 1 textsize 9
+        tooltip {LFO function} xywh {185 65 43 15} box UP_BOX down_box BORDER_BOX selection_color 49 labelsize 10 labelcolor 64 align 2 textfont 1 textsize 9 textcolor 188
         code0 {o->add("Sine");o->add("Tri");}
       } {}
       Fl_Dial awp0 {
         label Vol
         callback {//
-        send_data(0, 0, o->value(), (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
-        tooltip {Effect volume} xywh {5 49 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int butt = 0;
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = alienPresets[presetNum][butt];
+            if (eff->insertion != 0) // D/W
+            {
+                value = value / 2;
+            }
+        }
+
+        send_data(0, butt, value, (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
+        tooltip {Effect volume} xywh {5 49 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         class WidgetPDial
       }
       Fl_Dial awp1 {
         label Pan
         callback {//
         int butt = 1;
-        send_data(0, butt, o->value(), (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
-        xywh {40 49 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = alienPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
+        xywh {40 49 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         class WidgetPDial
       }
       Fl_Dial awp2 {
         label Freq
         callback {//
         int butt = 2;
-        send_data(0, butt, o->value(), (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
-        tooltip {LFO frequency} xywh {80 49 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = alienPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
+        tooltip {LFO frequency} xywh {80 49 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         code0 {o->setValueType(eff->geteffectpar(EFFECT::control::bpm) ? VC_FXlfofreqBPM : VC_FXlfofreq);}
         class WidgetPDial
       }
@@ -794,16 +1066,29 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Rnd
         callback {//
         int butt = 3;
-        send_data(0, butt, o->value(), (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
-        tooltip {LFO randomness} xywh {150 50 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = alienPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
+        tooltip {LFO randomness} xywh {150 50 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 when 4 maximum 127 step 1
         code0 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
       Fl_Dial awp18 {
         label Start
         callback {//
-        send_data(0, EFFECT::control::bpmStart, o->value(), (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
-        tooltip {Start of LFO phase relative to start of beat. This has no effect unless you are syncing to a song position, using MIDI or a plugin host.} xywh {115 50 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127
+        int butt = 18;
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = 0;
+        }
+
+        send_data(0, butt, value, (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
+        tooltip {Start of LFO phase relative to start of beat. This has no effect unless you are syncing to a song position, using MIDI or a plugin host.} xywh {115 50 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 when 4 maximum 127 step 1
         code0 {o->setValueType(VC_PhaseOffset);}
         code1 {if (eff->geteffectpar(EFFECT::control::bpm)) o->activate(); else o->deactivate();}
         class WidgetPDial
@@ -812,85 +1097,126 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label {St.df}
         callback {//
         int butt = 5;
-        send_data(0, butt, o->value(), (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
-        tooltip {Left/Right channel phase shift} xywh {231 49 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = alienPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
+        tooltip {Left/Right channel phase shift} xywh {231 49 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         class WidgetPDial
       }
       Fl_Dial awp6 {
         label Dpth
         callback {//
         int butt = 6;
-        send_data(0, butt, o->value(), (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
-        tooltip Depth xywh {266 49 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = alienPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
+        tooltip Depth xywh {266 49 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         class WidgetPDial
       }
       Fl_Dial awp7 {
         label Fb
         callback {//
         int butt = 7;
-        send_data(0, butt, o->value(), (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
-        tooltip Feedback xywh {301 49 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = alienPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
+        tooltip Feedback xywh {301 49 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         class WidgetPDial
       }
       Fl_Dial awp9 {
         label {L/R}
         callback {//
         int butt = 9;
-        send_data(0, butt, o->value(), (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
-        xywh {285 15 30 30} box ROUND_UP_BOX labelsize 11 align 1 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = alienPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
+        xywh {285 15 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 align 1 maximum 127 step 1
         class WidgetPDial
       }
       Fl_Dial awp10 {
         label Phase
         callback {//
         int butt = 10;
-        send_data(0, butt, o->value(), (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
-        xywh {245 15 30 30} box ROUND_UP_BOX labelsize 11 align 1 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = alienPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
+        xywh {245 15 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 align 1 maximum 127 step 1
         class WidgetPDial
       }
       Fl_Counter awp8 {
         label Delay
         callback {//
         send_data(0, 8, o->value(), (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
-        xywh {338 64 35 15} type Simple labelsize 11 minimum 0 maximum 100 step 1 textsize 11
+        xywh {338 64 35 15} type Simple labelsize 11 labelcolor 64 minimum 0 maximum 100 step 1 textsize 11 textcolor 64
       }
       Fl_Check_Button awp17 {
         label BPM
         callback {//
         send_data(0, EFFECT::control::bpm, o->value(), (EFFECT::type::alienWah), TOPLEVEL::type::Integer);}
-        tooltip {Synchronize the frequency to a multiple of the BPM.} xywh {185 45 45 15} down_box DOWN_BOX labelsize 11
+        tooltip {Synchronize the frequency to a multiple of the BPM.} xywh {185 45 45 15} down_box DOWN_BOX selection_color 64 labelsize 11 labelcolor 64
         code0 {o->value(eff->geteffectpar(EFFECT::control::bpm));}
       }
     }
   }
   Function {make_distortion_window()} {} {
     Fl_Window effdistortionwindow {
-      xywh {879 667 380 95} type Double box PLASTIC_UP_BOX color 221 labelfont 1 hide
+      xywh {879 667 380 95} type Double box PLASTIC_UP_BOX color 223 labelfont 1 hide
       class Fl_Group
     } {
       Fl_Text_Display distname {
         label Distortion
-        xywh {10 10 0 20} box NO_BOX labelfont 1 labelsize 12 align 8
+        xywh {10 10 0 20} box NO_BOX labelfont 1 labelsize 12 labelcolor 64 align 8 textcolor 64
       }
       Fl_Choice distp {
         label Preset
         callback {//
         send_data(TOPLEVEL::action::forceUpdate, 16, o->value(), (EFFECT::type::distortion), TOPLEVEL::type::Integer);}
-        xywh {139 13 96 16} down_box BORDER_BOX color 14 selection_color 0 labelsize 11 textfont 1 textsize 10 textcolor 7
+        xywh {139 13 96 16} box UP_BOX down_box BORDER_BOX selection_color 49 labelsize 11 labelcolor 64 textfont 1 textsize 10 textcolor 188
         code0 {o->add("Overdrive 1");o->add("Overdrive 2");o->add("Exciter 1");o->add("Exciter 2");o->add("Guitar Amp");o->add("Quantize");}
       } {}
       Fl_Choice distp5 {
         label Type
         callback {//
         send_data(0, 5, o->value(), (EFFECT::type::distortion), TOPLEVEL::type::Integer);}
-        xywh {192 56 60 15} box UP_BOX down_box BORDER_BOX labelsize 10 align 2 textfont 1 textsize 9
+        xywh {192 56 60 15} box UP_BOX down_box BORDER_BOX selection_color 49 labelsize 10 labelcolor 64 align 2 textfont 1 textsize 9 textcolor 188
         code0 {o->add("Atan");o->add("Asym 1");o->add("Power1");o->add("Sine");o->add("Quants");o->add("Zigzag");o->add("Limit");o->add("LimtiU");o->add("LimitL");o->add("ILimit");o->add("Clip");o->add("Asym 2");o->add("Power2");o->add("Sigm");}
       } {}
       Fl_Dial distp0 {
         label Vol
         callback {//
-        send_data(0, 0, o->value(), (EFFECT::type::distortion), TOPLEVEL::type::Integer);}
-        tooltip {Effect volume} xywh {10 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int butt = 0;
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = distPresets[presetNum][butt];
+            if (eff->insertion != 0) // D/W
+            {
+                value = value / 2;
+            }
+        }
+
+        send_data(0, butt, value, EFFECT::type::distortion, TOPLEVEL::type::Integer);}
+        tooltip {Effect volume} xywh {10 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         code0 {o->setValueType(VC_FXDistVol);}
         class WidgetPDial
       }
@@ -898,8 +1224,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Pan
         callback {//
         int butt = 1;
-        send_data(0, butt, o->value(), (EFFECT::type::distortion), TOPLEVEL::type::Integer);}
-        xywh {45 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = distPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, EFFECT::type::distortion, TOPLEVEL::type::Integer);}
+        xywh {45 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         code0 {o->setValueType(VC_PanningStd);}
         class WidgetPDial
       }
@@ -907,8 +1239,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label {LRc.}
         callback {//
         int butt = 2;
-        send_data(0, butt, o->value(), (EFFECT::type::distortion), TOPLEVEL::type::Integer);}
-        tooltip {L/R mix} xywh {80 40 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = distPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, EFFECT::type::distortion, TOPLEVEL::type::Integer);}
+        tooltip {L/R mix} xywh {80 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 when 4 maximum 127 step 1
         code0 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
@@ -916,8 +1254,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Drive
         callback {//
         int butt = 3;
-        send_data(0, butt, o->value(), (EFFECT::type::distortion), TOPLEVEL::type::Integer);}
-        tooltip {Input amplification} xywh {120 40 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = distPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, EFFECT::type::distortion, TOPLEVEL::type::Integer);}
+        tooltip {Input amplification} xywh {120 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 when 4 maximum 127 step 1
         code0 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
@@ -925,8 +1269,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Level
         callback {//
         int butt = 4;
-        send_data(0, butt, o->value(), (EFFECT::type::distortion), TOPLEVEL::type::Integer);}
-        tooltip {Output amplification} xywh {155 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = distPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, EFFECT::type::distortion, TOPLEVEL::type::Integer);}
+        tooltip {Output amplification} xywh {155 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         code0 {o->setValueType(VC_FXDistLevel);}
         class WidgetPDial
       }
@@ -934,8 +1284,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label LPF
         callback {//
         int butt = 7;
-        send_data(0, butt, o->value(), (EFFECT::type::distortion), TOPLEVEL::type::Integer);}
-        tooltip {Low pass filter} xywh {285 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = distPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, EFFECT::type::distortion, TOPLEVEL::type::Integer);}
+        tooltip {Low pass filter} xywh {285 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         code0 {o->setValueType(VC_FXDistLowPass);}
         class WidgetPDial
       }
@@ -943,8 +1299,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label HPF
         callback {//
         int butt = 8;
-        send_data(0, butt, o->value(), (EFFECT::type::distortion), TOPLEVEL::type::Integer);}
-        tooltip {High pass filter} xywh {320 40 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = distPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, EFFECT::type::distortion, TOPLEVEL::type::Integer);}
+        tooltip {High pass filter} xywh {320 40 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         code0 {o->setValueType(VC_FXDistHighPass);}
         class WidgetPDial
       }
@@ -952,39 +1314,46 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label {Neg.}
         callback {//
         send_data(0, 6, o->value(), (EFFECT::type::distortion), TOPLEVEL::type::Integer);}
-        xywh {260 55 15 15} down_box DOWN_BOX labelsize 11 align 2
+        xywh {260 55 15 15} down_box DOWN_BOX selection_color 64 labelsize 11 labelcolor 64 align 2
         class Fl_Check_Button2
       }
       Fl_Check_Button distp9 {
         label {St.}
         callback {//
         send_data(0, 9, o->value(), (EFFECT::type::distortion), TOPLEVEL::type::Integer);}
-        tooltip Stereo xywh {357 55 15 15} down_box DOWN_BOX labelsize 11 align 2
+        tooltip Stereo xywh {357 55 15 15} down_box DOWN_BOX selection_color 64 labelsize 11 labelcolor 64 align 2
         class Fl_Check_Button2
       }
       Fl_Check_Button distp10 {
         label PF
         callback {//
         send_data(0, 10, o->value(), (EFFECT::type::distortion), TOPLEVEL::type::Integer);}
-        tooltip {Applies the filters(before or after) the distortion} xywh {357 38 15 15} down_box DOWN_BOX labelsize 11 align 1
+        tooltip {Applies the filters(before or after) the distortion} xywh {357 38 15 15} down_box DOWN_BOX selection_color 64 labelsize 11 labelcolor 64 align 1
         class Fl_Check_Button2
       }
     }
   }
   Function {make_eq_window()} {} {
     Fl_Window effeqwindow {
-      xywh {753 685 380 100} type Double box PLASTIC_UP_BOX color 221 labelfont 1 hide
+      xywh {753 685 380 100} type Double box PLASTIC_UP_BOX color 223 labelfont 1 hide
       class Fl_Group
     } {
       Fl_Text_Display eqname {
         label EQ
-        xywh {10 10 0 20} box NO_BOX labelfont 1 labelsize 12 align 8
+        xywh {10 10 0 20} box NO_BOX labelfont 1 labelsize 12 labelcolor 64 align 8 textcolor 64
       }
       Fl_Dial eqp0 {
         label Gain
         callback {//
-        send_data(TOPLEVEL::action::forceUpdate, 0, o->value(), (EFFECT::type::eq), TOPLEVEL::type::Integer);}
-        xywh {10 41 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+	int butt = 0;
+	int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = EQmaster_def;
+        }
+
+        send_data(TOPLEVEL::action::forceUpdate, butt, value, (EFFECT::type::eq), TOPLEVEL::type::Integer);}
+        xywh {10 41 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127
         code0 {o->setValueType(VC_FXEQgain);}
         class WidgetPDial
       }
@@ -992,14 +1361,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Band
         callback {//
         send_data(TOPLEVEL::action::forceUpdate, 1, o->value() - 1, (EFFECT::type::eq), TOPLEVEL::type::Integer);}
-        tooltip {Band no.} xywh {263 20 45 15} type Simple labelsize 11 align 1 minimum 0 maximum 1 step 1 value 1 textsize 11
+        tooltip {Band no.} xywh {263 20 45 15} type Simple labelsize 11 labelcolor 64 align 1 minimum 0 maximum 1 step 1 value 1 textsize 11 textcolor 64
         code0 {o->bounds(1,MAX_EQ_BANDS);}
       }
       Fl_Choice typechoice {
         label Type
         callback {//
         send_data(TOPLEVEL::action::forceUpdate, 10, o->value(), (EFFECT::type::eq), TOPLEVEL::type::Integer);}
-        tooltip Type xywh {323 20 40 15} down_box BORDER_BOX labelsize 11 align 1 when 6 textfont 1 textsize 9
+        tooltip Type xywh {323 20 40 15} box UP_BOX down_box BORDER_BOX selection_color 49 labelsize 11 labelcolor 64 align 1 when 6 textfont 1 textsize 9 textcolor 188
         code0 {o->add("Off");o->add("Lp1");o->add("Hp1");o->add("Lp2");o->add("Hp2");o->add("Bp2");o->add("N2");o->add("Pk");o->add("LSh");o->add("HSh");}
       } {}
       Fl_Group bandgroup {
@@ -1007,25 +1376,46 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
       } {
         Fl_Dial freqdial {
           label Freq
-          callback {//;
-          send_data(TOPLEVEL::action::forceUpdate, 11, o->value(), (EFFECT::type::eq), TOPLEVEL::type::Integer);}
-          xywh {247 50 25 25} box ROUND_UP_BOX labelsize 10 when 3 maximum 127
+          callback {//
+        int butt = 11;
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = EQfreq_def;
+        }
+
+        send_data(TOPLEVEL::action::forceUpdate, butt, value, (EFFECT::type::eq), TOPLEVEL::type::Integer);}
+          xywh {247 50 25 25} box ROUND_UP_BOX labelsize 10 labelcolor 64 when 3 maximum 127
           code0 {o->setValueType(VC_FXEQfreq);}
           class WidgetPDial
         }
         Fl_Dial gaindial {
           label Gain
           callback {//
-          send_data(TOPLEVEL::action::forceUpdate, 12, o->value(), (EFFECT::type::eq), TOPLEVEL::type::Integer);}
-          xywh {277 50 25 25} box ROUND_UP_BOX labelsize 10 when 3 maximum 127 step 1
+        int butt = 12;
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = EQgain_def;
+        }
+
+        send_data(TOPLEVEL::action::forceUpdate, butt, value, (EFFECT::type::eq), TOPLEVEL::type::Integer);}
+          xywh {277 50 25 25} box ROUND_UP_BOX labelsize 10 labelcolor 64 when 3 maximum 127 step 1
           code0 {o->setValueType(VC_FXEQfilterGain);}
           class WidgetPDial
         }
         Fl_Dial qdial {
           label Q
           callback {//
-          send_data(TOPLEVEL::action::forceUpdate, 13, o->value(), (EFFECT::type::eq), TOPLEVEL::type::Integer);}
-          tooltip {Resonance/Bandwidth} xywh {307 50 25 25} box ROUND_UP_BOX labelsize 10 when 3 maximum 127
+        int butt = 13;
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = EQq_def;
+        }
+
+        send_data(TOPLEVEL::action::forceUpdate, butt, value, (EFFECT::type::eq), TOPLEVEL::type::Integer);}
+          tooltip {Resonance/Bandwidth} xywh {307 50 25 25} box ROUND_UP_BOX labelsize 10 labelcolor 64 when 3 maximum 127
           code0 {o->setValueType(VC_FXEQq);}
           class WidgetPDial
         }
@@ -1033,64 +1423,87 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
           label Stages
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, 14, o->value(), (EFFECT::type::eq), TOPLEVEL::type::Integer);}
-          tooltip {Additional filter stages} xywh {337 60 30 15} type Simple labelsize 10 minimum 1 maximum 127 step 1 value 1 textfont 1 textsize 11
+          tooltip {Additional filter stages} xywh {337 60 30 15} type Simple labelsize 10 labelcolor 64 minimum 1 maximum 127 step 1 value 1 textfont 1 textsize 11 textcolor 64
           code0 {o->bounds(0,MAX_FILTER_STAGES - 1);}
         }
         Fl_Text_Display extra {
           label Extra
-          xywh {334 60 35 0} labelsize 11 textsize 9
+          xywh {334 60 35 0} labelsize 11 labelcolor 64 textsize 9 textcolor 64
         }
       }
       Fl_Box eqgraph {
-        xywh {45 10 190 75} box BORDER_BOX color 178
+        xywh {45 10 190 75} box BORDER_BOX
         class EQGraph
       }
     }
   }
   Function {make_dynamicfilter_window()} {} {
     Fl_Window effdynamicfilterwindow {
-      xywh {877 915 380 95} type Double box PLASTIC_UP_BOX color 221 labelfont 1 hide
+      xywh {877 915 380 95} type Double box PLASTIC_UP_BOX color 223 labelfont 1 hide
       class Fl_Group
     } {
       Fl_Text_Display dfname {
         label DynFilter
-        xywh {10 10 0 20} box NO_BOX labelfont 1 labelsize 12 align 8
+        xywh {10 10 0 20} box NO_BOX labelfont 1 labelsize 12 labelcolor 64 align 8 textcolor 64
       }
       Fl_Choice dfp {
         label Preset
         callback {//
         send_data(TOPLEVEL::action::forceUpdate, 16, o->value(), (EFFECT::type::dynFilter), TOPLEVEL::type::Integer);}
-        xywh {132 13 90 16} down_box BORDER_BOX color 14 selection_color 0 labelsize 11 textfont 1 textsize 10 textcolor 7
+        xywh {132 13 90 16} box UP_BOX down_box BORDER_BOX selection_color 49 labelsize 11 labelcolor 64 textfont 1 textsize 10 textcolor 188
         code0 {o->add("WahWah");o->add("AutoWah");o->add("Sweep");o->add("VocalMorph1");o->add("VocalMorph2");}
       } {}
       Fl_Choice dfp4 {
         label {LFO type}
         callback {//
         send_data(0, 4, o->value(), (EFFECT::type::dynFilter), TOPLEVEL::type::Integer);}
-        tooltip {LFO function} xywh {190 60 43 15} down_box BORDER_BOX labelsize 10 align 2 textfont 1 textsize 9
+        tooltip {LFO function} xywh {190 60 43 15} box UP_BOX down_box BORDER_BOX selection_color 49 labelsize 10 labelcolor 64 align 2 textfont 1 textsize 9 textcolor 188
         code0 {o->add("Sine");o->add("Tri");}
       } {}
       Fl_Dial dfp0 {
         label Vol
         callback {//
-        send_data(0, 0, o->value(), (EFFECT::type::dynFilter), TOPLEVEL::type::Integer);}
-        tooltip {Effect volume} xywh {6 44 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int butt = 0;
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = dynPresets[presetNum][butt];
+            if (eff->insertion == 0) // D/W - yes this one is reversed!
+            {
+                value = value / 2;
+            }
+        }
+
+        send_data(0, 0, value, EFFECT::type::dynFilter, TOPLEVEL::type::Integer);}
+        tooltip {Effect volume} xywh {6 44 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         class WidgetPDial
       }
       Fl_Dial dfp1 {
         label Pan
         callback {//
         int butt = 1;
-        send_data(0, butt, o->value(), (EFFECT::type::dynFilter), TOPLEVEL::type::Integer);}
-        xywh {42 44 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = dynPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, EFFECT::type::dynFilter, TOPLEVEL::type::Integer);}
+        xywh {42 44 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         class WidgetPDial
       }
       Fl_Dial dfp2 {
         label Freq
         callback {//
         int butt = 2;
-        send_data(0, butt, o->value(), (EFFECT::type::dynFilter), TOPLEVEL::type::Integer);}
-        tooltip {LFO frequency} xywh {80 44 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = dynPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, EFFECT::type::dynFilter, TOPLEVEL::type::Integer);}
+        tooltip {LFO frequency} xywh {80 44 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         code0 {o->setValueType(eff->geteffectpar(EFFECT::control::bpm) ? VC_FXlfofreqBPM : VC_FXlfofreq);}
         class WidgetPDial
       }
@@ -1098,61 +1511,103 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label Rnd
         callback {//
         int butt = 3;
-        send_data(0, butt, o->value(), (EFFECT::type::dynFilter), TOPLEVEL::type::Integer);}
-        tooltip {LFO randomness} xywh {155 44 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = dynPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, EFFECT::type::dynFilter, TOPLEVEL::type::Integer);}
+        tooltip {LFO randomness} xywh {155 44 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 when 4 maximum 127 step 1
         code0 {o->setValueType(VC_percent127);}
         class WidgetPDial
       }
       Fl_Dial dfp18 {
         label Start
         callback {//
-        send_data(0, EFFECT::control::bpmStart, o->value(), (EFFECT::type::dynFilter), TOPLEVEL::type::Integer);}
-        tooltip {Start of LFO phase relative to start of beat. This has no effect unless you are syncing to a song position, using MIDI or a plugin host.} xywh {118 44 30 30} box ROUND_UP_BOX labelsize 11 when 4 maximum 127
+        int butt = 18;
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = 0;
+        }
+
+        send_data(0, butt, value, EFFECT::type::dynFilter, TOPLEVEL::type::Integer);}
+        tooltip {Start of LFO phase relative to start of beat. This has no effect unless you are syncing to a song position, using MIDI or a plugin host.} xywh {118 44 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 when 4 maximum 127 step 1
         code0 {o->setValueType(VC_PhaseOffset);}
         code1 {if (eff->geteffectpar(EFFECT::control::bpm)) o->activate(); else o->deactivate();}
         class WidgetPDial
       }
       Fl_Dial dfp5 {
         label {St.df}
-        callback {int butt = 5;
-        send_data(0, butt, o->value(), (EFFECT::type::dynFilter), TOPLEVEL::type::Integer);}
-        tooltip {Left/Right channel phase shift} xywh {240 49 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+        callback {//
+        int butt = 5;
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = dynPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, EFFECT::type::dynFilter, TOPLEVEL::type::Integer);}
+        tooltip {Left/Right channel phase shift} xywh {240 49 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
         class WidgetPDial
       }
       Fl_Dial dfp6 {
         label LfoD
-        callback {int butt = 6;
-        send_data(0, butt, o->value(), (EFFECT::type::dynFilter), TOPLEVEL::type::Integer);}
-        tooltip {LFO depth} xywh {240 8 30 30} box ROUND_UP_BOX labelsize 11 align 8 maximum 127
+        callback {//
+        int butt = 6;
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = dynPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, EFFECT::type::dynFilter, TOPLEVEL::type::Integer);}
+        tooltip {LFO depth} xywh {240 8 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 align 8 maximum 127 step 1
         class WidgetPDial
       }
       Fl_Button filter {
         label Filter
-        callback {Showfilt();}
-        xywh {325 12 37 16} box PLASTIC_THIN_UP_BOX labelsize 11
+        callback {//
+        Showfilt();}
+        xywh {325 12 37 16} box GTK_THIN_UP_BOX color 221 labelsize 11 labelcolor 64
       }
       Fl_Group {} {
         xywh {277 37 99 53} box EMBOSSED_BOX color 181
       } {
         Fl_Dial dfp7 {
           label {A.S.}
-          callback {int butt = 7;
-          send_data(0, butt, o->value(), (EFFECT::type::dynFilter), TOPLEVEL::type::Integer);}
-          tooltip {Filter vs amplitude} xywh {282 44 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+          callback {//
+          int butt = 7;
+          int value = lrint(o->value());
+          if (Fl::event_button() == 3)
+          {
+              value = dynPresets[presetNum][butt];
+          }
+
+          send_data(0, butt, value, EFFECT::type::dynFilter, TOPLEVEL::type::Integer);}
+          tooltip {Filter vs amplitude} xywh {282 44 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
           class WidgetPDial
         }
         Fl_Dial dfp9 {
           label {A.M}
-          callback {int butt = 9;
-          send_data(0, butt, o->value(), (EFFECT::type::dynFilter), TOPLEVEL::type::Integer);}
-          tooltip {Rate that  amplitude changes the filter} xywh {318 44 30 30} box ROUND_UP_BOX labelsize 11 maximum 127
+          callback {//
+        int butt = 9;
+        int value = lrint(o->value());
+        if (Fl::event_button() == 3)
+        {
+            value = dynPresets[presetNum][butt];
+        }
+
+        send_data(0, butt, value, EFFECT::type::dynFilter, TOPLEVEL::type::Integer);}
+          tooltip {Rate that  amplitude changes the filter} xywh {318 44 30 30} box ROUND_UP_BOX labelsize 11 labelcolor 64 maximum 127 step 1
           class WidgetPDial
         }
         Fl_Check_Button dfp8 {
           label {Inv.}
           callback {//
           send_data(0, 8, o->value(), (EFFECT::type::dynFilter), TOPLEVEL::type::Integer);}
-          tooltip {Enable for filter frequency to lower with higher input amplitude} xywh {353 58 15 15} down_box DOWN_BOX labelsize 11 align 2
+          tooltip {Enable for filter frequency to lower with higher input amplitude} xywh {353 58 15 15} down_box DOWN_BOX selection_color 64 labelsize 11 labelcolor 64 align 2
           class Fl_Check_Button2
         }
       }
@@ -1160,7 +1615,7 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         label BPM
         callback {//
         send_data(0, EFFECT::control::bpm, o->value(), (EFFECT::type::dynFilter), TOPLEVEL::type::Integer);}
-        tooltip {Synchronize the frequency to a multiple of the BPM.} xywh {191 41 45 15} down_box DOWN_BOX labelsize 11
+        tooltip {Synchronize the frequency to a multiple of the BPM.} xywh {191 41 45 15} down_box DOWN_BOX selection_color 64 labelsize 11 labelcolor 64
         code0 {o->value(eff->geteffectpar(EFFECT::control::bpm));}
       }
     }
@@ -1185,7 +1640,7 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         callback {//
     saveWin(synth, filterwindow->w(), filterwindow->h(), filterwindow->x(), filterwindow->y(), false, "xFilter-dynamic " + to_string(npart));
     filterwindow->hide();}
-        xywh {124 86 46 20} box THIN_UP_BOX labelsize 12
+        xywh {124 86 46 20} box THIN_UP_BOX color 196 labelsize 12 labelcolor 64
       }
     }
   }
@@ -1197,7 +1652,12 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
     {
         parameter = bandcounter->value() - 1;
     }
-    collect_data(synth, value, action, type, control, npart, group, neff, UNUSED, parameter);} {}
+    int offset = UNUSED;
+    if (group == EFFECT::type::dynFilter)
+    {
+        offset = dfp->value();
+    }
+    collect_data(synth, value, action, type, control, npart, group, neff, UNUSED, parameter, offset);} {}
   }
   Function {fetchData(float value, int control, int part, int kititem = UNUSED, int engine = UNUSED, int insert = UNUSED, int parameter = UNUSED, int offset = UNUSED, int miscmsg = UNUSED, int request = UNUSED)} {return_type float
   } {
@@ -1214,10 +1674,12 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
     bool isdynfilter = (effnum == (EFFECT::type::dynFilter));
     unsigned char eqband =  getData->data.parameter;
     unsigned char secondary = getData->data.offset;
+    if (efftype != EFFECT::type::eq)
+        presetNum = eff->getpreset();
 
-    int textCol = 14;
+    int textCol = eff_preset;
     if (fetchData(0, EFFECT::control::changed, getData->data.part, efftype, effnum) != 0)
-    textCol = FL_BLUE;
+        textCol = eff_preset_changed;
     //std::cout << "colour " << textCol << std::endl;
     switch(efftype)
     {
@@ -1229,30 +1691,42 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
             {
                 case EFFECT::control::level:
                     revp0->value(value);
+                    if (eff->insertion != 0) // D/W
+                        revp0->selection_color(setKnob(value * 2,reverbPresets[presetNum][0]));
+                    else
+                        revp0->selection_color(setKnob(value,reverbPresets[presetNum][0]));
                     break;
                 case EFFECT::control::panning:
                     revp1->value(value);
+                    revp1->selection_color(setKnob(value,reverbPresets[presetNum][1]));
                     break;
                 case EFFECT::control::frequency: // time here
                     revp2->value(value);
+                    revp2->selection_color(setKnob(value,reverbPresets[presetNum][2]));
                     break;
                 case 3:
                     revp3->value(value);
+                    revp3->selection_color(setKnob(value,reverbPresets[presetNum][3]));
                     break;
                 case 4:
                     revp4->value(value);
+                    revp4->selection_color(setKnob(value,reverbPresets[presetNum][4]));
                     break;
                 case 6:
                     revp6->value(value);
+                    revp6->selection_color(setKnob(value,reverbPresets[presetNum][6]));
                     break;
                 case 7:
                     revp7->value(value);
+                    revp7->selection_color(setKnob(value,reverbPresets[presetNum][7]));
                     break;
                 case 8:
                     revp8->value(value);
+                    revp8->selection_color(setKnob(value,reverbPresets[presetNum][8]));
                     break;
                 case 9:
                     revp9->value(value);
+                    revp9->selection_color(setKnob(value,reverbPresets[presetNum][9]));
                     break;
                 case 10:
                     revp10->value(value_int);
@@ -1266,15 +1740,17 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
                     break;
                 case 11:
                     revp11->value(value);
+                    revp11->selection_color(setKnob(value,reverbPresets[presetNum][11]));
                     break;
                 case 12:
                     revp12->value(value);
+                    revp12->selection_color(setKnob(value,reverbPresets[presetNum][12]));
                     break;
                 case EFFECT::control::preset:
                     refresh();
                     break;
             }
-            revp->color(textCol);
+            revp->textcolor(textCol);
             revp->redraw();
             break;
 
@@ -1283,24 +1759,34 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
             {
                 case EFFECT::control::level:
                     echop0->value(value);
+                    if (eff->insertion != 0) // D/W
+                        echop0->selection_color(setKnob(value,int(echoPresets[presetNum][0])/2));
+                    else
+                        echop0->selection_color(setKnob(value,echoPresets[presetNum][0]));
                     break;
                 case EFFECT::control::panning:
                     echop1->value(value);
+                    echop1->selection_color(setKnob(value,echoPresets[presetNum][1]));
                     break;
                 case EFFECT::control::frequency: // delay here
                     echop2->value(value);
+                    echop2->selection_color(setKnob(value,echoPresets[presetNum][2]));
                     break;
                 case 3:
                     echop3->value(value);
+                    echop3->selection_color(setKnob(value,echoPresets[presetNum][3]));
                     break;
                 case 4:
                     echop4->value(value);
+                    echop4->selection_color(setKnob(value,echoPresets[presetNum][4]));
                     break;
                 case 5:
                     echop5->value(value);
+                    echop5->selection_color(setKnob(value,echoPresets[presetNum][5]));
                     break;
                 case 6:
                     echop6->value(value);
+                    echop6->selection_color(setKnob(value,echoPresets[presetNum][6]));
                     break;
                 case EFFECT::control::bpm:
                     echop17->value(value);
@@ -1313,7 +1799,7 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
                     refresh();
                     break;
             }
-            echop->color(textCol);
+            echop->textcolor(textCol);
             echop->redraw();
             break;
 
@@ -1322,30 +1808,39 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
             {
                 case EFFECT::control::level:
                     chorusp0->value(value);
+                    chorusp0->selection_color(setKnob(value,chorusPresets[presetNum][0]));
                     break;
                 case EFFECT::control::panning:
                     chorusp1->value(value);
+                    chorusp1->selection_color(setKnob(value,chorusPresets[presetNum][1]));
                     break;
                 case EFFECT::control::frequency:
                     chorusp2->value(value);
+                    chorusp2->selection_color(setKnob(value,chorusPresets[presetNum][2]));
                     break;
                 case 3:
                     chorusp3->value(value);
+                    chorusp3->selection_color(setKnob(value,chorusPresets[presetNum][3]));
                     break;
                 case 5:
                     chorusp5->value(value);
+                    chorusp5->selection_color(setKnob(value,chorusPresets[presetNum][5]));
                     break;
                 case 6:
                     chorusp6->value(value_int);
+                    chorusp6->selection_color(setKnob(value,chorusPresets[presetNum][6]));
                     break;
                 case 7:
                     chorusp7->value(value);
+                    chorusp7->selection_color(setKnob(value,chorusPresets[presetNum][7]));
                     break;
                 case 8:
                     chorusp8->value(value);
+                    chorusp8->selection_color(setKnob(value,chorusPresets[presetNum][8]));
                     break;
                 case 9:
                     chorusp9->value(value);
+                    chorusp9->selection_color(setKnob(value,chorusPresets[presetNum][9]));
                     break;
                 case 11:
                     chorusp11->value(value_int);
@@ -1365,12 +1860,13 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
                     break;
                 case EFFECT::control::bpmStart:
                     chorusp18->value(value);
+                    chorusp18->selection_color(setKnob(value,0));
                     break;
                 case EFFECT::control::preset:
                     refresh();
                     break;
             }
-            chorusp->color(textCol);
+            chorusp->textcolor(textCol);
             chorusp->redraw();
             break;
 
@@ -1379,45 +1875,55 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
             {
                 case EFFECT::control::level:
                     phaserp0->value(value);
+                    phaserp0->selection_color(setKnob(value,phaserPresets[presetNum][0]));
                     break;
                 case EFFECT::control::panning:
                     phaserp1->value(value);
+                    phaserp1->selection_color(setKnob(value,phaserPresets[presetNum][1]));
                     break;
                 case EFFECT::control::frequency:
                     phaserp2->value(value);
+                    phaserp2->selection_color(setKnob(value,phaserPresets[presetNum][2]));
                     break;
                 case 3:
                     phaserp3->value(value);
+                    phaserp3->selection_color(setKnob(value,phaserPresets[presetNum][3]));
                     break;
                 case 4:
                     phaserp4->value(value_int);
                     break;
                 case 5:
                     phaserp5->value(value);
+                    phaserp5->selection_color(setKnob(value,phaserPresets[presetNum][5]));
                     break;
                 case 6:
                     phaserp6->value(value);
+                    phaserp6->selection_color(setKnob(value,phaserPresets[presetNum][6]));
                     break;
                 case 7:
-                   phaserp7->value(value);
+                    phaserp7->value(value);
+                    phaserp7->selection_color(setKnob(value,phaserPresets[presetNum][7]));
                     break;
                 case 8:
                     phaserp8->value(value_int);
                     break;
                 case 9:
                     phaserp9->value(value);
+                    phaserp9->selection_color(setKnob(value,phaserPresets[presetNum][9]));
                     break;
                 case 10:
                     phaserp10->value(value_int);
                     break;
                 case 11:
                     phaserp11->value(value);
+                    phaserp11->selection_color(setKnob(value,phaserPresets[presetNum][11]));
                     break;
                 case 12:
                     phaserp12->value(value_int);
                     break;
                 case 13:
                     phaserp13->value(value);
+                    phaserp13->selection_color(setKnob(value,phaserPresets[presetNum][13]));
                     break;
                 case 14:
                     phaserp14->value(value_int);
@@ -1451,12 +1957,13 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
                     break;
                 case EFFECT::control::bpmStart:
                     phaserp18->value(value);
+                    phaserp18->selection_color(setKnob(value,0));
                     break;
                 case EFFECT::control::preset:
                     refresh();
                     break;
             }
-            phaserp->color(textCol);
+            phaserp->textcolor(textCol);
             phaserp->redraw();
             break;
 
@@ -1465,36 +1972,49 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
             {
                 case EFFECT::control::level:
                     awp0->value(value);
+                    echop0->value(value);
+                    if (eff->insertion != 0) // D/W
+                        awp0->selection_color(setKnob(value,int(alienPresets[presetNum][0])/2));
+                    else
+                        awp0->selection_color(setKnob(value,alienPresets[presetNum][0]));
                     break;
                 case EFFECT::control::panning:
                     awp1->value(value);
+                    awp1->selection_color(setKnob(value,alienPresets[presetNum][1]));
                     break;
                 case EFFECT::control::frequency:
                     awp2->value(value);
+                    awp2->selection_color(setKnob(value,alienPresets[presetNum][2]));
                     break;
                 case 3:
                     awp3->value(value);
+                    awp3->selection_color(setKnob(value,alienPresets[presetNum][3]));
                     break;
                 case 4:
                     awp4->value(value_int);
                     break;
                 case 5:
                     awp5->value(value);
+                    awp5->selection_color(setKnob(value,alienPresets[presetNum][5]));
                     break;
                 case 6:
                     awp6->value(value);
+                    awp6->selection_color(setKnob(value,alienPresets[presetNum][6]));
                     break;
                 case 7:
                     awp7->value(value);
+                    awp7->selection_color(setKnob(value,alienPresets[presetNum][7]));
                     break;
                 case 8:
                     awp8->value(value_int);
                     break;
                 case 9:
                     awp9->value(value);
+                    awp9->selection_color(setKnob(value,alienPresets[presetNum][9]));
                     break;
                 case 10:
                     awp10->value(value);
+                    awp10->selection_color(setKnob(value,alienPresets[presetNum][10]));
                     break;
                 case EFFECT::control::bpm:
                     awp17->value(value);
@@ -1511,12 +2031,13 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
                     break;
                 case EFFECT::control::bpmStart:
                     awp18->value(value);
+                    awp18->selection_color(setKnob(value,0));
                     break;
                 case EFFECT::control::preset:
                     refresh();
                     break;
             }
-            awp->color(textCol);
+            awp->textcolor(textCol);
             awp->redraw();
             break;
 
@@ -1525,18 +2046,26 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
             {
                 case EFFECT::control::level:
                     distp0->value(value);
+                    if (eff->insertion != 0) // D/W
+                        distp0->selection_color(setKnob(value,int(distPresets[presetNum][0])/2));
+                    else
+                        distp0->selection_color(setKnob(value,distPresets[presetNum][0]));
                     break;
                 case EFFECT::control::panning:
                     distp1->value(value);
+                    distp1->selection_color(setKnob(value,distPresets[presetNum][1]));
                     break;
                 case EFFECT::control::frequency: // LR-mix here
                     distp2->value(value);
+                    distp2->selection_color(setKnob(value,distPresets[presetNum][2]));
                     break;
                 case 3:
                     distp3->value(value);
+                    distp3->selection_color(setKnob(value,distPresets[presetNum][3]));
                     break;
                 case 4:
                     distp4->value(value);
+                    distp4->selection_color(setKnob(value,distPresets[presetNum][4]));
                     break;
                 case 5:
                     distp5->value(value_int);
@@ -1546,9 +2075,11 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
                     break;
                 case 7:
                     distp7->value(value);
+                    distp7->selection_color(setKnob(value,distPresets[presetNum][7]));
                     break;
                 case 8:
                     distp8->value(value);
+                    distp8->selection_color(setKnob(value,distPresets[presetNum][8]));
                     break;
                 case 9:
                     distp9->value(value_int);
@@ -1560,7 +2091,7 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
                     refresh();
                     break;
             }
-            distp->color(textCol);
+            distp->textcolor(textCol);
             distp->redraw();
             break;
 
@@ -1569,6 +2100,8 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
             if (control == EFFECT::control::level)
             {
                 eqp0->value(value);
+                eqp0->selection_color(setKnob(value,EQmaster_def));
+
             }
             else if (control == EFFECT::control::panning) // band number here!
             {
@@ -1597,12 +2130,15 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
                     break;
                 case 11:
                     freqdial->value(value);
+                    freqdial->selection_color(setKnob(value,EQfreq_def));
                     break;
                 case 12:
                     gaindial->value(value);
+                    gaindial->selection_color(setKnob(value,EQgain_def));
                     break;
                 case 13:
                     qdial->value(value);
+                    qdial->selection_color(setKnob(value,EQq_def));
                     break;
                 case 14:
                     stagescounter->value(value_int);
@@ -1621,33 +2157,45 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
             {
                 case EFFECT::control::level:
                     dfp0->value(value);
+                    if (eff->insertion == 0) // D/W
+                        dfp0->selection_color(setKnob(value,int(dynPresets[presetNum][0])/2));
+                    else
+                        dfp0->selection_color(setKnob(value,dynPresets[presetNum][0]));
                     break;
                 case EFFECT::control::panning:
                     dfp1->value(value);
+                    dfp1->selection_color(setKnob(value,dynPresets[presetNum][1]));
                     break;
                 case EFFECT::control::frequency:
                     dfp2->value(value);
+                    dfp2->selection_color(setKnob(value,dynPresets[presetNum][2]));
                     break;
                 case 3:
                     dfp3->value(value);
+                    dfp3->selection_color(setKnob(value,dynPresets[presetNum][3]));
                     break;
                 case 4:
                     dfp4->value(value_int);
+                    dfp4->selection_color(setKnob(value,dynPresets[presetNum][4]));
                     break;
                 case 5:
                     dfp5->value(value);
+                    dfp5->selection_color(setKnob(value,dynPresets[presetNum][5]));
                     break;
                 case 6:
                     dfp6->value(value);
+                    dfp6->selection_color(setKnob(value,dynPresets[presetNum][6]));
                     break;
                 case 7:
                     dfp7->value(value);
+                    dfp7->selection_color(setKnob(value,dynPresets[presetNum][7]));
                     break;
                 case 8:
                     dfp8->value(value_int);
                     break;
                 case 9:
                     dfp9->value(value);
+                    dfp9->selection_color(setKnob(value,dynPresets[presetNum][9]));
                     break;
                 case EFFECT::control::bpm:
                     dfp17->value(value);
@@ -1664,15 +2212,16 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
                     break;
                 case EFFECT::control::bpmStart:
                     dfp18->value(value);
+                    dfp18->selection_color(setKnob(value,0));
                     break;
                 case EFFECT::control::preset:
                     refresh();
                     break;
             }
-            dfp->color(textCol);
+            dfp->textcolor(textCol);
             dfp->redraw();
             break;
-    }} {}
+    };} {}
   }
   Function {init(EffectMgr *eff_, int npart_, int neff_)} {} {
     code {//
@@ -1694,6 +2243,8 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
     int px=this->parent()->x();
     int py=this->parent()->y();
 
+    lastEff = -1;
+    presetNum = 0;
     effnullwindow->position(px,py);
     effreverbwindow->position(px,py);
     effechowindow->position(px,py);
@@ -1727,27 +2278,47 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
         delete(filterwindow);
         filterwindow=NULL;
     }
-    switch(eff->geteffect() + EFFECT::type::none) // get effect not yet converted
+    int nextEff = eff->geteffect() + EFFECT::type::none; // get effect not yet converted
+    if (lastEff != nextEff)
+    {
+        presetNum = 0;
+        //std::cout << "EFF changed" << std::endl;
+    }
+    switch(nextEff)
     {
         case EFFECT::type::reverb:
             revp->value(eff->getpreset());
             revp0->value(eff->geteffectpar(0));
+             if (eff->insertion != 0) // D/W
+                 revp0->selection_color(setKnob(revp0->value(),int(reverbPresets[presetNum][0] / 2)));
+             else
+                 revp0->selection_color(setKnob(revp0->value(),reverbPresets[presetNum][0]));
             if (eff->insertion != 0)
             {
                 revp0->label("D/W");
                 revp0->setValueType(VC_FXReverbDW);
             }
             revp1->value(eff->geteffectpar(1));
+            revp1->selection_color(setKnob(revp1->value(),reverbPresets[presetNum][1]));
             revp2->value(eff->geteffectpar(2));
+            revp2->selection_color(setKnob(revp2->value(),reverbPresets[presetNum][2]));
             revp3->value(eff->geteffectpar(3));
+            revp3->selection_color(setKnob(revp3->value(),reverbPresets[presetNum][3]));
             revp4->value(eff->geteffectpar(4));
+            revp4->selection_color(setKnob(revp4->value(),reverbPresets[presetNum][4]));
             revp6->value(eff->geteffectpar(6));
+            revp6->selection_color(setKnob(revp6->value(),reverbPresets[presetNum][6]));
             revp7->value(eff->geteffectpar(7));
+            revp7->selection_color(setKnob(revp7->value(),reverbPresets[presetNum][7]));
             revp8->value(eff->geteffectpar(8));
+            revp8->selection_color(setKnob(revp8->value(),reverbPresets[presetNum][8]));
             revp9->value(eff->geteffectpar(9));
+            revp9->selection_color(setKnob(revp9->value(),reverbPresets[presetNum][9]));
             revp10->value(eff->geteffectpar(10));
             revp11->value(eff->geteffectpar(11));
+            revp11->selection_color(setKnob(revp11->value(),reverbPresets[presetNum][11]));
             revp12->value(eff->geteffectpar(12));
+            revp12->selection_color(setKnob(revp12->value(),reverbPresets[presetNum][12]));
             effreverbwindow->show();
             break;
         case EFFECT::type::echo:
@@ -1757,33 +2328,52 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
             {
                 echop0->label("D/W");
                 echop0->setValueType(VC_FXEchoDW);
+                echop0->selection_color(setKnob(echop0->value(),int(echoPresets[presetNum][0])/2));
             }
+            else
+                echop0->selection_color(setKnob(echop0->value(),echoPresets[presetNum][0]));
             echop1->value(eff->geteffectpar(1));
+            echop1->selection_color(setKnob(echop1->value(),echoPresets[presetNum][1]));
             echop2->value(eff->geteffectpar(2));
+            echop2->selection_color(setKnob(echop2->value(),echoPresets[presetNum][2]));
             echop3->value(eff->geteffectpar(3));
+            echop3->selection_color(setKnob(echop3->value(),echoPresets[presetNum][3]));
             echop4->value(eff->geteffectpar(4));
+            echop4->selection_color(setKnob(echop4->value(),echoPresets[presetNum][4]));
             echop5->value(eff->geteffectpar(5));
+            echop5->selection_color(setKnob(echop5->value(),echoPresets[presetNum][5]));
             echop6->value(eff->geteffectpar(6));
+            echop6->selection_color(setKnob(echop6->value(),echoPresets[presetNum][6]));
             echop17->value(eff->geteffectpar(17));
             effechowindow->show();
             break;
         case EFFECT::type::chorus:
             chorusp->value(eff->getpreset());
             chorusp0->value(eff->geteffectpar(0));
+            chorusp0->selection_color(setKnob(chorusp0->value(),chorusPresets[presetNum][0]));
             if (eff->insertion != 0)
             {
                 chorusp0->label("D/W");
                 chorusp0->setValueType(VC_FXdefaultDW);
             }
             chorusp1->value(eff->geteffectpar(1));
+            chorusp1->selection_color(setKnob(chorusp1->value(),chorusPresets[presetNum][1]));
             chorusp2->value(eff->geteffectpar(2));
+            chorusp2->selection_color(setKnob(chorusp2->value(),chorusPresets[presetNum][2]));
             chorusp3->value(eff->geteffectpar(3));
+            chorusp3->selection_color(setKnob(chorusp3->value(),chorusPresets[presetNum][3]));
             chorusp4->value(eff->geteffectpar(4));
+            chorusp4->selection_color(setKnob(chorusp4->value(),chorusPresets[presetNum][4]));
             chorusp5->value(eff->geteffectpar(5));
+            chorusp5->selection_color(setKnob(chorusp5->value(),chorusPresets[presetNum][5]));
             chorusp6->value(eff->geteffectpar(6));
+            chorusp6->selection_color(setKnob(chorusp6->value(),chorusPresets[presetNum][6]));
             chorusp7->value(eff->geteffectpar(7));
+            chorusp7->selection_color(setKnob(chorusp7->value(),chorusPresets[presetNum][7]));
             chorusp8->value(eff->geteffectpar(8));
+            chorusp8->selection_color(setKnob(chorusp8->value(),chorusPresets[presetNum][8]));
             chorusp9->value(eff->geteffectpar(9));
+            chorusp9->selection_color(setKnob(chorusp9->value(),chorusPresets[presetNum][9]));
             chorusp11->value(eff->geteffectpar(11));
             chorusp17->value(eff->geteffectpar(17));
             if (chorusp17->value())
@@ -1797,29 +2387,40 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
                 chorusp18->deactivate();
             }
             chorusp18->value(eff->geteffectpar(18));
+            chorusp18->selection_color(setKnob(chorusp18->value(),0));
             effchoruswindow->show();
             break;
         case EFFECT::type::phaser:
             phaserp->value(eff->getpreset());
             phaserp0->value(eff->geteffectpar(0));
+            phaserp0->selection_color(setKnob(phaserp0->value(),phaserPresets[presetNum][0]));
             if (eff->insertion != 0)
             {
                 phaserp0->label("D/W");
                 phaserp0->setValueType(VC_FXdefaultDW);
             }
             phaserp1->value(eff->geteffectpar(1));
+            phaserp1->selection_color(setKnob(phaserp1->value(),phaserPresets[presetNum][1]));
             phaserp2->value(eff->geteffectpar(2));
+            phaserp2->selection_color(setKnob(phaserp2->value(),phaserPresets[presetNum][2]));
             phaserp3->value(eff->geteffectpar(3));
+            phaserp3->selection_color(setKnob(phaserp3->value(),phaserPresets[presetNum][3]));
             phaserp4->value(eff->geteffectpar(4));
             phaserp5->value(eff->geteffectpar(5));
+            phaserp5->selection_color(setKnob(phaserp5->value(),phaserPresets[presetNum][5]));
             phaserp6->value(eff->geteffectpar(6));
+            phaserp6->selection_color(setKnob(phaserp6->value(),phaserPresets[presetNum][6]));
             phaserp7->value(eff->geteffectpar(7));
+            phaserp7->selection_color(setKnob(phaserp7->value(),phaserPresets[presetNum][7]));
             phaserp8->value(eff->geteffectpar(8));
             phaserp9->value(eff->geteffectpar(9));
+            phaserp9->selection_color(setKnob(phaserp9->value(),phaserPresets[presetNum][9]));
             phaserp10->value(eff->geteffectpar(10));
             phaserp11->value(eff->geteffectpar(11));
+            phaserp11->selection_color(setKnob(phaserp11->value(),phaserPresets[presetNum][11]));
             phaserp12->value(eff->geteffectpar(12));
             phaserp13->value(eff->geteffectpar(13));
+            phaserp13->selection_color(setKnob(phaserp13->value(),phaserPresets[presetNum][13]));
             phaserp14->value(eff->geteffectpar(14));
             if (phaserp14->value() != 0)
             {
@@ -1847,24 +2448,37 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
                 phaserp18->deactivate();
             }
             phaserp18->value(eff->geteffectpar(18));
-
+            phaserp18->selection_color(setKnob(phaserp18->value(),0));
             effphaserwindow->show();
             break;
         case EFFECT::type::alienWah:
             awp->value(eff->getpreset());
             awp0->value(eff->geteffectpar(0));
             if (eff->insertion != 0)
+            {
                 awp0->label("D/W");
+                awp0->selection_color(setKnob(awp0->value(),int(alienPresets[presetNum][0])/2));
+            }
+            else
+                awp0->selection_color(setKnob(awp0->value(),alienPresets[presetNum][0]));
             awp1->value(eff->geteffectpar(1));
+            awp1->selection_color(setKnob(awp1->value(),alienPresets[presetNum][1]));
             awp2->value(eff->geteffectpar(2));
+            awp2->selection_color(setKnob(awp2->value(),alienPresets[presetNum][2]));
             awp3->value(eff->geteffectpar(3));
+            awp3->selection_color(setKnob(awp3->value(),alienPresets[presetNum][3]));
             awp4->value(eff->geteffectpar(4));
             awp5->value(eff->geteffectpar(5));
+            awp5->selection_color(setKnob(awp5->value(),alienPresets[presetNum][5]));
             awp6->value(eff->geteffectpar(6));
+            awp6->selection_color(setKnob(awp6->value(),alienPresets[presetNum][6]));
             awp7->value(eff->geteffectpar(7));
+            awp7->selection_color(setKnob(awp7->value(),alienPresets[presetNum][7]));
             awp8->value(eff->geteffectpar(8));
             awp9->value(eff->geteffectpar(9));
+            awp9->selection_color(setKnob(awp9->value(),alienPresets[presetNum][9]));
             awp10->value(eff->geteffectpar(10));
+            awp10->selection_color(setKnob(awp10->value(),alienPresets[presetNum][10]));
             awp17->value(eff->geteffectpar(17));
             if (awp17->value())
             {
@@ -1877,6 +2491,7 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
                 awp18->deactivate();
             }
             awp18->value(eff->geteffectpar(18));
+            awp18->selection_color(setKnob(awp18->value(),0));
             effalienwahwindow->show();
             break;
         case EFFECT::type::distortion:
@@ -1908,11 +2523,15 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
             else
                 bandgroup->activate();
             eqp0->value(eff->geteffectpar(0));
+            eqp0->selection_color(setKnob(eqp0->value(),EQmaster_def));
             bandcounter->value(eqband + 1);
             typechoice->value(type);
             freqdial->value(eff->geteffectpar(11));
+            freqdial->selection_color(setKnob(freqdial->value(),EQfreq_def));
             gaindial->value(eff->geteffectpar(12));
+            gaindial->selection_color(setKnob(gaindial->value(),EQgain_def));
             qdial->value(eff->geteffectpar(13));
+            qdial->selection_color(setKnob(qdial->value(),EQq_def));
             if (type < 3)
                 qdial->deactivate();
             if (type < 6)
@@ -1929,16 +2548,29 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
             dfp->value(eff->getpreset());
             dfp0->value(eff->geteffectpar(0));
             if (eff->insertion!=0)
+            {
                 dfp0->label("D/W");
+                dfp0->selection_color(setKnob(dfp0->value(),int(dynPresets[presetNum][0])));
+            }
+            else
+                dfp0->selection_color(setKnob(dfp0->value(),int(dynPresets[presetNum][0])/2));
             dfp1->value(eff->geteffectpar(1));
+            dfp1->selection_color(setKnob(dfp1->value(),int(dynPresets[presetNum][1])));
             dfp2->value(eff->geteffectpar(2));
+            dfp2->selection_color(setKnob(dfp2->value(),int(dynPresets[presetNum][2])));
             dfp3->value(eff->geteffectpar(3));
+            dfp3->selection_color(setKnob(dfp3->value(),int(dynPresets[presetNum][3])));
             dfp4->value(eff->geteffectpar(4));
+            dfp4->selection_color(setKnob(dfp4->value(),int(dynPresets[presetNum][4])));
             dfp5->value(eff->geteffectpar(5));
+            dfp5->selection_color(setKnob(dfp5->value(),int(dynPresets[presetNum][5])));
             dfp6->value(eff->geteffectpar(6));
+            dfp6->selection_color(setKnob(dfp6->value(),int(dynPresets[presetNum][6])));
             dfp7->value(eff->geteffectpar(7));
+            dfp7->selection_color(setKnob(dfp7->value(),int(dynPresets[presetNum][7])));
             dfp8->value(eff->geteffectpar(8));
             dfp9->value(eff->geteffectpar(9));
+            dfp9->selection_color(setKnob(dfp9->value(),int(dynPresets[presetNum][9])));
             dfp17->value(eff->geteffectpar(17));
             if (dfp17->value())
             {
@@ -1951,12 +2583,14 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
                 dfp18->deactivate();
             }
             dfp18->value(eff->geteffectpar(18));
+            dfp18->selection_color(setKnob(dfp1->value(),0));
             effdynamicfilterwindow->show();
             break;
         default:
             effnullwindow->show();
             break;
     }
+    lastEff = nextEff;
     this->show();} {}
   }
   Function {refresh()} {} {
@@ -1964,39 +2598,39 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
   }
   Function {UpdatePresetColour(int changed, int efftype)} {} {
     code {//
-    int textCol = 14;
+    int textCol = eff_preset;
     if (changed)
-         textCol = FL_BLUE;
+         textCol = eff_preset_changed;
     switch (efftype + EFFECT::type::none)
     {
         case EFFECT::type::reverb:
-            revp->color(textCol);
+            revp->textcolor(textCol);
             revp->redraw();
             break;
         case EFFECT::type::echo:
-            echop->color(textCol);
+            echop->textcolor(textCol);
             echop->redraw();
             break;
         case EFFECT::type::chorus:
-            chorusp->color(textCol);
+            chorusp->textcolor(textCol);
             chorusp->redraw();
             break;
         case EFFECT::type::phaser:
-            phaserp->color(textCol);
+            phaserp->textcolor(textCol);
             phaserp->redraw();
             break;
         case EFFECT::type::alienWah:
-            awp->color(textCol);
+            awp->textcolor(textCol);
             awp->redraw();
             break;
         case EFFECT::type::distortion:
-            distp->color(textCol);
+            distp->textcolor(textCol);
             distp->redraw();
             break;
         case EFFECT::type::eq:
             break;
         case EFFECT::type::dynFilter:
-            dfp->color(textCol);
+            dfp->textcolor(textCol);
             dfp->redraw();
             break;
     }
@@ -2047,7 +2681,7 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
                 echop5->labelsize(size11);
                 echop6->labelsize(size11);
                 echop17->labelsize(size11);
-            	break;
+                break;
             case 3: // chorus
                 chorusname->labelsize(size12);
                 chorusp->labelsize(size11);
@@ -2253,5 +2887,9 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
   decl {float filtDW;} {private local
   }
   decl {float filtDH;} {private local
+  }
+  decl {int lastEff;} {private local
+  }
+  decl {int presetNum;} {private local
   }
 }
