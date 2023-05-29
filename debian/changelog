@@ -1,3 +1,11 @@
+yoshimi (2.3.0-1) UNRELEASED; urgency=medium
+
+  * New upstream version 2.3.0
+  * Refresh patchset, add spelling error patch
+  * Prefer libjack-dev over libjack-jackd2-dev
+
+ -- Dennis Braun <snd@debian.org>  Mon, 29 May 2023 18:52:07 +0200
+
 yoshimi (2.2.3-1) unstable; urgency=medium
 
   * New upstream version 2.2.3
