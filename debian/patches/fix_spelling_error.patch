@@ -1,0 +1,24 @@
+From: Dennis Braun <snd@debian.org>
+Date: Mon, 29 May 2023 18:45:30 +0200
+Subject: Fix spelling error in manual
+
+Forwarded: yes
+
+===================================================================
+---
+ desktop/yoshimi.1 | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/desktop/yoshimi.1 b/desktop/yoshimi.1
+index 44ced73..31b15e2 100644
+--- a/desktop/yoshimi.1
++++ b/desktop/yoshimi.1
+@@ -22,7 +22,7 @@ Recent improvements are key and channel aftertouch, fully resizable windows, MID
+ .PP
+ Another recent development was a comprehensive revision of the PadSynth engine, with additional morphing of the wavetables. There is also support for Undo/Redo.
+ .PP
+-The latest developments are backward commpatible high resoluting controls for significant areas and a comprehensive theme management system enabling user defined GUI colour choices.
++The latest developments are backward compatible high resoluting controls for significant areas and a comprehensive theme management system enabling user defined GUI colour choices.
+ .SH COMMANDS
+ .TP
+ .BR \-? ", " \-\-help " Shows command syntax."
