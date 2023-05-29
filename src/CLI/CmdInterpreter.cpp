@@ -59,7 +59,7 @@ extern SynthEngine *firstSynth;
 extern std::atomic <bool> waitForTest;
 
 
-// these two are both zero and repesented by an enum entry
+// these two are both zero and represented by an enum entry
 const unsigned char type_read = TOPLEVEL::type::Adjust;
 
 namespace cli {
@@ -1623,7 +1623,7 @@ int CmdInterpreter::midiControllers(Parser& input, unsigned char controlType)
     }
     if ((cmd == -1) && input.matchnMove(2, "rcenter"))
     {
-        value = string2int127(input);
+        value = string2float(input);
         cmd = PART::control::resonanceCenterFrequencyDepth;
     }
     if ((cmd == -1) && input.matchnMove(2, "rband"))
@@ -1946,9 +1946,15 @@ int CmdInterpreter::filterSelect(Parser& input, unsigned char controlType)
                 cmd = FILTERINSERT::control::negateInput;
             }
             else if (input.matchnMove(2, "center"))
+            {
                 cmd = FILTERINSERT::control::formantCenter;
+                value = string2float(input);
+            }
             else if (input.matchnMove(1, "range"))
+            {
                 cmd = FILTERINSERT::control::formantOctave;
+                value = string2float(input);
+            }
             else if (input.matchnMove(1, "expand"))
                 cmd = FILTERINSERT::control::formantStretch;
             else if (input.matchnMove(1, "lucidity"))
@@ -2407,7 +2413,7 @@ int CmdInterpreter::commandGroup(Parser& input)
     /*
     * Having two lists is messy, but the list routine clears 'msg' and
     * we need 'instrumentGroup' kept for later actual part loads.
-    * Also, the search list needs embeded root, bank, and instrument IDs
+    * Also, the search list needs embedded root, bank, and instrument IDs
     * but the reported one only wants the list number.
     */
     input.skipChars();
@@ -2547,6 +2553,11 @@ int CmdInterpreter::commandList(Parser& input)
 
     if (input.matchnMove(3, "section")) // section presets
     {
+        if (insertType == TOPLEVEL::insert::envelopeGroup || insertType == TOPLEVEL::insert::LFOgroup)
+        {
+            presetsControl(0, TOPLEVEL::type::Adjust, section, kitNumber, engine, insertType, insertGroup, UNUSED);
+            return REPLY::done_msg;
+        }
         presetsControl(0, TOPLEVEL::type::Adjust, section, kitNumber, engine, insertType, filterFormantNumber, filterVowelNumber);
         return REPLY::done_msg;
     }
@@ -4952,7 +4963,7 @@ int CmdInterpreter::padSynth(Parser& input, unsigned char controlType)
 
 int CmdInterpreter::resonance(Parser& input, unsigned char controlType)
 {
-    int value = input.toggle();
+    float value = input.toggle();
     int cmd = -1;
     engine = contextToEngines(context);
     int insert = TOPLEVEL::insert::resonanceGroup;
@@ -4986,16 +4997,16 @@ int CmdInterpreter::resonance(Parser& input, unsigned char controlType)
         if (input.lineEnd(controlType))
             return REPLY::value_msg;
         cmd = RESONANCE::control::maxDb;
-        value = string2int(input);
+        value = string2float(input);
     }
     else if (input.matchnMove(2, "center"))
     {
-        value = string2int(input);
+        value = string2float(input);
         cmd = RESONANCE::control::centerFrequency;
     }
     else if (input.matchnMove(1, "octaves"))
     {
-        value = string2int(input);
+        value = string2float(input);
         cmd = RESONANCE::control::octaves;
     }
     else if (input.matchnMove(1, "interpolate"))
@@ -5544,7 +5555,7 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
     if (input.matchnMove(3, "padsynth"))
     {
         bitSet(context, LEVEL::PadSynth);
-        voiceNumber = 0; // TODO find out what *realy* causes this to screw up!
+        voiceNumber = 0; // TODO find out what *really* causes this to screw up!
         insertGroup = UNUSED;
         insertType = UNUSED;
         return padSynth(input, controlType);
@@ -5787,7 +5798,7 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
             }
             else if (name == DEFAULT_NAME)
             {
-                Runtime.Log("Cant use name of default sound");
+                Runtime.Log("Cannot use name of default sound");
                 return REPLY::done_msg;
             }
             else

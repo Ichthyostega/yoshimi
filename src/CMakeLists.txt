@@ -2,7 +2,7 @@
 #   CMakeLists.txt
 #
 #   Copyright 2009-2011, Alan Calvert
-#   Copyright 2014-2021, Will Godfrey & others
+#   Copyright 2014-2023, Will Godfrey & others
 #
 #   This file is part of yoshimi, which is free software: you can
 #   redistribute it and/or modify it under the terms of the GNU General
@@ -51,10 +51,10 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 #add_definitions(-Wno-vla) # Nothing wrong with variable length arrays
 # ^^^ comment these out on release pushes
 
-set (YOSHIMI_VERSION "2.2.3")
+set (YOSHIMI_VERSION "2.3.0")
 
 add_definitions (-DMIN_CONFIG_MAJOR=2)
-add_definitions (-DMIN_CONFIG_MINOR=0)
+add_definitions (-DMIN_CONFIG_MINOR=3)
 
 file (WRITE version.txt "${YOSHIMI_VERSION}")
 
@@ -135,7 +135,7 @@ set (BuildOptionsThisCPU
 
 set (BuildOptionsBasic
     "-ffast-math -fomit-frame-pointer"
-    CACHE STRING "basic compilier options"
+    CACHE STRING "basic compiler options"
 )
 
 set (BuildOptionsDebug
@@ -521,6 +521,8 @@ install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/yoshimi.svg
 install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/yoshimi_alt.svg
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps)
 install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/metainfo/yoshimi.appdata.xml
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/metainfo)
+install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/metainfo/yoshimi.metainfo.xml
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/metainfo)
 install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/yoshimi.1
     DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)

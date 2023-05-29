@@ -11,7 +11,7 @@ comment {Envelope.cc} {in_source not_in_header
 comment {Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009, Alan Calvert
-Copyright 2016-2022 Will Godfrey
+Copyright 2016-2023 Will Godfrey
 
 This file is part of yoshimi, which is free software: you can redistribute
 it and/or modify it under the terms of the GNU General Public
@@ -95,17 +95,17 @@ pair=NULL;} {}
   Function {setpair(Fl_Box *pair_)} {} {
     code {pair = pair_;} {}
   }
-  Function {getpointx(int n)} {return_type int
+  Function {getpointx(size_t n)} {return_type int
   } {
     code {//
     int lx = w()-10;
-    int npoints = env->Penvpoints;
+    size_t npoints = env->Penvpoints;
     float sum=0;
-    for (int i = 1; i < npoints; i++)
+    for (size_t i = 1; i < npoints; i++)
         sum += (env->getdt(i) + 1);
 
     float sumbefore = 0; // the sum of all points before the computed point
-    for (int i = 1; i <= n; i++)
+    for (size_t i = 1; i <= n; i++)
         sumbefore += (env->getdt(i) + 1);
 
     return((int) (sumbefore / (float) sum * lx));} {}
@@ -116,17 +116,17 @@ pair=NULL;} {}
 
 return((int) ((1.0 - env->Penvval[n] / 127.0) * ly));} {}
   }
-  Function {getnearest(int x,int y)} {return_type int
+  Function {getnearest(int x,int y)} {return_type size_t
   } {
     code {//
     x -= 5;
     y -= 5;
 
-int nearestpoint = 0;
-int nearestval = 1000000; // a big value
-for (int i = 0; i < env->Penvpoints; i++)
+size_t nearestpoint = 0;
+size_t nearestval = 1000000; // a big value
+for (size_t i = 0; i < env->Penvpoints; i++)
 {
-   int distance = abs(x - getpointx(i)) + abs(y - getpointy(i));
+   size_t distance = abs(x - getpointx(i)) + abs(y - getpointy(i));
    if (distance < nearestval)
    {
      nearestpoint = i;
@@ -146,12 +146,12 @@ return(nearestpoint);} {}
     int ly = h();
     if (env->Pfreemode==0)
         env->converttofree();
-    int npoints=env->Penvpoints;
+    size_t npoints=env->Penvpoints;
 
     if (active_r())
-        fl_color(FL_BLACK);
+        fl_color(graph_back);
     else
-        fl_color(90,90,90);
+        fl_color(41);
     if (!active_r()) currentpoint=-1;
 
     fl_rectf(ox,oy,lx,ly);
@@ -162,31 +162,29 @@ return(nearestpoint);} {}
     ly -= 10;
 
     //draw the lines
-    fl_color(FL_GRAY);
+    fl_color(env_line);//graph_resonance_grid);
     fl_line(ox + 2, oy + ly / 2, ox + lx - 2, oy + ly / 2);
 
-    //draws the evelope points and lines
+    //draws the envelope points and lines
     fl_line_style(0, int(2 *scale));
-    Fl_Color alb = FL_WHITE;
-    if (!active_r())
-        alb = fl_rgb_color(180,180,180);
-    fl_color(alb);
     int oldxx = 0;
     int xx = 0;
     int oldyy = 0;
     int yy = getpointy(0);
+    fl_color(env_ctl);
     fl_rectf(ox - 3, oy + yy - 3, 6, 6);
-    for (int i = 1; i < npoints; i++)
+    for (size_t i = 1; i < npoints; i++)
     {
         oldxx = xx;
         oldyy = yy;
         xx = getpointx(i);
         yy = getpointy(i);
-        if (i == currentpoint)
-            fl_color(FL_RED);
+        if (int(i) == currentpoint)
+            fl_color(env_line_sel);
         else
-            fl_color(alb);
+            fl_color(env_line);
         fl_line(ox + oldxx, oy + oldyy, ox + xx, oy + yy);
+        fl_color(env_ctl);
         fl_rectf(ox+xx-3,oy+yy-3,6,6);
     };
 
@@ -194,14 +192,15 @@ return(nearestpoint);} {}
     fl_line_style(0, int(1 * scale));
     if (lastpoint>=0)
     {
-        fl_color(FL_CYAN);
+        fl_color(env_ctl_sel);
         fl_rectf(ox+getpointx(lastpoint)-5,oy+getpointy(lastpoint)-5,10,10);
     };
 
     //draw the sustain position
+    fl_line_style(0, int(2.5 *scale));
     if (env->Penvsustain>0)
     {
-        fl_color(FL_YELLOW);
+        fl_color(env_sus);
         xx = getpointx(env->Penvsustain);
         fl_line(ox + xx, oy + 0, ox + xx, oy + ly);
     };
@@ -211,13 +210,13 @@ return(nearestpoint);} {}
     float time = 0.0;
     if (currentpoint <= 0)
     {
-        fl_color(alb);
-        for (int i = 1; i < npoints; i++)
+        fl_color(env_ctl);
+        for (size_t i = 1; i < npoints; i++)
             time += env->getdt(i);
     }
     else
     {
-        fl_color(255,0,0);
+        fl_color(env_line_sel);
         time = env->getdt(currentpoint);
     };
     char tmpstr[40];
@@ -253,7 +252,7 @@ return(nearestpoint);} {}
                 valDesc = "unknown env. type";
         }
         strcpy(tmpstr, valDesc.c_str());
-        fl_color(FL_CYAN);
+        fl_color(env_ctl_sel);
         fl_draw(tmpstr, ox + lx - 30, oy, 30, 25, FL_ALIGN_RIGHT, NULL, 0);
 }
 fl_line_style(0,1);} {}
@@ -350,17 +349,17 @@ class EnvelopeUI {: {public Fl_Group,PresetsUI_}
     Fl_Window freemodeeditwindow {
       label Envelope
       callback {freeClose->do_callback();}
-      xywh {614 158 575 180} type Double hide resizable
+      xywh {1088 97 575 180} type Double hide resizable
       code0 {freeDW = o->w(); freeDH = o->h();}
       code1 {o->size_range(freeDW, freeDH, 0, 0, 0, 0, 1);}
     } {
       Fl_Box freeedit {
         label Envelope
-        xywh {5 5 565 145} box FLAT_BOX color 0
+        xywh {5 5 565 145} box FLAT_BOX color 57 labelcolor 64
         code0 {o->init(env, npart, kititem, engine, group);}
         class EnvelopeFreeEdit
       }
-      Fl_Light_Button freemodebutton {
+      Fl_Light_Button freemodebutto {
         label FreeMode
         callback {//
         if (env->Pfreemode != 0)
@@ -374,7 +373,24 @@ class EnvelopeUI {: {public Fl_Group,PresetsUI_}
         }
 
         send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::enableFreeMode, o->value(), TOPLEVEL::type::Write);}
-        tooltip {Enable or disable the freemode} xywh {10 154 95 22} box PLASTIC_UP_BOX labelsize 11
+        tooltip {Enable or disable the freemode} xywh {10 154 95 22} box PLASTIC_UP_BOX labelsize 11 labelcolor 64 hide deactivate
+      }
+      Fl_Check_Button freemodebutton {
+        label FreeMode
+        callback {//
+        if (env->Pfreemode != 0)
+        {
+            bool answer = choice(synth, "", "Yes", "No", "Disable the free mode of the Envelope?") > 1;
+            if (!answer)
+            {
+                o->value(1); // back as it was
+                return;
+            }
+        }
+
+        send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::enableFreeMode, o->value(), TOPLEVEL::type::Write);}
+        tooltip {Enable or disable the freemode} xywh {10 157 93 17} down_box DOWN_BOX selection_color 64 labelcolor 64
+        class Fl_Check_Button2
       }
       Fl_Button addpoint {
         label {Add point}
@@ -389,7 +405,7 @@ class EnvelopeUI {: {public Fl_Group,PresetsUI_}
         int offset = env->Penvdt[curpoint];
 
         send_data(TOPLEVEL::action::forceUpdate, group, curpoint, value, TOPLEVEL::type::Write, TOPLEVEL::insert::envelopePointAdd, offset);}
-        xywh {112 155 80 20} box THIN_UP_BOX labelsize 11
+        xywh {112 155 80 20} box PLASTIC_THIN_UP_BOX color 228 labelsize 11 labelcolor 64
         code0 {if (env->Pfreemode==0) o->hide();}
       }
       Fl_Button deletepoint {
@@ -398,20 +414,20 @@ class EnvelopeUI {: {public Fl_Group,PresetsUI_}
         int curpoint = freeedit->lastpoint;
         if (curpoint < 1)
             return;
-        if (curpoint >= env->Penvpoints-1)
+        if (curpoint >= int(env->Penvpoints-1))
             return;
         if (env->Penvpoints <= 3)
             return;
 
 send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Write, TOPLEVEL::insert::envelopePointDelete);}
-        xywh {200 155 80 20} box THIN_UP_BOX labelsize 11
+        xywh {200 155 80 20} box PLASTIC_THIN_UP_BOX color 228 labelsize 11 labelcolor 64
         code0 {if (env->Pfreemode==0) o->hide();}
       }
       Fl_Counter sustaincounter {
         label Sust
         callback {//
         send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::sustainPoint, o->value(), TOPLEVEL::type::Write);}
-        tooltip {Sustain (0 is disabled)} xywh {315 158 40 15} type Simple labelsize 11 align 4 minimum 0 maximum 127 step 1 textfont 1 textsize 12
+        tooltip {Sustain (0 is disabled)} xywh {315 158 40 15} type Simple selection_color 64 labelsize 11 labelcolor 64 align 4 minimum 0 maximum 127 step 1 textfont 1 textsize 12 textcolor 64
         code0 {o->value(env->Penvsustain);}
         code1 {if (env->Pfreemode==0) o->hide();}
         code2 {o->maximum(env->Penvpoints-2);}
@@ -419,8 +435,8 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
       Fl_Dial envstretchdial {
         label {Str.}
         callback {//
-        send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::stretch, o->value(), TOPLEVEL::type::Write);}
-        tooltip {Envelope stretch (on lower notes make the envelope longer)} xywh {380 153 25 25} box ROUND_UP_BOX labelsize 10 align 4 maximum 127 step 1
+        send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::stretch, lrint(o->value()), TOPLEVEL::type::Write);}
+        tooltip {Envelope stretch (on lower notes make the envelope longer)} xywh {380 153 25 25} box ROUND_UP_BOX labelsize 10 labelcolor 64 align 4 maximum 127 step 1
         code0 {o->value(env->Penvstretch);}
         code1 {if (env->Pfreemode==0) o->hide();}
         code2 {o->setValueType(VC_EnvStretch);}
@@ -430,7 +446,7 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
         label L
         callback {//
         send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::linearEnvelope, o->value(), TOPLEVEL::type::Write);}
-        tooltip {Linear Envelope} xywh {415 151 30 15} down_box DOWN_BOX labelsize 10
+        tooltip {Linear Envelope} xywh {415 151 30 15} down_box DOWN_BOX selection_color 64 labelsize 10 labelcolor 64
         code0 {o->value(env->Plinearenvelope);}
         code1 {if ((env->Pfreemode==0)||(env->Envmode>2)) o->hide();}
         class Fl_Check_Button2
@@ -439,7 +455,7 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
         label frcR
         callback {//
         send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::forcedRelease, o->value(), TOPLEVEL::type::Write);}
-        tooltip {Forced Release} xywh {415 165 40 15} down_box DOWN_BOX labelsize 10
+        tooltip {Forced Release} xywh {415 165 40 15} down_box DOWN_BOX selection_color 64 labelsize 10 labelcolor 64
         code0 {o->value(env->Pforcedrelease);}
         code1 {if (env->Pfreemode==0) o->hide();}
         class Fl_Check_Button2
@@ -447,35 +463,35 @@ send_data(TOPLEVEL::action::forceUpdate, group, curpoint, 0, TOPLEVEL::type::Wri
       Fl_Button freecopy {
         label C
         callback {synth->getGuiMaster()->getPresetsUi()->copy(env);}
-        xywh {465 158 16 16} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
+        xywh {465 158 16 16} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 197
       }
       Fl_Button freepaste {
         label P
         callback {synth->getGuiMaster()->getPresetsUi()->paste(env,this);}
-        xywh {486 158 16 16} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
+        xywh {486 158 16 16} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 197
       }
       Fl_Button freeClose {
         label Close
         callback {freemodeeditwindow->hide();
 saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwindow->x(), freemodeeditwindow->y(), false, "xEnvelope-free " + to_string(engine) + " " + to_string(group));}
-        xywh {519 155 44 20} box THIN_UP_BOX labelsize 12
+        xywh {519 155 44 20} box THIN_UP_BOX color 196 selection_color 64 labelsize 12 labelcolor 64
       }
     }
   }
   Function {make_ADSR_window()} {} {
     Fl_Window envADSR {
-      xywh {1185 87 205 70} type Double color 50 labelfont 1 hide
+      xywh {1185 87 205 70} type Double color 50 labelfont 1 labelcolor 64 hide
       class Fl_Group
     } {
       Fl_Group e1name {
         label {Amplitude Env}
-        xywh {0 0 205 70} box PLASTIC_UP_BOX color 223 labelfont 1 labelsize 10 align 17
+        xywh {0 0 205 70} box PLASTIC_UP_BOX color 223 labelfont 1 labelsize 10 labelcolor 64 align 17
       } {
         Fl_Dial e1adt {
           label {A.dt}
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::attackTime, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Attack time} xywh {5 20 30 30} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          tooltip {Attack time} xywh {5 20 30 30} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127 step 1
           code0 {o->setValueType(VC_EnvelopeDT);}
           code1 {o->value(env->PA_dt);}
           class WidgetPDial
@@ -484,7 +500,7 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
           label {D.dt}
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::decayTime, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Decay time} xywh {40 20 30 30} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          tooltip {Decay time} xywh {40 20 30 30} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127 step 1
           code0 {o->setValueType(VC_EnvelopeDT);}
           code1 {o->value(env->PD_dt);}
           class WidgetPDial
@@ -493,7 +509,7 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
           label {R.dt }
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::releaseTime, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Release time} xywh {110 20 30 30} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          tooltip {Release time} xywh {110 20 30 30} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127 step 1
           code0 {o->setValueType(VC_EnvelopeDT);}
           code1 {o->value(env->PR_dt);}
           class WidgetPDial
@@ -502,7 +518,7 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
           label {S.val}
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::sustainLevel, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Sustain value} xywh {75 20 30 30} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          tooltip {Sustain value} xywh {75 20 30 30} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127 step 1
           code0 {o->setValueType(VC_EnvelopeAmpSusVal);}
           code1 {o->value(env->PS_val);}
           class WidgetPDial
@@ -511,15 +527,15 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
           label frcR
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::forcedRelease, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Forced Release} xywh {180 35 20 15} down_box DOWN_BOX labelsize 10 align 6
+          tooltip {Forced Release} xywh {180 35 20 15} down_box DOWN_BOX selection_color 64 labelsize 10 labelcolor 64 align 6
           code0 {o->value(env->Pforcedrelease);}
           class Fl_Check_Button2
         }
         Fl_Dial e1envstretch {
           label Stretch
           callback {//
-          send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::stretch, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Envelope stretch (on lower notes makes the envelope longer)} xywh {145 25 25 25} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::stretch, lrint(o->value()), TOPLEVEL::type::Write);}
+          tooltip {Envelope stretch (on lower notes makes the envelope longer)} xywh {145 25 25 25} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127 step 1
           code0 {o->value(env->Penvstretch);}
           code1 {o->setValueType(VC_EnvStretch);}
           class WidgetPDial
@@ -529,13 +545,13 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
           callback {//
           showfree();
           send_data(0, group, ENVELOPEINSERT::control::edit, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Envelope window} xywh {185 5 15 15} box PLASTIC_UP_BOX labelfont 1 labelsize 10
+          tooltip {Envelope window} xywh {185 5 15 15} box GTK_THIN_UP_BOX color 221 labelfont 1 labelsize 10 labelcolor 64
         }
         Fl_Check_Button e1linearenvelope {
           label L
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::linearEnvelope, o->value(), TOPLEVEL::type::Write);}
-          tooltip {The envelope is linear} xywh {180 20 15 15} down_box DOWN_BOX labelsize 10 align 4
+          tooltip {The envelope is linear} xywh {180 20 15 15} down_box DOWN_BOX selection_color 64 labelsize 10 labelcolor 64 align 8
           code0 {o->value(env->Plinearenvelope);}
           class Fl_Check_Button2
         }
@@ -543,30 +559,30 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
           label C
           callback {//
           synth->getGuiMaster()->getPresetsUi()->copy(env);}
-          xywh {150 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
+          xywh {150 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 197
         }
         Fl_Button e1P {
           label P
           callback {synth->getGuiMaster()->getPresetsUi()->paste(env,this);}
-          xywh {167 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
+          xywh {167 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 197
         }
       }
     }
   }
   Function {make_ASR_window()} {} {
-    Fl_Window envASR {
-      xywh {1183 190 210 70} type Double hide
+    Fl_Window envASR {open
+      xywh {1183 190 210 70} type Double labelcolor 64 hide
       class Fl_Group
     } {
       Fl_Group e2name {
         label {Frequency Env}
-        xywh {0 0 210 70} box PLASTIC_UP_BOX color 223 labelfont 1 labelsize 10 align 17
+        xywh {0 0 210 70} box PLASTIC_UP_BOX color 223 labelfont 1 labelsize 10 labelcolor 64 align 17
       } {
         Fl_Dial e2aval {
           label {A.val}
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::attackLevel, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Starting value} xywh {5 20 30 30} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          tooltip {Starting value} xywh {5 20 30 30} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127
           code0 {o->setValueType(VC_EnvelopeFreqVal);}
           code1 {o->value(env->PA_val);}
           class WidgetPDial
@@ -575,7 +591,7 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
           label {A.dt}
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::attackTime, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Attack time} xywh {40 20 30 30} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          tooltip {Attack time} xywh {40 20 30 30} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127
           code0 {o->setValueType(VC_EnvelopeDT);}
           code1 {o->value(env->PA_dt);}
           class WidgetPDial
@@ -584,7 +600,7 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
           label {R.val }
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::releaseLevel, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Release value} xywh {110 20 30 30} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          tooltip {Release value} xywh {110 20 30 30} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127
           code0 {o->setValueType(VC_EnvelopeFreqVal);}
           code1 {o->value(env->PR_val);}
           class WidgetPDial
@@ -593,7 +609,7 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
           label {R.dt}
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::releaseTime, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Release time} xywh {75 20 30 30} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          tooltip {Release time} xywh {75 20 30 30} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127
           code0 {o->setValueType(VC_EnvelopeDT);}
           code1 {o->value(env->PR_dt);}
           class WidgetPDial
@@ -601,8 +617,8 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
         Fl_Dial e2envstretch {
           label { Stretch}
           callback {//
-          send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::stretch, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Envelope stretch (on lower notes makes the envelope longer)} xywh {145 25 25 25} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::stretch, lrint(o->value()), TOPLEVEL::type::Write);}
+          tooltip {Envelope stretch (on lower notes makes the envelope longer)} xywh {145 25 25 25} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127
           code0 {o->value(env->Penvstretch);}
           code1 {o->setValueType(VC_EnvStretch);}
           class WidgetPDial
@@ -611,19 +627,19 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
           label frcR
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::forcedRelease, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Forced release} xywh {185 25 15 25} down_box DOWN_BOX labelsize 10 align 6
+          tooltip {Forced release} xywh {185 25 15 25} down_box DOWN_BOX selection_color 64 labelsize 10 labelcolor 64 align 6
           code0 {o->value(env->Pforcedrelease);}
           class Fl_Check_Button2
         }
         Fl_Button e2C {
           label C
           callback {synth->getGuiMaster()->getPresetsUi()->copy(env);}
-          xywh {155 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
+          xywh {155 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 197
         }
         Fl_Button e2P {
           label P
           callback {synth->getGuiMaster()->getPresetsUi()->paste(env,this);}
-          xywh {172 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
+          xywh {172 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 197
         }
       }
       Fl_Button e2E {
@@ -631,24 +647,24 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
         callback {//
       showfree();
       send_data(0, group, ENVELOPEINSERT::control::edit, o->value(), TOPLEVEL::type::Write);}
-        tooltip {Envelope window} xywh {190 5 15 15} box PLASTIC_UP_BOX labelfont 1 labelsize 10
+        tooltip {Envelope window} xywh {190 5 15 15} box GTK_THIN_UP_BOX color 221 labelfont 1 labelsize 10 labelcolor 64
       }
     }
   }
   Function {make_ADSRfilter_window()} {} {
     Fl_Window envADSRfilter {
-      xywh {1121 294 275 70} type Double color 50 labelfont 1 hide
+      xywh {1121 294 275 70} type Double color 50 labelfont 1 labelcolor 64 hide
       class Fl_Group
     } {
       Fl_Group e3name {
         label {Filter Envelope}
-        xywh {0 0 275 70} box PLASTIC_UP_BOX color 223 labelfont 1 labelsize 10 align 17
+        xywh {0 0 275 70} box PLASTIC_UP_BOX color 223 labelfont 1 labelsize 10 labelcolor 64 align 17
       } {
         Fl_Dial e3aval {
           label {A.val}
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::attackLevel, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Starting value} xywh {5 20 30 30} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          tooltip {Starting value} xywh {5 20 30 30} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127 step 1
           code0 {o->setValueType(VC_EnvelopeFilterVal);}
           code1 {o->value(env->PA_val);}
           class WidgetPDial
@@ -657,7 +673,7 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
           label {A.dt}
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::attackTime, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Attack time} xywh {40 20 30 30} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          tooltip {Attack time} xywh {40 20 30 30} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127 step 1
           code0 {o->setValueType(VC_EnvelopeDT);}
           code1 {o->value(env->PA_dt);}
           class WidgetPDial
@@ -666,7 +682,7 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
           label {D.val}
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::decayLevel, o->value(), TOPLEVEL::type::Write);}
-          tooltip {decay value} xywh {75 20 30 30} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          tooltip {decay value} xywh {75 20 30 30} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127 step 1
           code0 {o->setValueType(VC_EnvelopeFilterVal);}
           code1 {o->value(env->PD_val);}
           class WidgetPDial
@@ -675,7 +691,7 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
           label {D.dt}
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::decayTime, o->value(), TOPLEVEL::type::Write);}
-          tooltip {decay time} xywh {110 20 30 30} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          tooltip {decay time} xywh {110 20 30 30} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127 step 1
           code0 {o->setValueType(VC_EnvelopeDT);}
           code1 {o->value(env->PD_dt);}
           class WidgetPDial
@@ -684,7 +700,7 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
           label {R.dt}
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::releaseTime, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Release time} xywh {145 20 30 30} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          tooltip {Release time} xywh {145 20 30 30} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127 step 1
           code0 {o->setValueType(VC_EnvelopeDT);}
           code1 {o->value(env->PR_dt);}
           class WidgetPDial
@@ -693,7 +709,7 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
           label {R.val }
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::releaseLevel, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Release value} xywh {180 20 30 30} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          tooltip {Release value} xywh {180 20 30 30} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127 step 1
           code0 {o->setValueType(VC_EnvelopeFilterVal);}
           code1 {o->value(env->PR_val);}
           class WidgetPDial
@@ -701,8 +717,8 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
         Fl_Dial e3envstretch {
           label { Stretch}
           callback {//
-          send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::stretch, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Envelope stretch (on lower notes makes the envelope longer)} xywh {215 25 25 25} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::stretch, lrint(o->value()), TOPLEVEL::type::Write);}
+          tooltip {Envelope stretch (on lower notes makes the envelope longer)} xywh {215 25 25 25} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127 step 1
           code0 {o->value(env->Penvstretch);}
           code1 {o->setValueType(VC_EnvStretch);}
           class WidgetPDial
@@ -711,7 +727,7 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
           label frcR
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::forcedRelease, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Forced Release} xywh {250 30 15 20} down_box DOWN_BOX labelsize 10 align 6
+          tooltip {Forced Release} xywh {250 30 15 20} down_box DOWN_BOX selection_color 64 labelsize 10 labelcolor 64 align 6
           code0 {o->value(env->Pforcedrelease);}
           class Fl_Check_Button2
         }
@@ -720,35 +736,35 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
           callback {//
           showfree();
           send_data(0, group, ENVELOPEINSERT::control::edit, o->value(), TOPLEVEL::type::Write);}
-          xywh {255 5 15 15} box PLASTIC_UP_BOX labelfont 1 labelsize 10
+          xywh {255 5 15 15} box GTK_THIN_UP_BOX color 221 labelfont 1 labelsize 10 labelcolor 64
         }
         Fl_Button e3C {
           label C
           callback {synth->getGuiMaster()->getPresetsUi()->copy(env);}
-          xywh {220 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
+          xywh {220 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 197
         }
         Fl_Button e3P {
           label P
           callback {synth->getGuiMaster()->getPresetsUi()->paste(env,this);}
-          xywh {237 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
+          xywh {237 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 197
         }
       }
     }
   }
   Function {make_ASRbw_window()} {} {
     Fl_Window envASRbw {
-      xywh {1209 649 210 70} type Double hide
+      xywh {1209 649 210 70} type Double labelcolor 64 hide
       class Fl_Group
     } {
       Fl_Group e4name {
         label {BandWidth Env}
-        xywh {0 0 210 70} box PLASTIC_UP_BOX color 223 labelfont 1 labelsize 10 align 17
+        xywh {0 0 210 70} box PLASTIC_UP_BOX color 223 labelfont 1 labelsize 10 labelcolor 64 align 17
       } {
         Fl_Dial e4aval {
           label {A.val}
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::attackLevel, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Bandwidth multiplier, start} xywh {8 20 30 30} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          tooltip {Bandwidth multiplier, start} xywh {8 20 30 30} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127 step 1
           code0 {o->value(env->PA_val);}
           code1 {o->setValueType(VC_EnvelopeBandwidthVal);}
           class WidgetPDial
@@ -757,7 +773,7 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
           label {A.dt}
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::attackTime, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Attack time} xywh {43 20 30 30} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          tooltip {Attack time} xywh {43 20 30 30} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127 step 1
           code0 {o->setValueType(VC_EnvelopeDT);}
           code1 {o->value(env->PA_dt);}
           class WidgetPDial
@@ -766,7 +782,7 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
           label {R.val}
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::releaseLevel, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Bandwidth multiplier, release} xywh {113 20 30 30} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          tooltip {Bandwidth multiplier, release} xywh {113 20 30 30} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127 step 1
           code0 {o->value(env->PR_val);}
           code1 {o->setValueType(VC_EnvelopeBandwidthVal);}
           class WidgetPDial
@@ -775,7 +791,7 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
           label {R.dt}
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::releaseTime, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Release time} xywh {78 20 30 30} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          tooltip {Release time} xywh {78 20 30 30} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127 step 1
           code0 {o->setValueType(VC_EnvelopeDT);}
           code1 {o->value(env->PR_dt);}
           class WidgetPDial
@@ -783,8 +799,8 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
         Fl_Dial e4envstretch {
           label Stretch
           callback {//
-          send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::stretch, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Envelope stretch (on lower notes makes the envelope longer)} xywh {148 25 25 25} box ROUND_UP_BOX labelsize 10 maximum 127 step 1
+          send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::stretch, lrint(o->value()), TOPLEVEL::type::Write);}
+          tooltip {Envelope stretch (on lower notes makes the envelope longer)} xywh {148 25 25 25} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127 step 1
           code0 {o->value(env->Penvstretch);}
           code1 {o->setValueType(VC_EnvStretch);}
           class WidgetPDial
@@ -793,19 +809,19 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
           label frcR
           callback {//
           send_data(TOPLEVEL::action::forceUpdate, group, ENVELOPEINSERT::control::forcedRelease, o->value(), TOPLEVEL::type::Write);}
-          tooltip {Forced release} xywh {185 25 15 25} down_box DOWN_BOX labelsize 10 align 6
+          tooltip {Forced release} xywh {185 25 15 25} down_box DOWN_BOX selection_color 64 labelsize 10 labelcolor 64 align 6
           code0 {o->value(env->Pforcedrelease);}
           class Fl_Check_Button2
         }
         Fl_Button e4C {
           label C
           callback {synth->getGuiMaster()->getPresetsUi()->copy(env);}
-          xywh {155 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
+          xywh {155 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 197
         }
         Fl_Button e4P {
           label P
           callback {synth->getGuiMaster()->getPresetsUi()->paste(env,this);}
-          xywh {172 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 7
+          xywh {172 5 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 197
         }
       }
       Fl_Button e4E {
@@ -813,23 +829,23 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
         callback {//
         showfree();
         send_data(0, group, ENVELOPEINSERT::control::edit, o->value(), TOPLEVEL::type::Write);}
-        xywh {190 5 15 15} box PLASTIC_UP_BOX labelfont 1 labelsize 10
+        xywh {190 5 15 15} box GTK_THIN_UP_BOX color 221 labelfont 1 labelsize 10 labelcolor 64
       }
     }
   }
   Function {make_free_window()} {} {
     Fl_Window envfree {
-      xywh {874 240 205 70} type Double color 50 labelfont 1 hide resizable
+      xywh {874 240 205 70} type Double color 50 labelfont 1 labelcolor 64 hide resizable
       class Fl_Group
     } {
       Fl_Group envfreegroup {
         label {Amplitude Env}
-        xywh {0 0 205 70} box PLASTIC_UP_BOX color 223 labelfont 1 labelsize 10 align 17 resizable
+        xywh {0 0 205 70} box PLASTIC_UP_BOX color 223 labelfont 1 labelsize 10 labelcolor 64 align 17 resizable
       } {
         Fl_Box freeeditsmall {
           label Envelope
           callback {envfree->redraw();}
-          xywh {5 20 195 45} box FLAT_BOX color 0 resizable
+          xywh {5 20 195 45} box FLAT_BOX color 57 labelcolor 64 resizable
           code0 {o->init(env, npart, kititem, engine, group);}
           class EnvelopeFreeEdit
         }
@@ -848,7 +864,7 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
         label E
         callback {showfree();
           send_data(0, group, ENVELOPEINSERT::control::edit, o->value(), TOPLEVEL::type::Write);}
-        xywh {185 5 15 15} box PLASTIC_UP_BOX labelfont 1 labelsize 10
+        xywh {185 5 15 15} box PLASTIC_UP_BOX labelfont 1 labelsize 10 labelcolor 64
       }
     }
   }
@@ -865,14 +881,18 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
     unsigned char insert = getData->data.insert;
     unsigned char param = getData->data.parameter;
     unsigned char offset = getData->data.offset;
-
     int value_int = lrint(value);
     bool value_bool = _SYS_::F2B(value);
     bool isFreemode = _SYS_::F2B(freemodebutton->value());
-    bool NotUs = ((getData->data.source & TOPLEVEL::action::noAction) != TOPLEVEL::action::fromGUI || (getData->data.source & TOPLEVEL::action::forceUpdate));
 
-    if (part != npart || (eng >= 128 && eng != engine))
+    bool isVoice = (eng >= PART::engine::addVoice1 && eng < PART::engine::addMod1);
+    bool isMod = (eng >= PART::engine::addMod1);
+    bool isSub = (eng == PART::engine::subSynth);
+
+    if (part != npart || (isVoice && eng != engine))
         return;
+
+    //synth->CBtest(getData);
 
     if (insert == TOPLEVEL::insert::envelopePointAdd || insert == TOPLEVEL::insert::envelopePointDelete || insert == TOPLEVEL::insert::envelopePointChange)
     {
@@ -893,128 +913,211 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
     switch(control)
     {
         case ENVELOPEINSERT::control::attackLevel:
-            if (NotUs)
             {
                 switch (param)
                 {
                     case TOPLEVEL::insertType::frequency:
                         e2aval->value(value);
+                        if (isVoice)
+                            e2aval->selection_color(setKnob(value,ENVDEF::voiceFreqAtValue.def));
+                        else if (isMod)
+                            e2aval->selection_color(setKnob(value,ENVDEF::modFreqAtValue.def));
+                        else if (isSub)
+                            e2aval->selection_color(setKnob(value,ENVDEF::subFreqAtValue.def));
+                        else
+                            e2aval->selection_color(setKnob(value,ENVDEF::freqAttackValue.def));
                         break;
                     case TOPLEVEL::insertType::filter:
                         e3aval->value(value);
+                        if (isVoice)
+                            e3aval->selection_color(setKnob(value,ENVDEF::voiceFiltAtValue.def));
+                        else
+                            e3aval->selection_color(setKnob(value,ENVDEF::filtAttackValue.def));
                         break;
                     case TOPLEVEL::insertType::bandwidth:
                         e4aval->value(value);
+                        e4aval->selection_color(setKnob(value,ENVDEF::subBandAttackValue.def));
                         break;
                 }
             }
             break;
 
         case ENVELOPEINSERT::control::attackTime:
-            if (NotUs)
             {
                 switch (param)
                 {
                     case TOPLEVEL::insertType::amplitude:
                         e1adt->value(value);
+                        if (isMod)
+                            e1adt->selection_color(setKnob(value,ENVDEF::modAmpAttackTime.def));
+                        else
+                            e1adt->selection_color(setKnob(value,ENVDEF::ampAttackTime.def));
                         break;
                     case TOPLEVEL::insertType::frequency:
                         e2adt->value(value);
+                        if (isMod)
+                            e2adt->selection_color(setKnob(value,ENVDEF::modFreqAtTime.def));
+                        else if (isVoice)
+                            e2adt->selection_color(setKnob(value,ENVDEF::voiceFreqAtTime.def));
+                        else
+                            e2adt->selection_color(setKnob(value,ENVDEF::freqAttackTime.def));
                         break;
                     case TOPLEVEL::insertType::filter:
                         e3adt->value(value);
+                        if (isVoice)
+                            e3adt->selection_color(setKnob(value,ENVDEF::voiceFiltAtTime.def));
+                        else
+                            e3adt->selection_color(setKnob(value,ENVDEF::filtAttackTime.def));
                         break;
                     case TOPLEVEL::insertType::bandwidth:
                         e4adt->value(value);
+                        e4adt->selection_color(setKnob(value,ENVDEF::subBandAttackTime.def));
                         break;
                 }
             }
             break;
 
         case ENVELOPEINSERT::control::decayLevel:
-            if (param == TOPLEVEL::insertType::filter && NotUs)
+            if (param == TOPLEVEL::insertType::filter)
+            {
                 e3dval->value(value);
+                if (isVoice)
+                    e3dval->selection_color(setKnob(value,ENVDEF::voiceFiltDeValue.def));
+                else
+                    e3dval->selection_color(setKnob(value,ENVDEF::filtDecayValue.def));
+            }
             break;
 
         case ENVELOPEINSERT::control::decayTime:
-            if (NotUs)
             {
                 switch (param)
                 {
                     case TOPLEVEL::insertType::amplitude:
                         e1ddt->value(value);
+                        if (isMod)
+                            e1ddt->selection_color(setKnob(value,ENVDEF::modAmpDecayTime.def));
+                        else if (isVoice)
+                            e1ddt->selection_color(setKnob(value,ENVDEF::voiceAmpDecayTime.def));
+                        else
+                            e1ddt->selection_color(setKnob(value,ENVDEF::ampDecayTime.def));
                         break;
                     case TOPLEVEL::insertType::filter:
                         e3ddt->value(value);
+                        e3ddt->selection_color(setKnob(value,ENVDEF::filtDecayTime.def));
                         break;
                 }
             }
             break;
 
         case ENVELOPEINSERT::control::sustainLevel:
-            if (param == TOPLEVEL::insertType::amplitude && NotUs)
+            if (param == TOPLEVEL::insertType::amplitude)
+            {
                 e1sval->value(value);
+                e1sval->selection_color(setKnob(value,ENVDEF::ampSustainValue.def));
+            }
             break;
 
         case ENVELOPEINSERT::control::releaseTime:
-            if (NotUs)
             {
                 switch (param)
                 {
                     case TOPLEVEL::insertType::amplitude:
                         e1rdt->value(value);
+                        if (isMod)
+                            e1rdt->selection_color(setKnob(value,ENVDEF::modAmpReleaseTime.def));
+                        else if (isVoice)
+                            e1rdt->selection_color(setKnob(value,ENVDEF::voiceAmpReleaseTime.def));
+                        else
+                            e1rdt->selection_color(setKnob(value,ENVDEF::ampReleaseTime.def));
                         break;
                     case TOPLEVEL::insertType::frequency:
                         e2rdt->value(value);
+                        if (isMod)
+                            e2rdt->selection_color(setKnob(value,ENVDEF::modFreqReleaseTime.def));
+                        else
+                            e2rdt->selection_color(setKnob(value,ENVDEF::freqReleaseTime.def));
                         break;
                     case TOPLEVEL::insertType::filter:
                         e3rdt->value(value);
+                        if (isVoice)
+                            e3rdt->selection_color(setKnob(value,ENVDEF::voiceFiltRelTime.def));
+                        else
+                            e3rdt->selection_color(setKnob(value,ENVDEF::filtReleaseTime.def));
                         break;
                     case TOPLEVEL::insertType::bandwidth:
                         e4rdt->value(value);
+                        e4rdt->selection_color(setKnob(value,ENVDEF::subBandReleaseTime.def));
                         break;
                 }
             }
             break;
 
         case ENVELOPEINSERT::control::releaseLevel:
-            if (NotUs)
             {
                 switch (param)
                 {
                     case TOPLEVEL::insertType::frequency:
                         e2rval->value(value);
+                        if (isMod)
+                            e2rval->selection_color(setKnob(value,ENVDEF::modFreqReleaseValue.def));
+                        else
+                            e2rval->selection_color(setKnob(value,ENVDEF::freqReleaseValue.def));
                         break;
                     case TOPLEVEL::insertType::filter:
                         e3rval->value(value);
+                        if (isVoice)
+                            e3rval->selection_color(setKnob(value,ENVDEF::voiceFiltRelValue.def));
+                        else
+                            e3rval->selection_color(setKnob(value,ENVDEF::filtReleaseValue.def));
                         break;
                     case TOPLEVEL::insertType::bandwidth:
                         e4rval->value(value);
+                        e4rval->selection_color(setKnob(value,ENVDEF::subBandReleaseValue.def));
                         break;
                 }
             }
             break;
 
         case ENVELOPEINSERT::control::stretch:
+        {
+            int stretchType = -1;
             switch (param)
             {
                 case TOPLEVEL::insertType::amplitude:
-                    e1envstretch->value(value);
+                    e1envstretch->value(value_int);
+                    stretchType = ENVDEF::ampStretch.def;
+                    e1envstretch->selection_color(setKnob(value,stretchType));
                     break;
                 case TOPLEVEL::insertType::frequency:
                     e2envstretch->value(value);
+                    if (isSub)
+                    {
+                        stretchType = ENVDEF::subFreqStretch.def;
+                        e2envstretch->selection_color(setKnob(value,stretchType));
+                    }
+                    else
+                    {
+                        stretchType = ENVDEF::freqStretch.def;
+                        e2envstretch->selection_color(setKnob(value,stretchType));
+                    }
                     break;
                 case TOPLEVEL::insertType::filter:
+                    stretchType = ENVDEF::filtStretch.def;
                     e3envstretch->value(value);
+                    e3envstretch->selection_color(setKnob(value,stretchType));
                     break;
                 case TOPLEVEL::insertType::bandwidth:
+                    stretchType = ENVDEF::subBandStretch.def;
                     e4envstretch->value(value);
+                    e4envstretch->selection_color(setKnob(value,stretchType));
                     break;
             }
-            envstretchdial->value(value);
+            envstretchdial->value(value); // for freemode
+            if (stretchType > -1)
+                envstretchdial->selection_color(setKnob(value,stretchType));
             change = false;
             break;
-
+        }
         case ENVELOPEINSERT::control::forcedRelease:
             switch (param)
             {
@@ -1049,7 +1152,7 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
             break;
 
         case ENVELOPEINSERT::control::sustainPoint:
-            if (isFreemode && NotUs)
+            if (isFreemode)
                 sustaincounter->value(value_int);
             break;
     }
@@ -1156,41 +1259,122 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
         {
             case(PART::envelope::groupmode::amplitudeLin):
             case(PART::envelope::groupmode::amplitudeLog):
+            {
                 e1adt->value(env->PA_dt);
+                if (engine >= PART::addMod1)
+                    e1adt->selection_color(setKnob(e1adt->value(),ENVDEF::modAmpAttackTime.def));
+                else
+                    e1adt->selection_color(setKnob(e1adt->value(),ENVDEF::ampAttackTime.def));
                 e1ddt->value(env->PD_dt);
+                if (engine >= PART::addMod1)
+                    e1ddt->selection_color(setKnob(e1ddt->value(),ENVDEF::modAmpDecayTime.def));
+                else if (engine >= PART::addVoice1)
+                    e1ddt->selection_color(setKnob(e1ddt->value(),ENVDEF::voiceAmpDecayTime.def));
+                else
+                    e1ddt->selection_color(setKnob(e1ddt->value(),ENVDEF::ampDecayTime.def));
                 e1sval->value(env->PS_val);
+                e1sval->selection_color(setKnob(e1sval->value(),ENVDEF::ampSustainValue.def));
                 setAmpSusVType(env->Plinearenvelope);
                 e1rdt->value(env->PR_dt);
+                if (engine >= PART::addMod1)
+                    e1rdt->selection_color(setKnob(e1rdt->value(),ENVDEF::modAmpReleaseTime.def));
+                else if (engine >= PART::addVoice1)
+                    e1rdt->selection_color(setKnob(e1rdt->value(),ENVDEF::voiceAmpReleaseTime.def));
+                else
+                    e1rdt->selection_color(setKnob(e1rdt->value(),ENVDEF::ampReleaseTime.def));
                 e1envstretch->value(env->Penvstretch);
+                e1envstretch->selection_color(setKnob(e1envstretch->value(),ENVDEF::ampStretch.def));
                 e1linearenvelope->value(env->Plinearenvelope);
                 e1forcedrelease->value(env->Pforcedrelease);
                 break;
+            }
             case(PART::envelope::groupmode::frequency):
+            {
                 e2aval->value(env->PA_val);
+                if (engine >= PART::addMod1)
+                     e2aval->selection_color(setKnob(e2aval->value(),ENVDEF::modFreqAtValue.def));
+                else if (engine >= PART::addVoice1)
+                     e2aval->selection_color(setKnob(e2aval->value(),ENVDEF::voiceFreqAtValue.def));
+                else if (engine == PART::subSynth)
+                     e2aval->selection_color(setKnob(e2aval->value(),ENVDEF::subFreqAtValue.def));
+                else
+                     e2aval->selection_color(setKnob(int(e2aval->value()),ENVDEF::freqAttackValue.def));
+
                 e2adt->value(env->PA_dt);
+                if (engine >= PART::addMod1)
+                    e2adt->selection_color(setKnob(e2adt->value(),ENVDEF::modFreqAtTime.def));
+                else if (engine >= PART::addVoice1)
+                    e2adt->selection_color(setKnob(e2adt->value(),ENVDEF::voiceFreqAtTime.def));
+                else
+                    e2adt->selection_color(setKnob(e2adt->value(),ENVDEF::freqAttackTime.def));
                 e2rdt->value(env->PR_dt);
+                if (engine >= PART::addMod1)
+                    e2rdt->selection_color(setKnob(e2rdt->value(),ENVDEF::modFreqReleaseTime.def));
+                else
+                    e2rdt->selection_color(setKnob(e2rdt->value(),ENVDEF::freqReleaseTime.def));
                 e2rval->value(env->PR_val);
+                if (engine >= PART::addMod1)
+                    e2rval->selection_color(setKnob(e2rval->value(),ENVDEF::modFreqReleaseValue.def));
+                else
+                    e2rval->selection_color(setKnob(e2rval->value(),ENVDEF::freqReleaseValue.def));
                 e2envstretch->value(env->Penvstretch);
+                if (engine == PART::subSynth)
+                    e2envstretch->selection_color(setKnob(e2envstretch->value(),ENVDEF::subFreqStretch.def));
+                else
+                    e2envstretch->selection_color(setKnob(e2envstretch->value(),ENVDEF::freqStretch.def));
                 e2forcedrelease->value(env->Pforcedrelease);
                 break;
+            }
             case(PART::envelope::groupmode::filter):
+            {
                 e3aval->value(env->PA_val);
+                if (engine >= PART::addVoice1 && engine < PART::addMod1)
+                    e3aval->selection_color(setKnob(e3aval->value(),ENVDEF::voiceFiltAtValue.def));
+                else
+                    e3aval->selection_color(setKnob(e3aval->value(),ENVDEF::filtAttackValue.def));
                 e3adt->value(env->PA_dt);
+                if (engine >= PART::addVoice1)
+                    e3adt->selection_color(setKnob(e3adt->value(),ENVDEF::voiceFiltAtTime.def));
+                else
+                    e3adt->selection_color(setKnob(e3adt->value(),ENVDEF::filtAttackTime.def));
+
                 e3dval->value(env->PD_val);
+                if (engine >= PART::addVoice1 && engine < PART::addMod1)
+                    e3dval->selection_color(setKnob(e3dval->value(),ENVDEF::voiceFiltDeValue.def));
+                else
+                    e3dval->selection_color(setKnob(e3dval->value(),ENVDEF::filtDecayValue.def));
                 e3ddt->value(env->PD_dt);
+                e3ddt->selection_color(setKnob(e3ddt->value(),ENVDEF::filtDecayTime.def));
                 e3rdt->value(env->PR_dt);
+                if (engine >= PART::addVoice1 && engine < PART::addMod1)
+                    e3rdt->selection_color(setKnob(e3rdt->value(),ENVDEF::voiceFiltRelTime.def));
+                else
+                    e3rdt->selection_color(setKnob(e3rdt->value(),ENVDEF::filtReleaseTime.def));
                 e3rval->value(env->PR_val);
+                if (engine >= PART::addVoice1 && engine < PART::addMod1)
+                    e3rval->selection_color(setKnob(e3rval->value(),ENVDEF::voiceFiltRelValue.def));
+                else
+                    e3rval->selection_color(setKnob(e3rval->value(),ENVDEF::filtReleaseValue.def));
                 e3envstretch->value(env->Penvstretch);
+                e3envstretch->selection_color(setKnob(e3envstretch->value(),ENVDEF::filtStretch.def));
                 e3forcedrelease->value(env->Pforcedrelease);
                 break;
+            }
             case(PART::envelope::groupmode::bandwidth):
+            {
                 e4aval->value(env->PA_val);
+                e4aval->selection_color(setKnob(e4aval->value(),ENVDEF::subBandAttackValue.def));
                 e4adt->value(env->PA_dt);
+                e4adt->selection_color(setKnob(e4adt->value(),ENVDEF::subBandAttackTime.def));
                 e4rdt->value(env->PR_dt);
+                e4rdt->selection_color(setKnob(e4rdt->value(),ENVDEF::subBandReleaseTime.def));
                 e4rval->value(env->PR_val);
+                e4rval->selection_color(setKnob(e4rval->value(),ENVDEF::subBandReleaseValue.def));
                 e4envstretch->value(env->Penvstretch);
+                e4envstretch->selection_color(setKnob(e4envstretch->value(),ENVDEF::subBandStretch.def));
                 e4forcedrelease->value(env->Pforcedrelease);
                 break;
+            }
             default:
                 break;
         }
@@ -1204,7 +1388,7 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
     envASRbw->hide();
     envfree->hide();
 /*
-    We now always initialse and position related groups as well as the freemode one
+    We now always initialise and position related groups as well as the freemode one
     This is to ensure that resizing will have the correct starting size and position
     even if a part was loaded specifying the freemode form.
 */
@@ -1287,8 +1471,9 @@ saveWin(synth, freemodeeditwindow->w(), freemodeeditwindow->h(), freemodeeditwin
         int size = int(10 * dScale);
         int size11 = int(11 * dScale);
         int size12 = int(12 * dScale);
+         int size14 = int(14 * dScale);
 
-        freemodebutton->labelsize(size11);
+        freemodebutton->labelsize(size14);
         addpoint->labelsize(size11);
         deletepoint->labelsize(size11);
         sustaincounter->labelsize(size11);

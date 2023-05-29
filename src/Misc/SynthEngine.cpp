@@ -215,7 +215,7 @@ SynthEngine::~SynthEngine()
 
 bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
 {
-    audioOut.store(_SYS_::mute::Active);
+    audioOutStore(_SYS_::mute::Active);
     samplerate_f = samplerate = audiosrate;
     halfsamplerate_f = samplerate_f / 2;
 
@@ -361,7 +361,6 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
         Runtime.LogError("interChange init failed");
         goto bail_out;
     }
-
     // we seem to need this here only for first time startup :(
     bank.setCurrentBankID(Runtime.tempBank, false);
     return true;
@@ -507,6 +506,12 @@ void SynthEngine::setAllPartMaps(void)
     // we swap all maps together after they've been changed
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++ npart)
         part[npart]->PmapOffset = 128 - part[npart]->PmapOffset;
+}
+
+void SynthEngine::audioOutStore(uint8_t num)
+{
+    audioOut.store(num);
+    interchange.spinSortResultsThread();
 }
 
 
@@ -657,8 +662,11 @@ int SynthEngine::RunChannelSwitch(unsigned char chan, int value)
      * loop and twoway are increment counters
      * we assume nobody can repeat a switch press within 60mS!
      */
-            if ((interchange.tick - CHtimer) > 511) // approx 60mS
-                CHtimer = interchange.tick;
+            timespec now_struct;
+            clock_gettime(CLOCK_MONOTONIC, &now_struct);
+            int64_t now_ms = int64_t(now_struct.tv_sec) * 1000 + int64_t(now_struct.tv_nsec) / 1000000;
+            if ((now_ms - CHtimer) > 60)
+                CHtimer = now_ms;
             else
                 return 0; // de-bounced
         }
@@ -1006,8 +1014,8 @@ int SynthEngine::setProgramByName(CommandBlock *getData)
     if (ok)
     {
         ok = setProgram(fname, npart);
-        if (ok && part[npart]->Poriginal == UNTITLED)
-            part[npart]->Poriginal = "";
+        //if (ok && part[npart]->Poriginal == UNTITLED)
+            //part[npart]->Poriginal = "";
         if (!ok)
             name = "File " + name + "unrecognised or corrupted";
     }
@@ -1068,8 +1076,8 @@ int SynthEngine::setProgramFromBank(CommandBlock *getData, bool notinplace)
     else
     {
         ok = setProgram(fname, npart);
-        if (ok && part[npart]->Poriginal == UNTITLED)
-            part[npart]->Poriginal = "";
+        //if (ok && part[npart]->Poriginal == UNTITLED)
+            //part[npart]->Poriginal = "";
         if (notinplace)
         {
             if (!ok)
@@ -2055,14 +2063,14 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
         case _SYS_::mute::Pending:
             // set by resolver
             fadeLevel = 1.0f;
-            audioOut.store(_SYS_::mute::Fading);
+            audioOutStore(_SYS_::mute::Fading);
             sound = _SYS_::mute::Fading;
             //std::cout << "here fading" << std:: endl;
             break;
         case _SYS_::mute::Fading:
             if (fadeLevel < 0.001f)
             {
-                audioOut.store(_SYS_::mute::Active);
+                audioOutStore(_SYS_::mute::Active);
                 sound = _SYS_::mute::Active;
                 fadeLevel = 0;
             }
@@ -2072,12 +2080,12 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
             break;
         case _SYS_::mute::Complete:
             // set by resolver and paste
-            audioOut.store(_SYS_::mute::Idle);
+            audioOutStore(_SYS_::mute::Idle);
             //std::cout << "here complete" << std:: endl;
             break;
         case _SYS_::mute::Request:
             // set by paste routine
-            audioOut.store(_SYS_::mute::Immediate);
+            audioOutStore(_SYS_::mute::Immediate);
             sound = _SYS_::mute::Active;
             //std::cout << "here requesting" << std:: endl;
             break;
@@ -3105,7 +3113,7 @@ void SynthEngine::add2XML(XMLwrapper *xml)
     xml->beginbranch("MASTER");
     xml->addpar("current_midi_parts", Runtime.NumAvailableParts);
     xml->addpar("panning_law", Runtime.panLaw);
-    xml->addpar("volume", Pvolume);
+    xml->addparcombi("volume", Pvolume);
     xml->addpar("key_shift", Pkeyshift);
     xml->addparreal("bpm_fallback", PbpmFallback);
     xml->addpar("channel_switch_type", Runtime.channelSwitchType);
@@ -3176,6 +3184,7 @@ int SynthEngine::getalldata(char **data)
 {
     bool oldFormat = usingYoshiType;
     usingYoshiType = true; // make sure everything is saved
+    getRuntime().xmlType = TOPLEVEL::XML::State;
     XMLwrapper *xml = new XMLwrapper(this, true);
     add2XML(xml);
     midilearn.insertMidiListData(xml);
@@ -3251,7 +3260,7 @@ bool SynthEngine::getfromXML(XMLwrapper *xml)
     }
     Runtime.NumAvailableParts = xml->getpar("current_midi_parts", NUM_MIDI_CHANNELS, NUM_MIDI_CHANNELS, NUM_MIDI_PARTS);
     Runtime.panLaw = xml->getpar("panning_law", Runtime.panLaw, MAIN::panningType::cut, MAIN::panningType::boost);
-    setPvolume(xml->getpar127("volume", Pvolume));
+    setPvolume(xml->getparcombi("volume", Pvolume, 0, 127));
     setPkeyshift(xml->getpar("key_shift", Pkeyshift, MIN_KEY_SHIFT + 64, MAX_KEY_SHIFT + 64));
     PbpmFallback = xml->getparreal("bpm_fallback", PbpmFallback, BPM_FALLBACK_MIN, BPM_FALLBACK_MAX);
     Runtime.channelSwitchType = xml->getpar("channel_switch_type", Runtime.channelSwitchType, 0, 5);
@@ -3479,7 +3488,7 @@ float SynthEngine::getLimits(CommandBlock *getData)
             break;
 
         case MAIN::control::loadInstrumentFromBank:
-            return value; // this is just a workround :(
+            return value; // this is just a workaround :(
             break;
 
         default:
