@@ -1,7 +1,7 @@
-yoshimi (2.3.0-1~buster) Lumiera-buster-tool; urgency=low
+yoshimi (2.3.0-1ppa1~jammy) jammy; urgency=low
 
   * New upstream major release 2.3
-  * Rebuild/Backport for Debian/Buster(oldstable).
+  * Rebuild/Backport for Ubuntu/Jammy(22.04 LTS)
   * unofficial DEB package by Ichthyostega
 
   [ Dennis Braun ]
