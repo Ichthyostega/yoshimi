@@ -1,2 +1,6 @@
 fix_privacy_breach_in_index_html.patch
 0002-Fix-spelling-error-in-yoshimi.1.patch
+8__1-VERSION-HIV.old.patch
+8__2-Research-revert-the-changed-anti-denormal-handling.patch
+8__3-Research-Revert-Fix-inconsistent-envelope-timing-und.patch
+8__4-Research-Revert-Fix-missing-phase-randomness-when-im.patch

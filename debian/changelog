@@ -1,4 +1,15 @@
-yoshimi (2.3.0-1~buster) Lumiera-buster-tool; urgency=low
+yoshimi (2.3.0-1+hiv.old~buster) UNRELEASED; urgency=low
+
+  * Ichthyo's private version for making music
+  * retain the old denormal handling code for now
+  * revert the changed anti-denormal handling
+  * revert changes on oscil/modulator phases
+
+  * Rebuild/Backport for Debian/Buster(stable).
+
+ -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 30 May 2023 16:23:55 +0200
+
+yoshimi (2.3.0~1~buster) Lumiera-buster-tool; urgency=low
 
   * New upstream major release 2.3
   * Rebuild/Backport for Debian/Buster(oldstable).

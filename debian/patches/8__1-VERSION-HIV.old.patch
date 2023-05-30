@@ -1,0 +1,41 @@
+From: Ichthyostega <prg@ichthyostega.de>
+Date: Mon, 15 May 2023 18:52:07 +0200
+Subject: [VERSION] HIV.old
+
+---
+ doc/yoshimi_user_guide/files/yoshimi_user_guide_version | 2 +-
+ src/CMakeLists.txt                                      | 2 +-
+ src/version.txt                                         | 1 +
+ 3 files changed, 3 insertions(+), 2 deletions(-)
+ create mode 100644 src/version.txt
+
+diff --git a/doc/yoshimi_user_guide/files/yoshimi_user_guide_version b/doc/yoshimi_user_guide/files/yoshimi_user_guide_version
+index cc6612c..d3b945d 100644
+--- a/doc/yoshimi_user_guide/files/yoshimi_user_guide_version
++++ b/doc/yoshimi_user_guide/files/yoshimi_user_guide_version
+@@ -1 +1 @@
+-2.3.0
+\ No newline at end of file
++2.3.0 HIV.old
+\ No newline at end of file
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 0d7b3aa..8e6718b 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -51,7 +51,7 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
+ #add_definitions(-Wno-vla) # Nothing wrong with variable length arrays
+ # ^^^ comment these out on release pushes
+ 
+-set (YOSHIMI_VERSION "2.3.0")
++set (YOSHIMI_VERSION "2.3.0 HIV.old")
+ 
+ add_definitions (-DMIN_CONFIG_MAJOR=2)
+ add_definitions (-DMIN_CONFIG_MINOR=3)
+diff --git a/src/version.txt b/src/version.txt
+new file mode 100644
+index 0000000..d3b945d
+--- /dev/null
++++ b/src/version.txt
+@@ -0,0 +1 @@
++2.3.0 HIV.old
+\ No newline at end of file
