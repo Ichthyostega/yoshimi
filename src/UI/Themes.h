@@ -92,7 +92,7 @@ const int slider_peg_default = 70;
 const int spectrum_line = 71;
 const int reserved_1 = 72;
 const int bank_export = 78;
-const int reserved_2 = 79;
+const int midi_active = 79;
 const int slider_peg_changed = 80;
 const int env_line_sel = 81;
 const int pad_apply = 82;
@@ -136,7 +136,7 @@ const int pad_grid_centre = 162;
 const int pad_grid = 163;
 const int pad_fading = 167;
 const int VU_over = 168;
-const int reserved_6 = 169;
+const int voice_off = 169;
 const int bank_add_save = 173;
 const int gen_opp_text = 175;
 const int bank_swap = 176;
@@ -229,7 +229,7 @@ const unsigned char colourNumbers [COLOURLIST] = {
     gen_text,
     gen_opp_text,
     contrib,
-    reserved_2,
+    midi_active,
     midi_text_back,
     learnable_text,
     solo_select,
@@ -277,7 +277,7 @@ const unsigned char colourNumbers [COLOURLIST] = {
     yoshi_ins_typ,
     instr_info_back,
     instr_back,
-    reserved_6,
+    voice_off,
     add_back,
     ext_voice,
     ext_osc,
@@ -356,7 +356,7 @@ static std::string colourData [] = {
     "0,0,0, General text",
     "255,255,255, Inverse text",
     "0,0,255, About window heading text",
-    "0,0,0, RESERVED",
+    "0,255,0, Midilearn activity indicator",
     "191,255,255, Midilearn text background",
     "0,0,255, Learnable text",
     "0,0,255, Solo selected",
@@ -404,7 +404,7 @@ static std::string colourData [] = {
     "0,0,225, Yoshimi instrument type",
     "240,250,230, Instrument info background",
     "253,246,230, Instrument background",
-    "0,0,0, RESERVED",
+    "127,127,127, AddVoice tab off",
     "223,175,191, AddSynth background",
     "159,223,143, External voice",
     "143,191,223, External oscillator",
@@ -429,7 +429,7 @@ static std::string colourData [] = {
     "0,0,0, RESERVED",
     "255,255,0, Formant filter marker",
     "150,150,0, Formant filter ghost marker",
-    "0,182,191, Dynfilter filter button",
+    "0,182,191, Dynfilter filter insert",
     "0,70,150, EQ graph background",
     "80,120,160, EQ background disabled",
     "200,200,200, EQ graph grid",

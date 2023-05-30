@@ -26,7 +26,7 @@
 255,250,0, General text
 255,255,255, Inverse text
 100,255,155, About window heading text
-0,0,0, RESERVED
+0,255,0, Midilearn activity indicator
 100,140,130, Midilearn text background
 200,120,255, Learnable text
 0,255,255, Solo selected
@@ -74,7 +74,7 @@
 200,200,255, Yoshimi instrument type
 100,140,130, Instrument info background
 113,96,100, Instrument background
-0,0,0, RESERVED
+0,0,0, AddVoice tab off
 122,075,091, AddSynth background
 159,223,143, External voice
 143,191,223, External oscillator
@@ -99,7 +99,7 @@
 0,0,0, RESERVED
 200,255,200, Formant filter marker
 100,155,100, Formant filter ghost marker
-0,182,191, Dynfilter filter button
+0,182,191, Dynfilter filter insert
 0,70,150, EQ graph background
 80,120,160, EQ background disabled
 200,200,0, EQ graph grid

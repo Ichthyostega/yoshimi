@@ -136,10 +136,22 @@ namespace FILTDEF{
     const FILTminmax voiceFreq {0,127,50,true,false};
     const FILTminmax subFreq {0,127,80,true,false};
     const FILTminmax padFreq {0,127,94,true,false};
-    const FILTminmax dynFreq {0,127,45,true,false};
+
+        const FILTminmax dynFreq0 {0,127,45,true,false};
+        const FILTminmax dynFreq1 {0,127,72,true,false};
+        const FILTminmax dynFreq2 {0,127,64,true,false};
+        const FILTminmax dynFreq3 {0,127,50,true,false};
+        const FILTminmax dynFreq4 {0,127,64,true,false};
+
     const FILTminmax qVal {0,127,40,true,false};
         const FILTminmax voiceQval {0,127,60,true,false};
-        const FILTminmax dynQval {0,127,64,true,false};
+
+        const FILTminmax dynQval0 {0,127,64,true,false};
+        const FILTminmax dynQval1 {0,127,64,true,false};
+        const FILTminmax dynQval2 {0,127,64,true,false};
+        const FILTminmax dynQval3 {0,127,70,true,false};
+        const FILTminmax dynQval4 {0,127,70,true,false};
+
     const FILTminmax velSense {0,127,64,true,false};
         const FILTminmax voiceVelSense {0,127,0,true,false};
     const FILTminmax velFuncSense {0,127,64,true,true};
@@ -164,6 +176,27 @@ namespace FILTDEF{
     const FILTminmax analogType {0,8,2,false,true};
     const FILTminmax stVarfType {0,3,0,false,true};
 }
+
+struct DYNinsert{
+    float freq;
+    float amp;
+    float q;
+};
+
+namespace DYNform{
+    const DYNinsert Preset3V0F0 {34,127,64};
+    const DYNinsert Preset3V0F1 {99,122,64};
+    const DYNinsert Preset3V0F2 {108,112,64};
+    const DYNinsert Preset3V1F0 {61,127,64};
+    const DYNinsert Preset3V1F1 {71,121,64};
+    const DYNinsert Preset3V1F2 {99,117,64};
+
+    const DYNinsert Preset4V0F0 {70,127,64};
+    const DYNinsert Preset4V0F1 {80,122,64};
+    const DYNinsert Preset4V1F0 {20,127,64};
+    const DYNinsert Preset4V1F1 {100,121,64};
+};
+
 namespace FILTSWITCH{
     const bool trackRange = false;
     const bool sequenceReverse = false;

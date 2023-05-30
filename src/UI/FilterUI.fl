@@ -601,15 +601,13 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
             Fl_Dial formant_freq_dial {
               label Freq
               callback {//
-            float val = o->value();
+            float val = findDynDef(0);//formFreqDef;
             if (Fl::event_button() == 3)
             {
-                val = formFreqDef;
                 o->value(val);
             }
-
-            o->selection_color(setKnob(val,formFreqDef)); // has pseudo default
-            send_data(TOPLEVEL::action::forceUpdate, FILTERINSERT::control::formantFrequency, val, TOPLEVEL::type::Write, nformant, nvowel);}
+            o->selection_color(setKnob(o->value(),val)); // has pseudo default
+            send_data(TOPLEVEL::action::forceUpdate, FILTERINSERT::control::formantFrequency, o->value(), TOPLEVEL::type::Write, nformant, nvowel);}
               tooltip {Formant frequency} xywh {495 115 25 25} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127
               class WidgetPDial
             }
@@ -630,14 +628,11 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
             Fl_Dial formant_amp_dial {
               label Amp
               callback {//
-            float val = o->value();
+            float val = findDynDef(2);
             if (Fl::event_button() == 3)
-            {
-                val = FILTDEF::formAmp.def;
                 o->value(val);
-            }
-            o->selection_color(setKnob(val,FILTDEF::formAmp.def));
-            send_data(TOPLEVEL::action::forceUpdate, FILTERINSERT::control::formantAmplitude, val, TOPLEVEL::type::Write, nformant, nvowel);}
+            o->selection_color(setKnob(o->value(),val));
+            send_data(TOPLEVEL::action::forceUpdate, FILTERINSERT::control::formantAmplitude, o->value(), TOPLEVEL::type::Write, nformant, nvowel);}
               tooltip {Formant amplitude} xywh {555 115 24 25} box ROUND_UP_BOX labelsize 10 labelcolor 64 maximum 127
               class WidgetPDial
             }
@@ -783,15 +778,14 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
         Fl_Dial wvknob {
           label {Vw.Cl.}
           callback {//
-        float val = o->value();
+        float val = findDynClearDef();
         if (Fl::event_button() == 3)
         {
-            val = FILTDEF::formClear.def;
             o->value(val);
         }
 
-        o->selection_color(setKnob(val,FILTDEF::formClear.def));
-        send_data(TOPLEVEL::action::forceUpdate, FILTERINSERT::control::formantClearness, val, TOPLEVEL::type::Write);}
+        o->selection_color(setKnob(o->value(),val));
+        send_data(TOPLEVEL::action::forceUpdate, FILTERINSERT::control::formantClearness, o->value(), TOPLEVEL::type::Write);}
           tooltip {Vowel "clearness" (transition between vowels)} xywh {600 15 25 25} box ROUND_UP_BOX labelfont 1 labelsize 10 labelcolor 64 align 1 maximum 127
           code0 {o->value(pars->Pvowelclearness);}
           code1 {o->setValueType(VC_FormFilterClearness);}
@@ -842,10 +836,11 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
     code {//
         formFreqDef = pars->Pvowels[nvowel].formants[nformant].firstF;
         formant_freq_dial->value(pars->Pvowels[nvowel].formants[nformant].freq);
-        formant_freq_dial->selection_color(setKnob(formant_freq_dial->value(),formFreqDef));
-        formant_freq_dial->redraw();
+        formant_freq_dial->selection_color(setKnob(formant_freq_dial->value(),findDynDef(0)));
         formant_q_dial->value(pars->Pvowels[nvowel].formants[nformant].q);
+        formant_q_dial->selection_color(setKnob( formant_q_dial->value(),FILTDEF::formQ.def));
         formant_amp_dial->value(pars->Pvowels[nvowel].formants[nformant].amp);
+        formant_amp_dial->selection_color(setKnob( formant_amp_dial->value(),findDynDef(2)));
         nseqsize = pars->Psequencesize;
         seqsize->value(nseqsize);
 
@@ -922,8 +917,41 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
 
         if (kititem == EFFECT::type::dynFilter)
         {
-            cfreqdial->selection_color(setKnob(cfreqdial->value(),FILTDEF::dynFreq.def));
-            qdial->selection_color(setKnob(qdial->value(),FILTDEF::dynQval.def));
+            dynFilt = true;
+            dynPreset = fetchData(0, EFFECT::control::preset, npart, kititem, engine);
+            switch (dynPreset)
+            {
+                case 0:
+                {
+                    cfreqdial->selection_color(setKnob(cfreqdial->value(),FILTDEF::dynFreq0.def));
+                    qdial->selection_color(setKnob(qdial->value(),FILTDEF::dynQval0.def));
+                    break;
+                }
+                case 1:
+                {
+                    cfreqdial->selection_color(setKnob(cfreqdial->value(),FILTDEF::dynFreq1.def));
+                    qdial->selection_color(setKnob(qdial->value(),FILTDEF::dynQval1.def));
+                    break;
+                }
+                case 2:
+                {
+                    cfreqdial->selection_color(setKnob(cfreqdial->value(),FILTDEF::dynFreq2.def));
+                    qdial->selection_color(setKnob(qdial->value(),FILTDEF::dynQval2.def));
+                    break;
+                }
+                case 3:
+                {
+                    cfreqdial->selection_color(setKnob(cfreqdial->value(),FILTDEF::dynFreq3.def));
+                    qdial->selection_color(setKnob(qdial->value(),FILTDEF::dynQval3.def));
+                    break;
+                }
+                case 4:
+                {
+                    cfreqdial->selection_color(setKnob(cfreqdial->value(),FILTDEF::dynFreq4.def));
+                    qdial->selection_color(setKnob(qdial->value(),FILTDEF::dynQval4.def));
+                    break;
+                }
+            }
         }
         else
         {    if (engine == PART::engine::addSynth)
@@ -936,7 +964,7 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
 
         freqtrdial->selection_color(setKnob(freqtrdial->value(),FILTDEF::freqTrack.def));
 
-        if (engine >= PART::engine::addVoice1)
+        if (engine >= PART::engine::addVoice1 && engine < PART::addVoiceModEnd)
             vsnsadial->selection_color(setKnob(vsnsadial->value(),FILTDEF::voiceVelSense.def));
         else
             vsnsadial->selection_color(setKnob(vsnsadial->value(),FILTDEF::velSense.def));
@@ -947,13 +975,13 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
 
         frsldial->selection_color(setKnob(frsldial->value(),FILTDEF::formSpeed.def));
 
-        wvknob->selection_color(setKnob(wvknob->value(),FILTDEF::formClear.def));
+        wvknob->selection_color(setKnob(wvknob->value(),findDynClearDef()));
 
-        //formant_freq_dial->selection_color(setKnob(value,formFreqDef))
+        formant_freq_dial->selection_color(setKnob(formant_freq_dial->value(),findDynDef(0)));
 
         formant_q_dial->selection_color(setKnob(formant_q_dial->value(),FILTDEF::formQ.def));
 
-        formant_amp_dial->selection_color(setKnob(formant_amp_dial->value(),FILTDEF::formAmp.def));
+        formant_amp_dial->selection_color(setKnob(formant_amp_dial->value(),findDynDef(2)));
 
         strchdial->selection_color(setKnob(strchdial->value(),FILTDEF::formStretch.def));
 
@@ -995,11 +1023,11 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
     code {//
         if(formantparswindow)
         {
-        	if(formantparswindow->visible())
-        	{
-        	    formantparswindow->hide();
-        	    formantparswindow->show();
-        	}
+            if(formantparswindow->visible())
+            {
+                formantparswindow->hide();
+                formantparswindow->show();
+            }
         }
         ;} {}
   }
@@ -1073,7 +1101,7 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
     unsigned char kititem = getData->data.kit;
     unsigned char eng = getData->data.engine;
     unsigned char param =  getData->data.parameter;
-    unsigned char offset =  getData->data.offset;
+    unsigned char offset = getData->data.offset;
 
     bool isCurrent =  (param == nformant && offset == nvowel);
 
@@ -1081,13 +1109,15 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
 
     bool fromUs = ((getData->data.source & TOPLEVEL::action::noAction) == TOPLEVEL::action::fromGUI);
 
-    bool dynFilt = (kititem == EFFECT::type::dynFilter);
+    dynFilt = (kititem == EFFECT::type::dynFilter);
 
     if (part != npart || (!dynFilt && eng != engine))
         return;
     if (dynFilt)
     {
-        //cout << "Dyn filter seen part " << int(part)<< endl;
+        //std::cout << "is dyn " << value << std::endl;
+        dynPreset = fetchData(0, EFFECT::control::preset, npart, kititem, engine);
+
         if (part == TOPLEVEL::section::systemEffects)
             synth->getGuiMaster()->syseffectui->UpdatePresetColour(1, EFFECT::type::dynFilter - EFFECT::type::none);
         else if (part == TOPLEVEL::section::insertEffects)
@@ -1100,13 +1130,34 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
     bool isVoice = (eng >= PART::engine::addVoice1);
     bool isSub = (eng == PART::engine::subSynth);
     bool isPad = (eng == PART::engine::padSynth);
+
     switch(control)
     {
         case FILTERINSERT::control::centerFrequency:
         {
             cfreqdial->value(value);
             if (dynFilt)
-                cfreqdial->selection_color(setKnob(value,FILTDEF::dynFreq.def));
+            {
+                switch (dynPreset)
+                {
+                    case 0:
+                        cfreqdial->selection_color(setKnob(value,FILTDEF::dynFreq0.def));
+                        break;
+                    case 1:
+                        cfreqdial->selection_color(setKnob(value,FILTDEF::dynFreq1.def));
+                        break;
+                    case 2:
+                        cfreqdial->selection_color(setKnob(value,FILTDEF::dynFreq2.def));
+                        break;
+                    case 3:
+                        cfreqdial->selection_color(setKnob(value,FILTDEF::dynFreq3.def));
+                        break;
+                    case 4:
+                        cfreqdial->selection_color(setKnob(value,FILTDEF::dynFreq4.def));
+                        break;
+                }
+                formantfiltergraph->redraw();
+            }
             else if(isAdd)
                 cfreqdial->selection_color(setKnob(value,FILTDEF::addFreq.def));
             else if(isVoice)
@@ -1121,8 +1172,29 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
         case FILTERINSERT::control::Q:
         {
             qdial->value(value);
+
             if (dynFilt)
-                qdial->selection_color(setKnob(value,FILTDEF::dynQval.def));
+            {
+                switch (dynPreset)
+                {
+                    case 0:
+                        qdial->selection_color(setKnob(value,FILTDEF::dynQval0.def));
+                        break;
+                    case 1:
+                        qdial->selection_color(setKnob(value,FILTDEF::dynQval1.def));
+                        break;
+                    case 2:
+                        qdial->selection_color(setKnob(value,FILTDEF::dynQval2.def));
+                        break;
+                    case 3:
+                        qdial->selection_color(setKnob(value,FILTDEF::dynQval3.def));
+                        break;
+                    case 4:
+                        qdial->selection_color(setKnob(value,FILTDEF::dynQval4.def));
+                        break;
+                }
+                formantfiltergraph->redraw();
+            }
             else if (isVoice)
                 qdial->selection_color(setKnob(value,FILTDEF::voiceQval.def));
             else
@@ -1215,7 +1287,7 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
             if (!fromUs)
             {
                 wvknob->value(value);
-                wvknob->selection_color(setKnob(value,FILTDEF::formClear.def));
+                wvknob->selection_color(setKnob(value,findDynClearDef()));
             }
             break;
 
@@ -1225,7 +1297,7 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
                 if (!fromUs)
                 {
                     formant_freq_dial->value(value);
-                    formant_freq_dial->selection_color(setKnob(value,formFreqDef)); // has no default
+                    formant_freq_dial->selection_color(setKnob(value,findDynDef(0))); // has pseudo default
                 }
                 formantfiltergraph->redraw();
             }
@@ -1320,6 +1392,120 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
             break;
     }} {}
   }
+  Function {findDynDef(int type)} {return_type float
+  } {
+    code {// types freq 0, q 1, amp 2
+                float val;
+                if (type == 0)
+                    val = formFreqDef; // standard default;
+                else
+                    val = FILTDEF::formAmp.def; // standard default
+                if (dynFilt)
+                {
+                    //std::cout << "is dyn" << std::endl;
+                    if (dynPreset == 3)
+                    {
+                        if (nvowel == 0)
+                        {
+                            switch (nformant)
+                            {
+                                case 0:
+                                    if (type == 0)
+                                        val = DYNform::Preset3V0F0.freq;
+                                    else
+                                        val = DYNform::Preset3V0F0.amp;
+                                    break;
+                                case 1:
+                                    if (type == 0)
+                                        val = DYNform::Preset3V0F1.freq;
+                                    else
+                                        val = DYNform::Preset3V0F1.amp;
+                                    break;
+                                case 2:
+                                    if (type == 0)
+                                        val = DYNform::Preset3V0F2.freq;
+                                    else
+                                        val = DYNform::Preset3V0F2.amp;
+                                    break;
+                            }
+                        }
+                        else if (nvowel == 1)
+                        {
+                            switch (nformant)
+                            {
+                                case 0:
+                                    if (type == 0)
+                                        val = DYNform::Preset3V1F0.freq;
+                                    else
+                                        val = DYNform::Preset3V1F0.amp;
+                                    break;
+                                case 1:
+                                    if (type == 0)
+                                        val = DYNform::Preset3V1F1.freq;
+                                    else
+                                        val = DYNform::Preset3V1F1.amp;
+                                    break;
+                                case 2:
+                                    if (type == 0)
+                                        val = DYNform::Preset3V1F2.freq;
+                                    else
+                                        val = DYNform::Preset3V1F2.amp;
+                                    break;
+                            }
+                        }
+                    }
+
+                    else if (dynPreset == 4)
+                    {
+                        if (nvowel == 0)
+                        {
+                            switch (nformant)
+                            {
+                                case 0:
+                                    if (type == 0)
+                                        val = DYNform::Preset4V0F0.freq;
+                                    else
+                                        val = DYNform::Preset4V0F0.amp;
+                                    break;
+                                case 1:
+                                    if (type == 0)
+                                        val = DYNform::Preset4V0F1.freq;
+                                    else
+                                        val = DYNform::Preset4V0F1.amp;
+                                    break;
+                            }
+                        }
+                        else if (nvowel == 1)
+                        {
+                            switch (nformant)
+                            {
+                                case 0:
+                                    if (type == 0)
+                                        val = DYNform::Preset4V1F0.freq;
+                                    else
+                                        val = DYNform::Preset4V1F0.amp;
+                                    break;
+                                case 1:
+                                    if (type == 0)
+                                        val = DYNform::Preset4V1F1.freq;
+                                    else
+                                        val = DYNform::Preset4V1F1.amp;
+                                    break;
+                            }
+                        }
+                    }
+                }
+                return val;
+;} {}
+  }
+  Function {findDynClearDef()} {return_type float
+  } {
+    code {//
+           if (dynFilt && dynPreset == 4)
+               return 0;
+           return FILTDEF::formClear.def;;
+;} {}
+  }
   Function {init(FilterParams *filterpars_,unsigned char *velsnsamp_,unsigned char *velsns_, int npart_, int kititem_, int engine_)} {} {
     code {//
     pars=filterpars_;
@@ -1329,6 +1515,8 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
     npart = npart_;
     kititem = kititem_;
     engine = engine_;
+    dynFilt = false;
+    dynPreset = 0;
     lastformantX = 0;
     lastformantY = 0;
     lastformantW = 0;
@@ -1395,6 +1583,10 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
   }
   decl {int engine;} {private local
   }
+  decl {bool dynFilt;} {private local
+  }
+  decl {int dynPreset;} {private local
+  }
   decl {int formantDW;} {private local
   }
   decl {int formantDH;} {private local
@@ -1407,6 +1599,6 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
   }
   decl {bool formantSeen;} {private local
   }
-  decl {int formFreqDef;} {private local
+  decl {float formFreqDef;} {private local
   }
 }

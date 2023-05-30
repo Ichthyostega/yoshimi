@@ -231,7 +231,8 @@ void EnvelopeParams::add2XML(XMLwrapper *xml)
         for (size_t i=0; i<Penvpoints; ++i)
         {
             xml->beginbranch("POINT",i);
-            if (i > 0) xml->addparcombi("dt",Penvdt[i]);
+            if (i > 0)
+                xml->addparcombi("dt",Penvdt[i]);
             xml->addparcombi("val",Penvval[i]);
             xml->endbranch();
         }
@@ -259,7 +260,8 @@ void EnvelopeParams::getfromXML(XMLwrapper *xml)
     for (size_t i=0;i<Penvpoints;i++)
     {
         if (xml->enterbranch("POINT",i)==0) continue;
-        if (i > 0) Penvdt[i]=xml->getparcombi("dt",Penvdt[i], 0,127);
+        if (i > 0)
+            Penvdt[i]=xml->getparcombi("dt",Penvdt[i], 0,127);
         Penvval[i]=xml->getparcombi("val",Penvval[i], 0,127);
         xml->exitbranch();
     }
@@ -318,7 +320,6 @@ float envelopeLimit::getEnvelopeLimits(CommandBlock *getData)
     int min = 0;
     int max = 127;
     float def = 64;
-    type |= TOPLEVEL::type::Integer;
     unsigned char learnable = TOPLEVEL::type::Learnable;
     type |= learnable;
 
@@ -364,10 +365,12 @@ float envelopeLimit::getEnvelopeLimits(CommandBlock *getData)
                     def = ENVDEF::ampStretch.def;
                     break;
                 case ENVELOPEINSERT::control::forcedRelease:
+                    type |= TOPLEVEL::type::Integer;
                     def = ENVSWITCH::defForce;
                     type &= ~learnable;
                     break;
                 case ENVELOPEINSERT::control::linearEnvelope:
+                    type |= TOPLEVEL::type::Integer;
                     max = 1;
                     def = ENVSWITCH::defLinear;
                     type &= ~learnable;
@@ -375,9 +378,11 @@ float envelopeLimit::getEnvelopeLimits(CommandBlock *getData)
                 //case ENVELOPEINSERT::control::edit:
                     //break;
                 case ENVELOPEINSERT::control::enableFreeMode:
+                    type |= TOPLEVEL::type::Integer;
                     def = ENVSWITCH::defFreeMode;
                     break;
                 case ENVELOPEINSERT::control::points:
+                    type |= TOPLEVEL::type::Integer;
                     def = ENVDEF::count.def;
                     break;
                 case ENVELOPEINSERT::control::sustainPoint:

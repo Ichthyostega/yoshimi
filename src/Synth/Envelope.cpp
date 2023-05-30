@@ -123,7 +123,7 @@ float Envelope::envout(void)
         envoutval = envval[envpoints - 1];
         return envoutval;
     }
-    if (currentpoint == envsustain + 1 && !keyreleased)
+    if (currentpoint == envsustain + 1 && !keyreleased && (envsustain != 0))
     {   // if it is sustaining now
         envoutval = envval[envsustain];
         return envoutval;
@@ -148,7 +148,7 @@ float Envelope::envout(void)
 
         if (t >= 1.0f)
         {
-            currentpoint = envsustain + 2;
+            currentpoint = tmp + 1;
             forcedrelase = 0;
             t = 0.0f;
             if (currentpoint >= envpoints || envsustain == 0)
