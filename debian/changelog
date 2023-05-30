@@ -1,7 +1,7 @@
-yoshimi (2.3.0-1~buster) Lumiera-buster-tool; urgency=low
+yoshimi (2.3.0-1~bullseye) Lumiera-bullseye-tool; urgency=low
 
   * New upstream major release 2.3
-  * Rebuild/Backport for Debian/Buster(oldstable).
+  * Rebuild/Backport for Debian/Bullseye(stable).
   * unofficial DEB package by Ichthyostega
 
   [ Dennis Braun ]
