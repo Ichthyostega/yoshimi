@@ -296,6 +296,7 @@ std::string InterChange::manualSearch(std::string dir2search, std::string path2m
 void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
 {
     int value = lrint(getData->data.value);
+    float valuef = -1;
     unsigned char type = getData->data.type;
     unsigned char control = getData->data.control;
     unsigned char switchNum = getData->data.part;
@@ -426,7 +427,7 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
             break;
 
         case TOPLEVEL::section::main:
-            value = indirectMain(getData, synth, newMsg, guiTo, text);
+            value = indirectMain(getData, synth, newMsg, guiTo, text, valuef);
             break;
 
         case TOPLEVEL::section::bank: // instrument / bank
@@ -457,7 +458,10 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
         value = textMsgBuffer.push(text);
     // TODO need to improve message handling for multiple receivers
 
-    getData->data.value = float(value);
+    if (valuef > -1)
+        getData->data.value = valuef; // curently only master fine detune
+    else
+        getData->data.value = float(value);
     if (write)
         lowPrioWrite = false;
     if (noForward)
@@ -659,7 +663,7 @@ int InterChange::indirectScales(CommandBlock *getData, SynthEngine *synth, unsig
 }
 
 
-int InterChange::indirectMain(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text)
+int InterChange::indirectMain(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text, float &valuef)
 {
     bool write = (getData->data.type & TOPLEVEL::type::Write);
     int value = getData->data.value;
@@ -673,11 +677,12 @@ int InterChange::indirectMain(CommandBlock *getData, SynthEngine *synth, unsigne
             if (write)
             {
                 add2undo(getData, noteSeen);
-                synth->microtonal.Pglobalfinedetune = value;
+                valuef = getData->data.value;
+                synth->microtonal.Pglobalfinedetune =valuef;
                 synth->setAllPartMaps();
             }
             else
-                value = synth->microtonal.Pglobalfinedetune;
+                valuef = synth->microtonal.Pglobalfinedetune;
             break;
         }
         case MAIN::control::keyShift:
@@ -7372,6 +7377,22 @@ float InterChange::returnLimits(CommandBlock *getData)
     if (insert == TOPLEVEL::insert::filterGroup)
     {
         filterLimit filterLimits;
+        if (kititem == EFFECT::type::dynFilter)
+        {
+            /*
+             * This is somewhat convoluted!
+             * Only for dynFilter we need to find the preset number.
+             * Default frequency and Q are different over the 5 presets.
+             */
+            CommandBlock tempData;
+            memcpy(tempData.bytes, getData->bytes, sizeof(CommandBlock));
+            tempData.data.type = 0;
+            tempData.data.source = 0;
+            tempData.data.insert = UNUSED;
+            tempData.data.control = EFFECT::control::preset;
+            commandEffects(&tempData);
+            getData->data.spare1 = tempData.data.value;
+        }
         return filterLimits.getFilterLimits(getData);
     }
     // should prolly move other inserts up here

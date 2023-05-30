@@ -279,7 +279,6 @@ void FilterParams::add2XMLsection(XMLwrapper *xml,int n)
     for (int nformant = 0; nformant < FF_MAX_FORMANTS; ++nformant)
     {
         xml->beginbranch("FORMANT",nformant);
-        xml->addparcombi("first_freq",Pvowels[nvowel].formants[nformant].firstF);
         xml->addparcombi("freq",Pvowels[nvowel].formants[nformant].freq);
         xml->addparcombi("amp",Pvowels[nvowel].formants[nformant].amp);
         xml->addparcombi("q",Pvowels[nvowel].formants[nformant].q);
@@ -336,10 +335,11 @@ void FilterParams::getfromXMLsection(XMLwrapper *xml,int n)
     {
         if (xml->enterbranch("FORMANT",nformant) == 0)
             continue;
-        Pvowels[nvowel].formants[nformant].firstF =
-            xml->getparcombi("first_freq",Pvowels[nvowel].formants[nformant].firstF,FILTDEF::formFreq.min,FILTDEF::formFreq.max);
         Pvowels[nvowel].formants[nformant].freq =
             xml->getparcombi("freq",Pvowels[nvowel].formants[nformant].freq,FILTDEF::formFreq.min,FILTDEF::formFreq.max);
+        Pvowels[nvowel].formants[nformant].firstF =Pvowels[nvowel].formants[nformant].freq;
+        // the saved setting becomes the new pseudo default value.
+
         Pvowels[nvowel].formants[nformant].amp =
             xml->getparcombi("amp",Pvowels[nvowel].formants[nformant].amp,FILTDEF::formAmp.min,FILTDEF::formAmp.max);
         Pvowels[nvowel].formants[nformant].q =
@@ -400,6 +400,12 @@ float filterLimit::getFilterLimits(CommandBlock *getData)
     int control = getData->data.control;
     int effType = getData->data.kit;
     int engine = getData->data.engine;
+    int dynPreset = 0;
+    if (effType == EFFECT::type::dynFilter)
+    {
+        dynPreset = getData->data.spare1;
+        //std::cout << "pres " << dynPreset << std::endl;
+    }
 
     unsigned char type = 0;
 
@@ -407,7 +413,6 @@ float filterLimit::getFilterLimits(CommandBlock *getData)
     int min = 0;
     int max = 127;
     float def = 64;
-    //type |= TOPLEVEL::type::Integer;
     unsigned char learnable = TOPLEVEL::type::Learnable;
     type |= learnable;
 
@@ -415,7 +420,26 @@ float filterLimit::getFilterLimits(CommandBlock *getData)
     {
         case FILTERINSERT::control::centerFrequency:
             if (effType == EFFECT::type::dynFilter)
-                def = FILTDEF::dynFreq.def;
+            {
+                switch (dynPreset)
+                {
+                    case 0:
+                        def = FILTDEF::dynFreq0.def;
+                        break;
+                    case 1:
+                        def = FILTDEF::dynFreq1.def;
+                        break;
+                    case 2:
+                        def = FILTDEF::dynFreq2.def;
+                        break;
+                    case 3:
+                        def = FILTDEF::dynFreq3.def;
+                        break;
+                    case 4:
+                        def = FILTDEF::dynFreq4.def;
+                        break;
+                }
+            }
             else if (engine == PART::engine::subSynth)
                 def = FILTDEF::subFreq.def;
             else if (engine >= PART::engine::addVoice1)
@@ -425,10 +449,31 @@ float filterLimit::getFilterLimits(CommandBlock *getData)
             type &= ~TOPLEVEL::type::Integer;
             break;
         case FILTERINSERT::control::Q:
-            if (engine >= PART::engine::addVoice1)
+            if (effType == EFFECT::type::dynFilter)
+            {
+                switch (dynPreset)
+                {
+                    case 0:
+                        def = FILTDEF::dynQval0.def;
+                        break;
+                    case 1:
+                        def = FILTDEF::dynQval1.def;
+                        break;
+                    case 2:
+                        def = FILTDEF::dynQval2.def;
+                        break;
+                    case 3:
+                        def = FILTDEF::dynQval3.def;
+                        break;
+                    case 4:
+                        def = FILTDEF::dynQval4.def;
+                        break;
+
+                }
+            }
+            else if (engine >= PART::engine::addVoice1)
                 def = FILTDEF::voiceQval.def;
-            else if (effType == EFFECT::type::dynFilter)
-                def = FILTDEF::dynQval.def;
+
             else
                 def = FILTDEF::qVal.def;
             type &= ~TOPLEVEL::type::Integer;
@@ -449,6 +494,7 @@ float filterLimit::getFilterLimits(CommandBlock *getData)
             def = FILTDEF::gain.def;
             break;
         case FILTERINSERT::control::stages:
+            type |= TOPLEVEL::type::Integer;
             if (effType == EFFECT::type::dynFilter)
                 def = FILTDEF::dynStages.def;
             else
@@ -457,21 +503,25 @@ float filterLimit::getFilterLimits(CommandBlock *getData)
             type &= ~learnable;
             break;
         case FILTERINSERT::control::baseType:
+            type |= TOPLEVEL::type::Integer;
             max = FILTDEF::category.max;
             def = FILTDEF::category.def;
             type &= ~learnable;
             break;
         case FILTERINSERT::control::analogType:
+            type |= TOPLEVEL::type::Integer;
             max = FILTDEF::analogType.max;
             def = FILTDEF::analogType.def;
             type &= ~learnable;
             break;
         case FILTERINSERT::control::stateVariableType:
+            type |= TOPLEVEL::type::Integer;
             max = FILTDEF::stVarfType.max;
             def = FILTDEF::stVarfType.def;
             type &= ~learnable;
             break;
         case FILTERINSERT::control::frequencyTrackingRange:
+            type |= TOPLEVEL::type::Integer;
             max = true;
             def = FILTSWITCH::trackRange;
             type &= ~learnable;
@@ -483,9 +533,8 @@ float filterLimit::getFilterLimits(CommandBlock *getData)
             def = FILTDEF::formClear.def;
             break;
         case FILTERINSERT::control::formantFrequency:
-            if (request == TOPLEVEL::type::Default)
-                type |= TOPLEVEL::type::Error;
-            // it's random so inhibit default *** change this!
+            type |= TOPLEVEL::type::Error;
+            // it's pseudo random so inhibit default *** change this!
             type &= ~TOPLEVEL::type::Integer;
             break;
         case FILTERINSERT::control::formantQ:
@@ -506,36 +555,43 @@ float filterLimit::getFilterLimits(CommandBlock *getData)
             def = FILTDEF::formOctave.def;
             break;
         case FILTERINSERT::control::numberOfFormants:
+            type |= TOPLEVEL::type::Integer;
             min = FILTDEF::formCount.min;
             max = FILTDEF::formCount.max;
             def = FILTDEF::formCount.def;
             type &= ~learnable;
             break;
         case FILTERINSERT::control::vowelNumber:
+            type |= TOPLEVEL::type::Integer;
             max = FILTDEF::formVowel.max;
             def = FILTDEF::formVowel.def;
             type &= ~learnable;
             break;
         case FILTERINSERT::control::formantNumber:
+            type |= TOPLEVEL::type::Integer;
             max = FILTDEF::formCount.max;
             def = FILTDEF::formCount.def;
             type &= ~learnable;
             break;
         case FILTERINSERT::control::sequenceSize:
+            type |= TOPLEVEL::type::Integer;
             min = FILTDEF::sequenceSize.min;
             max = FILTDEF::sequenceSize.max;
             def = FILTDEF::sequenceSize.def;
             type &= ~learnable;
             break;
         case FILTERINSERT::control::sequencePosition:
+            type |= TOPLEVEL::type::Integer;
             def = 0;
             type &= ~learnable;
             break;
         case FILTERINSERT::control::vowelPositionInSequence:
+            type |= TOPLEVEL::type::Integer;
             max = 5;
             type &= ~learnable;
             break;
         case FILTERINSERT::control::negateInput:
+            type |= TOPLEVEL::type::Integer;
             max = true;
             def =FILTSWITCH::sequenceReverse;
             type &= ~learnable;

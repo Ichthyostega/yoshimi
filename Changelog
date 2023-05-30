@@ -1,4 +1,87 @@
-yoshimi 2.3.0 rc3
+yoshimi 2.3.0
+
+2023-5-29 Will
+bn 2239
+Set release version 2.3.0
+
+2023-5-28 Will
+bn 2238
+
+Corrected 'Mono' button colour.
+
+Corrected envelope 'E' button style.
+Added theme control to AddVoice tab 'unused' colour.
+
+2023-5-27 Will
+bn 2237
+Fixed regression. Formant amp dial not updating graph.
+
+2023-5-26 Will
+bn 2236
+Resolved dynfilter freqency defaults.
+Cleaned up MiscGUI button 3 actions.
+Set version as 2.3.0 rc10
+
+bn 2235
+Resolved dynfilter formant defaults for all except frequency.
+
+2023-5-25 Will
+bn 2234
+BugFiX: previous dynfilter regression not reversed!
+
+2023-5-24 Will
+bn 2233
+Added two drum souds from Lorenzo
+Some Dynfilter cleanups, but more needed later.
+Set version as 2.3.0 rc9
+
+2023-5-22 Will
+bn 2232
+BugFix: Dynfilter not setting filter knob colours or postions.
+
+bn 2231
+BugFix: Not setting default preset when effect type changed.
+
+2023-5-17 Will
+bn 2230
+BugFix: Effect preset text not setting 'normal' colour.
+Set version as 2.3.0 rc8
+
+2023-5-17 Will
+bn 2229
+Changed MIDI-learn 7bit NRPN warning colour to warning background.
+Created "Midilearn activity indicator" entry in themes.
+Correction to User Guide AlienWah Delay description.
+Added instruments to banks from Art Horan.
+Set version as 2.3.0 rc7
+
+2023-5-16 Will
+bn 2228
+Applied patch from Hermann for correct Envelope behaviour.
+Changed Master volume and fine detune to parcombi.
+Changed Default and Current theme boxes to unresponsive buttons.
+Updated Envelope Limits.
+Updated LFO Limits.
+Updated Filter Limits.
+Applied corrections to User Guide.
+Set version as 2.3.0 rc6
+
+2023-5-14 Will
+bn 2227
+BugFix: adaptive harmonics parameter not updating GUI.
+Reverted some recent envelope changes.
+Added missing knob default indicators in oscilgen.
+Changed ambiguous warning re. use-as-base button.
+Set version as 2.3.0 rc5
+
+bn 2226
+BugFix: V.keyboard not showing velocity setting in tooltip.
+BugFix: Formant filter frequency reset not using float.
+Formant filter now stores current frequency as pseudo default.
+Small adjustment to yoshimi.desktop file.
+Reinstated appdata file for older distros.
+Updated docs.
+Set version as 2.3.0 rc4
 
 2023-5-11 Will
 bn 2225
