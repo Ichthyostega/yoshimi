@@ -1,8 +1,16 @@
 #!/usr/bin/make -f
 
-export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export DEB_LDFLAGS_MAINT_APPEND=-Wl,--as-needed -fPIC
+export DEB_CXXFLAGS_MAINT_APPEND=-fPIC
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=-pie
 
 export LV2_PATH = /usr/lib/lv2
 
 %:
 	dh $@ --sourcedirectory=src
+
+# use GCC-9 for compilation
+override_dh_auto_configure:
+	dh_auto_configure -O--sourcedirectory=src -- -DCMAKE_CXX_COMPILER=g++-9
+
