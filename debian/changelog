@@ -1,8 +1,6 @@
-yoshimi (2.3.0~RC3-3~buster) Lumiera-buster-tool; urgency=low
+yoshimi (2.3.0-1~buster) Lumiera-buster-tool; urgency=low
 
   * New upstream major release 2.3
-  * ATTENTION: this is Release Candidate RC7
-    + includes latest bugfixes from release testing
   * Rebuild/Backport for Debian/Buster(oldstable).
   * unofficial DEB package by Ichthyostega
 
@@ -11,20 +9,9 @@ yoshimi (2.3.0~RC3-3~buster) Lumiera-buster-tool; urgency=low
   * Bump Standards-Version to 4.6.2
   * Bump debian/copyright years
   * Refresh lintian-overrides
+  * spelling fix patch
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Wed, 17 May 2023 19:25:55 +0200
-
-yoshimi (2.3.0~RC3-2~buster) UNRELEASED; urgency=low
-
-  * unofficial custom DEB package rolled out for RC5 testing
-
- -- Hermann Vosseler <deb@ichthyostega.de>  Mon, 15 May 2023 16:36:30 +0200
-
-yoshimi (2.3.0~RC3-1~buster) UNRELEASED; urgency=low
-
-  * unofficial custom DEB package rolled out for RC3 testing
-
- -- Hermann Vosseler <deb@ichthyostega.de>  Sat, 13 May 2023 01:26:43 +0200
+ -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 30 May 2023 13:30:55 +0200
 
 yoshimi (2.2.3-1~buster) Lumiera-buster-tool; urgency=low
 
