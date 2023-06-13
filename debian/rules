@@ -6,3 +6,15 @@ export LV2_PATH = /usr/lib/lv2
 
 %:
 	dh $@ --sourcedirectory=src
+
+DEB_COPYRIGHT_CHECK_IGNORE_REGEX = \
+        debian/.*
+# licensecheck v1
+.PHONY: licensecheck
+licensecheck:
+	LANG=C.UTF-8 licensecheck \
+		-i "^($(DEB_COPYRIGHT_CHECK_IGNORE_REGEX))$$" \
+		--check '.*' --recursive --deb-machine --lines 0 * \
+		> debian/copyright_newhints
+	cmp debian/copyright_hints debian/copyright_newhints \
+		&& rm debian/copyright_newhints
