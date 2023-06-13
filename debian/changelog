@@ -1,4 +1,4 @@
-yoshimi (2.3.0+dfsg-1) UNRELEASED; urgency=medium
+yoshimi (2.3.0+dfsg-1) unstable; urgency=medium
 
   [ Dennis Braun ]
   * New upstream version 2.3.0
@@ -6,13 +6,14 @@ yoshimi (2.3.0+dfsg-1) UNRELEASED; urgency=medium
   * Prefer libjack-dev over libjack-jackd2-dev
 
   [ IOhannes m zmölnig (Debian/GNU) ]
-  * Exclude non-free files
-  * Add 'licensecheck' target
-  * Fix copyright ignore files
-  * Add some more copyright files
+  * Exclude non-free files (and add '+dfsg' to the version)
+  * Update d/copyright
+    * Add some more copyright info and licenses
+    * Add 'licensecheck' target (ignoring some binary files)
+    * Generate d/copyright_hints
   * Add versionmangling to d/watch
 
- -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Tue, 13 Jun 2023 15:18:50 +0200
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Tue, 13 Jun 2023 15:21:14 +0200
 
 yoshimi (2.2.3-1) unstable; urgency=medium
 
