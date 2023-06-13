@@ -2,6 +2,9 @@ Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: Yoshimi
 Upstream-Contact: yoshimi-user@lists.sourceforge.net
 Source: https://sourceforge.net/projects/yoshimi/files/
+Files-Excluded:
+        dev_notes/MPE_spec.pdf
+        doc/Histories.tar.bz2
 
 Files: *
 Copyright: 2009-2011, Alan Calvert
@@ -78,13 +81,6 @@ Copyright: 2009-2011, Alan Calvert
            2014-2023, Will Godfrey and others
 License: LGPL-2+
 
-Files: debian/*
-Copyright: 2010-2011, Alessio Treglia <alessio@debian.org>
-           2010-2017, Jaromír Mikeš <mira.mikes@seznam.cz>
-           2019, Olivier Humbert <trebmuh@tuxfamily.org>
-           2020-2023, Dennis Braun <snd@debian.org>
-License: GPL-2+
-
 Files: src/UI/ParametersUI.fl
        src/UI/VectorUI.fl
 Copyright: 2011, Alan Calvert
@@ -96,6 +92,22 @@ Files: banks/Drums/0004-Natural?Drum?Kit.xiz
        banks/Drums/0006-HiHat?closed?-?variable?decay.xiz
 Copyright: 2012, Dario Straulino
 License: GPL-3
+
+Files: banks/Drums/0040-Crash?Full?2.xiz
+Copyright: 2012-2023, Lorenzo Sutton, Dario Straulino
+License: GPL-3
+
+Files: doc/examples/Original?Zyn?Patchsets/*
+Copyright: Nasca Octavian Paul
+License: GPL-2+
+
+Files: doc/The?Short?Yoshimi?Guide.odt
+Copyright: 2017-2023, Will J Godfrey
+License: CC-BY-SA-4.0
+
+Files: doc/yoshimi_user_guide/*
+Copyright: 2021-2023, Kristian Amlie, Will Godfrey, Art Horan, John Murphy, Lorenzo Sutton, Hermann Voßeler.
+License: CC-BY-SA-4.0
 
 Files: src/Misc/Config.cpp
        src/UI/MasterUI.fl
@@ -121,6 +133,15 @@ License: ISC
 Files: desktop/metainfo/*
 Copyright: 2016-2019, Yoshimi project <willgodfrey@musically.me.uk>
 License: CC-BY-4.0
+
+Files: debian/*
+Copyright: 2010-2011, Alessio Treglia <alessio@debian.org>
+           2010-2017, Jaromír Mikeš <mira.mikes@seznam.cz>
+           2019, Olivier Humbert <trebmuh@tuxfamily.org>
+           2018-2023, IOhannes m zmölnig <umlaeute@debian.org>
+           2020-2023, Dennis Braun <snd@debian.org>
+License: GPL-2+
+
 
 License: CC-BY-4.0
  Creative Commons Attribution 4.0 International Public License
