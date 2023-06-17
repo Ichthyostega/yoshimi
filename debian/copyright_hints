@@ -10,10 +10,13 @@ Files: CHECK_ON_RELEASE
  INSTALL_CUSTOM
  README.txt
  Util/1stReadMe.txt
+ Util/ControlModel.svg
  Util/MakeSplash.sh
  Util/YoshimiSplash.svg
  Util/incbuildnumber.py
  Util/midiListGen.cpp
+ Util/splashdefault.png
+ Util/switch_time.cpp
  Util/update_guide_version.py
  Yoshimi_Helpers
  banks/Arpeggios/.bankdir
@@ -98,6 +101,70 @@ Files: CHECK_ON_RELEASE
  doc/Formant_Filter
  doc/Formant_Filter_Design.txt
  doc/Formant_Filter_Extension.txt
+ doc/Histories/ALSA_Setup.txt
+ doc/Histories/AddSynthModulation.txt
+ doc/Histories/Aftertouch.txt
+ doc/Histories/Banks.txt
+ doc/Histories/Channel_Switcher.txt
+ doc/Histories/Command_Line.txt
+ doc/Histories/Command_line_Config_Roots_Banks.txt
+ doc/Histories/Direct_Part_Control.txt
+ doc/Histories/Instrument_Kits.txt
+ doc/Histories/Jack_Audio_Destination.txt
+ doc/Histories/Kit_Mode_Access.txt
+ doc/Histories/MIDI.txt
+ doc/Histories/MIDI_Learn.txt
+ doc/Histories/NRPN_System_Settings.txt
+ doc/Histories/Output_Levels.txt
+ doc/Histories/README.txt
+ doc/Histories/Scales.txt
+ doc/Histories/Shortform_NRPN.txt
+ doc/Histories/Solo.txt
+ doc/Histories/Using_More_Parts.txt
+ doc/Histories/Using_NRPNs.txt
+ doc/Histories/Vector_Control.txt
+ doc/Histories/Voice_Mod_Oscillators.txt
+ doc/Histories/Yoshi-Zyn_Sound_Differences.txt
+ doc/Histories/Yoshi_Zyn_NRPNs.txt
+ doc/Histories/Yoshimi_1.3.5-features.txt
+ doc/Histories/Yoshimi_1.3.6-features.txt
+ doc/Histories/Yoshimi_1.3.7-features.txt
+ doc/Histories/Yoshimi_1.3.8-features.txt
+ doc/Histories/Yoshimi_1.3.9-features.txt
+ doc/Histories/Yoshimi_1.4.0-features.txt
+ doc/Histories/Yoshimi_1.4.1-features.txt
+ doc/Histories/Yoshimi_1.5.0-features.txt
+ doc/Histories/Yoshimi_1.5.1-features.txt
+ doc/Histories/Yoshimi_1.5.10_features.txt
+ doc/Histories/Yoshimi_1.5.11_features.txt
+ doc/Histories/Yoshimi_1.5.2-features.txt
+ doc/Histories/Yoshimi_1.5.3-features.txt
+ doc/Histories/Yoshimi_1.5.4_features.txt
+ doc/Histories/Yoshimi_1.5.5_1.5.6_features.txt
+ doc/Histories/Yoshimi_1.5.8_features.txt
+ doc/Histories/Yoshimi_1.5.9_features.txt
+ doc/Histories/Yoshimi_1.6.0_features.txt
+ doc/Histories/Yoshimi_1.6.1_features.txt
+ doc/Histories/Yoshimi_1.7.0_features
+ doc/Histories/Yoshimi_1.7.1_features.txt
+ doc/Histories/Yoshimi_1.7.2_features.txt
+ doc/Histories/Yoshimi_1.7.3_features.txt
+ doc/Histories/Yoshimi_1.7.4_features.txt
+ doc/Histories/Yoshimi_2.0.1_features.txt
+ doc/Histories/Yoshimi_2.0.2_features.txt
+ doc/Histories/Yoshimi_2.0_features.txt
+ doc/Histories/Yoshimi_2.1.0_features.txt
+ doc/Histories/Yoshimi_2.1.1_features.txt
+ doc/Histories/Yoshimi_2.1.2_features.txt
+ doc/Histories/Yoshimi_2.2.0_features.txt
+ doc/Histories/Yoshimi_2.2.1_features.txt
+ doc/Histories/Yoshimi_2.2.2_features.txt
+ doc/Histories/Yoshimi_2.2.3_features.txt
+ doc/Histories/Yoshimi_Early_History.txt
+ doc/Histories/Yoshimi_License_History.txt
+ doc/Histories/Yoshimi_Only_NRPNs.txt
+ doc/Histories/Zyn_ChangeLog
+ doc/Histories/Zyn_HISTORY.txt
  doc/Note_Envelopes.txt
  doc/Part_Kit_Crossfade.txt
  doc/Yoshimi_2.3.0_features.txt
@@ -847,13 +914,19 @@ Copyright: 2023, Lorenzo Sutton - License GPL 2.0 or later
 License: UNKNOWN
  FIXME
 
+Files: Changelog
+Copyright: content from dev-notes and histories.
+  field.
+License: UNKNOWN
+ FIXME
+
 Files: doc/yoshimi_user_guide/part/part.html
 Copyright: field below. Clicking on this button will fill the field with a saved entry (if it exists). To store a default message, fill in the entry manually, then while holding down <em>Ctrl</em> click on this button.
 License: UNKNOWN
  FIXME
 
-Files: Changelog
-Copyright: field.
+Files: doc/Histories/Yoshimi_1.5.7_features.txt
+Copyright: fields of their own instrument patches, making it hard to acknowledge them. This is now partly automated in the hope that it may encourage people to do so.
 License: UNKNOWN
  FIXME
 
