@@ -1,9 +1,14 @@
-yoshimi (2.3.0.2-1) UNRELEASED; urgency=medium
+yoshimi (2.3.0.2-1) unstable; urgency=medium
 
   * New upstream version 2.3.0.2
+    + Drop patches applied upstream
+  * Update d/copyright
     + Drop repack-suffix again (upstream fixed license issues)
+    + Update copyright exclude patterns
+    + Update d/copyright_hints
+  * Apply 'wrap-and-sort -ast'
 
- -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Sat, 17 Jun 2023 19:11:41 +0200
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Mon, 19 Jun 2023 09:38:02 +0200
 
 yoshimi (2.3.0+dfsg-1) unstable; urgency=medium
 
