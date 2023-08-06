@@ -1,9 +1,9 @@
-yoshimi (2.3.0.3-1) UNRELEASED; urgency=medium
+yoshimi (2.3.0.3-1) unstable; urgency=medium
 
   * New upstream version 2.3.0.3
   * d/copyright: Remove obsolete Files-Excluded
 
- -- Dennis Braun <snd@debian.org>  Sun, 06 Aug 2023 20:40:20 +0200
+ -- Dennis Braun <snd@debian.org>  Sun, 06 Aug 2023 22:00:02 +0200
 
 yoshimi (2.3.0.2-1) unstable; urgency=medium
 
