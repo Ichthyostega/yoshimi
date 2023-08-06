@@ -2,9 +2,6 @@ Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: Yoshimi
 Upstream-Contact: yoshimi-user@lists.sourceforge.net
 Source: https://sourceforge.net/projects/yoshimi/files/
-Files-Excluded:
-        dev_notes/MPE_spec.pdf
-        doc/Histories.tar.bz2
 
 Files: *
 Copyright: 2009-2011, Alan Calvert
