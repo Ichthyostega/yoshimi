@@ -63,6 +63,13 @@ decl {\#include "Effects/EffectMgr.h"} {public local
 decl {\#include "PresetsUI.h"} {public local
 }
 
+decl {\#include "Misc/TextMsgBuffer.h"
+
+    namespace { // Implementation details...
+        TextMsgBuffer& textMsgBuffer = TextMsgBuffer::instance();
+    }} {private local
+}
+
 decl {using std::to_string;} {private global
 }
 
@@ -1622,12 +1629,13 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
   }
   Function {make_filter_window()} {} {
     Fl_Window filterwindow {
-      label {Filter Parameters for DynFilter Eff.}
+      label {Yoshimi : Filter Parameters for DynFilter Effect}
       callback {//
     filterclose->do_callback();}
       xywh {1109 779 285 110} type Double hide resizable
       code0 {filtDW = o->w(); filtDH = o->h();}
       code1 {o->size_range(filtDW, filtDH, 0, 0, 0, 0, 1);}
+      code2 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("DynFilter"), npart, TOPLEVEL::windowTitle,UNUSED, neff)).c_str());}
     } {
       Fl_Group fwin_filterui {
         label {DynFilter effect  - Filter}

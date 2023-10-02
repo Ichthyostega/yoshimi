@@ -7,7 +7,7 @@
     Copyright 2009, James Morris
     Copyright 2014-2020, Will Godfrey & others
 
-    Copyright 2022, Will Godfrey, Rainer Hans Liffers
+    Copyright 2022-2023, Will Godfrey, Rainer Hans Liffers
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -494,18 +494,13 @@ void SynthEngine::defaults(void)
 void SynthEngine::setPartMap(int npart)
 {
     part[npart]->setNoteMap(part[npart]->Pkeyshift - 64);
-    part[npart]->PmapOffset = 128 - part[npart]->PmapOffset;
 }
 
 
 void SynthEngine::setAllPartMaps(void)
 {
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++ npart)
-        part[npart]->setNoteMap(part[npart]->Pkeyshift - 64);
-
-    // we swap all maps together after they've been changed
-    for (int npart = 0; npart < NUM_MIDI_PARTS; ++ npart)
-        part[npart]->PmapOffset = 128 - part[npart]->PmapOffset;
+        setPartMap(npart);
 }
 
 void SynthEngine::audioOutStore(uint8_t num)
@@ -998,7 +993,7 @@ int SynthEngine::setProgramByName(CommandBlock *getData)
     int npart = int(getData->data.kit);
     string fname = textMsgBuffer.fetch(getData->data.miscmsg);
     fname = setExtension(fname, EXTEN::yoshInst);
-    if (!isRegularFile(fname.c_str()))
+    if (!isRegularFile(fname))
         fname = setExtension(fname, EXTEN::zynInst);
     string name = findLeafName(fname);
     if (name < "!")
@@ -1006,7 +1001,7 @@ int SynthEngine::setProgramByName(CommandBlock *getData)
         name = "Invalid instrument name " + name;
         ok = false;
     }
-    if (ok && !isRegularFile(fname.c_str()))
+    if (ok && !isRegularFile(fname))
     {
         name = "Can't find " + fname;
         ok = false;
@@ -1206,7 +1201,7 @@ void SynthEngine::cliOutput(list<string>& msg_buf, unsigned int lines)
     {
         // JBS: make that a class member variable
         string page_filename = "/tmp/yoshimi-pager-" + asString(getpid()) + ".log";
-        ofstream fout(page_filename.c_str(),(ios_base::out | ios_base::trunc));
+        ofstream fout(page_filename,(ios_base::out | ios_base::trunc));
         for (it = msg_buf.begin(); it != msg_buf.end(); ++it)
             fout << *it << endl;
         fout.close();
@@ -2492,16 +2487,6 @@ bool SynthEngine::loadPatchSetAndUpdate(string fname)
     return result;
 }
 
-
-bool SynthEngine::loadMicrotonal(const string& fname)
-{
-    return microtonal.loadXML(setExtension(fname, EXTEN::scale));
-}
-
-bool SynthEngine::saveMicrotonal(const string& fname)
-{
-    return microtonal.saveXML(setExtension(fname, EXTEN::scale));
-}
 
 bool SynthEngine::installBanks()
 {

@@ -64,6 +64,13 @@ decl {\#include "Misc/FormatFuncs.h"
     using func::asString;} {private local
 }
 
+decl {\#include "Misc/TextMsgBuffer.h"
+
+    namespace { // Implementation details...
+        TextMsgBuffer& textMsgBuffer = TextMsgBuffer::instance();
+    }} {private local
+}
+
 class ADvoicelistitem {: {public Fl_Group}
 } {
   Function {make_window()} {} {
@@ -421,7 +428,6 @@ class ADvoiceUI {: {public Fl_Group}
     Fl_Window ADnoteVoiceParameters {
       label Voice
       xywh {327 141 805 615} type Double box NO_BOX hide resizable
-      code0 {o->copy_label(synth->getGuiMaster()->setPartWindowTitle("AddSynth Voice Oscillator").c_str());}
       class Fl_Group
     } {
       Fl_Box {} {
@@ -443,7 +449,7 @@ class ADvoiceUI {: {public Fl_Group}
               xywh {580 204 220 161} box THIN_UP_FRAME labelfont 1 labelsize 11 labelcolor 64 align 17
             } {
               Fl_Group voiceFMfreqenvgroup {
-                label {ADSynth Modulator - Frequency Envelope}
+                label {Yoshimi : AddSynth Modulator - Frequency Envelope}
                 xywh {585 290 210 70} box FLAT_BOX color 51 align 144
                 code0 {o->init(pars->VoicePar[nvoice].FMFreqEnvelope, npart, kititem, nvoice + PART::engine::addMod1, 1);}
                 code1 {if (pars->VoicePar[nvoice].PFMFreqEnvelopeEnabled==0) o->deactivate();}
@@ -550,7 +556,7 @@ send_data(TOPLEVEL::action::forceUpdate, ADDVOICE::control::modulatorFrequencyAs
                 class mwheel_val_slider_rev
               }
               Fl_Group voiceFMampenvgroup {
-                label {ADSynth Modulator - Amplitude Envelope}
+                label {Yoshimi : AddSynth Modulator - Amplitude Envelope}
                 xywh {585 129 210 70} box FLAT_BOX color 51 align 144
                 code0 {o->init(pars->VoicePar[nvoice].FMAmpEnvelope, npart, kititem, nvoice + PART::engine::addMod1, 0);}
                 code1 {if (pars->VoicePar[nvoice].PFMAmpEnvelopeEnabled==0) o->deactivate();}
@@ -672,7 +678,7 @@ send_data(TOPLEVEL::action::forceUpdate, ADDVOICE::control::modulatorFrequencyAs
             xywh {5 280 570 120} box THIN_UP_FRAME labelfont 1 labelsize 12 labelcolor 64 align 17
           } {
             Fl_Group voicefreqenvgroup {
-              label {ADSynth Voice - Frequency Envelope}
+              label {Yoshimi : AddSynth Voice - Frequency Envelope}
               xywh {9 325 205 70} box FLAT_BOX color 51 align 144
               code0 {o->init(pars->VoicePar[nvoice].FreqEnvelope, npart, kititem, nvoice + PART::engine::addVoice1, 1);}
               code1 {if (pars->VoicePar[nvoice].PFreqEnvelopeEnabled==0) o->deactivate();}
@@ -1050,7 +1056,7 @@ send_data(TOPLEVEL::action::forceUpdate, ADDVOICE::control::enableUnison, o->val
             class Fl_Check_Button2
           }
           Fl_Group voiceampenvgroup {
-            label {ADSynth Voice - Amplitude Envelope}
+            label {Yoshimi : AddSynth Voice - Amplitude Envelope}
             xywh {10 135 275 70} box FLAT_BOX color 51 align 144
             code0 {o->init(pars->VoicePar[nvoice].AmpEnvelope, npart, kititem, nvoice + PART::engine::addVoice1, 0);}
             code1 {if (!pars->VoicePar[nvoice].PAmpEnvelopeEnabled) o->deactivate();}
@@ -1113,7 +1119,7 @@ send_data(0, ADDVOICE::control::invertPhase, o->value(), TOPLEVEL::type::Integer
             class FilterUI
           } {}
           Fl_Group voicefilterenvgroup {
-            label {ADSynth Voice - Filter Envelope}
+            label {Yoshimi : AddSynth Voice - Filter Envelope}
             xywh {295 135 275 70} box FLAT_BOX color 51 align 144
             code0 {o->init(pars->VoicePar[nvoice].FilterEnvelope, npart, kititem, nvoice + PART::engine::addVoice1, 2);}
             code1 {if (pars->VoicePar[nvoice].PFilterEnvelopeEnabled==0) o->deactivate();}
@@ -1663,19 +1669,12 @@ send_data(0, ADDVOICE::control::bypassGlobalFilter, o->value(), TOPLEVEL::type::
             break;
     }} {}
   }
-  Function {paste(CommandBlock *getData)} {} {
+  Function {paste()} {} {
     code {//
-       /* switch (getData->data.insert)
+        if (oscedit->osceditUI->visible())
         {
-            case TOPLEVEL::insert::resonanceGroup:
-            {
-                if (resui)
-                    resui->refresh();
-                break;
-            }
-        }*/
-       getData->data.spare1 = getData->data.spare0; // suppress "unused" warning
-       //std::cout << "in addvoice" << std::endl;
+            oscedit->refresh();
+        }
         ;} {}
   }
   Function {update_osclabels()} {} {
@@ -1938,7 +1937,14 @@ if (pars->VoicePar[nvoice].PFMVoice >= 0) {
                 oscedit->osceditUI->show();
             }
         }
+
+        voiceampenvgroup->theme();
+        voicefreqenvgroup->theme();
+        voicefilterenvgroup->theme();
         voicefilter->theme();
+
+        voiceFMampenvgroup->theme();
+        voiceFMfreqenvgroup->theme();
         ;} {}
   }
   Function {init(ADnoteParameters *parameters,int npart_, int kititem_, int nvoice_)} {} {
@@ -1985,9 +1991,9 @@ if (pars->VoicePar[nvoice].PFMVoice >= 0) {
   }
   decl {fft::Calc *fft;} {private local
   }
-  decl {OscilGen *oscil;} {private local
+  decl {OscilGen *oscil;} {public local
   }
-  decl {OscilGen *oscilFM;} {private local
+  decl {OscilGen *oscilFM;} {public local
   }
   decl {Oscilloscope *osc;} {private local
   }
@@ -2015,7 +2021,7 @@ class ADnoteUI {: {public PresetsUI_}
     resui->resonancewindow->hide();
     o->hide();}
       xywh {468 231 580 405} type Double hide resizable
-      code0 {o->copy_label(synth->getGuiMaster()->setPartWindowTitle("AddSynth Global").c_str());}
+      code0 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("AddSynth Global"), npart, TOPLEVEL::windowTitle, kititem)).c_str());}
       code1 {addDW = 535; addDH = 405;}
       code2 {o->size_range(addDW, addDH, 0, 0, 0, 0, 1);}
     } {
@@ -2024,7 +2030,7 @@ class ADnoteUI {: {public PresetsUI_}
         xywh {5 255 570 115} box THIN_UP_BOX labelfont 1 labelsize 12 labelcolor 64 align 17
       } {
         Fl_Group freqenv {
-          label {ADSynth Global - Frequency Envelope}
+          label {Yoshimi : AddSynth Global - Frequency Envelope}
           xywh {10 295 205 70} box FLAT_BOX color 51 labelsize 12 align 144
           code0 {o->init(pars->GlobalPar.FreqEnvelope, npart, kititem, 0, 1);}
           class EnvelopeUI
@@ -2206,7 +2212,7 @@ class ADnoteUI {: {public PresetsUI_}
           class WidgetPDial
         }
         Fl_Group ampenv {
-          label {ADSynth Global - Amplitude Envelope}
+          label {Yoshimi : AddSynth Global - Amplitude Envelope}
           xywh {10 75 275 70} box FLAT_BOX color 51 labelsize 12 align 144
           code0 {o->init(pars->GlobalPar.AmpEnvelope, npart, kititem, 0, 0);}
           class EnvelopeUI
@@ -2238,7 +2244,7 @@ send_data(0, ADDSYNTH::control::randomGroup, o->value(), TOPLEVEL::type::Integer
         xywh {290 5 285 250} box THIN_UP_BOX labelfont 1 labelsize 12 labelcolor 64 align 17
       } {
         Fl_Group filterenv {
-          label {ADSynth Global - Filter Envelope}
+          label {Yoshimi : AddSynth Global - Filter Envelope}
           xywh {295 110 275 70} box FLAT_BOX color 51 labelsize 12 align 144
           code0 {o->init(pars->GlobalPar.FilterEnvelope, npart, kititem, 0, 2);}
           class EnvelopeUI
@@ -2250,7 +2256,7 @@ send_data(0, ADDSYNTH::control::randomGroup, o->value(), TOPLEVEL::type::Integer
           class LFOUI
         } {}
         Fl_Group filterui {
-          label {ADsynth Global - Filter}
+          label {Yoshimi : AddSynth Global - Filter}
           xywh {295 35 275 75} box FLAT_BOX color 50 labelsize 12 align 144
           code0 {o->init(pars->GlobalPar.GlobalFilter, &pars->GlobalPar.PFilterVelocityScale, &pars->GlobalPar.PFilterVelocityScaleFunction, npart, kititem, 0);}
           class FilterUI
@@ -2337,7 +2343,7 @@ send_data(0, ADDSYNTH::control::stereo, o->value(), TOPLEVEL::type::Integer);}
       callback {saveWin(synth, o->w(), o->h(), o->x(), o->y(), false,"AddSynth-voice");
 o->hide();}
       xywh {460 96 805 610} type Double hide resizable
-      code0 {o->copy_label(synth->getGuiMaster()->setPartWindowTitle("AddSynth Voice").c_str());}
+      code0 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("AddSynth Voice"), npart, TOPLEVEL::windowTitle, kititem)).c_str());}
       code1 {voiceDW = int(760 * 9 / 10); voiceDH = int(610 * 9 / 10);}
       code2 {o->size_range(voiceDW, voiceDH, 0, 0, 0, 0, 1);}
     } {
@@ -2431,7 +2437,7 @@ o->hide();}
 listSeen = false;
 o->hide();}
       xywh {101 233 705 260} type Double labelcolor 64 hide resizable
-      code0 {o->copy_label(synth->getGuiMaster()->setPartWindowTitle("AddSynth Voice List").c_str());}
+      code0 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("AddSynth Voice List"), npart, TOPLEVEL::windowTitle, kititem)).c_str());}
       code1 {listDW = 705; listDH = 260;}
       code2 {o->size_range(listDW,listDH,0,0,0,0,1);}
     } {
@@ -2801,8 +2807,6 @@ o->hide();}
         fetchH = addDH;
     }
     checkSane(fetchX, fetchY, fetchW, fetchH, addDW, addDH);
-
-
     lastglobalW = 0;
     ADnoteGlobalParameters->resize(fetchX, fetchY, fetchW, fetchH);
     ADnoteGlobalParameters->show();
@@ -2870,6 +2874,9 @@ o->hide();}
             resui->resonancewindow->hide();
             resui->resonancewindow->show();
         }
+        ampenv->theme();
+        freqenv->theme();
+        filterenv->theme();
         filterui->theme();
         advoice->voicetheme();
         ;} {}

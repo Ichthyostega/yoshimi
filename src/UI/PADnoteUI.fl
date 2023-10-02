@@ -30,7 +30,7 @@ Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 This file is derivative of ZynAddSubFX original code
 
-} {selected in_source in_header
+} {in_source in_header
 }
 
 decl {\#include <FL/Fl_Box.H>
@@ -76,6 +76,9 @@ decl {\#include "Misc/TextMsgBuffer.h"
     namespace { // Implementation details...
         TextMsgBuffer& textMsgBuffer = TextMsgBuffer::instance();
     }} {private local
+}
+
+decl {\#include "Interface/TextLists.h"} {selected public local
 }
 
 class PADnoteHarmonicProfile {: {public Fl_Box}
@@ -275,7 +278,7 @@ class PADnoteUI {: {public PresetsUI_}
       label {PAD synth Parameters}
       callback {padClose->do_callback();}
       xywh {1235 133 580 440} type Double hide resizable
-      code0 {o->copy_label(synth->getGuiMaster()->setPartWindowTitle("PadSynth").c_str());}
+      code0 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("PadSynth"), npart, TOPLEVEL::windowTitle, kititem)).c_str());}
       code1 {padDW = o->w(); padDH = o->h();}
       code2 {padnotewindow->size_range(padDW, padDH, 0, 0, 0, 0, 1);}
     } {
@@ -727,7 +730,7 @@ class PADnoteUI {: {public PresetsUI_}
               class WidgetPDial
             }
             Fl_Group ampenv {
-              label {PADSynth - Amplitude Envelope}
+              label {Yoshimi : PadSynth - Amplitude Envelope}
               xywh {10 95 275 70} box FLAT_BOX color 51 labelsize 12 align 144
               code0 {o->init(pars->AmpEnvelope.get(), npart, kititem, 2, 0);}
               class EnvelopeUI
@@ -747,7 +750,7 @@ class PADnoteUI {: {public PresetsUI_}
             xywh {290 25 285 250} box THIN_UP_BOX labelfont 1 labelsize 11 labelcolor 64 align 17
           } {
             Fl_Group filterenv {
-              label {PADSynth - Filter Envelope}
+              label {Yoshimi : PadSynth - Filter Envelope}
               xywh {295 130 275 70} box FLAT_BOX color 51 labelsize 12 align 144
               code0 {o->init(pars->FilterEnvelope.get(), npart, kititem, 2, 2);}
               class EnvelopeUI
@@ -759,7 +762,7 @@ class PADnoteUI {: {public PresetsUI_}
               class LFOUI
             } {}
             Fl_Group filterui {
-              label {PADsynth - Filter}
+              label {Yoshimi : PadSynth - Filter}
               xywh {295 55 275 75} box FLAT_BOX color 50 labelsize 12 align 144
               code0 {o->init(pars->GlobalFilter.get(), &pars->PFilterVelocityScale,&pars->PFilterVelocityScaleFunction, npart, kititem, 2);}
               class FilterUI
@@ -770,7 +773,7 @@ class PADnoteUI {: {public PresetsUI_}
             xywh {5 275 570 125} box THIN_UP_BOX labelfont 1 labelsize 11 labelcolor 64 align 17
           } {
             Fl_Group freqenv {
-              label {PADSynth - Frequency Envelope}
+              label {Yoshimi : PadSynth - Frequency Envelope}
               xywh {10 325 205 70} box FLAT_BOX color 51 labelsize 12 align 144
               code0 {o->init(pars->FreqEnvelope.get(), npart, kititem, 2, 1);}
               class EnvelopeUI
@@ -920,10 +923,11 @@ class PADnoteUI {: {public PresetsUI_}
   }
   Function {make_randWalkWindow()} {} {
     Fl_Window randWalkWindow {
-      label {PadSynth - Random Walk}
+      label {Yoshimi : PadSynth - Random Walk}
       xywh {858 154 240 155} type Double hide resizable
       code0 {randDW = o->w(); randDH = o->h();}
-      code1 {o->size_range(randDW, randDH, 0, 0, 0, 0, 1);}
+      code1 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Random Walk"), npart, TOPLEVEL::windowTitle, kititem)).c_str());}
+      code2 {o->size_range(randDW, randDH, 0, 0, 0, 0, 1);}
     } {
       Fl_Group randomProp {
         xywh {0 0 240 154}
@@ -1236,6 +1240,10 @@ class PADnoteUI {: {public PresetsUI_}
             resui->resonancewindow->hide();
             resui->resonancewindow->show();
         }
+
+        ampenv->theme();
+        freqenv->theme();
+        filterenv->theme();
         filterui->theme();
         ;} {}
   }
@@ -1606,7 +1614,7 @@ class PADnoteUI {: {public PresetsUI_}
             case TOPLEVEL::insert::resonanceGroup:
             {
                 if (resui)
-                    resui->refresh();
+                        resui->refresh();
                 break;
             }
         }
@@ -1653,6 +1661,100 @@ class PADnoteUI {: {public PresetsUI_}
     padStatus->on(PADStatus::PENDING, [&]() { applyButton(pad_pending, "pending Wave"); });
     padStatus->on(PADStatus::BUILDING,[&]() { applyButton(pad_building, "rebuilding..."); });
     padStatus->on(PADStatus::DIRTY,   [&]() { applyButton(pad_apply, "Apply Changes"); });} {}
+  }
+  Function {refresh(void)} {} {
+    code {//
+        volume->value(pars->PVolume);
+        vsns->value(pars->PAmpVelocityScaleFunction);
+        pan->value(pars->PPanning);
+        stereo->value((pars->PStereo) ? 1 : 0);
+
+        pstr->value(pars->PPunchStrength);
+        pt->value(pars->PPunchTime);
+        pstc->value(pars->PPunchStretch);
+        pvel->value(pars->PPunchVelocitySensing);
+
+        detunevalueoutput->value(getDetune(pars->PDetuneType,0,pars->PDetune));
+        detune->value(pars->PDetune-8192);
+
+        int k=pars->PCoarseDetune/1024;if (k>=8) k-=16;
+        octave->value(k);
+
+        detunetype->value(pars->PDetuneType-1);
+        k=pars->PCoarseDetune%1024;if (k>=512) k-=1024;
+        coarsedet->value(k);
+
+        hz440->value(pars->Pfixedfreq);
+        fixedfreqetdial->value(pars->PfixedfreqET);
+
+        amplfo->refresh();
+        freqlfo->refresh();
+        filterlfo->refresh();
+
+        ampenv->refresh();
+        freqenv->refresh();
+        filterenv->refresh();
+        filterui->refresh();
+
+        /* harmonic structure parameters */
+
+        resui->refresh();
+        if (oscui!=NULL) oscui->refresh();
+
+        hpbasetype->value(pars->PProfile.base.type);
+        hpbasepar1->value(pars->PProfile.base.pwidth);
+        hpfreqmult->value(pars->PProfile.freqmult);
+
+        hpmpar1->value(pars->PProfile.modulator.pstretch);
+        hpmfreq->value(pars->PProfile.modulator.freq);
+        hpwidth->value(pars->PProfile.width);
+
+        hponehalf->value(pars->PProfile.onehalf);
+        hpamptype->value(pars->PProfile.amp.type);
+        hpampmode->value(pars->PProfile.amp.mode);
+        hpamppar1->value(pars->PProfile.amp.par1);
+        hpamppar2->value(pars->PProfile.amp.par2);
+        hpautoscale->value(pars->PProfile.autoscale);
+
+        bwdial->value(pars->Pbandwidth);
+        if (pars->Pmode==0)
+        {
+           bwprofilegroup->activate();
+           bwdial->activate();
+           bwcents->activate();
+           hprofile->activate();
+           hprofile->color(54);
+           bwscale->activate();
+        }
+        else
+        {
+           bwprofilegroup->deactivate();
+           bwdial->deactivate();
+           bwcents->deactivate();
+           hprofile->deactivate();
+           hprofile->color(48);
+           bwscale->activate();
+        }
+
+        spectrummode->value(pars->Pmode);
+
+        qbasenote->value(pars->Pquality.basenote);
+        qsmpoct->value(pars->Pquality.smpoct);
+        qoct->value(pars->Pquality.oct);
+        qsamplesize->value(pars->Pquality.samplesize);
+
+        hrpostype->value(pars->Phrpos.type);
+        hrpospar1->value(pars->Phrpos.par1);
+        hrpospar2->value(pars->Phrpos.par2);
+        hrpospar3->value(pars->Phrpos.par3);
+
+        hprofile->redraw();
+        overtonepos->redraw();
+
+        osc->redraw();
+        //pars->applyparameters(false);
+        //applybutton->color(FL_GRAY);
+        //applybutton->parent()->redraw();} {}
   }
   Function {~PADnoteUI()} {return_type virtual
   } {

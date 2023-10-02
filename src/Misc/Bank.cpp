@@ -48,7 +48,7 @@
 #include "Misc/FileMgrFuncs.h"
 #include "Misc/FormatFuncs.h"
 
-const int BANKS_VERSION = 10;
+const int BANKS_VERSION = 11;
 
 using file::make_legit_filename;
 using file::isRegularFile;
@@ -92,7 +92,8 @@ Bank::Bank(SynthEngine *_synth) :
 
 string Bank::getBankFileTitle(size_t root, size_t bank)
 {
-    return synth->makeUniqueName("Root " + asString(root) + ", Bank " + asString(bank) + " - " + getBankPath(root, bank));
+    string name = synth->makeUniqueName("Root " + asString(root) + ", Bank " + asString(bank) + " - " + getBankPath(root, bank));
+    return name;
 }
 
 
@@ -1729,7 +1730,7 @@ bool Bank::installNewRoot(size_t rootID, string rootdir, bool reload)
                 {
                     banksSet[id] = true;
 
-                    if (BanksVersion > 9) // all we need to do!
+                    if (BanksVersion == BANKS_VERSION) // all we need to do!
                     {
                         checkbank(rootID, id);
                         InstrumentsInBanks += getBankSize(id, rootID);

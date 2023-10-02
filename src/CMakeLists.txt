@@ -49,9 +49,10 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 #add_definitions(-Werror=format-security)
 #add_definitions(-Wextra)
 #add_definitions(-Wno-vla) # Nothing wrong with variable length arrays
+#add_definitions(-Wno-unqualified-std-cast-call) # supresses clang warning 'unqualified call'
 # ^^^ comment these out on release pushes
 
-set (YOSHIMI_VERSION "2.3.0")
+set (YOSHIMI_VERSION "2.3.1")
 
 add_definitions (-DMIN_CONFIG_MAJOR=2)
 add_definitions (-DMIN_CONFIG_MINOR=3)
@@ -516,12 +517,16 @@ install (FILES ${CMAKE_CURRENT_BINARY_DIR}/yoshimi.desktop
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications)
 install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/yoshimi.png
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/pixmaps)
+install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/64/yoshimi.png
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/64x64/apps)
+install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/128/yoshimi.png
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/128x128/apps)
+install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/256/yoshimi.png
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/256x256/apps)
 install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/yoshimi.svg
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps)
 install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/yoshimi_alt.svg
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps)
-install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/metainfo/yoshimi.appdata.xml
-    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/metainfo)
 install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/metainfo/yoshimi.metainfo.xml
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/metainfo)
 install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/yoshimi.1

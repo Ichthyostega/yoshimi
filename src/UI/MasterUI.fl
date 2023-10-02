@@ -398,7 +398,7 @@ class MasterUI {: {private GuiUpdates}
   }
   Function {Init(const char *_label)} {} {
     code {//
-      instance = synth->getUniqueId();
+      current_ID = collect_readData(synth, 0, 0, TOPLEVEL::instanceID);
       file::createDir(file::configDir() + "/windows");
       panelType = 5;
       msgSeen = false;
@@ -407,7 +407,7 @@ class MasterUI {: {private GuiUpdates}
       microtonalui = new MicrotonalUI(&synth->microtonal, synth);
       bankui = new BankUI(synth);
       virkeyboard = new VirKeyboard(synth);
-      configui = new ConfigUI(synth);
+      configui = new ConfigUI(synth, current_ID);
       presetsui = new PresetsUI(synth);
       paramsui = new ParametersUI(synth);
       vectorui = new VectorUI(synth, bankui, paramsui);
@@ -425,7 +425,7 @@ class MasterUI {: {private GuiUpdates}
       partui->redraw();
 
       partui->checkEngines();
-      if (instance > 0)
+      if (current_ID > 0)
           foundWindows = true; //  not relevant for later windows
       //std::cout << "Found windows " << int(foundWindows) << std::endl;
       loadWindowData();
@@ -441,8 +441,8 @@ class MasterUI {: {private GuiUpdates}
       }
       if (starterror.find("Could not") != std::string::npos)
           query("", "", "", starterror);
-      microtonalui->microtonaluiwindow->copy_label(synth->makeUniqueName("Scales").c_str());
-      yoshiLog->logConsole->copy_label(synth->makeUniqueName("Console").c_str());
+      microtonalui->microtonaluiwindow->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Scales"), UNUSED, TOPLEVEL::windowTitle)).c_str());
+      yoshiLog->logConsole->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Console"), UNUSED, TOPLEVEL::windowTitle)).c_str());
       logenable = fetchData(0, CONFIG::control::reportsDestination, TOPLEVEL::section::config);
       if (!foundWindows)
       {
@@ -460,7 +460,7 @@ class MasterUI {: {private GuiUpdates}
           msg = "Existing config older than V " + to_string(MIN_CONFIG_MAJOR) + "." + to_string(MIN_CONFIG_MINOR) + " \\nCheck settings, save and restart.";
           setmessage(UNUSED, true, msg, "Close");
       }
-      else if (instance == 0 && synth->getRuntime().banksChecked == false)
+      else if (current_ID == 0 && synth->getRuntime().banksChecked == false)
       {
           string msg = "Default banks have been copied to {user}.local/share/yoshimi/found \\nAdd these to the bank roots window?";
           setmessage(TOPLEVEL::msgResponse::refreshBankDefaults, true, msg, "Ask Later", "No", "Yes");} {}} {}
@@ -561,7 +561,7 @@ class MasterUI {: {private GuiUpdates}
                 query("", "", "", "Start new instances from host");
                 return;
             }
-            if (synth->getUniqueId() != 0)
+            if (current_ID != 0)
             {
                 query("", "", "", "Only main instance can start others");
                 return;
@@ -578,13 +578,7 @@ class MasterUI {: {private GuiUpdates}
                 alert(synth, "Logging configured for std::cout");
             break;
         case 5: // manual
-//            if (query("", "Yes", "No", "A new manual is being written, so we temporarily include the one for V 1.7.4\\n Do you wish to see this?") > 1)
-            {
-                words->copy_label("Searching for the manual.");
-                message->show();
-                message->position(masterwindow->x() + 36, masterwindow->y() + 170);
-                send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate, MAIN::control::openManual, 0, TOPLEVEL::type::Integer, TOPLEVEL::section::main);
-            }
+            send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate, MAIN::control::openManual, 0, TOPLEVEL::type::Integer, TOPLEVEL::section::main);
             break;
         case 6: // exit
             masterwindow->do_callback();
@@ -726,7 +720,7 @@ class MasterUI {: {private GuiUpdates}
         case 29: // default
             {
             string name = synth->getRuntime().defaultStateName;
-            name += ("-" + to_string(instance));
+            name += ("-" + to_string(current_ID));
             send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate, MAIN::control::saveNamedState, 0, TOPLEVEL::type::Integer, TOPLEVEL::section::main, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(name + ".state"));
 
             }
@@ -1537,7 +1531,7 @@ Instance from 1 to 31}
     comment {line spaces in boxes below are critical} {in_source in_header
     }
     Fl_Window aboutwindow {
-      label {About Yoshimi}
+      label {Yoshimi : About}
       xywh {46 64 365 290} type Double color 7 labelfont 13 labelsize 13 labelcolor 64 when 0 hide resizable
       code0 {aboutDW = 365; aboutDH = 290;}
       code1 {o->size_range(aboutDW,aboutDH, 0, 0, 0, 0, 1);}
@@ -1555,7 +1549,7 @@ ZynAddSubFX}
           label {Copyright 2002-2009, Nasca O. Paul and others
 Copyright 2009-2011, Alan Calvert
 Copyright 2012-2013, Jeremy Jongepier and others
-Copyright 2014-2021, Will Godfrey and others
+Copyright 2014-2023, Will Godfrey and others
 LV2 plugin Copyright 2014, Andrew Deryabin
 Splash Image Copyright 2017, Jesper Lloyd}
           xywh {25 90 315 91} labelfont 13 labelsize 11 labelcolor 64
@@ -1640,11 +1634,12 @@ Alan Calvert started the project}
       }
     }
     Fl_Window syseffsendwindow {
-      label {Sys Send}
+      label {Yoshimi : Sys Send}
       callback {syseffClose->do_callback();}
       xywh {534 25 120 245} type Double labelfont 13 labelsize 13 hide resizable
       code0 {syseffDW = 120; syseffDH = 245;}
-      code1 {o->size_range(syseffDW, syseffDH, 0, 0, 0, 0, 1);}
+      code1 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Sends"), UNUSED, TOPLEVEL::windowTitle)).c_str());}
+      code2 {o->size_range(syseffDW, syseffDH, 0, 0, 0, 0, 1);}
     } {
       Fl_Group syseffgroup {
         xywh {4 46 112 160} box FLAT_BOX labelcolor 64
@@ -1747,10 +1742,10 @@ Alan Calvert started the project}
       }
     }
     Fl_Window panelwindow {
-      label {Yoshimi Mixer Panel}
+      label {Yoshimi : Mixer Panel}
       callback {Panelclose->do_callback();}
       xywh {421 26 1040 320} type Double labelfont 13 labelsize 13 hide resizable
-      code1 {o->copy_label(synth->makeUniqueName("Mixer Panel").c_str());}
+      code1 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Mixer Panel"), UNUSED, TOPLEVEL::windowTitle)).c_str());}
     } {
       Fl_Group Panelframe {
         xywh {2 2 1036 286} box ENGRAVED_FRAME
@@ -1853,7 +1848,7 @@ Alan Calvert started the project}
     Fl_Window message {
       label Yoshimi
       xywh {58 81 290 85} type Double labelsize 12 labelcolor 64 hide resizable
-      code0 {o->copy_label(synth->makeUniqueName("").c_str());}
+      code0 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push(""), UNUSED, TOPLEVEL::windowTitle)).c_str());}
       code1 {msgDW = o->w(); msgDH = o->h();}
       code2 {o->size_range(290, 85, 0, 0, 0, 0, 1);}
     } {
@@ -1940,12 +1935,13 @@ Alan Calvert started the project}
       }
     }
     Fl_Window filerwindow {
-      label Yoshimi
+      label {Yoshimi : Filer}
       callback {//
         filerclose->do_callback();}
       xywh {236 77 550 350} type Double hide resizable
       code0 {filerDW = o->w(); filerDH = o->h();}
-      code1 {o->size_range(filerDW, filerDH, 0, 0, 0, 0, 1);} modal
+      code1 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("File Manager"), UNUSED, TOPLEVEL::windowTitle)).c_str());}
+      code2 {o->size_range(filerDW, filerDH, 0, 0, 0, 0, 1);} modal
     } {
       Fl_Input fileroldpath {
         label {file paths}
@@ -3848,9 +3844,13 @@ Alan Calvert started the project}
     partPortamento->value(synth->part[npart]->ctl->portamento.portamento);
 
     sysEff1->value(synth->Psysefxvol[0][npart]);
+        sysEff1->selection_color(setKnob(sysEff1->value(),0));
     sysEff2->value(synth->Psysefxvol[1][npart]);
+        sysEff2->selection_color(setKnob(sysEff2->value(),0));
     sysEff3->value(synth->Psysefxvol[2][npart]);
+        sysEff3->selection_color(setKnob(sysEff3->value(),0));
     sysEff4->value(synth->Psysefxvol[3][npart]);
+        sysEff4->selection_color(setKnob(sysEff4->value(),0));
 
     int tmp = synth->ReadPartKeyMode(npart);
     if (tmp > PART_MONO)
@@ -3881,22 +3881,12 @@ Alan Calvert started the project}
   }
   Function {setMasterLabel(string name)} {} {
     code {//
-    string prefix;
-    string panel;
-    if  (name.size())
-    {
-        prefix = synth->makeUniqueName(name);
-        panel = synth->makeUniqueName("Mixer Panel - "+name);
-    }
-    else
-    {
-        prefix = synth->makeUniqueName("");
-        prefix = prefix.substr(0, prefix.length() - 3);
-        panel = prefix + " : Mixer Panel";
-    }
-    masterwindow->copy_label(prefix.c_str());
-    panelwindow->copy_label(panel.c_str());
-    masterwindow->changed();} {}
+        string spacer = "";
+        if (!name.empty())
+            spacer = " - ";
+        masterwindow->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push(name), UNUSED, TOPLEVEL::windowTitle)).c_str());
+        panelwindow->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Mixer Panel" + spacer + name), UNUSED, TOPLEVEL::windowTitle)).c_str());
+        masterwindow->changed();} {}
   }
   Function {do_load_scale(string fname)} {} {
     code {//
@@ -4122,22 +4112,6 @@ Alan Calvert started the project}
   Function {setState(string filename)} {} {
     code {//
     send_data(TOPLEVEL::action::muteAndLoop | TOPLEVEL::action::forceUpdate, MAIN::control::loadNamedState, 0, TOPLEVEL::type::Integer, TOPLEVEL::section::main, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(filename));} {}
-  }
-  Function {setPartWindowTitle(string prefix)} {return_type string
-  } {
-    code {//
-    string extension = " - Part " + asString(npart + 1) + " " + synth->part[npart]->Pname;
-    if (synth->part[npart]->Pkitmode)
-    {
-        extension += ", Kit ";
-        if (partui->lastkititem >= 0)
-        {
-            extension += to_string(partui->lastkititem + 1);
-            if (partui->kitname > "")
-                extension += (" - " + partui->kitname);
-        }
-    }
-    return synth->makeUniqueName(prefix + extension);} {}
   }
   Function {setPartActive(int _npart, bool active)} {} {
     code {//
@@ -4844,7 +4818,7 @@ bpmfallback->format(format);} {}
   }
   decl {MicrotonalUI *microtonalui;} {public local
   }
-  decl {VirKeyboard *virkeyboard;} {private local
+  decl {VirKeyboard *virkeyboard;} {public local
   }
   decl {int ninseff;} {public local
   }
@@ -4867,7 +4841,7 @@ bpmfallback->format(format);} {}
   }
   decl {string panelwindowlabel} {private local
   }
-  decl {int instance;} {private local
+  decl {int current_ID;} {private local
   }
   decl {int panelgroup;} {public local
   }
