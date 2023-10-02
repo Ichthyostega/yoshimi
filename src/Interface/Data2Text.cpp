@@ -19,6 +19,15 @@
 
  */
 
+/*                            **** WARNING ****
+ *
+ * Text2Data tracks many of these conversions - principally to be able to interpret
+ * MIDI-learn files.
+ *
+ * If you change any of the text you must check whether Text2Data uses them, and if
+ * it does, ensure that it carries *both* the old and new versions.
+ */
+
 #include "Interface/Data2Text.h"
 #include "Interface/TextLists.h"
 #include "Misc/SynthEngine.h"
@@ -90,10 +99,6 @@ string DataText::resolveAll(SynthEngine *_synth, CommandBlock *getData, bool add
     showValue = true;
     yesno = false;
     string commandName;
-
-   // this is unique and placed here to avoid Xruns
-    if (npart == TOPLEVEL::section::scales && control <= SCALES::control::retune)
-        synth->setAllPartMaps();
 
     if (npart == TOPLEVEL::section::vector)
     {
@@ -366,7 +371,7 @@ string DataText::resolveVector(CommandBlock *getData, bool addValue)
 
         default:
             showValue = false;
-            contstr = "Unrecognised";
+            contstr = "Unrecognised Vector";
             break;
     }
 
@@ -470,12 +475,24 @@ string DataText::resolveMicrotonal(CommandBlock *getData, bool addValue)
             contstr = "Keymap ";
             showValue = false;
             break;
+        case SCALES::control::keymapSize:
+            contstr = "Keymap Size ";
+            break;
         case SCALES::control::importScl:
             contstr = "Tuning Import ";
             showValue = false;
             break;
         case SCALES::control::importKbm:
             contstr = "Keymap Import ";
+            showValue = false;
+            break;
+
+        case SCALES::control::exportScl:
+            contstr = "Tuning Export ";
+            showValue = false;
+            break;
+        case SCALES::control::exportKbm:
+            contstr = "Keymap Export ";
             showValue = false;
             break;
 
@@ -491,10 +508,6 @@ string DataText::resolveMicrotonal(CommandBlock *getData, bool addValue)
                 contstr += textMsgBuffer.fetch(getData->data.miscmsg, false);
             showValue = false;
             break;
-        case SCALES::control::retune:
-            contstr = "Retune";
-            showValue = false;
-            break;
 
         case SCALES::control::clearAll:
             contstr = "Clear all settings";
@@ -503,7 +516,7 @@ string DataText::resolveMicrotonal(CommandBlock *getData, bool addValue)
 
         default:
             showValue = false;
-            contstr = "Unrecognised";
+            contstr = "Unrecognised Microtonal";
             break;
 
     }
@@ -515,42 +528,8 @@ string DataText::resolveMicrotonal(CommandBlock *getData, bool addValue)
         || control == SCALES::control::importScl
         || control == SCALES::control::importKbm
         ))
-    { // errors :@(
-        switch (value)
-        {
-            case 0:
-                contstr += "Empty entry";
-                break;
-            case -1:
-                contstr += "Value too small";
-                break;
-            case -2:
-                contstr += "Invalid entry";
-                break;
-            case -3:
-                contstr += "File not found";
-                break;
-            case -4:
-                contstr += "Empty file";
-                break;
-            case -5:
-                contstr += "Short or corrupted file";
-                break;
-            case -6:
-                if (control == SCALES::control::tuning || control == SCALES::control::importScl)
-                    contstr += "Invalid octave size";
-                else
-                    contstr += "Invalid keymap size";
-                break;
-            case -7:
-                contstr += "Invalid note number";
-                break;
-            case -8:
-                contstr += "Out of range";
-                break;
-        }
-    }
-
+    // errors :@(
+    contstr += scale_errors[0-value];
     return ("Scales " + contstr);
 }
 
@@ -983,7 +962,7 @@ string DataText::resolveConfig(CommandBlock *getData, bool addValue)
             break;
         }
         default:
-            contstr = "Unrecognised";
+            contstr = "Unrecognised Config";
             break;
     }
 
@@ -1078,7 +1057,7 @@ string DataText::resolveBank(CommandBlock *getData, bool)
             break;
 
         default:
-            contstr = "Unrecognised";
+            contstr = "Unrecognised Bank";
             break;
     }
     return ("Bank " + contstr);
@@ -1371,7 +1350,7 @@ string DataText::resolveMain(CommandBlock *getData, bool addValue)
 
         default:
             showValue = false;
-            contstr = "Unrecognised";
+            contstr = "Unrecognised Main";
             break;
     }
 
@@ -1842,7 +1821,7 @@ string DataText::resolvePart(CommandBlock *getData, bool addValue)
         default:
             showValue = false;
             name = "";
-            contstr = "Unrecognised";
+            contstr = "Unrecognised Part";
             break;
     }
     return ("Part " + to_string(npart + 1) + kitnum + name + contstr);
@@ -1925,7 +1904,7 @@ string DataText::resolveAdd(CommandBlock *getData, bool addValue)
 
         default:
             showValue = false;
-            contstr = "Unrecognised";
+            contstr = "Unrecognised AddSynth";
             break;
     }
 
@@ -2180,7 +2159,7 @@ string DataText::resolveAddVoice(CommandBlock *getData, bool addValue)
 
         default:
             showValue = false;
-            contstr = "Unrecognised";
+            contstr = "Unrecognised AddVoice";
             break;
     }
 
@@ -2330,7 +2309,7 @@ string DataText::resolveSub(CommandBlock *getData, bool addValue)
 
         default:
             showValue = false;
-            contstr = "Unrecognised";
+            contstr = "Unrecognised SubSynth";
             break;
     }
 
@@ -2554,12 +2533,12 @@ string DataText::resolvePad(SynthEngine *_synth, CommandBlock *getData, bool add
 
         default:
             showValue = false;
-            contstr = "Unrecognised";
+            contstr = "Unrecognised PadSynth";
             break;
     }
-    if (contstr != "Unrecognised")
+    if (contstr != "Unrecognised PadSynth")
         contstr = "Harmonic Samples " + contstr;
-    if (write && contstr != "Unrecognised")
+    if (write && contstr != "Unrecognised PadSynth")
         contstr += padApply;
     return ("Part " + to_string(npart + 1) + " Kit " + to_string(kititem + 1) + " PadSynth " + contstr);
 }
@@ -2746,7 +2725,7 @@ string DataText::resolveOscillator(SynthEngine *_synth, CommandBlock *getData, b
 
         default:
             showValue = false;
-            contstr = "Unrecognised";
+            contstr = "Unrecognised Oscillator";
             break;
     }
 
@@ -2839,7 +2818,7 @@ string DataText::resolveResonance(SynthEngine *_synth, CommandBlock *getData, bo
 
         default:
             showValue = false;
-            contstr = "Unrecognised";
+            contstr = "Unrecognised Resonance";
             break;
     }
 
@@ -2932,7 +2911,7 @@ string DataText::resolveLFO(CommandBlock *getData, bool addValue)
 
         default:
             showValue = false;
-            contstr = "Unrecognised";
+            contstr = "Unrecognised LFO";
             break;
     }
 
@@ -3011,7 +2990,7 @@ string DataText::filterControl(CommandBlock *getData, bool addValue)
                     contstr += "StVar";
                     break;
                 default:
-                    contstr += "unrecognised";
+                    contstr += "Unrecognised Filter Base";
                     break;
             }
             break;
@@ -3094,7 +3073,7 @@ string DataText::filterControl(CommandBlock *getData, bool addValue)
 
         default:
             showValue = false;
-            contstr = "Unrecognised";
+            contstr = "Unrecognised Filter";
             break;
     }
     if (control >= FILTERINSERT::control::formantFrequency && control <= FILTERINSERT::control::formantAmplitude)
@@ -3246,7 +3225,7 @@ string DataText::resolveEnvelope(CommandBlock *getData, bool)
 
         default:
             showValue = false;
-            contstr = "Unrecognised";
+            contstr = "Unrecognised Envelope";
             break;
     }
 
@@ -3607,7 +3586,7 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
 
         default:
             showValue = false;
-            contstr = " Unrecognised";
+            contstr = " Unrecognised Effect";
             break;
     }
     //std::cout << "control " << int(control) << std::endl;

@@ -69,6 +69,13 @@ decl {\#include "Misc/SynthHelper.h"
     using synth::getDetune;} {private local
 }
 
+decl {\#include "Misc/TextMsgBuffer.h"
+
+    namespace { // Implementation details...
+        TextMsgBuffer& textMsgBuffer = TextMsgBuffer::instance();
+    }} {private local
+}
+
 class SUBnoteharmonic {: {public Fl_Group}
 } {
   Function {make_window()} {} {
@@ -146,9 +153,14 @@ class SUBnoteharmonic {: {public Fl_Group}
   }
   Function {refresh()} {} {
     code {//
-        // a lot missing here :(
         mag->value(pars->Phmag[n]);
-        bw->value(pars->Phrelbw[n] - 64);} {}
+        if (n == 0)
+            mag->selection_color(setSlider(pars->Phmag[n],127));
+        else
+            mag->selection_color(setSlider(pars->Phmag[n],0));
+        bw->value(pars->Phrelbw[n] - 64);
+        bw->selection_color(setSlider(pars->Phrelbw[n],64));
+        ;} {}
   }
   Function {~SUBnoteharmonic()} {} {
     code {//
@@ -180,7 +192,7 @@ class SUBnoteUI {: {public PresetsUI_}
     subSeen = false;
     o->hide();}
       xywh {463 28 735 470} type Double labelcolor 64 hide resizable
-      code0 {o->copy_label(synth->getGuiMaster()->setPartWindowTitle("SubSynth").c_str());}
+      code0 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("SubSynth"), npart, TOPLEVEL::windowTitle, kititem)).c_str());}
       code1 {subDW = o->w();subDH=o->h();}
       code2 {SUBparameters->size_range(subDW, subDH, 0, 0, 0, 0, 1);}
     } {
@@ -236,7 +248,7 @@ class SUBnoteUI {: {public PresetsUI_}
           class WidgetPDial
         }
         Fl_Group ampenv {
-          label {SUBsynth - Amplitude Envelope}
+          label {Yoshimi : SubSynth - Amplitude Envelope}
           xywh {10 65 205 70} box FLAT_BOX color 51 labelcolor 64 align 144
           code0 {o->init(pars->AmpEnvelope, npart, kititem, 1, 0);}
           class EnvelopeUI
@@ -275,7 +287,7 @@ class SUBnoteUI {: {public PresetsUI_}
         xywh {440 5 290 135} box THIN_UP_FRAME labelfont 1 labelsize 11 labelcolor 64 align 17
       } {
         Fl_Group freqenvelopegroup {
-          label {SUBsynth - Frequency Envelope}
+          label {Yoshimi : SubSynth - Frequency Envelope}
           xywh {445 65 205 70} box FLAT_BOX color 51 align 144
           code0 {o->init(pars->FreqEnvelope, npart, kititem, 1, 1);}
           code1 {if (pars->PFreqEnvelopeEnabled == 0) o->deactivate();}
@@ -401,7 +413,7 @@ class SUBnoteUI {: {public PresetsUI_}
         xywh {220 5 220 135} box THIN_UP_FRAME labelfont 1 labelsize 11 labelcolor 64 align 17
       } {
         Fl_Group bandwidthenvelopegroup {
-          label {SUBsynth - BandWidth Envelope}
+          label {Yoshimi : SubSynth - BandWidth Envelope}
           xywh {225 65 210 70} box FLAT_BOX color 51 align 144
           code0 {o->init(pars->BandWidthEnvelope, npart, kititem, 1, 3);}
           code1 {if (pars->PBandWidthEnvelopeEnabled==0) o->deactivate();}
@@ -497,13 +509,13 @@ class SUBnoteUI {: {public PresetsUI_}
         code0 {if (pars->PGlobalFilterEnabled==0) o->deactivate();}
       } {
         Fl_Group filterenv {
-          label {SUBsynth - Filter Envelope}
+          label {Yoshimi : SubSynth - Filter Envelope}
           xywh {447 328 275 70} box FLAT_BOX color 51 align 144
           code0 {o->init(pars->GlobalFilterEnvelope, npart, kititem, 1, 2);}
           class EnvelopeUI
         } {}
         Fl_Group filterui {
-          label {SUBsynth - Filter}
+          label {Yoshimi : SubSynth - Filter}
           xywh {447 246 275 75} box FLAT_BOX color 50 align 144
           code0 {o->init(pars->GlobalFilter,&pars->PGlobalFilterVelocityScale,&pars->PGlobalFilterVelocityScaleFunction, npart, kititem, 1);}
           class FilterUI
@@ -773,6 +785,10 @@ class SUBnoteUI {: {public PresetsUI_}
             SUBparameters->hide();
             SUBparameters->show();
         }
+        ampenv->theme();
+        freqenvelopegroup->theme();
+        filterenv->theme();
+        bandwidthenvelopegroup->theme();
         if (filterui->formantparswindow->visible())
             filterui->theme();
         ;} {}
@@ -956,10 +972,20 @@ class SUBnoteUI {: {public PresetsUI_}
         case SUBSYNTH::control::clearHarmonics:
             for (int i = 0; i < MAX_SUB_HARMONICS; i++)
             {
-                h[i]->mag->value(0);
+                if (i == 0)
+                {
+                    h[i]->mag->value(127);
+                    h[i]->mag->selection_color(setSlider(127,127));
+                }
+                else
+                {
+                    h[i]->mag->value(0);
+                    h[i]->mag->selection_color(setSlider(0,0));
+                }
                 h[i]->bw->value(0);
+                h[i]->bw->selection_color(setSlider(64,64));
             }
-            h[0]->mag->value(127);
+
             break;
 
         case SUBSYNTH::control::stereo:

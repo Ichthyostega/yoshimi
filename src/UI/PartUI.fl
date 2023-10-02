@@ -347,7 +347,7 @@ class PartUI {: {public Fl_Group, PartUI_}
       callback {editClose->do_callback();}
       xywh {739 259 395 385} type Double hide resizable
       code0 {seteditname();}
-      code1 {o->copy_label(synth->getGuiMaster()->setPartWindowTitle("Instrument Edit").c_str());}
+      code1 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Edit"), npart, TOPLEVEL::windowTitle)).c_str());}
       code2 {editDW = 395; editDH = 385;}
       code3 {o->size_range(editDW, editDH, 0, 0, 0, 0, 1);}
     } {
@@ -585,7 +585,7 @@ class PartUI {: {public Fl_Group, PartUI_}
     instrumentkitlist->hide();
     kitSeen = false;}
       xywh {313 409 670 370} type Double hide resizable
-      code0 {o->copy_label(synth->getGuiMaster()->setPartWindowTitle("Kit List").c_str());}
+      code0 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Kit List"), npart, TOPLEVEL::windowTitle)).c_str());}
       code2 {kitDW = o->w(); kitDH = o->h();}
       code3 {o->size_range(kitDW, kitDH, 0, 0, 0, 0, 1);}
     } {
@@ -687,7 +687,7 @@ class PartUI {: {public Fl_Group, PartUI_}
     saveWin(synth, partfx->w(), partfx->h(),  partfx->x(),  partfx->y(), false, "Part-effects");
     partfx->hide();}
       xywh {520 67 385 160} type Double hide resizable
-      code0 {o->copy_label(synth->getGuiMaster()->setPartWindowTitle("Part Effects").c_str());}
+      code0 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Effects"), npart, TOPLEVEL::windowTitle)).c_str());}
       code1 {fxDW = o->w(); fxDH = o->h();}
       code2 {o->size_range(fxDW, fxDH, 0, 0, 0, 0, 1);}
     } {
@@ -764,7 +764,7 @@ class PartUI {: {public Fl_Group, PartUI_}
     Fl_Window ctlmidi {
       label {MIDI Controls}
       xywh {591 324 365 60} type Double hide resizable
-      code0 {o->copy_label(synth->getGuiMaster()->setPartWindowTitle("MIDI Controls").c_str());}
+      code0 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("MIDI Controls"), npart, TOPLEVEL::windowTitle)).c_str());}
       code1 {midiDW = o->w(); midiDH = o->h();}
       code2 {o->size_range(midiDW, midiDH, 0, 0, 0, 0, 1);}
     } {
@@ -831,7 +831,7 @@ class PartUI {: {public Fl_Group, PartUI_}
       label Controllers
       callback {ctlclose->do_callback();}
       xywh {418 167 505 130} type Double hide resizable
-      code0 {o->copy_label(synth->getGuiMaster()->setPartWindowTitle("Controllers").c_str());}
+      code0 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Controllers"), npart, TOPLEVEL::windowTitle)).c_str());}
       code1 {ctlDW = o->w(); ctlDH = o->h();}
       code2 {o->size_range(ctlDW, ctlDH, 0, 0, 0, 0, 1);}
     } {
@@ -928,7 +928,7 @@ class PartUI {: {public Fl_Group, PartUI_}
         callback {//
         send_data(0, 141, o->value(), TOPLEVEL::type::Integer, npart);}
         tooltip {Breath Control enable} xywh {225 38 60 18} box THIN_UP_BOX down_box DOWN_BOX selection_color 64 labelsize 10 labelcolor 64
-        code0 {o->value(part->PbreathControl == 2);}
+        code0 {o->value(part->PbreathControl == MIDI::CC::breath);}
         class Fl_Check_Button2
       }
       Fl_Box pwheelrnglabel {
@@ -1113,7 +1113,7 @@ class PartUI {: {public Fl_Group, PartUI_}
     saveWin(synth, aftertouchcontrol->w(), aftertouchcontrol->h(), aftertouchcontrol->x(), aftertouchcontrol->y(), false, "Part-aftertouch");
     aftertouchcontrol->hide();}
       xywh {569 115 485 180} type Double hide resizable
-      code0 {o->copy_label(synth->getGuiMaster()->setPartWindowTitle("Aftertouch").c_str());}
+      code0 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Aftertouch"), npart, TOPLEVEL::windowTitle)).c_str());}
       code1 {atDW = o->w(); atDH = o->h();}
       code2 {o->size_range(atDW, atDH, 0, 0, 0, 0, 1);}
     } {
@@ -1739,6 +1739,7 @@ class PartUI {: {public Fl_Group, PartUI_}
     code {//
         int kititem = getData->data.kit;
         int engine = getData->data.engine;
+        int insert = getData->data.insert;
 
         if (kititem >= EFFECT::type::none && kititem < EFFECT::type::count)
         {
@@ -1750,16 +1751,21 @@ class PartUI {: {public Fl_Group, PartUI_}
         }
 
         if (kititem != lastkititem)
-            return; // only update engines if current kititem
-
+            return; // only update engines if current kititem;
         if (engine >= PART::engine::addVoice1 && engine < PART::engine::addVoiceModEnd)
         {
-            int voiceNum = engine - PART::engine::addVoice1;
-            if (adnoteui->ADnoteVoice && voiceNum == adnoteui->nvoice)
+            int voiceNum = (engine - PART::engine::addVoice1);
+            //std::cout << "voice " << voiceNum << std::endl;
+            if (insert == TOPLEVEL::insert::oscillatorGroup)
+            {
+                adnoteui->advoice->paste();
+                return;
+            }
+
+            if (voiceNum == adnoteui->nvoice)
             {
                 if(adnoteui->ADnoteVoice->visible())
                 {
-                    //std::cout << "here" << std::endl;
                     adnoteui->editVoice(voiceNum);
                 }
             }
@@ -1776,16 +1782,11 @@ class PartUI {: {public Fl_Group, PartUI_}
                 return;
             }
             //std::cout << "add top level " << engine << std::endl;
-            bool show = false;
             if (adnoteui != NULL)
             {
-                show = adnoteui->ADnoteGlobalParameters->visible();
-                delete adnoteui;
-                adnoteui = NULL;
+                if (adnoteui->ADnoteGlobalParameters->visible())
+                    adnoteui ->refresh();
             }
-            adnoteui = new ADnoteUI(part->kit[kititem].adpars, npart, 0);
-            if (show)
-                adnoteui ->ShowGlobal();
             return;
         }
         //std::cout << "Next section" << std::endl;
@@ -1794,16 +1795,11 @@ class PartUI {: {public Fl_Group, PartUI_}
         {
 
             //std::cout << "sub top level" << std::endl;
-            bool show = false;
             if (subnoteui != NULL)
             {
-                show = subnoteui->SUBparameters->visible();
-                delete subnoteui;
-                subnoteui = NULL;
+                if (subnoteui->SUBparameters->visible())
+                    subnoteui->refresh();
             }
-            subnoteui = new SUBnoteUI(part->kit[kititem].subpars, npart, 0);
-            if (show)
-                subnoteui->Showsub();
             return;
         }
 
@@ -1816,17 +1812,11 @@ class PartUI {: {public Fl_Group, PartUI_}
                 return;
             }
             //std::cout << "pad top level" << std::endl;
-            bool show = false;
             if (padnoteui != NULL)
             {
-                show = padnoteui->padnotewindow->visible();
-                delete padnoteui;
-                padnoteui = NULL;
+                if( padnoteui->padnotewindow->visible())
+                    padnoteui->refresh();
             }
-            if (part->kit[kititem].padpars)
-            padnoteui = new PADnoteUI(part->kit[kititem].padpars);
-            if (show)
-                padnoteui->Showpad();
             return;
         }
 
@@ -1901,7 +1891,7 @@ class PartUI {: {public Fl_Group, PartUI_}
   }
   Function {editrefresh()} {} {
     code {//
-        instrumenteditwindow->copy_label(synth->getGuiMaster()->setPartWindowTitle("Instrument Edit").c_str());
+        instrumenteditwindow->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Edit"), npart, TOPLEVEL::windowTitle)).c_str());
         setinstrumentlabel();
         instrumenteditwindow->redraw();
         fillInstrumentType();
@@ -1921,11 +1911,13 @@ class PartUI {: {public Fl_Group, PartUI_}
         }
         instrumentType->value(part->info.Ptype);
         humanise->value(fetchData(0, PART::control::humanise, npart));
-        velocityhumanise->value(fetchData(0, PART::control::humanvelocity, npart));} {}
+            humanise->selection_color(setSlider(humanise->value(),0));
+        velocityhumanise->value(fetchData(0, PART::control::humanvelocity, npart));
+            velocityhumanise->selection_color(setSlider(velocityhumanise->value(),0));} {}
   }
   Function {effectsrefresh()} {} {
     code {//
-        partfx->copy_label(synth->getGuiMaster()->setPartWindowTitle("Part Effects").c_str());
+        partfx->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Effects"), npart, TOPLEVEL::windowTitle)).c_str());
         setEffNum();
         bool res = fetchData(0, EFFECT::control::changed, npart,  EFFECT::type::none + insefftype->value(), inseffnocounter->value() - 1);
         inseffectui->UpdatePresetColour(res, insefftype->value());
@@ -1934,7 +1926,7 @@ class PartUI {: {public Fl_Group, PartUI_}
   }
   Function {kitrefresh()} {} {
     code {//
-        instrumentkitlist->copy_label(synth->getGuiMaster()->setPartWindowTitle("Kit List").c_str());
+        instrumentkitlist->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Kit List"), npart, TOPLEVEL::windowTitle)).c_str());
         drumMode->value(part->Pdrummode);
         kitMode->value(part->Pkitmode);
         if (kitMode->value())
@@ -1995,27 +1987,37 @@ class PartUI {: {public Fl_Group, PartUI_}
   }
   Function {controllersrefresh()} {} {
     code {//
-    ctlwindow->copy_label(synth->getGuiMaster()->setPartWindowTitle("Controllers").c_str());
+    ctlwindow->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Controllers"), npart, TOPLEVEL::windowTitle)).c_str());
     expmwh->value(part->ctl->modwheel.exponential);
     modwh->value(part->ctl->modwheel.depth);
+        modwh->selection_color(setKnob(modwh->value(),80));
     expbw->value(part->ctl->bandwidth.exponential);
     bwdpth->value(part->ctl->bandwidth.depth);
+        bwdpth->selection_color(setKnob(bwdpth->value(),64));
     pwheelbrng->value(part->ctl->pitchwheel.bendrange);
     panwidth->value(part->ctl->panning.depth);
+        panwidth->selection_color(setKnob(panwidth->value(),64));
     filtq->value(part->ctl->filterq.depth);
+        filtq->selection_color(setKnob(filtq->value(),64));
     fltcut->value(part->ctl->filtercutoff.depth);
+        fltcut->selection_color(setKnob(fltcut->value(),64));
     volrng->value(part->ctl->volume.data);
+        volrng->selection_color(setKnob(volrng->value(),96));
     expr->value(part->ctl->expression.receive);
     fmamp->value(part->ctl->fmamp.receive);
     vol->value(part->ctl->volume.receive);
     sustain->value(part->ctl->sustain.receive);
+    breath->value(part->PbreathControl == MIDI::CC::breath);
 
     cfdpth->value(part->ctl->resonancecenter.depth);
+        cfdpth->selection_color(setKnob(cfdpth->value(),64));
     rbwdpth->value(part->ctl->resonancebandwidth.depth);
+        rbwdpth->selection_color(setKnob(rbwdpth->value(),64));
 
     rcv->value(part->ctl->portamento.receive);
     thresh->value(part->ctl->portamento.pitchthresh);
     propta->value(part->ctl->portamento.propRate);
+        propta->selection_color(setKnob(propta->value(),80));
     proprt->value(part->ctl->portamento.proportional);
     if (proprt->value())
     {
@@ -2028,13 +2030,16 @@ class PartUI {: {public Fl_Group, PartUI_}
         proptb->deactivate();
     }
     prtime->value(part->ctl->portamento.time);
+        prtime->selection_color(setKnob(prtime->value(),64));
     timedu->value(part->ctl->portamento.updowntimestretch);
+        timedu->selection_color(setKnob(timedu->value(),64));
     thtype->value(part->ctl->portamento.pitchthreshtype);
-    proptb->value(part->ctl->portamento.propDepth);} {}
+    proptb->value(part->ctl->portamento.propDepth);
+            proptb->selection_color(setKnob(proptb->value(),90));} {}
   }
   Function {ctlmidirefresh()} {} {
     code {//
-        ctlmidi->copy_label(synth->getGuiMaster()->setPartWindowTitle("MIDI Controls").c_str());
+        ctlmidi->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("MIDI Controls"), npart, TOPLEVEL::windowTitle)).c_str());
         modulation->value(part->ctl->modwheel.data);
             modulation->selection_color(setKnob(modulation->value(),64));
         expression->value(part->ctl->expression.data);
@@ -2048,7 +2053,7 @@ class PartUI {: {public Fl_Group, PartUI_}
   }
   Function {ATrefresh()} {} {
     code {//
-    aftertouchcontrol->copy_label(synth->getGuiMaster()->setPartWindowTitle("Aftertouch").c_str());
+    aftertouchcontrol->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Aftertouch"), npart, TOPLEVEL::windowTitle)).c_str());
 
 
     channelATselection = int(fetchData(0, PART::control::channelATset, npart));
@@ -2361,7 +2366,7 @@ class PartUI {: {public Fl_Group, PartUI_}
   }
   Function {seteditname()} {} {
     code {//
-    instrumenteditwindow->copy_label(synth->getGuiMaster()->setPartWindowTitle("Edit").c_str());} {}
+    instrumenteditwindow->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Edit"), npart, TOPLEVEL::windowTitle)).c_str());} {}
   }
   Function {Showedit()} {} {
     code {//

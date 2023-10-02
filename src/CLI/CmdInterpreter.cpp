@@ -1727,7 +1727,7 @@ int CmdInterpreter::midiControllers(Parser& input, unsigned char controlType)
         value = 0;
     if (cmd > -1)
         return sendNormal(synth, 0, value, controlType, cmd, npart);
-    return REPLY::available_msg;
+    return REPLY::unrecognised_msg;
 }
 
 
@@ -3074,7 +3074,7 @@ int CmdInterpreter::commandBank(Parser& input, unsigned char controlType, bool j
         if (input.matchnMove(1, "rename"))
         {
             if (controlType != TOPLEVEL::type::Write)
-                return REPLY::available_msg;
+                return REPLY::writeOnly_msg;
             if (!input.isdigit())
                 return REPLY::value_msg;
             int tmp = string2int(input) - 1; // could be up to 160
@@ -3090,7 +3090,7 @@ int CmdInterpreter::commandBank(Parser& input, unsigned char controlType, bool j
         if (input.matchnMove(1, "save"))
         {
             if (controlType != TOPLEVEL::type::Write)
-                return REPLY::available_msg;
+                return REPLY::writeOnly_msg;
             if (!input.isdigit())
                 return REPLY::value_msg;
             int tmp = string2int(input) - 1; // could be up to 160
@@ -3282,9 +3282,9 @@ int CmdInterpreter::commandConfig(Parser& input, unsigned char controlType)
         value = input.toggle();
         if (value == -1 && input.matchnMove(2, "prompt"))
             value = 2;
-        if (value == -1)
+        if (value == -1 && controlType == TOPLEVEL::type::Write)
             return REPLY::value_msg;
-        command = CONFIG::control::exposeStatus;
+        return sendDirect(synth, TOPLEVEL::action::fromCLI, value, controlType, CONFIG::control::exposeStatus, TOPLEVEL::section::config);
     }
 
     else if (input.matchnMove(1, "jack"))
@@ -3512,9 +3512,18 @@ int CmdInterpreter::commandScale(Parser& input, unsigned char controlType)
     if (input.lineEnd(controlType))
         return REPLY::done_msg;
     Config &Runtime = synth->getRuntime();
+    int enable = input.toggle();
+    if (enable > -1)
+    {
+        int result = sendDirect(synth, 0, enable, controlType, SCALES::control::enableMicrotonal, TOPLEVEL::section::scales);
+        if (input.lineEnd(controlType))
+            return result;
+    }
+    if(readControl(synth, 0, SCALES::control::enableMicrotonal, TOPLEVEL::section::scales) < 1)
+        return REPLY::inactive_msg;
+
     float value = 0;
     unsigned char command = UNUSED;
-    unsigned char action = 0;
     unsigned char miscmsg = UNUSED;
 
     string name;
@@ -3528,94 +3537,128 @@ int CmdInterpreter::commandScale(Parser& input, unsigned char controlType)
     else if (input.matchnMove(2, "description"))
         command = SCALES::control::comment;
 
-    if (command >= SCALES::control::tuning && command <= SCALES::control::comment)
+    if (command != UNUSED)
     {
-        if (controlType != TOPLEVEL::type::Write && command <= SCALES::control::importKbm)
+        if (controlType != TOPLEVEL::type::Write &&(command == SCALES::control::tuning || command == SCALES::control::keyboardMap))
         {
             Runtime.Log("Write only - use 'list'");
             return REPLY::done_msg;
         }
-        if (command == SCALES::control::tuning || command == SCALES::control::keyboardMap)
-        {
-            if (input.matchnMove(3, "import"))
-            {
-                if (command == SCALES::control::tuning)
-                    command = SCALES::control::importScl;
-                else
-                    command = SCALES::control::importKbm;
-            }
-        }
         name = string{input};
         if (name == "" && controlType == TOPLEVEL::type::Write)
             return REPLY::value_msg;
-        action = TOPLEVEL::action::lowPrio;
         miscmsg = textMsgBuffer.push(name);
+        return sendNormal(synth, TOPLEVEL::action::lowPrio, value, controlType, command, TOPLEVEL::section::scales, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, miscmsg);
+    }
+
+    int min = 0;
+    int max = 127;
+    unsigned char action = 0;
+    if (input.matchnMove(2, "frequency"))
+    {
+        command = SCALES::control::refFrequency;
+        min = 1;
+        max = 20000;
+        controlType &= ~TOPLEVEL::type::Integer; // float
+    }
+    else if (input.matchnMove(2, "note"))
+        command = SCALES::control::refNote;
+    else if (input.matchnMove(1, "invert"))
+    {
+        command = SCALES::control::invertScale;
+        max = 1;
+    }
+    else if (input.matchnMove(2, "center"))
+        command = SCALES::control::invertedScaleCenter;
+    else if (input.matchnMove(2, "shift"))
+    {
+        command = SCALES::control::scaleShift;
+        min = -63;
+        max = 64;
+    }
+    else if (input.matchnMove(2, "mapping"))
+    {
+        command = SCALES::control::enableKeyboardMap;
+        max = 1;
+    }
+    else if (input.matchnMove(2, "size"))
+    {
+        command = SCALES::control::keymapSize;
+        action = TOPLEVEL::action::lowPrio;
+    }
+    else if (input.matchnMove(2, "first"))
+        command = SCALES::control::lowKey;
+    else if (input.matchnMove(2, "middle"))
+        command = SCALES::control::middleKey;
+    else if (input.matchnMove(1, "last"))
+        command = SCALES::control::highKey;
+    else if (input.matchnMove(3, "CLEar"))
+    {
+        input.skip(-1); // sneaky way to force a zero :)
+        command = SCALES::control::clearAll;
     }
     else
-    {
-        int min = 0;
-        int max = 127;
-        if (input.matchnMove(2, "frequency"))
-        {
-            command = SCALES::control::refFrequency;
-            min = 1;
-            max = 20000;
-            controlType &= ~TOPLEVEL::type::Integer; // float
-        }
-        else if (input.matchnMove(2, "note"))
-            command = SCALES::control::refNote;
-        else if (input.matchnMove(1, "invert"))
-        {
-            command = SCALES::control::invertScale;
-            max = 1;
-        }
-        else if (input.matchnMove(2, "center"))
-            command = SCALES::control::invertedScaleCenter;
-        else if (input.matchnMove(2, "shift"))
-        {
-            command = SCALES::control::scaleShift;
-            min = -63;
-            max = 64;
-        }
-        else if (input.matchnMove(2, "scale"))
-        {
-            command = SCALES::control::enableMicrotonal;
-            max = 1;
-        }
-        else if (input.matchnMove(2, "mapping"))
-        {
-            command = SCALES::control::enableKeyboardMap;
-            max = 1;
-        }
-        else if (input.matchnMove(2, "first"))
-            command = SCALES::control::lowKey;
-        else if (input.matchnMove(2, "middle"))
-            command = SCALES::control::middleKey;
-        else if (input.matchnMove(1, "last"))
-            command = SCALES::control::highKey;
-        else if (input.matchnMove(3, "CLEar"))
-        {
-            input.skip(-1); // sneaky way to force a zero :)
-            command = SCALES::control::clearAll;
-        }
-        else
-            return REPLY::todo_msg;
+        return REPLY::todo_msg;
 
-        if (controlType == TOPLEVEL::type::Write)
+    if (controlType == TOPLEVEL::type::Write)
+    {
+        if (input.lineEnd(controlType))
+            return REPLY::value_msg;
+        if ((input.toggle() == 1))
+            value = 1;
+        else
         {
-            if (input.lineEnd(controlType))
+            value = string2float(input);
+            if (value < min || value > max)
                 return REPLY::value_msg;
-            if ((input.toggle() == 1))
-                value = 1;
-            else//if (input.isdigit())
-            {
-                value = string2float(input);
-                if (value < min || value > max)
-                    return REPLY::value_msg;
-            }
         }
     }
-    return sendNormal(synth, action, value, controlType, command, TOPLEVEL::section::scales, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, miscmsg);
+
+    return sendDirect(synth, action, value, controlType, command, TOPLEVEL::section::scales);
+}
+
+
+int CmdInterpreter::commandImportScale(Parser& input)
+{
+    if (input.lineEnd(TOPLEVEL::type::Write)) // always must have a value here
+        return REPLY::what_msg;
+
+    size_t command = 0;
+
+    if (input.matchnMove(1, "tuning"))
+        command = SCALES::control::importScl;
+    else if (input.matchnMove(1, "keymap"))
+        command = SCALES::control::importKbm;
+    else
+    {
+        synth->getRuntime().Log("Specify TUNing or KEYmap");
+        return REPLY::done_msg;
+    }
+    string name = string{input};
+    if (name.empty())
+        return REPLY::value_msg;
+
+    size_t miscmsg = textMsgBuffer.push(name);
+    return sendNormal(synth, TOPLEVEL::action::lowPrio, 0, TOPLEVEL::type::Write, command, TOPLEVEL::section::scales, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, miscmsg);
+}
+
+
+int CmdInterpreter::commandExportScale(Parser& input)
+{
+    size_t command = 0;
+    if (input.matchnMove(1, "tuning"))
+        command = SCALES::control::exportScl;
+    else if (input.matchnMove(1, "keymap"))
+        command = SCALES::control::exportKbm;
+    else
+        return REPLY::what_msg;
+
+    string name = string{input};
+    if (name.empty())
+        return REPLY::value_msg;
+    size_t miscmsg = textMsgBuffer.push(name);
+    std::cout << "name >" << name << std::endl;
+    return sendDirect(synth, TOPLEVEL::action::lowPrio, 1, TOPLEVEL::type::Write, command, TOPLEVEL::section::scales, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, miscmsg);
 }
 
 
@@ -4229,7 +4272,7 @@ int CmdInterpreter::addSynth(Parser& input, unsigned char controlType)
         cmd = ADDSYNTH::control::randomGroup;
     }
     if (cmd == -1)
-        return REPLY::available_msg;
+        return REPLY::unrecognised_msg;
 
     return sendNormal(synth, 0, value, controlType, cmd, npart, kitNumber, PART::engine::addSynth);
 }
@@ -4511,7 +4554,7 @@ int CmdInterpreter::subSynth(Parser& input, unsigned char controlType)
         }
         return sendNormal(synth, 0, value, controlType, cmd, npart, kitNumber, PART::engine::subSynth);
     }
-    return REPLY::available_msg;
+    return REPLY::unrecognised_msg;
 }
 
 
@@ -4957,7 +5000,7 @@ int CmdInterpreter::padSynth(Parser& input, unsigned char controlType)
             value = string2int(input);
         return sendNormal(synth, 0, value, controlType, cmd, npart, kitNumber, PART::engine::padSynth);
     }
-    return REPLY::available_msg;
+    return REPLY::unrecognised_msg;
 }
 
 
@@ -5071,7 +5114,7 @@ int CmdInterpreter::resonance(Parser& input, unsigned char controlType)
         return sendNormal(synth, 0, value, controlType, cmd, npart, kitNumber, engine, insert, point);
     }
 
-    return REPLY::available_msg;
+    return REPLY::unrecognised_msg;
 }
 
 
@@ -5296,7 +5339,7 @@ int CmdInterpreter::waveform(Parser& input, unsigned char controlType)
         return sendNormal(synth, 0, value, controlType, cmd, npart, kitNumber, PART::engine::padSynth, insert, parameter);
     }
     if (cmd == -1)
-        return REPLY::available_msg;
+        return REPLY::unrecognised_msg;
     if (value == -1)
         value = string2float(input);
     return sendNormal(synth, 0, value, controlType, cmd, npart, kitNumber, engine + voiceNumber, insert);
@@ -5919,7 +5962,7 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
     {
 
         if (controlType != TOPLEVEL::type::Write)
-            return REPLY::available_msg;
+            return REPLY::writeOnly_msg;
         if (input.lineEnd(controlType))
             return REPLY::value_msg;
 
@@ -5930,7 +5973,7 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
 
         int pitch = string2int(input);
         input.skipChars();
-        if (pitch < 0 || pitch > 127)
+        if (pitch < 0 || pitch >= MAX_OCTAVE_SIZE)
             return REPLY::range_msg;
 
         int velocity = string2int(input);
@@ -5947,7 +5990,7 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
     if (input.matchnMove(4, "seed"))
     {
         if (controlType != TOPLEVEL::type::Write)
-            return REPLY::available_msg;
+            return REPLY::writeOnly_msg;
         int seed = string2int(input);
         if (seed < 0)
             seed = 0;
@@ -6211,7 +6254,7 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
 void CmdInterpreter::presetsControl(float value, unsigned char type, unsigned char section, unsigned char kitNumber, unsigned char engine, unsigned char insert, unsigned char parameter, unsigned char offset, unsigned char miscmsg)
 {
     string name;
-    if (engine == PART::engine::addVoice1)
+    if (engine == PART::engine::addVoice1 || engine == PART::engine::addMod1)
     {
         engine += voiceNumber;
     }
@@ -6478,7 +6521,8 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
         return Reply{sendNormal(synth, 0, 0, TOPLEVEL::type::Write,MAIN::control::stopSound, TOPLEVEL::section::main)};
     if (input.matchnMove(1, "list"))
     {
-        if (input.matchnMove(1, "group"))
+        // we've added the 's' as people tended to autmatically assume it was needed.
+        if (input.matchnMove(1, "groups"))
             return Reply{commandGroup(input)};
         return Reply{commandList(input)};
     }
@@ -6584,11 +6628,15 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
         string replyMsg;
         if (input.matchnMove(3, "import"))
         {
+            if (bitTest(context, LEVEL::Scale))
+                return commandImportScale(input);
             type = MAIN::control::importBank;
             replyMsg = "import";
         }
         else if (input.matchnMove(3, "export"))
         {
+            if (bitTest(context, LEVEL::Scale))
+                return commandExportScale(input);
             type = MAIN::control::exportBank;
             replyMsg = "export";
         }
