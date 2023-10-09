@@ -305,7 +305,7 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
     unsigned char insert = getData->data.insert;
     //unsigned char parameter = getData->data.parameter;
     //unsigned char miscmsg = getData->data.miscmsg;
-
+//synth->CBtest(getData);
     while (syncWrite)
         usleep(10);
     bool write = (type & TOPLEVEL::type::Write);
@@ -320,6 +320,8 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
         string name = synth->unifiedpresets.section(synth, getData);
         if (type == TOPLEVEL::type::Adjust) // list (actually zero)
         {
+            // this seems impossible but somehow works!
+            // it's used by the CLI to list stored paste entries.
             textMsgBuffer.push(name);
         }
         else if (type & TOPLEVEL::type::Learnable) // load
@@ -485,10 +487,12 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
                 getData->data.control = SCALES::control::name;
                 getData->data.miscmsg = textMsgBuffer.push(synth->microtonal.Pname);
                 returnsBuffer.write(getData->bytes);
+
                 getData->data.control = SCALES::control::comment;
                 getData->data.miscmsg = textMsgBuffer.push(synth->microtonal.Pcomment);
                 ok &= returnsBuffer.write(getData->bytes);
             }
+
             if (switchNum == TOPLEVEL::section::main && control == MAIN::control::loadNamedState)
                 synth->midilearn.updateGui();
                 /*
@@ -589,36 +593,45 @@ int InterChange::indirectScales(CommandBlock *getData, SynthEngine *synth, unsig
     {
         case SCALES::control::tuning:
             text = formatScales(text);
-            value = synth->microtonal.texttotunings(text.c_str());
-            if (value > 0)
-                synth->setAllPartMaps();
+            value = synth->microtonal.texttotunings(text);
+            if (value <= 0)
+                synth->microtonal.defaults(1);
             break;
         case SCALES::control::keyboardMap:
-            text = formatScales(text);
-            value = synth->microtonal.texttomapping(text.c_str());
-            if (value > 0)
+            text = formatKeys(text);
+            value = synth->microtonal.texttomapping(text);
+            if (value <= 0)
+                synth->microtonal.defaults(2);
+            break;
+
+        case SCALES::control::keymapSize:
+            if (write)
+            {
+                synth->microtonal.Pmapsize = int(value);
                 synth->setAllPartMaps();
+            }
+            else
+            {
+                value = synth->microtonal.Pmapsize;
+            }
             break;
 
         case SCALES::control::importScl:
             value = synth->microtonal.loadscl(setExtension(text,EXTEN::scalaTuning));
-            if (value > 0)
+            if (value <= 0)
             {
-                text = "";
-                char *buf = new char[100];
-                for (int i = 0; i < value; ++ i)
-                {
-                    synth->microtonal.tuningtoline(i, buf, 100);
-                    if (i > 0)
-                        text += "\n";
-                    text += std::string(buf);
-                }
-                delete [] buf;
+                synth->microtonal.defaults(1);
+            }
+            else
+            {
+                text = synth->microtonal.tuningtotext();
             }
             break;
         case SCALES::control::importKbm:
             value = synth->microtonal.loadkbm(setExtension(text,EXTEN::scalaKeymap));
-            if (value > 0)
+            if (value < 0)
+                synth->microtonal.defaults(2);
+            else if (value > 0)
             {
                 text = "";
                 int map;
@@ -631,14 +644,32 @@ int InterChange::indirectScales(CommandBlock *getData, SynthEngine *synth, unsig
                         text += 'x';
                     else
                         text += std::to_string(map);
+                    string comment = synth->microtonal.PmapComment[i];
+                    if (!comment.empty())
+                        text += (" ! " + comment);
                 }
-                getData->data.kit = synth->microtonal.PrefNote;
-                getData->data.engine = synth->microtonal.Pfirstkey;
-                getData->data.insert = synth->microtonal.Pmiddlenote;
-                getData->data.parameter |= synth->microtonal.Plastkey; // need to keep top bit
-                synth->setAllPartMaps();
+                getData->data.parameter = textMsgBuffer.push(synth->microtonal.map2kbm());
             }
             break;
+
+        case SCALES::control::exportScl:
+        {
+            string newtext = synth->microtonal.scale2scl();
+            string filename = text;
+            filename = setExtension(filename, EXTEN::scalaTuning);
+            //std::cout << "file >" << filename << std::endl;
+            saveText(newtext, filename);
+        }
+        break;
+        case SCALES::control::exportKbm:
+        {
+            string newtext = synth->microtonal.map2kbm();
+            string filename = text;
+            filename = setExtension(filename, EXTEN::scalaKeymap);
+            //std::cout << "file >" << filename << std::endl;
+            saveText(newtext, filename);
+        }
+        break;
 
         case SCALES::control::name:
             if (write)
@@ -678,7 +709,7 @@ int InterChange::indirectMain(CommandBlock *getData, SynthEngine *synth, unsigne
             {
                 add2undo(getData, noteSeen);
                 valuef = getData->data.value;
-                synth->microtonal.Pglobalfinedetune =valuef;
+                synth->microtonal.setglobalfinedetune(valuef);
                 synth->setAllPartMaps();
             }
             else
@@ -837,25 +868,36 @@ int InterChange::indirectMain(CommandBlock *getData, SynthEngine *synth, unsigne
             break;
         }
        case MAIN::control::loadNamedScale:
-           if (synth->loadMicrotonal(text))
-           {
-                synth->addHistory(setExtension(text, EXTEN::scale), TOPLEVEL::XML::Scale);
+       {
+            string filename = setExtension(text, EXTEN::scale);
+            int err = synth->microtonal.loadXML(filename);
+            if (err == 0)
+            {
+                synth->addHistory(filename, TOPLEVEL::XML::Scale);
                 text = "ed " + text;
             }
             else
+            {
                 text = " FAILED " + text;
+                if (err < 0)
+                    text += (" " + scale_errors [0 - err]);
+            }
             newMsg = true;
             break;
+       }
         case MAIN::control::saveNamedScale:
-            if (synth->saveMicrotonal(text))
+        {
+            string filename = setExtension(text, EXTEN::scale);
+            if (synth->microtonal.saveXML(filename))
             {
-                synth->addHistory(setExtension(text, EXTEN::scale), TOPLEVEL::XML::Scale);
+                synth->addHistory(filename, TOPLEVEL::XML::Scale);
                 text = "d " + text;
             }
             else
                 text = " FAILED " + text;
             newMsg = true;
             break;
+        }
         case MAIN::control::loadNamedState:
             vectorClear(NUM_MIDI_CHANNELS);
             if (synth->loadStateAndUpdate(text))
@@ -949,68 +991,11 @@ int InterChange::indirectMain(CommandBlock *getData, SynthEngine *synth, unsigne
                 file::cmd2string("xdg-open " + found + "index.html &");
             }
             else
-                text = "Can't find manual :(";
-
-            if (found.empty())
-            {    // fall back to older PDF version
-                std::string manfile = synth->manualname();
-                std::string stub = manfile.substr(0, manfile.rfind("-"));
-
-                std::string path = "";
-                std::string lastdir = "";
-                std::string search = "/usr/share/doc/yoshimi";
-                path = manualSearch(search, stub);
-                //std::cout << "name1 " << path << std::endl;
-                found = path;
-                lastdir = search;
-
-                search = "/usr/local/share/doc/yoshimi";
-                path = manualSearch(search, stub);
-                //std::cout << "name2 " << path << std::endl;
-                if (path >= found)
-                {
-                    found = path;
-                    lastdir = search;
-                }
-
-                search = localPath();
-                if (!search.empty())
-                {
-                    path = manualSearch(search, stub);
-                    //std::cout << "name3 " << path << std::endl;
-                    if (path >= found)
-                    {
-                        found = path;
-                        lastdir = search;
-                    }
-                }
-
-                if (found.empty())
-                {
-                    getData->data.miscmsg = textMsgBuffer.push("Can't find PDF manual :(");
-                    returnsBuffer.write(getData->bytes);
-                }
-                else
-                {
-                    if (found.substr(0, found.rfind(".")) != manfile)
-                    getData->data.miscmsg = textMsgBuffer.push("Can't find last PDF. Looking for older one");
-                    returnsBuffer.write(getData->bytes);
-                }
-                std::string command = "xdg-open " + lastdir + "/" + found + "&";
-                if (!file::cmd2string(command))
-                {
-                    getData->data.miscmsg = textMsgBuffer.push("Can't find PDF reader :(");
-                    returnsBuffer.write(getData->bytes);
-                    found = "";
-                }
-            }
-            if (!found.empty())
             {
-                text = "";
-                getData->data.miscmsg = NO_MSG;
+                getData->data.miscmsg = textMsgBuffer.push("Can't find manual :(");
                 returnsBuffer.write(getData->bytes);
+                newMsg = true;
             }
-            newMsg = true;
             break;
 
         }
@@ -1646,7 +1631,7 @@ int InterChange::indirectPart(CommandBlock *getData, SynthEngine *synth, unsigne
 
 std::string InterChange::formatScales(std::string text)
 {
-    text.erase(remove(text.begin(), text.end(), ' '), text.end());
+    //text = func::trimEnds(text);
     std::string delimiters = ",";
     size_t current;
     size_t next = -1;
@@ -1657,7 +1642,7 @@ std::string InterChange::formatScales(std::string text)
     {
         current = next + 1;
         next = text.find_first_of(delimiters, current );
-        word = text.substr(current, next - current );
+        word = func::trimEnds(text.substr(current, next - current));
 
         found = word.find('.');
         if (found != string::npos)
@@ -1683,6 +1668,31 @@ std::string InterChange::formatScales(std::string text)
 }
 
 
+std::string InterChange::formatKeys(std::string text)
+{
+    std::string delimiters = ",";
+    size_t current;
+    size_t next = -1;
+    std::string word;
+    std::string newtext = "";
+    do
+    {
+        current = next + 1;
+        next = text.find_first_of(delimiters, current );
+        word = func::trimEnds(text.substr(current, next - current));
+        if (word[0] < '0' || word[0] > '9')
+        {
+            word = "x";
+        }
+        newtext += word;
+        if (next != string::npos)
+            newtext += "\n";
+    }
+    while (next != string::npos);
+    return newtext;
+}
+
+
 float InterChange::readAllData(CommandBlock *getData)
 {
     if (getData->data.part == TOPLEVEL::instanceID)
@@ -1692,17 +1702,7 @@ float InterChange::readAllData(CommandBlock *getData)
 
     if (getData->data.part == TOPLEVEL::windowTitle)
     {
-        string name = "Yoshimi";
-        int ID = synth->getUniqueId();
-        if (ID > 0)
-            name += ("-" + to_string(ID));
-        name += (" : " + textMsgBuffer.fetch((int(getData->data.value))));
-        return textMsgBuffer.push(name);
-    /* usage example *
-           string name = textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Vectors"), 0, TOPLEVEL::windowTitle));
-
-           adds a space then 'Vectors' to "Yoshimi" plus the ID if it's greater than zero
-    */
+        return buildWindowTitle(getData, synth);
     }
 
     if (getData->data.type & TOPLEVEL::type::Limits) // these are static
@@ -1776,6 +1776,96 @@ float InterChange::readAllData(CommandBlock *getData)
 
     synth->getRuntime().finishedCLI = true; // in case it misses lines above
     return tryData.data.value;
+}
+
+float InterChange::buildWindowTitle(CommandBlock *getData, SynthEngine *synth)
+{
+    string sent_name = synth->textMsgBuffer.fetch((int(getData->data.value))); // catch this early
+    string name = synth->makeUniqueName("");
+    int section = getData->data.control;
+    int engine = getData->data.engine;
+    //std::cout << "sect " << section << std::endl;
+    if (section >= NUM_MIDI_PARTS)
+    {
+        if (section == TOPLEVEL::section::systemEffects)
+            name += "System Effect ";
+        else if (section == TOPLEVEL::section::insertEffects)
+            name += "Insert Effect ";
+        if (section != UNUSED)
+        {
+            name += to_string(engine + 1);
+            name += " - ";
+        }
+        if (getData->data.kit == EFFECT::type::dynFilter)
+            name += "DynFilter ";
+        name += sent_name;
+        return synth->textMsgBuffer.push(name);
+    }
+
+    if (engine == PART::engine::padSynth)
+        name += "PadSynth ";
+    else if (engine == PART::engine::subSynth)
+        name += "SubSynth ";
+    else if (engine < PART::engine::addVoiceModEnd)
+    {
+        name += "AddSynth ";
+        if (getData->data.engine >= PART::engine::addMod1)
+            name += "Modulator ";
+        else if (engine >= PART::engine::addVoice1)
+        {
+            name += "Voice ";
+        }
+        if (engine != PART::engine::addSynth)
+        {
+            name += to_string((engine & 7) + 1);
+            name += " ";
+        }
+    }
+    if (getData->data.insert == TOPLEVEL::insert::envelopeGroup)
+    {
+        int group = int(getData->data.parameter);
+        switch (group)
+        {
+            case TOPLEVEL::insertType::amplitude:
+                name += "Amplitude ";
+                break;
+            case TOPLEVEL::insertType::frequency:
+                name += "Frequency ";
+                break;
+            case TOPLEVEL::insertType::filter:
+                name += "Filter ";
+                break;
+            case TOPLEVEL::insertType::bandwidth:
+                name += "Bandwidth ";
+                break;
+        }
+    }
+    name += sent_name;
+    if (section < NUM_MIDI_PARTS) // it's at part level
+    {
+        name += " - Part ";
+        name += to_string(section + 1);
+        name += " ";
+        name += synth->part[section]->Pname;
+
+        if (synth->part[section]->Pkitmode != 0)
+        {
+            int kititem = int(getData->data.kit);
+            name += ", Kit ";
+            if (kititem < NUM_KIT_ITEMS)
+            {
+                name += to_string(kititem + 1);
+                name += " ";
+                string kitname = synth->part[section]->kit[kititem].Pname;
+                if (!kitname.empty())
+                {
+                    name += "- ";
+                    name += kitname;
+                }
+            }
+        }
+    }
+    return synth->textMsgBuffer.push(name);
 }
 
 
@@ -2710,7 +2800,7 @@ void InterChange::commandMicrotonal(CommandBlock *getData)
 
     int value_int = lrint(value);
     bool value_bool = _SYS_::F2B(value);
-
+    bool retune = false;
     switch (control)
     {
         case SCALES::control::refFrequency:
@@ -2721,6 +2811,7 @@ void InterChange::commandMicrotonal(CommandBlock *getData)
                 else if (value < 1)
                     value = 1;
                 synth->microtonal.PrefFreq = value;
+                retune = true;
             }
             else
                 value = synth->microtonal.PrefFreq;
@@ -2729,39 +2820,58 @@ void InterChange::commandMicrotonal(CommandBlock *getData)
 
         case SCALES::control::refNote:
             if (write)
+            {
                 synth->microtonal.PrefNote = value_int;
+                retune = true;
+            }
             else
                 value = synth->microtonal.PrefNote;
             break;
         case SCALES::control::invertScale:
             if (write)
+            {
                 synth->microtonal.Pinvertupdown = value_bool;
+                retune = true;
+            }
             else
                 value = synth->microtonal.Pinvertupdown;
             break;
         case SCALES::control::invertedScaleCenter:
             if (write)
+            {
                 synth->microtonal.Pinvertupdowncenter = value_int;
+                retune = true;
+            }
             else
                 value = synth->microtonal.Pinvertupdowncenter;
             break;
         case SCALES::control::scaleShift:
             if (write)
+            {
                 synth->microtonal.Pscaleshift = value_int + 64;
+                retune = true;
+            }
             else
                 value = synth->microtonal.Pscaleshift - 64;
             break;
 
         case SCALES::control::enableMicrotonal:
             if (write)
+            {
                 synth->microtonal.Penabled = value_bool;
+                synth->microtonal.Pmappingenabled = false;
+                retune = true;
+            }
             else
                 value = synth->microtonal.Penabled;
             break;
 
         case SCALES::control::enableKeyboardMap:
             if (write)
+            {
                 synth->microtonal.Pmappingenabled = value_bool;
+                retune = true;
+            }
             else
                value = synth->microtonal.Pmappingenabled;
             break;
@@ -2773,9 +2883,9 @@ void InterChange::commandMicrotonal(CommandBlock *getData)
                     value_int = 0;
                     getData->data.value = value_int;
                 }
-                else if (value_int >= synth->microtonal.Pmiddlenote)
+                else if (value_int > synth->microtonal.Pmiddlenote)
                 {
-                    value_int = synth->microtonal.Pmiddlenote - 1;
+                    value_int = synth->microtonal.Pmiddlenote;
                     getData->data.value = value_int;
                 }
                 synth->microtonal.Pfirstkey = value_int;
@@ -2786,17 +2896,18 @@ void InterChange::commandMicrotonal(CommandBlock *getData)
         case SCALES::control::middleKey:
             if (write)
             {
-                if (value_int <= synth->microtonal.Pfirstkey)
+                if (value_int < synth->microtonal.Pfirstkey)
                 {
-                    value_int = synth->microtonal.Pfirstkey + 1;
+                    value_int = synth->microtonal.Pfirstkey;
                     getData->data.value = value_int;
                 }
-                else if (value_int >= synth->microtonal.Plastkey)
+                else if (value_int > synth->microtonal.Plastkey)
                 {
-                    value_int = synth->microtonal.Plastkey - 1;
+                    value_int = synth->microtonal.Plastkey;
                     getData->data.value = value_int;
                 }
                 synth->microtonal.Pmiddlenote = value_int;
+                retune = true;
             }
             else
                 value = synth->microtonal.Pmiddlenote;
@@ -2804,14 +2915,14 @@ void InterChange::commandMicrotonal(CommandBlock *getData)
         case SCALES::control::highKey:
             if (write)
             {
-                if (value_int <= synth->microtonal.Pmiddlenote)
+                if (value_int < synth->microtonal.Pmiddlenote)
                 {
-                    value_int = synth->microtonal.Pmiddlenote + 1;
+                    value_int = synth->microtonal.Pmiddlenote;
                     getData->data.value = value_int;
                 }
-                else if (value_int > 127)
+                else if (value_int >= MAX_OCTAVE_SIZE)
                 {
-                    value_int = 127;
+                    value_int = MAX_OCTAVE_SIZE - 1;
                     getData->data.value = value_int;
                 }
                 synth->microtonal.Plastkey = value_int;
@@ -2824,6 +2935,10 @@ void InterChange::commandMicrotonal(CommandBlock *getData)
             // done elsewhere
             break;
         case SCALES::control::keyboardMap:
+            // done elsewhere
+            break;
+
+        case SCALES::control::keymapSize:
             // done elsewhere
             break;
 
@@ -2841,15 +2956,17 @@ void InterChange::commandMicrotonal(CommandBlock *getData)
             // done elsewhere
             break;
 
-        case SCALES::control::retune:
-            // done elsewhere
-            break;
         case SCALES::control::clearAll: // Clear scales
             synth->microtonal.defaults();
+            retune = true;
             break;
     }
-
-    if (!write)
+    if (write)
+    {
+        if (retune)
+            synth->setAllPartMaps();
+    }
+    else
         getData->data.value = value;
 }
 
@@ -3995,7 +4112,7 @@ void InterChange::commandPart(CommandBlock *getData)
         case PART::control::kitMode:
             if (write)
             {
-                if (value == 3) // crossfade
+                if (value_int == 3) // crossfade
                 {
                     part->Pkitmode = 1; // normal kit mode (multiple kit items playing)
                     part->Pkitfade = true;
@@ -7683,7 +7800,7 @@ float InterChange::returnLimits(CommandBlock *getData)
     min = 0;
     max = 127;
     def = 0;
-    Log("Unidentified Limit reguest: using dummy defaults");
+    Log("Unidentified Limit request: using dummy defaults");
 
     switch (request)
     {

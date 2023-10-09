@@ -1,4 +1,155 @@
-yoshimi 2.3.0.3
+yoshimi 2.3.1
+
+2023-10-02 Will
+bn 2269
+BugFix: Command line prompt position not working.
+BugFix: CLI not enabling scales but seeming to do so.
+Add CLI warning when scales not enabled but scale action attempted.
+Improved some CLI failure messages.
+Added detail to CLI scales messages.
+Updated docs.
+Updated examples.
+Set release version 2.3.1
+
+2023-9-26 Will
+bn 2268
+Revised and simplified CLI scales code.
+Register and save formal octave size, but unused.
+Improved CLI handling of scale name and comment fields.
+Set rc version 2.3.1 rc3
+
+2023-9-20 Will
+Updated HTML user guide microtonal entry.
+No code changes.
+
+2023-9-18 Will
+bn 2267
+Further refinements to microtonal code.
+Keymap size now explicitly set (not defined by map entries).
+Updated /dev_notes/Yoshimi Control Numbers.ods
+Set rc version 2.3.1 rc2
+
+2023-9-9 Will
+bn 2266
+Forgot to update banks version :(
+Fixed regression: version change not updating bank details,
+Yoshimi now reports instrument file minor point versions.
+Small XML cleanups.
+Set rc version 2.3.1 rc1
+
+2023-9-8 Will
+bn 2265
+Added instrument 'type' corrections supplied by Alex
+
+2023-9-7 Will
+bn 2264
+BugFix: Had inadvertently deleted a line in mapping :(
+Further general Microtonal cleanups.
+
+2023-9-6 Will
+bn 2263
+BugFix: Left some test code in place.
+
+2023-9-5 Will
+bn 2262
+Moved setting global fine detune out of setting part maps.
+    It only needs to change when the control is moved!
+Testing for first and last note now done in part.
+    You no longer need to do a retune if these are changed.
+
+2023-9-3 Will
+bn 2261
+Enabling or disabling microtonal always disables the keymap.
+Removed keymap array swap - wasn't any benefit, just confusing.
+Zero mapsize 'safe' but can be weird, so not actually correct :(
+
+2023-9-1 Will
+bn 2260
+Corrected behaviour of 'Invert keys' button.
+Enabled keyboard import if microtonal active but keymap inactive.
+Now correctly identifies map size zero as no map, not an error.
+
+
+2023-8-29 Will
+bn 2259
+Small microtonal related cleanups.
+Importing/loading keymaps into the UI now uses text messages.
+Still a lot of direct calls :(
+
+
+2023-8-27 Will
+bn 2258
+BugFix: Importing keymap not setting 'last' note value
+Both keymaps and tunings do setAllPartMaps() directly so
+SCALES:control::retune is now redundant, and removed.
+
+2023-8-26 Will
+bn 2257
+loadkbm now uses getLineFromText
+Removed (now redundant) loadLine() and associated functions
+Removed a number of redundant .c_str() conversions
+Created inline SplitLine()
+Made validline() inline
+
+2023-8-25 Will
+bn 2256
+linetotunings entirely C++ strings
+tuningtoline entirely C++ strings
+tuningtotext entirely C++ strings
+Implemented getLineFromText() to replace loadLine()
+loadscl now uses getLineFromText
+
+2023-8-24 Will
+bn 2255
+texttotunings and texttomapping immediately convert to C++ strings
+linetotunings entirely C++ strings
+tuningtoline entirely C++ strings
+tuningtotext entirely C++ strings
+
+2023-8-23 Will
+bn 2254
+Revised error handling loading both .kbd and complete scale files.
+Further corner cases importing and exporting fixed.
+Rationalised some labels so they reflect their function better.
+
+bn 2253
+{branch microtonal}
+Removed frequent swaps between variabe 'x' and variable tmp'x'
+  if there's an error the complete default is set so it's pointless.
+
+Extended recognition of comments active text.
+
+All operations seem correct.
+
+2023-8-19 Will
+bn 2252
+Merged in microtonal branch.
+Added CLI list entries.
+Updated user guide.
+
+2023-8-18 Will
+bn 2251
+Scales GUI now has a 'Clear All' button.
+CLI can now export tunings and keymaps.
+Some additional microtonal cleanups.
+
+{branch microtonal}
+BugFix: Tuning/Keymap import not recognised.
+Revised and simplified Scales error reporting.
+Revised much of microtonal.cpp
+Enabled partial recognition of extra comments in files.
+Implimented .scl and .kbm exporting (currently GUI only).
+
+2023-8-12 Will
+bn 2250
+Further improvements to window titles.
+Removed code for looking for PDF manual.
+
+2023-8-11 Will
+bn 2249
+Unified window title creation
+Revised metadata and added hicolor png icons
+Improved error reporting in Data2Text
 
 2023-8-3 Will
 bn 2248
@@ -88,7 +239,7 @@ BugFiX: previous dynfilter regression not reversed!
 
 2023-5-24 Will
 bn 2233
-Added two drum souds from Lorenzo
+Added two drum sounds from Lorenzo
 Some Dynfilter cleanups, but more needed later.
 Set version as 2.3.0 rc9
 

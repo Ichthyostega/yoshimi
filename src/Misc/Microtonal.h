@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2016-2019, Will Godfrey
+    Copyright 2016-2023, Will Godfrey and others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -21,8 +21,6 @@
     Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
     This file is derivative of ZynAddSubFX original code.
-
-    Modified February 2019
 */
 
 #ifndef MICROTONAL_H
@@ -39,15 +37,12 @@ class XMLwrapper;
 using std::string;
 using func::power;
 
-const size_t MAX_OCTAVE_SIZE = 128;
-
-
 class Microtonal
 {
     public:
         Microtonal(SynthEngine *_synth): synth(_synth) { defaults(); }
         ~Microtonal() { }
-        void defaults(void);
+        void defaults(int type = 0);
         float getNoteFreq(int note, int keyshift);
         float getFixedNoteFreq(int note);
         float getLimits(CommandBlock *getData);
@@ -70,35 +65,44 @@ class Microtonal
         // Map size
         int Pmapsize;
 
+        int PformalOctaveSize;
+
         unsigned char Pmappingenabled; // Mapping ON/OFF
-        int Pmapping[128];             // Mapping (keys)
+        int Pmapping[MAX_OCTAVE_SIZE];             // Mapping (keys)
+        string PmapComment[MAX_OCTAVE_SIZE];       // comments for mapping (if they exist)
 
         float Pglobalfinedetune;
+        float globalfinedetunerap;
+        void setglobalfinedetune(float control);
 
         int getoctavesize(void);
-        void tuningtoline(unsigned int n, char *line, int maxn);
+        void tuningtoline(unsigned int n, string& line);
         string tuningtotext(void);
         string keymaptotext(void);
         int loadscl(const string& filename); // load the tunings from a .scl file
         int loadkbm(const string& filename); // load the mapping from .kbm file
-        int texttotunings(const char *text);
-        int texttomapping(const char *text);
+        int texttotunings(string page);
+        int texttomapping(string page);
+
+        string scale2scl(void);
+        string map2kbm(void);
 
         string Pname;
         string Pcomment;
 
         void add2XML(XMLwrapper *xml);
-        void getfromXML(XMLwrapper *xml);
+        int getfromXML(XMLwrapper *xml);
         bool saveXML(const string& filename);
-        bool loadXML(const string& filename);
+        int loadXML(const string& filename);
 
     private:
+        int getLineFromText(string& page, string& line);
         string reformatline(string text);
-        bool validline(const char *line);
-        int linetotunings(unsigned int nline, const char *line);
-        int loadLine(const string& text, size_t &point, char *line, size_t maxlen);
-        // loads a line from the text file,
-        // ignoring the lines beginning with "!"
+        int linetotunings(unsigned int nline, string text);
+        // extracts a line from a text file, ignoring the lines beginning with "!"
+
+    public:
+        // TODO made these public until we have better ways to transfer data to/from GUI
         size_t octavesize;
 
         struct Octave {
@@ -108,9 +112,9 @@ class Microtonal
             unsigned int x1; // the real tuning is x1 / x2
             unsigned int x2;
             string text;
+            string comment;
         };
         Octave octave[MAX_OCTAVE_SIZE];
-        Octave tmpoctave[MAX_OCTAVE_SIZE];
 
         SynthEngine *synth;
 };
