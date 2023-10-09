@@ -8,6 +8,7 @@ Files: CHECK_ON_RELEASE
  Dependencies
  INSTALL
  INSTALL_CUSTOM
+ README.md
  README.txt
  Util/1stReadMe.txt
  Util/ControlModel.svg
@@ -54,6 +55,9 @@ Files: CHECK_ON_RELEASE
  banks/Will_Godfrey_Collection/.bankdir
  banks/Will_Godfrey_Companion/.bankdir
  banks/chip/.bankdir
+ desktop/128/yoshimi.png
+ desktop/256/yoshimi.png
+ desktop/64/yoshimi.png
  desktop/yoshimi.1
  desktop/yoshimi.desktop.in
  desktop/yoshimi.png
@@ -160,6 +164,7 @@ Files: CHECK_ON_RELEASE
  doc/Histories/Yoshimi_2.2.1_features.txt
  doc/Histories/Yoshimi_2.2.2_features.txt
  doc/Histories/Yoshimi_2.2.3_features.txt
+ doc/Histories/Yoshimi_2.3.0_features.txt
  doc/Histories/Yoshimi_Early_History.txt
  doc/Histories/Yoshimi_License_History.txt
  doc/Histories/Yoshimi_Only_NRPNs.txt
@@ -167,9 +172,10 @@ Files: CHECK_ON_RELEASE
  doc/Histories/Zyn_HISTORY.txt
  doc/Note_Envelopes.txt
  doc/Part_Kit_Crossfade.txt
- doc/Yoshimi_2.3.0_features.txt
+ doc/Yoshimi_2.3.1_features.txt
  doc/Yoshimi_License_History.txt
  doc/Yoshimi_Quote.txt
+ doc/examples/Arram_Koth_Finale.txt
  doc/examples/CoolSound.txt
  doc/examples/CrossFade.txt
  doc/examples/Microtonal Keymap Demo.kbm
@@ -268,7 +274,6 @@ Files: src/DSP/AnalogFilter.cpp
  src/Effects/Reverb.cpp
  src/Effects/Reverb.h
  src/Misc/Microtonal.cpp
- src/Misc/Microtonal.h
  src/Misc/Part.h
  src/Misc/XMLwrapper.cpp
  src/Misc/XMLwrapper.h
@@ -299,16 +304,12 @@ Copyright: 2002-2005, Nasca Octavian Paul
   2009-2010, Alan Calvert
   2009-2011, Alan Calvert
   2011, Alan Calvert
-  2014-2020, Will Godfrey
   2014-2021, Will Godfrey
-  2014-2022, Will Godfrey
   2014-2023, Will Godfrey
   2015-2023, Will Godfrey
-  2016-2019, Will Godfrey
   2016-2023, Will Godfrey
   2017-2018, Will Godfrey
   2017-2020, Will Godfrey
-  2017-2021, Will Godfrey
   2017-2022, Will Godfrey
   2017-2023, Will Godfrey
   2018, Will Godfrey
@@ -356,7 +357,6 @@ Copyright: 2002-2005, Nasca Octavian Paul
   2009-2010, Alan Calvert
   2009-2011, Alan Calvert
   2014-2021, Will Godfrey & others
-  2014-2022, Will Godfrey & others
   2014-2023, Will Godfrey & others
   2015-2023, Will Godfrey & others
   2016-2023, Will Godfrey & others
@@ -581,13 +581,6 @@ Copyright: 2006, Nasca Octavian Paul
 License: UNKNOWN
  FIXME
 
-Files: desktop/metainfo/yoshimi.appdata.xml
- desktop/metainfo/yoshimi.metainfo.xml
-Copyright: 2002-2009, Nasca Octavian Paul), development of Yoshimi has continued for quite a while now in its own direction. Originally these included major optimizations for audio and MIDI performance. More recently there has been progressive development of user-level access to all controls, including command line access. Since V1.5.0 there is full Midi Learn capability.
-  2016-2023, Yoshimi project <willgodfrey@musically.me.uk> -->
-License: UNKNOWN
- FIXME
-
 Files: doc/examples/themes/blue_tint.clr
  doc/examples/themes/demo.clr
 Copyright: 2023, Will Godfrey
@@ -634,8 +627,8 @@ Copyright: 2002-2005, Nasca Octavian Paul
   2009-2011, Alan Calvert
   2012-2013, Jeremy Jongepier and others
   2014, Andrew Deryabin
-  2014-2021, Will Godfrey and others
   2014-2023, Will Godfrey & others
+  2014-2023, Will Godfrey and others
   2017, Jesper Lloyd}
 License: GPL-2+
  FIXME
@@ -685,7 +678,7 @@ Copyright: 2002-2005, Nasca Octavian Paul
   2009-2011, Alan Calvert
   2014-2019, Will Godfrey
   2021, Kristian Amlie & others
-  2022, Ichthyostega & others
+  2022-2023, Ichthyostega & others
   break;
 License: GPL-2+
  FIXME
@@ -720,7 +713,7 @@ Copyright: 2002-2005, Nasca Octavian Paul
   2009, James Morris
   2009-2011, Alan Calvert
   2014-2020, Will Godfrey & others
-  2022, Will Godfrey, Rainer Hans Liffers
+  2022-2023, Will Godfrey, Rainer Hans Liffers
 License: GPL-2+
  FIXME
 
@@ -768,6 +761,13 @@ Files: src/Synth/OscilGen.h
 Copyright: 2002-2005, Nasca Octavian Paul
   2009-2011, Alan Calvert
   2017-2020, Will Godfrey & others.
+License: GPL-2+
+ FIXME
+
+Files: src/Misc/Microtonal.h
+Copyright: 2002-2005, Nasca Octavian Paul
+  2009-2011, Alan Calvert
+  2016-2023, Will Godfrey and others
 License: GPL-2+
  FIXME
 
@@ -873,7 +873,7 @@ License: GPL-2+
  FIXME
 
 Files: src/globals.h
-Copyright: 2018-2022, Will Godfrey & others
+Copyright: 2018-2023, Will Godfrey & others
   this needs to be split into two for load/save
 License: GPL-2+
  FIXME
@@ -911,6 +911,12 @@ License: UNKNOWN
 
 Files: doc/examples/themes/gray-dark-01.clr
 Copyright: 2023, Lorenzo Sutton - License GPL 2.0 or later
+License: UNKNOWN
+ FIXME
+
+Files: desktop/metainfo/yoshimi.metainfo.xml
+Copyright: 2002-2009, Nasca Octavian Paul), development of Yoshimi has continued for quite a while now in its own direction. Originally these included major optimizations for audio and MIDI performance. More recently there has been progressive development of user-level access to all controls, including command line access. Since V1.5.0 there is full Midi Learn capability.
+  2016-2023, Yoshimi project <willgodfrey@musically.me.uk> -->
 License: UNKNOWN
  FIXME
 
