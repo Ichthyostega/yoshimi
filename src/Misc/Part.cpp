@@ -118,7 +118,6 @@ Part::Part(uchar id, Microtonal *microtonal_, fft::Calc& fft_, SynthEngine *_syn
         partnote[i].time = 0;
     }
     cleanup();
-    PmapOffset = 0; // this only needs to be set once
     /*
      * Do we actually need the following two?
      * defaults is called for all parts at startup by Config.cpp
@@ -173,11 +172,15 @@ void Part::defaults(int npart)
 
 void Part::setNoteMap(int keyshift)
 {
-    for (int i = 0; i < 128; ++i)
+    for (int i = 0; i < MAX_OCTAVE_SIZE; ++i)
+    {
         if (Pdrummode)
-            PnoteMap[128 - PmapOffset + i] = microtonal->getFixedNoteFreq(i);
+            PnoteMap[i] = microtonal->getFixedNoteFreq(i);
         else
-            PnoteMap[128 - PmapOffset + i] = microtonal->getNoteFreq(i, keyshift + synth->Pkeyshift - 64);
+        {
+            PnoteMap[i] = microtonal->getNoteFreq(i, keyshift + synth->Pkeyshift - 64);
+        }
+    }
 }
 
 
@@ -201,7 +204,7 @@ void Part::defaultsinstrument(void)
         kit[n].Penabled = 0;
         kit[n].Pmuted = 0;
         kit[n].Pminkey = 0;
-        kit[n].Pmaxkey = 127;
+        kit[n].Pmaxkey = MAX_OCTAVE_SIZE - 1;
         kit[n].Padenabled = 0;
         kit[n].Psubenabled = 0;
         kit[n].Ppadenabled = 0;
@@ -541,6 +544,9 @@ void Part::NoteOn(int note, int velocity, bool renote)
     if (note < Pminkey || note > Pmaxkey)
         return;
 
+    if (microtonal->Pmappingenabled && (note < microtonal->Pfirstkey || note > microtonal->Plastkey))
+        return; //outside mapped range
+
     // Legato and MonoNote used vars:
     bool isLegatoMode = false;    // legato mode is determined applicable.
     bool performLegato = false;   // the current note actually applies legato.
@@ -612,7 +618,7 @@ void Part::NoteOn(int note, int velocity, bool renote)
 
         // initialise note frequency
         float noteFreq;
-        if ((noteFreq = PnoteMap[PmapOffset + note]) < 0.0f)
+        if ((noteFreq = PnoteMap[note]) < 0.0f)
             return; // the key is not mapped
 
         // Humanise
@@ -1268,7 +1274,7 @@ void Part::add2XMLinstrument(XMLwrapper *xml)
         xml->addparbool("enabled", kit[i].Penabled);
         if (kit[i].Penabled)
         {
-            xml->addparstr("name", kit[i].Pname.c_str());
+            xml->addparstr("name", kit[i].Pname);
 
             xml->addparbool("muted", kit[i].Pmuted);
             xml->addpar("min_key", kit[i].Pminkey);

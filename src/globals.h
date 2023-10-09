@@ -76,6 +76,7 @@ typedef unsigned int  uint;
 #define MAX_RESONANCE_POINTS 256
 #define MAX_KEY_SHIFT 36
 #define MIN_KEY_SHIFT -36
+#define MAX_OCTAVE_SIZE 128
 #define A_MIN 30.0f
 #define A_DEF 440.0f
 #define A_MAX 1100.0f
@@ -161,7 +162,13 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         bank = 244, // F4
         config = 248, // F8
         message = 250, // FA
-        windowTitle = 253, // This is read-only and uses only 'value' as a text ID for TextMsgBuffer
+        windowTitle = 252,
+        /* The above is read-only and uses 'value' as the location of the
+         * text ID for TextMsgBuffer.
+         * Control is used as the part number (if it is at part level
+         * Kit is used to identify kit level and/or effect
+         * Engine is used to identify engine or voice if at that level
+         */
         instanceID = 254 // This is read-only and has no other parameters
     };
 
@@ -508,16 +515,29 @@ namespace SCALES // usage SCALES::control::refFrequency
         highKey,
         tuning = 32,
         clearAll,
-        retune, // GUI only
-        // all the above directly alter the tuning. retune must be the last
-
         keyboardMap,
+        keymapSize,
         importScl = 48,
         importKbm,
-        exportScl, // not yet
-        exportKbm, // not yet
+        exportScl,
+        exportKbm,
         name = 64,
         comment
+    };
+    enum errors : int {
+        outOfRange = -12,
+        badNoteNumber,
+        badMapSize,
+        badOctaveSize,
+        missingEntry,
+        badFile,
+        emptyFile,
+        noFile,
+        badNumbers,
+        badChars,
+        valueTooBig,
+        valueTooSmall,
+        emptyEntry
     };
 }
 

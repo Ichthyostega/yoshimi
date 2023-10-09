@@ -90,6 +90,7 @@ class InterChange : private DataText
         void doClearPartInstrument(int npart);
         bool commandSend(CommandBlock *getData);
         float readAllData(CommandBlock *getData);
+        float buildWindowTitle(CommandBlock *getData, SynthEngine *synth);
         void resolveReplies(CommandBlock *getData);
         std::string resolveText(CommandBlock *getData, bool addValue);
         void testLimits(CommandBlock *getData);
@@ -115,6 +116,7 @@ class InterChange : private DataText
         int indirectConfig(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text);
         int indirectPart(CommandBlock *getData, SynthEngine *synth, unsigned char &newMsg, bool &guiTo, std::string &text);
         std::string formatScales(std::string text);
+        std::string formatKeys(std::string text);
 
         unsigned int swapRoot1;
         unsigned int swapBank1;
