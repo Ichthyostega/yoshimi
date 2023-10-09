@@ -1,3 +1,11 @@
+yoshimi (2.3.1-1) UNRELEASED; urgency=medium
+
+  * New upstream version 2.3.1
+  * Update copyright information
+    + Re-generate d/copyright_hints (with another MIDI file excluded)
+
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Mon, 09 Oct 2023 14:33:18 +0200
+
 yoshimi (2.3.0.3-1) unstable; urgency=medium
 
   * New upstream version 2.3.0.3
