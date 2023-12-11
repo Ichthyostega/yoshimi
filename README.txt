@@ -1,17 +1,19 @@
-Version 2.3.0 - Painted Bunting
+Version 2.3.1.3
 
-There's been a major overhaul of the graphics for better visibility.
+Copy/Paste has been improved and unified between CLI and GUI.
 
-We've added a very complete user-definable colour theme system.
+Improved discovery of most recent HTML guide location.
+    Also available to the CLI.
 
-There is indication when any rotary control or slider is not at its default.
+Small corrections and updates in the User Guide.
 
-Many controls are now high resolution yet both forward and backward compatible
-with older Yoshimi versions.
+Various bugfixes.
 
-All the documentation has been revised.
+For developers:
+    Improved access to control data/descriptions, with updates.
+    Updated various explanatory texts.
 
-Full details are in /doc/Yoshimi_2.3.0_features.txt
+Full details are in /doc/Yoshimi_2.3.1.2_features.txt
 
 Yoshimi source code is available from either:
 https://sourceforge.net/projects/yoshimi
@@ -22,5 +24,6 @@ Full build instructions are in 'INSTALL'.
 
 Our list archive is at:
 https://www.freelists.org/archive/yoshimi
+
 To post, email to:
 yoshimi@freelists.org

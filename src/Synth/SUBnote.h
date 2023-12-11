@@ -30,7 +30,7 @@
 
 #include "globals.h"
 #include "Misc/Alloc.h"
-#include "Params/Presets.h"
+#include "Params/ParamCheck.h"
 
 #include <memory>
 
@@ -72,7 +72,7 @@ class SUBnote
 
         SynthEngine& synth;
         SUBnoteParameters& pars;
-        Presets::PresetsUpdate subNoteChange;
+        ParamBase::ParamsUpdate subNoteChange;
         Controller& ctl;
 
         Note note;

@@ -34,14 +34,13 @@ using func::power;
 
 
 FilterParams::FilterParams(unsigned char Ptype_, float Pfreq_, float Pq_, unsigned char Pfreqtrackoffset_, SynthEngine *_synth) :
-    Presets(_synth),
+    ParamBase(_synth),
     changed(false),
     Dtype(Ptype_),
     Dfreq(Pfreq_),
     Dq(Pq_),
     Dfreqtrackoffset(Pfreqtrackoffset_)
 {
-    setpresettype("Pfilter");
     defaults();
 }
 
@@ -401,12 +400,12 @@ float filterLimit::getFilterLimits(CommandBlock *getData)
     int effType = getData->data.kit;
     int engine = getData->data.engine;
     int dynPreset = 0;
+
     if (effType == EFFECT::type::dynFilter)
     {
         dynPreset = getData->data.spare1;
         //std::cout << "pres " << dynPreset << std::endl;
     }
-
     unsigned char type = 0;
 
     // filter defaults
@@ -533,7 +532,8 @@ float filterLimit::getFilterLimits(CommandBlock *getData)
             def = FILTDEF::formClear.def;
             break;
         case FILTERINSERT::control::formantFrequency:
-            type |= TOPLEVEL::type::Error;
+            if (request == TOPLEVEL::type::Default)
+                type |= TOPLEVEL::type::Error;
             // it's pseudo random so inhibit default *** change this!
             type &= ~TOPLEVEL::type::Integer;
             break;

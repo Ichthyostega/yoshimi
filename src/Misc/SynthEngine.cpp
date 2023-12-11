@@ -7,7 +7,7 @@
     Copyright 2009, James Morris
     Copyright 2014-2020, Will Godfrey & others
 
-    Copyright 2022, Will Godfrey, Rainer Hans Liffers
+    Copyright 2022-2023, Will Godfrey, Rainer Hans Liffers
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -130,9 +130,7 @@ SynthEngine::SynthEngine(std::list<string>& allArgs, LV2PluginType _lv2PluginTyp
     interchange(this),
     midilearn(this),
     mididecode(this),
-    //unifiedpresets(this),
     Runtime(this, allArgs, getIsLV2Plugin()),
-    presetsstore(this),
     textMsgBuffer(TextMsgBuffer::instance()),
     fadeAll(0),
     fadeStepShort(0),
@@ -486,7 +484,6 @@ void SynthEngine::defaults(void)
     Runtime.noteOffSeen = 0;
 #endif
 
-    Runtime.effectChange = UNUSED; // temporary fix
     partonoffLock(0, 1); // enable the first part
 }
 
@@ -494,18 +491,13 @@ void SynthEngine::defaults(void)
 void SynthEngine::setPartMap(int npart)
 {
     part[npart]->setNoteMap(part[npart]->Pkeyshift - 64);
-    part[npart]->PmapOffset = 128 - part[npart]->PmapOffset;
 }
 
 
 void SynthEngine::setAllPartMaps(void)
 {
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++ npart)
-        part[npart]->setNoteMap(part[npart]->Pkeyshift - 64);
-
-    // we swap all maps together after they've been changed
-    for (int npart = 0; npart < NUM_MIDI_PARTS; ++ npart)
-        part[npart]->PmapOffset = 128 - part[npart]->PmapOffset;
+        setPartMap(npart);
 }
 
 void SynthEngine::audioOutStore(uint8_t num)
@@ -580,7 +572,7 @@ void SynthEngine::swapTestPADtable()
 
     using std::swap;
     swap(padSynth->waveTable, *testWavetable);
-    padSynth->presetsUpdated();
+    padSynth->paramsChanged();
     if (padSynth->PxFadeUpdate)
     {// rig a cross-fade for ongoing notes to pick up
         PADTables copy4fade{padSynth->Pquality};
@@ -998,7 +990,7 @@ int SynthEngine::setProgramByName(CommandBlock *getData)
     int npart = int(getData->data.kit);
     string fname = textMsgBuffer.fetch(getData->data.miscmsg);
     fname = setExtension(fname, EXTEN::yoshInst);
-    if (!isRegularFile(fname.c_str()))
+    if (!isRegularFile(fname))
         fname = setExtension(fname, EXTEN::zynInst);
     string name = findLeafName(fname);
     if (name < "!")
@@ -1006,7 +998,7 @@ int SynthEngine::setProgramByName(CommandBlock *getData)
         name = "Invalid instrument name " + name;
         ok = false;
     }
-    if (ok && !isRegularFile(fname.c_str()))
+    if (ok && !isRegularFile(fname))
     {
         name = "Can't find " + fname;
         ok = false;
@@ -1206,7 +1198,7 @@ void SynthEngine::cliOutput(list<string>& msg_buf, unsigned int lines)
     {
         // JBS: make that a class member variable
         string page_filename = "/tmp/yoshimi-pager-" + asString(getpid()) + ".log";
-        ofstream fout(page_filename.c_str(),(ios_base::out | ios_base::trunc));
+        ofstream fout(page_filename,(ios_base::out | ios_base::trunc));
         for (it = msg_buf.begin(); it != msg_buf.end(); ++it)
             fout << *it << endl;
         fout.close();
@@ -2493,16 +2485,6 @@ bool SynthEngine::loadPatchSetAndUpdate(string fname)
 }
 
 
-bool SynthEngine::loadMicrotonal(const string& fname)
-{
-    return microtonal.loadXML(setExtension(fname, EXTEN::scale));
-}
-
-bool SynthEngine::saveMicrotonal(const string& fname)
-{
-    return microtonal.saveXML(setExtension(fname, EXTEN::scale));
-}
-
 bool SynthEngine::installBanks()
 {
     string name = file::configDir() + '/' + YOSHIMI;
@@ -3180,8 +3162,9 @@ void SynthEngine::add2XML(XMLwrapper *xml)
 }
 
 
-int SynthEngine::getalldata(char **data)
+int SynthEngine::getalldata(char **data) // to state from instance
 {
+    std::cout << "getstart" << std::endl;
     bool oldFormat = usingYoshiType;
     usingYoshiType = true; // make sure everything is saved
     getRuntime().xmlType = TOPLEVEL::XML::State;
@@ -3195,8 +3178,9 @@ int SynthEngine::getalldata(char **data)
 }
 
 
-void SynthEngine::putalldata(const char *data, int size)
+void SynthEngine::putalldata(const char *data, int size) // to instance from state
 {
+//std::cout << "putstart" << std::endl;
     while (isspace(*data))
         ++data;
     int a = size; size = a; // suppress warning (may be used later)
@@ -3212,6 +3196,7 @@ void SynthEngine::putalldata(const char *data, int size)
     midilearn.extractMidiListData(false, xml);
     setAllPartMaps();
     delete xml;
+//std::cout << "putend" << std::endl;
 }
 
 
@@ -3786,7 +3771,7 @@ float SynthEngine::getConfigLimits(CommandBlock *getData)
 }
 
 
-void SynthEngine::CBtest(CommandBlock *candidate, bool miscmsg)
+void SynthEngine::CBtest(CommandBlock *candidate, bool miscmsg) // default - don't read message
 {
     std::cout << "\n value " << candidate->data.value
             << "\n type " << int(candidate->data.type)
@@ -3799,6 +3784,8 @@ void SynthEngine::CBtest(CommandBlock *candidate, bool miscmsg)
             << "\n parameter " << int(candidate->data.parameter)
             << "\n offset " << int(candidate->data.offset)
             << std::endl;
-    if (!miscmsg)
+    if (miscmsg) // read this *without* deleting it
         std::cout << ">" << textMsgBuffer.fetch(candidate->data.miscmsg, false) << "<" << std::endl;
+    else
+        std::cout << " miscmsg " << int(candidate->data.miscmsg) << std::endl;
 }

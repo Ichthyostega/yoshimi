@@ -1124,6 +1124,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
         effClass = TOPLEVEL::section::insertEffects;
     else
         effClass = TOPLEVEL::section::systemEffects;
+    int effSend = 0; // only used to check insert effects
 
     if (bitTest(context, LEVEL::Part))
     {
@@ -1135,7 +1136,10 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
     {
         nFXavail = NUM_INS_EFX;
         nFX = readControl(synth, 0, EFFECT::sysIns::effectNumber, TOPLEVEL::section::insertEffects);
+
+        effSend = readControl(synth, 0, EFFECT::sysIns::effectDestination, TOPLEVEL::section::insertEffects);
         nFXtype = synth->insefx[nFX]->geteffect();
+
     }
     else
     {
@@ -1212,6 +1216,12 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
     }
     if (effType)
     {
+        if (effSend == -1)
+        {
+            synth->getRuntime().Log("Insert effect " + asString(nFX + 1) + " unrouted");
+            synth->getRuntime().Log("Use 'SEnd Master, Off or part number'");
+            return REPLY::done_msg;
+        }
         //cout << "nfx " << nFX << endl;
         nFXpreset = 0; // always set this on type change
         if (bitTest(context, LEVEL::Part))
@@ -1468,7 +1478,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
         if (input.lineEnd(controlType))
             return REPLY::parameter_msg;
 
-        if (!bitTest(context, LEVEL::InsFX))
+        if (!bitTest(context, LEVEL::InsFX)) // system effects
         {
             par = string2int(input) - 1;
             input.skipChars();
@@ -1476,7 +1486,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
                 return REPLY::value_msg;
             value = string2int127(input);
         }
-        else if (isWrite) // system effects
+        else if (isWrite)
         {
             if (input.matchnMove(1, "master"))
                 value = -2;
@@ -1488,36 +1498,37 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
                 if (value >= Runtime.NumAvailableParts || value < 0)
                     return REPLY::range_msg;
             }
+            effSend = value;
         }
 
         if (!isWrite)
             value = 1; // dummy
         int control;
-        int partno;
+        int section;
         engine = nFX;
         int insert = UNUSED;
 
         if (bitTest(context, LEVEL::Part))
         {
-            partno = npart;
+            section = npart;
             control = PART::control::partToSystemEffect1 + par;
             engine = UNUSED;
         }
         else if (bitTest(context, LEVEL::InsFX))
         {
-            partno = TOPLEVEL::section::insertEffects;
+            section = TOPLEVEL::section::insertEffects;
             control = EFFECT::sysIns::effectDestination;
         }
         else
         {
             if (par <= nFX || par >= NUM_SYS_EFX)
                 return REPLY::range_msg;
-            partno = TOPLEVEL::section::systemEffects;
+            section = TOPLEVEL::section::systemEffects;
             control = EFFECT::sysIns::toEffect1 + par - 1; // TODO this needs sorting
             engine = nFX;
             insert = TOPLEVEL::insert::systemEffectSend;
         }
-        return sendNormal(synth, 0, value, controlType, control, partno, UNUSED, engine, insert);
+        return sendNormal(synth, 0, value, controlType, control, section, UNUSED, engine, insert);
     }
 
     if (input.matchnMove(3, "preset"))
@@ -1529,15 +1540,15 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
          * However, all of this should really be in src/Effects
          * not here *and* in the gui code!
          */
-        int partno;
+        int section;
         nFXpreset = string2int127(input) - 1;
         if (bitTest(context, LEVEL::Part))
-            partno = npart;
+            section = npart;
         else if (bitTest(context, LEVEL::InsFX))
-            partno = TOPLEVEL::section::insertEffects;
+            section = TOPLEVEL::section::insertEffects;
         else
-            partno = TOPLEVEL::section::systemEffects;
-        return sendNormal(synth, 0, nFXpreset, controlType, EFFECT::control::preset, partno, EFFECT::type::none + nFXtype, nFX);
+            section = TOPLEVEL::section::systemEffects;
+        return sendNormal(synth, 0, nFXpreset, controlType, EFFECT::control::preset, section, EFFECT::type::none + nFXtype, nFX);
     }
     return REPLY::op_msg;
 }
@@ -1727,7 +1738,7 @@ int CmdInterpreter::midiControllers(Parser& input, unsigned char controlType)
         value = 0;
     if (cmd > -1)
         return sendNormal(synth, 0, value, controlType, cmd, npart);
-    return REPLY::available_msg;
+    return REPLY::unrecognised_msg;
 }
 
 
@@ -2555,10 +2566,10 @@ int CmdInterpreter::commandList(Parser& input)
     {
         if (insertType == TOPLEVEL::insert::envelopeGroup || insertType == TOPLEVEL::insert::LFOgroup)
         {
-            presetsControl(0, TOPLEVEL::type::Adjust, section, kitNumber, engine, insertType, insertGroup, UNUSED);
+            presetsControl(0, TOPLEVEL::type::List, section, kitNumber, engine, insertType, insertGroup, UNUSED);
             return REPLY::done_msg;
         }
-        presetsControl(0, TOPLEVEL::type::Adjust, section, kitNumber, engine, insertType, filterFormantNumber, filterVowelNumber);
+        presetsControl(0, TOPLEVEL::type::List, section, kitNumber, engine, insertType, filterFormantNumber, filterVowelNumber);
         return REPLY::done_msg;
     }
 
@@ -3074,7 +3085,7 @@ int CmdInterpreter::commandBank(Parser& input, unsigned char controlType, bool j
         if (input.matchnMove(1, "rename"))
         {
             if (controlType != TOPLEVEL::type::Write)
-                return REPLY::available_msg;
+                return REPLY::writeOnly_msg;
             if (!input.isdigit())
                 return REPLY::value_msg;
             int tmp = string2int(input) - 1; // could be up to 160
@@ -3090,7 +3101,7 @@ int CmdInterpreter::commandBank(Parser& input, unsigned char controlType, bool j
         if (input.matchnMove(1, "save"))
         {
             if (controlType != TOPLEVEL::type::Write)
-                return REPLY::available_msg;
+                return REPLY::writeOnly_msg;
             if (!input.isdigit())
                 return REPLY::value_msg;
             int tmp = string2int(input) - 1; // could be up to 160
@@ -3282,9 +3293,9 @@ int CmdInterpreter::commandConfig(Parser& input, unsigned char controlType)
         value = input.toggle();
         if (value == -1 && input.matchnMove(2, "prompt"))
             value = 2;
-        if (value == -1)
+        if (value == -1 && controlType == TOPLEVEL::type::Write)
             return REPLY::value_msg;
-        command = CONFIG::control::exposeStatus;
+        return sendDirect(synth, TOPLEVEL::action::fromCLI, value, controlType, CONFIG::control::exposeStatus, TOPLEVEL::section::config);
     }
 
     else if (input.matchnMove(1, "jack"))
@@ -3512,9 +3523,18 @@ int CmdInterpreter::commandScale(Parser& input, unsigned char controlType)
     if (input.lineEnd(controlType))
         return REPLY::done_msg;
     Config &Runtime = synth->getRuntime();
+    int enable = input.toggle();
+    if (enable > -1)
+    {
+        int result = sendDirect(synth, 0, enable, controlType, SCALES::control::enableMicrotonal, TOPLEVEL::section::scales);
+        if (input.lineEnd(controlType))
+            return result;
+    }
+    if(readControl(synth, 0, SCALES::control::enableMicrotonal, TOPLEVEL::section::scales) < 1)
+        return REPLY::inactive_msg;
+
     float value = 0;
     unsigned char command = UNUSED;
-    unsigned char action = 0;
     unsigned char miscmsg = UNUSED;
 
     string name;
@@ -3528,94 +3548,128 @@ int CmdInterpreter::commandScale(Parser& input, unsigned char controlType)
     else if (input.matchnMove(2, "description"))
         command = SCALES::control::comment;
 
-    if (command >= SCALES::control::tuning && command <= SCALES::control::comment)
+    if (command != UNUSED)
     {
-        if (controlType != TOPLEVEL::type::Write && command <= SCALES::control::importKbm)
+        if (controlType != TOPLEVEL::type::Write &&(command == SCALES::control::tuning || command == SCALES::control::keyboardMap))
         {
             Runtime.Log("Write only - use 'list'");
             return REPLY::done_msg;
         }
-        if (command == SCALES::control::tuning || command == SCALES::control::keyboardMap)
-        {
-            if (input.matchnMove(3, "import"))
-            {
-                if (command == SCALES::control::tuning)
-                    command = SCALES::control::importScl;
-                else
-                    command = SCALES::control::importKbm;
-            }
-        }
         name = string{input};
         if (name == "" && controlType == TOPLEVEL::type::Write)
             return REPLY::value_msg;
-        action = TOPLEVEL::action::lowPrio;
         miscmsg = textMsgBuffer.push(name);
+        return sendNormal(synth, TOPLEVEL::action::lowPrio, value, controlType, command, TOPLEVEL::section::scales, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, miscmsg);
+    }
+
+    int min = 0;
+    int max = 127;
+    unsigned char action = 0;
+    if (input.matchnMove(2, "frequency"))
+    {
+        command = SCALES::control::refFrequency;
+        min = 1;
+        max = 20000;
+        controlType &= ~TOPLEVEL::type::Integer; // float
+    }
+    else if (input.matchnMove(2, "note"))
+        command = SCALES::control::refNote;
+    else if (input.matchnMove(1, "invert"))
+    {
+        command = SCALES::control::invertScale;
+        max = 1;
+    }
+    else if (input.matchnMove(2, "center"))
+        command = SCALES::control::invertedScaleCenter;
+    else if (input.matchnMove(2, "shift"))
+    {
+        command = SCALES::control::scaleShift;
+        min = -63;
+        max = 64;
+    }
+    else if (input.matchnMove(2, "mapping"))
+    {
+        command = SCALES::control::enableKeyboardMap;
+        max = 1;
+    }
+    else if (input.matchnMove(2, "size"))
+    {
+        command = SCALES::control::keymapSize;
+        action = TOPLEVEL::action::lowPrio;
+    }
+    else if (input.matchnMove(2, "first"))
+        command = SCALES::control::lowKey;
+    else if (input.matchnMove(2, "middle"))
+        command = SCALES::control::middleKey;
+    else if (input.matchnMove(1, "last"))
+        command = SCALES::control::highKey;
+    else if (input.matchnMove(3, "CLEar"))
+    {
+        input.skip(-1); // sneaky way to force a zero :)
+        command = SCALES::control::clearAll;
     }
     else
-    {
-        int min = 0;
-        int max = 127;
-        if (input.matchnMove(2, "frequency"))
-        {
-            command = SCALES::control::refFrequency;
-            min = 1;
-            max = 20000;
-            controlType &= ~TOPLEVEL::type::Integer; // float
-        }
-        else if (input.matchnMove(2, "note"))
-            command = SCALES::control::refNote;
-        else if (input.matchnMove(1, "invert"))
-        {
-            command = SCALES::control::invertScale;
-            max = 1;
-        }
-        else if (input.matchnMove(2, "center"))
-            command = SCALES::control::invertedScaleCenter;
-        else if (input.matchnMove(2, "shift"))
-        {
-            command = SCALES::control::scaleShift;
-            min = -63;
-            max = 64;
-        }
-        else if (input.matchnMove(2, "scale"))
-        {
-            command = SCALES::control::enableMicrotonal;
-            max = 1;
-        }
-        else if (input.matchnMove(2, "mapping"))
-        {
-            command = SCALES::control::enableKeyboardMap;
-            max = 1;
-        }
-        else if (input.matchnMove(2, "first"))
-            command = SCALES::control::lowKey;
-        else if (input.matchnMove(2, "middle"))
-            command = SCALES::control::middleKey;
-        else if (input.matchnMove(1, "last"))
-            command = SCALES::control::highKey;
-        else if (input.matchnMove(3, "CLEar"))
-        {
-            input.skip(-1); // sneaky way to force a zero :)
-            command = SCALES::control::clearAll;
-        }
-        else
-            return REPLY::todo_msg;
+        return REPLY::todo_msg;
 
-        if (controlType == TOPLEVEL::type::Write)
+    if (controlType == TOPLEVEL::type::Write)
+    {
+        if (input.lineEnd(controlType))
+            return REPLY::value_msg;
+        if ((input.toggle() == 1))
+            value = 1;
+        else
         {
-            if (input.lineEnd(controlType))
+            value = string2float(input);
+            if (value < min || value > max)
                 return REPLY::value_msg;
-            if ((input.toggle() == 1))
-                value = 1;
-            else//if (input.isdigit())
-            {
-                value = string2float(input);
-                if (value < min || value > max)
-                    return REPLY::value_msg;
-            }
         }
     }
-    return sendNormal(synth, action, value, controlType, command, TOPLEVEL::section::scales, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, miscmsg);
+
+    return sendDirect(synth, action, value, controlType, command, TOPLEVEL::section::scales);
+}
+
+
+int CmdInterpreter::commandImportScale(Parser& input)
+{
+    if (input.lineEnd(TOPLEVEL::type::Write)) // always must have a value here
+        return REPLY::what_msg;
+
+    size_t command = 0;
+
+    if (input.matchnMove(1, "tuning"))
+        command = SCALES::control::importScl;
+    else if (input.matchnMove(1, "keymap"))
+        command = SCALES::control::importKbm;
+    else
+    {
+        synth->getRuntime().Log("Specify TUNing or KEYmap");
+        return REPLY::done_msg;
+    }
+    string name = string{input};
+    if (name.empty())
+        return REPLY::value_msg;
+
+    size_t miscmsg = textMsgBuffer.push(name);
+    return sendNormal(synth, TOPLEVEL::action::lowPrio, 0, TOPLEVEL::type::Write, command, TOPLEVEL::section::scales, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, miscmsg);
+}
+
+
+int CmdInterpreter::commandExportScale(Parser& input)
+{
+    size_t command = 0;
+    if (input.matchnMove(1, "tuning"))
+        command = SCALES::control::exportScl;
+    else if (input.matchnMove(1, "keymap"))
+        command = SCALES::control::exportKbm;
+    else
+        return REPLY::what_msg;
+
+    string name = string{input};
+    if (name.empty())
+        return REPLY::value_msg;
+    size_t miscmsg = textMsgBuffer.push(name);
+    std::cout << "name >" << name << std::endl;
+    return sendDirect(synth, TOPLEVEL::action::lowPrio, 1, TOPLEVEL::type::Write, command, TOPLEVEL::section::scales, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, miscmsg);
 }
 
 
@@ -4229,7 +4283,7 @@ int CmdInterpreter::addSynth(Parser& input, unsigned char controlType)
         cmd = ADDSYNTH::control::randomGroup;
     }
     if (cmd == -1)
-        return REPLY::available_msg;
+        return REPLY::unrecognised_msg;
 
     return sendNormal(synth, 0, value, controlType, cmd, npart, kitNumber, PART::engine::addSynth);
 }
@@ -4511,7 +4565,7 @@ int CmdInterpreter::subSynth(Parser& input, unsigned char controlType)
         }
         return sendNormal(synth, 0, value, controlType, cmd, npart, kitNumber, PART::engine::subSynth);
     }
-    return REPLY::available_msg;
+    return REPLY::unrecognised_msg;
 }
 
 
@@ -4525,7 +4579,7 @@ int CmdInterpreter::padSynth(Parser& input, unsigned char controlType)
         insert = TOPLEVEL::insert::kitGroup;
     }
     int enable = (input.toggle());
-    // This is a part command, but looks like PadSynth the the CLI user
+    // This is a part command, but looks like PadSynth t0 the CLI user
     if (enable > -1)
         sendNormal(synth, 0, enable, controlType, PART::control::enablePad, npart, kit, UNUSED, insert);
 
@@ -4957,7 +5011,7 @@ int CmdInterpreter::padSynth(Parser& input, unsigned char controlType)
             value = string2int(input);
         return sendNormal(synth, 0, value, controlType, cmd, npart, kitNumber, PART::engine::padSynth);
     }
-    return REPLY::available_msg;
+    return REPLY::unrecognised_msg;
 }
 
 
@@ -5071,7 +5125,7 @@ int CmdInterpreter::resonance(Parser& input, unsigned char controlType)
         return sendNormal(synth, 0, value, controlType, cmd, npart, kitNumber, engine, insert, point);
     }
 
-    return REPLY::available_msg;
+    return REPLY::unrecognised_msg;
 }
 
 
@@ -5083,6 +5137,9 @@ int CmdInterpreter::waveform(Parser& input, unsigned char controlType)
     int cmd = -1;
     engine = contextToEngines(context);
     unsigned char insert = TOPLEVEL::insert::oscillatorGroup;
+    int thisVoice = voiceNumber;
+    if (engine == PART::engine::padSynth)
+        thisVoice = 0; // we don't want voice offsets here.
 
     if (controlType == type_read && input.isAtEnd())
         value = 0; // dummy value
@@ -5123,7 +5180,7 @@ int CmdInterpreter::waveform(Parser& input, unsigned char controlType)
         }
         if (value == -1)
             value = string2int(input);
-        return sendNormal(synth, 0, value, controlType, cmd, npart, kitNumber, engine + voiceNumber, insert);
+        return sendNormal(synth, 0, value, controlType, cmd, npart, kitNumber, engine + thisVoice, insert);
     }
 
     else if (input.matchnMove(2, "convert"))
@@ -5296,10 +5353,10 @@ int CmdInterpreter::waveform(Parser& input, unsigned char controlType)
         return sendNormal(synth, 0, value, controlType, cmd, npart, kitNumber, PART::engine::padSynth, insert, parameter);
     }
     if (cmd == -1)
-        return REPLY::available_msg;
+        return REPLY::unrecognised_msg;
     if (value == -1)
         value = string2float(input);
-    return sendNormal(synth, 0, value, controlType, cmd, npart, kitNumber, engine + voiceNumber, insert);
+    return sendNormal(synth, 0, value, controlType, cmd, npart, kitNumber, engine + thisVoice, insert);
 }
 
 
@@ -5555,7 +5612,6 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
     if (input.matchnMove(3, "padsynth"))
     {
         bitSet(context, LEVEL::PadSynth);
-        voiceNumber = 0; // TODO find out what *really* causes this to screw up!
         insertGroup = UNUSED;
         insertType = UNUSED;
         return padSynth(input, controlType);
@@ -5919,7 +5975,7 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
     {
 
         if (controlType != TOPLEVEL::type::Write)
-            return REPLY::available_msg;
+            return REPLY::writeOnly_msg;
         if (input.lineEnd(controlType))
             return REPLY::value_msg;
 
@@ -5930,7 +5986,7 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
 
         int pitch = string2int(input);
         input.skipChars();
-        if (pitch < 0 || pitch > 127)
+        if (pitch < 0 || pitch >= MAX_OCTAVE_SIZE)
             return REPLY::range_msg;
 
         int velocity = string2int(input);
@@ -5947,7 +6003,7 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
     if (input.matchnMove(4, "seed"))
     {
         if (controlType != TOPLEVEL::type::Write)
-            return REPLY::available_msg;
+            return REPLY::writeOnly_msg;
         int seed = string2int(input);
         if (seed < 0)
             seed = 0;
@@ -6042,7 +6098,7 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
         return commandScale(input, controlType);
     }
 
-    if (input.matchnMove(1, "part"))
+    if (context == LEVEL::Top && input.matchnMove(1, "part"))
     {
         nFX = 0; // just to be sure
         // TODO get correct part number
@@ -6082,7 +6138,7 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
         return commandTest(input, controlType);
     }
 
-    if ((context == LEVEL::Top || bitTest(context, LEVEL::InsFX)) && input.matchnMove(3, "system"))
+    if (context == LEVEL::Top && input.matchnMove(3, "system"))
     {
         section = TOPLEVEL::section::systemEffects;
         bitSet(context,LEVEL::AllFX);
@@ -6093,7 +6149,7 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
         nFXtype = synth->sysefx[nFX]->geteffect();
         return effects(input, controlType);
     }
-    if ((context == LEVEL::Top || bitTest(context, LEVEL::AllFX)) && !bitTest(context, LEVEL::Part) && input.matchnMove(3, "insert"))
+    if (context == LEVEL::Top && input.matchnMove(3, "insert"))
     {
         section = TOPLEVEL::section::insertEffects;
         bitSet(context,LEVEL::AllFX);
@@ -6210,6 +6266,14 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
 
 void CmdInterpreter::presetsControl(float value, unsigned char type, unsigned char section, unsigned char kitNumber, unsigned char engine, unsigned char insert, unsigned char parameter, unsigned char offset, unsigned char miscmsg)
 {
+    /*
+        type flags (set)
+            List  - all entries of section type
+            Copy  - from section to file
+            Paste - from file to section
+
+        no name given - from/to clipboard))
+    */
     string name;
     if (engine == PART::engine::addVoice1 || engine == PART::engine::addMod1)
     {
@@ -6225,7 +6289,7 @@ void CmdInterpreter::presetsControl(float value, unsigned char type, unsigned ch
             insert = TOPLEVEL::insert::filterGroup;
         }
     }
-    if (type == TOPLEVEL::type::Adjust)
+    if (type == TOPLEVEL::type::List)
     {
         string name = readControlText(synth, TOPLEVEL::action::lowPrio, TOPLEVEL::control::copyPaste, section, kitNumber, engine, insert, parameter, offset);
         copypasteList(name);
@@ -6382,6 +6446,11 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
         }
         return Reply::DONE;
     }
+    if (input.matchnMove(2, "guide"))
+    {
+        synth->getRuntime().Log(readControlText(synth, TOPLEVEL::action::lowPrio, 0, TOPLEVEL::section::guideLocation, UNUSED));
+        return Reply::DONE;
+    }
 
     if (input.nextChar('/'))
     {
@@ -6478,7 +6547,8 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
         return Reply{sendNormal(synth, 0, 0, TOPLEVEL::type::Write,MAIN::control::stopSound, TOPLEVEL::section::main)};
     if (input.matchnMove(1, "list"))
     {
-        if (input.matchnMove(1, "group"))
+        // we've added the 's' as people tended to autmatically assume it was needed.
+        if (input.matchnMove(1, "groups"))
             return Reply{commandGroup(input)};
         return Reply{commandList(input)};
     }
@@ -6584,11 +6654,15 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
         string replyMsg;
         if (input.matchnMove(3, "import"))
         {
+            if (bitTest(context, LEVEL::Scale))
+                return commandImportScale(input);
             type = MAIN::control::importBank;
             replyMsg = "import";
         }
         else if (input.matchnMove(3, "export"))
         {
+            if (bitTest(context, LEVEL::Scale))
+                return commandExportScale(input);
             type = MAIN::control::exportBank;
             replyMsg = "export";
         }
@@ -6892,10 +6966,49 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
         }
         if  (input.matchnMove(3, "section"))
         {
+            if (section < NUM_MIDI_PARTS)
+            {
+                int thisKit = kitNumber;
+                int result = 0;
+                int insert = UNUSED;
+                if (kitMode)
+                    insert = TOPLEVEL::insert::kitGroup;
+                else
+                    thisKit = UNUSED;
+                int thisEngine = engine;
+                int voiceNumber = 0;
+                if (thisEngine >= PART::engine::addVoice1 && thisEngine < PART::engine::addVoiceModEnd)
+                {
+                    voiceNumber = (thisEngine - PART::engine::addVoice1) & 7;
+                    thisEngine = PART::engine::addVoice1;
+                    if (engine >= PART::engine::addMod1)
+                        engine -= 8; // there is no separate modulator entry for copy/past
+                }
+                switch (thisEngine)
+                {
+                    case PART::engine::addSynth:
+                        result = readControl(synth, 0, PART::control::enableAdd, section, thisKit, PART::engine::addSynth, insert);
+                        break;
+                    case PART::engine::addVoice1:
+                        result = readControl(synth, 0, ADDVOICE::control::enableVoice, npart, kitNumber, PART::engine::addVoice1 + voiceNumber);
+                        break;
+                    case PART::engine::subSynth:
+                        result = readControl(synth, 0, PART::control::enableSub, section, thisKit, PART::engine::subSynth, insert);
+                        break;
+                    case PART::engine::padSynth:
+                        result = readControl(synth, 0, PART::control::enablePad, section, thisKit, PART::engine::padSynth, insert);
+                        break;
+                    default:
+                        result = true; // we don't need to check the rest.
+                        break;
+                }
+                if (!result)
+                    return REPLY::inactive_msg;
+            }
             if (filterVowelNumber != UNUSED)
-                presetsControl(0, TOPLEVEL::type::Learnable, section,  kitNumber,  engine,  insertType, filterFormantNumber, filterVowelNumber, textMsgBuffer.push(string{input}));
+                presetsControl(0, TOPLEVEL::type::Paste, section,  kitNumber,  engine,  insertType, filterFormantNumber, filterVowelNumber, textMsgBuffer.push(string{input}));
             else
-                presetsControl(0, TOPLEVEL::type::Learnable, section,  kitNumber,  engine,  insertType, insertGroup, UNUSED, textMsgBuffer.push(string{input}));
+                presetsControl(0, TOPLEVEL::type::Paste, section,  kitNumber,  engine,  insertType, insertGroup, UNUSED, textMsgBuffer.push(string{input}));
             return Reply::DONE;
         }
         if  (input.matchnMove(1, "default"))
@@ -6983,9 +7096,14 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
         if  (input.matchnMove(3, "section"))
         {
             if (filterVowelNumber != UNUSED)
-                presetsControl(0, TOPLEVEL::type::LearnRequest, section,  kitNumber,  engine,  insertType, filterFormantNumber, filterVowelNumber, textMsgBuffer.push(string{input}));
+                presetsControl(0, TOPLEVEL::type::Copy, section,  kitNumber,  engine,  insertType, filterFormantNumber, filterVowelNumber, textMsgBuffer.push(string{input}));
             else
-                presetsControl(0, TOPLEVEL::type::LearnRequest, section,  kitNumber,  engine,  insertType, insertGroup, UNUSED, textMsgBuffer.push(string{input}));
+            {
+                if (engine >= PART::engine::addMod1 && engine < PART::engine::addVoiceModEnd)
+                    engine -= 8;  // there is no separate modulator entry for copy/past
+
+                presetsControl(0, TOPLEVEL::type::Copy, section,  kitNumber,  engine,  insertType, insertGroup, UNUSED, textMsgBuffer.push(string{input}));
+            }
             return Reply::DONE;
         }
         if  (input.matchnMove(1, "default"))

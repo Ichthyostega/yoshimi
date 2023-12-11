@@ -32,11 +32,19 @@
 using std::to_string;
 using std::vector;
 
+inline string listpos(int count, int human)
+{
+    return presetgroups[count * 2 + human];
+}
+
+
 class SynthEngine;
 
 class UnifiedPresets
 {
     private:
+        int human;
+        string listpos(int count);
         vector<std::string> presetList;
         SynthEngine *synth;
 
@@ -52,6 +60,7 @@ class UnifiedPresets
         string envelopeXML(XMLwrapper *xml,CommandBlock *getData, bool isLoad);
         bool saveUnif(CommandBlock *getData);
         bool load(CommandBlock *getData);
+        bool remove(CommandBlock *getData);
 };
 
 #endif

@@ -27,7 +27,7 @@
 #ifndef FILTER_PARAMS_H
 #define FILTER_PARAMS_H
 
-#include "Params/Presets.h"
+#include "Params/ParamCheck.h"
 #include "Misc/NumericFuncs.h"
 #include "globals.h"
 
@@ -39,7 +39,7 @@ using func::decibel;
 class XMLwrapper;
 class SynthEngine;
 
-class FilterParams : public Presets
+class FilterParams : public ParamBase
 {
     public:
         FilterParams(unsigned char Ptype_, float Pfreq, float Pq_, unsigned char Pfreqtrackoffset_, SynthEngine *_synth);

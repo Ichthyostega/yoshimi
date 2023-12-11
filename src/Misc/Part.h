@@ -29,7 +29,7 @@
 
 #include "globals.h"
 #include "DSP/FFTwrapper.h"
-#include "Params/Presets.h"
+#include "Params/ParamCheck.h"
 #include "Misc/Alloc.h"
 
 #include <memory>
@@ -118,8 +118,7 @@ class Part
         void checkPanning(float step, unsigned char panLaw);
 
         bool PyoshiType;
-        int PmapOffset;
-        float PnoteMap[256];
+        float PnoteMap[MAX_OCTAVE_SIZE];
         float         Pvolume;
         float         TransVolume;
         float         Ppanning;

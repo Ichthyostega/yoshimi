@@ -1,0 +1,395 @@
+<!DOCTYPE html><html>
+<head>
+  <meta http-equiv="content~type" content="text/html; charset=UTF~8">
+  <title>Filter inserts</title>
+  <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+
+<body>
+  <table>
+    <thead>
+      <tr>
+        <th>FILTERINSERT::control:: +</th>
+        <th>value</th>
+        <th>control</th>
+        <th>part /<br>section</th>
+        <th>kit</th>
+        <th>engine</th>
+        <th>insert</th>
+        <th>param<br>eter</th>
+        <th>offset</th>
+        <th>miscmsg</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>centerFrequency</td>
+        <td>0~127</td>
+        <td>0</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>All</td>
+        <td>1</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Center frequency</td>
+      </tr>
+      <tr>
+        <td>Q</td>
+        <td>0~127</td>
+        <td>1</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>All</td>
+        <td>1</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Q factor</td>
+      </tr>
+      <tr>
+        <td>frequencyTracking</td>
+        <td>0~127</td>
+        <td>2</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>All</td>
+        <td>1</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Degree of frequency tracking</td>
+      </tr>
+      <tr>
+        <td>velocitySensitivity</td>
+        <td>0~127</td>
+        <td>3</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>All</td>
+        <td>1</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Velocity sense amount</td>
+      </tr>
+      <tr>
+        <td>velocityCurve</td>
+        <td>0~127</td>
+        <td>4</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>All</td>
+        <td>1</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Velocity sense curve</td>
+      </tr>
+      <tr>
+        <td>gain</td>
+        <td>0~127</td>
+        <td>5</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>All</td>
+        <td>1</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Gain / damping</td>
+      </tr>
+      <tr>
+        <td>stages</td>
+        <td>0~4</td>
+        <td>6</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>All</td>
+        <td>1</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Stages -- 1x, 2x, 3x, 4x, 5x</td>
+      </tr>
+      <tr>
+        <td>baseType</td>
+        <td>0~2</td>
+        <td>7</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>All</td>
+        <td>1</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Category -- Analog, Formant, State Variable</td>
+      </tr>
+      <tr>
+        <td>analogType</td>
+        <td>0~8</td>
+        <td>8</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>All</td>
+        <td>1</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>LowPass, HighPass, LowPass2, HighPass2, BandPass2, Not2, Peak2, LowShelf2, HighShelf2</td>
+      </tr>
+      <tr>
+        <td>stateVariableType</td>
+        <td>0~3</td>
+        <td>9</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>All</td>
+        <td>1</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>LowPass, HighPass, BandPass, Not</td>
+      </tr>
+      <tr>
+        <td>frequencyTrackingRange</td>
+        <td>0,1</td>
+        <td>10</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>All</td>
+        <td>1</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Tracking shift -- 0 = -100% ~ 100%, 1 = 0 ~ 200%</td>
+      </tr>
+      <tr>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td colspan="7" style="text-align:right;border:none">Formant editor</td>
+        <td colspan="4" style = border:none> <div class = "comment">If 'parameter' is not 255 the command is inside the format editor itself</div></td>
+      </tr>
+      <tr>
+        <td>formantSlowness</td>
+        <td>0~127</td>
+        <td>16</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>1</td>
+        <td>All</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Speed of transition between formants</td>
+      </tr>
+      <tr>
+        <td>formantClearness</td>
+        <td>0~127</td>
+        <td>17</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>1</td>
+        <td>All</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Degree of formant overlap</td>
+      </tr>
+      <tr>
+        <td>formantFrequency</td>
+        <td>0~127</td>
+        <td>18</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>1</td>
+        <td>All</td>
+        <td>formant 0~11</td>
+        <td>vowel 0~5</td>
+        <td>255</td>
+        <td>Frequency</td>
+      </tr>
+      <tr>
+        <td>formantQ</td>
+        <td>0~127</td>
+        <td>19</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>1</td>
+        <td>All</td>
+        <td>formant 0~11</td>
+        <td>vowel 0~5</td>
+        <td>255</td>
+        <td>Q</td>
+      </tr>
+      <tr>
+        <td>formantAmplitude</td>
+        <td>0~127</td>
+        <td>20</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>1</td>
+        <td>All</td>
+        <td>formant 0~11</td>
+        <td>vowel 0~5</td>
+        <td>255</td>
+        <td>Amplitude</td>
+      </tr>
+      <tr>
+        <td>formantStretch</td>
+        <td>0~127</td>
+        <td>21</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>1</td>
+        <td>All</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Sequence stretch</td>
+      </tr>
+      <tr>
+        <td>formantCenter</td>
+        <td>0~127</td>
+        <td>22</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>1</td>
+        <td>All</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Centre frequency</td>
+      </tr>
+      <tr>
+        <td>formantOctave</td>
+        <td>0~127</td>
+        <td>23</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>1</td>
+        <td>All</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Octave</td>
+      </tr>
+      <tr>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>numberOfFormants</td>
+        <td>1+12</td>
+        <td>32</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>1</td>
+        <td>All</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Number of formants used</td>
+      </tr>
+      <tr>
+        <td>vowelNumber</td>
+        <td>0~5</td>
+        <td>33</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>1</td>
+        <td>All</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Vowel number (not used - local to GUI)</td>
+      </tr>
+      <tr>
+        <td>formantNumber</td>
+        <td>1~11</td>
+        <td>34</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>1</td>
+        <td>All</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Formant number (not used - local to GUI)</td>
+      </tr>
+      <tr>
+        <td>sequenceSize</td>
+        <td>1~7</td>
+        <td>35</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>1</td>
+        <td>All</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Number of vowels used</td>
+      </tr>
+      <tr>
+        <td>sequencePostion</td>
+        <td>0~6</td>
+        <td>36</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>1</td>
+        <td>All</td>
+        <td>0~size</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Sequence position(not used - local to GUI)</td>
+      </tr>
+      <tr>
+        <td>vowelPositionInSequence</td>
+        <td>0~6</td>
+        <td>37</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>1</td>
+        <td>All</td>
+        <td>0~size</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Vowel position in sequence</td>
+      </tr>
+        <td>negateInput</td>
+        <td>0,1</td>
+        <td>38</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>1</td>
+        <td>All</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Negate input (from LFOs, Eevelopes etc.)</td>
+    </tbody>
+  </table>
+</body>
+</html>

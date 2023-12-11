@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2017-2021, Will Godfrey
+    Copyright 2017-2023, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -41,85 +41,154 @@ using file::loadText;
 using file::findLeafName;
 using std::cout;
 using std::endl;
-
+using std::string;
+using std::to_string;
 
 namespace { // local implementation details
 
-    const size_t BUFFSIZ = 500;      // for loading KBM or SCL settings from a file
-    const size_t MAX_LINE_SIZE = 80; // for converting text to mappings or tunings
-
-
-    inline std::string lineInText(std::string text, size_t &point)
+    inline void splitLine(string& page, string& line)
     {
-        size_t len = text.length();
-        if (point >= len - 1)
-            return "";
-        size_t it = 0;
-        while (it < len - point && text.at(point + it) >= ' ')
-            ++it;
-        std::string line = text.substr(point, it);
-        point += (it + 1);
-        return line;
-    }
-
-
-    inline bool C_lineInText(std::string text, size_t &point, char *line, size_t length)
-    {
-        bool ok = true;
-        std::string found = lineInText(text, point);
-        if (found == "")
-            line[0] = 0;
-        else if (found.length() < (length - 1))
+        size_t pos = page.find('\n');
+        if (pos != string::npos)
         {
-            strcpy(line, found.c_str());
-            line[length] = 0;
+            line = page.substr(0, pos);
+            page = page.substr(pos + 1, page.length());
         }
         else
         {
-            ok = false;
-            line[0] = 0;
+            line = page;
+            page = "";
+            func::trimEnds(line);
+        }
+        return;
+    }
+
+    inline bool validline(string line)
+    {
+        size_t idx = 0;
+        bool ok = true;
+        while (ok && idx < line.length() && line[idx] > '!')
+        {
+            char chr = line[idx];
+            if (chr != ' ' && chr != '.' && chr != '/' && (chr < '0' || chr > '9'))
+            {
+                ok = false;
+            }
+            ++ idx;
         }
         return ok;
     }
+}
 
-}//(End)implementation details
 
-
-void Microtonal::defaults(void)
+int Microtonal::getLineFromText(string& page, string& line)
 {
-    Pinvertupdown = 0;
-    Pinvertupdowncenter = 60;
-    octavesize = 12;
-    Penabled = 0;
-    PrefNote = 69;
-    PrefFreq = 440.0f;
-    Pscaleshift = 64;
+    line = "";
+    do {
+        splitLine(page, line);
+    } while (line[0] == '!'); // don't want comment lines
+    if (line.length() < 1)
+        return SCALES::errors::missingEntry;
+    return 0;
+}
 
-    Pfirstkey = 0;
-    Plastkey = 127;
-    Pmiddlenote = 60;
-    Pmapsize = 12;
-    Pmappingenabled = 0;
 
-    for (int i = 0; i < 128; ++i)
-        Pmapping[i] = i;
+string Microtonal::reformatline(string text)
+{
+    string formattext = "";
+    char Chr;
+    for (size_t i = 0; i < text.length(); ++i)
+    {
+        Chr = text[i];
+        if (Chr == '.' || Chr == '/' || (Chr >= '0' && Chr <= '9'))
+            formattext += Chr;
+    }
+    //cout << "Formatted >" << formattext << endl;
+    size_t found;
+    found = formattext.find('.');
+    if (found < 4)
+    {
+        string tmp (4 - found, '0'); // leading zeros
+        formattext = tmp + formattext;
+    }
+    found = formattext.size();
+    if (found < 11)
+    {
+        string tmp  (11 - found, '0'); // trailing zeros
+        formattext += tmp;
+    }
+    return formattext;
+}
+
+
+void Microtonal::defaults(int type)
+{
+    if (type != 2) // not map
+    {
+        Pinvertupdown = 0;
+        Pinvertupdowncenter = 60;
+        octavesize = 12;
+        Penabled = 0;
+        PrefNote = 69;
+        PrefFreq = 440.0f;
+        Pscaleshift = 64;
+        octave[11].type = 2;
+        octave[11].x1 = 2;
+        octave[11].x2 = 1;
+        Pname = string("12tET");
+        Pcomment = string("Default Tuning");
+
+    }
+    if (type != 1) // not tuning
+    {
+        Pfirstkey = 0;
+        Plastkey = MAX_OCTAVE_SIZE - 1;
+        Pmiddlenote = 60;
+        Pmapsize = 12;
+        PformalOctaveSize = 12;
+        Pmappingenabled = 0;
+
+        // suppress 'unused' warning till we know what to do with it!
+        PformalOctaveSize = PformalOctaveSize;
+
+        for (int i = 0; i < 128; ++i)
+        {
+            Pmapping[i] = i;
+            PmapComment[i] = "";
+        }
+        Pcomment = string("Default Map");
+    }
 
     for (size_t i = 0; i < MAX_OCTAVE_SIZE; ++i)
     {
-        octave[i].text = reformatline(std::to_string((i % octavesize + 1) * 100)+ ".0");
-        octave[i].tuning = tmpoctave[i].tuning = pow(2.0, (i % octavesize + 1) / 12.0);
-        octave[i].type = tmpoctave[i].type = 1;
-        octave[i].x1 = tmpoctave[i].x1 = (i % octavesize + 1) * 100;
-        octave[i].x2 = tmpoctave[i].x2 = 0;
+        octave[i].text = reformatline(to_string((i % octavesize + 1) * 100)+ ".0");
+        octave[i].tuning = pow(2.0, (i % octavesize + 1) / 12.0);
+        octave[i].type = 1;
+        octave[i].x1 = (i % octavesize + 1) * 100;
+        octave[i].x2 = 0;
+        octave[i].comment = "";
     }
-    octave[11].type = 2;
-    octave[11].x1 = 2;
-    octave[11].x2 = 1;
-    Pname = string("12tET");
-    Pcomment = string("Equal Temperament 12 notes per octave");
-    Pglobalfinedetune = 64.0;
+    if (type == 0)
+    {
+        octave[11].type = 2;
+        octave[11].x1 = 2;
+        octave[11].x2 = 1;
+        Pname = string("12tET");
+        Pcomment = string("Equal Temperament 12 notes per octave");
+    }
+    setglobalfinedetune(64.0); // always set this
 }
 
+void Microtonal::setglobalfinedetune(float control)
+{
+    Pglobalfinedetune = control;
+    // compute global fine detune, -64.0 .. 63.0 cents
+    globalfinedetunerap =
+        (Pglobalfinedetune > 64.0f || Pglobalfinedetune < 64.0f)
+            ? power<2>((Pglobalfinedetune - 64.0f) / 1200.0f)
+            : 1.0f;
+    // was float globalfinedetunerap = powf(2.0f, (Pglobalfinedetune - 64.0f) / 1200.0f);
+}
 
 // Get the frequency according to the note number
 float Microtonal::getNoteFreq(int note, int keyshift)
@@ -132,16 +201,8 @@ float Microtonal::getNoteFreq(int note, int keyshift)
     if ((Pinvertupdown != 0) && ((Pmappingenabled == 0) || (Penabled == 0)))
         note = Pinvertupdowncenter * 2 - note;
 
-    // compute global fine detune, -64.0 .. 63.0 cents
-    float globalfinedetunerap =
-        (Pglobalfinedetune > 64.0f || Pglobalfinedetune < 64.0f)
-            ? power<2>((Pglobalfinedetune - 64.0f) / 1200.0f)
-            : 1.0f;
-    // was float globalfinedetunerap = powf(2.0f, (Pglobalfinedetune - 64.0f) / 1200.0f);
-
     if (!Penabled)
         return getFixedNoteFreq(note + keyshift) * globalfinedetunerap;
-
 
     int scaleshift = (Pscaleshift - 64 + octavesize * 100) % octavesize;
 
@@ -156,14 +217,12 @@ float Microtonal::getNoteFreq(int note, int keyshift)
     }
 
     float freq;
-    // if the mapping is enabled
-    if (Pmappingenabled)
+    if (Pmappingenabled && Pmapsize > 0) // added check to stop crash till it's sorted properly
     {
-        if ((note < Pfirstkey) || (note > Plastkey))
-            return -1.0f;
         // Compute how many mapped keys are from middle note to reference note
         // and find out the proportion between the freq. of middle note and "A" note
-        int tmp = PrefNote - Pmiddlenote, minus = 0;
+        int tmp = PrefNote - Pmiddlenote;
+        int minus = 0;
         if (tmp < 0)
         {
             tmp   = -tmp;
@@ -171,8 +230,10 @@ float Microtonal::getNoteFreq(int note, int keyshift)
         }
         int deltanote = 0;
         for (int i = 0; i < tmp; ++i)
+        {
             if (Pmapping[i % Pmapsize] >= 0)
                 deltanote++;
+        }
         float rap_anote_middlenote =
             (deltanote == 0) ? (1.0f) : (octave[(deltanote - 1) % octavesize].tuning);
         if (deltanote != 0)
@@ -187,7 +248,9 @@ float Microtonal::getNoteFreq(int note, int keyshift)
         int degkey = (note - Pmiddlenote + Pmapsize * 100) % Pmapsize;
         degkey = Pmapping[degkey];
         if (degkey < 0) // this key is not mapped
+        {
             return -1.0f;
+        }
 
         // invert the keyboard upside-down if it is asked for
         // TODO: do the right way by using Pinvertupdowncenter
@@ -225,257 +288,216 @@ float Microtonal::getNoteFreq(int note, int keyshift)
 }
 
 
-string Microtonal::reformatline(string text)
-{
-    text.erase(remove_if (text.begin(), text.end(),
-     [](char c){ return (c =='\r' || c =='\t' || c == ' ' || c == '\n');}), text.end() );
-
-    size_t found;
-    found = text.find('.');
-    if (found < 4)
-    {
-        string tmp (4 - found, '0'); // leading zeros
-        text = tmp + text;
-    }
-    found = text.size();
-    if (found < 11)
-    {
-        string tmp  (11 - found, '0'); // trailing zeros
-        text += tmp;
-    }
-    return text;
-}
-
-
-bool Microtonal::validline(const char *line)
-{
-    int idx = 0;
-    bool ok = true;
-    while (ok && line[idx] > 31)
-    {
-        char chr = line[idx];
-        if (chr != ' ' && chr != '.' && chr != '/' && (chr < '0' || chr > '9'))
-        {
-            cout << "char " << int(chr) << endl;
-            ok = false;
-        }
-        ++ idx;
-    }
-    return ok;
-}
-
-
 // Convert a line to tunings; returns 0 if ok
-int Microtonal::linetotunings(unsigned int nline, const char *line)
+int Microtonal::linetotunings(unsigned int nline, string text)
 {
-    if (!validline(line))
-        return -2;
-    int x1 = -1, x2 = -1, type = -1;
-    double x = -1.0, tmp, tuning = 1.0;
-
-    if (strstr(line, "/") == NULL)
+    text = func::trimEnds(text); // just to be sure
+    size_t pos = text.find_first_of(" !"); // pull out any comment first
+    if (pos != string::npos)
     {
-        if (strstr(line, ".") == NULL)
-        {   // M case (M=M/1)
-            sscanf(line, "%d", &x1);
-            x2 = 1;
-            type = 2; // division
-        }
-        else
-        {   // double number case
-            x = stod(string(line));
-            if (x < 0.000001)
-                return -1;
-            type = 1; // double type(cents)
-        }
+        if (text[pos + 1] == '!')
+                pos += 1; // don't want 2 comment markers
+        string last = text.substr(pos + 1, text.length());
+        int i = 0;
+        while (last[i] <= '!')
+            ++i;
+        if (i > 0)
+            last = last.substr(i, text.length());
+        octave[nline].comment = func::trimEnds(last);
     }
     else
-    {   // M/N case
-        sscanf(line, "%d/%d", &x1, &x2);
-        if (x1 < 0 || x2 < 0)
-            return -2;
-        if (!x2)
+        octave[nline].comment = "";
+
+    if (!validline(text))
+        return SCALES::errors::badNumbers;
+
+    int x1 = -1, x2 = -1, type = -1;
+    double x = -1.0;
+    double tuning = 1.0;
+
+    if (text.find('.') != string::npos)
+    {
+        x = stod(text);
+        //printf(">%f\n",x);
+        if (x < 0.000001)
+            return SCALES::errors::valueTooSmall;
+        type = 1; // double type(cents)
+        x1 = int(floor(x));
+        double tmp = fmod(x, 1.0);
+        x2 = int(floor(tmp * 1e6));
+        tuning = pow(2.0, x / 1200.0);
+        octave[nline].text = reformatline(text);
+    }
+    else
+    {
+        x1 = func::string2int(text);
+        if (x1 < 1)
+            x1 = 1;
+        size_t found = text.find('/');
+        if (found != string::npos && found < (text.length()))
+        {
+            if (text.length() > found + 1)
+                x2 = func::string2int(text.substr(found + 1, text.length()));
+        }
+        else
+            x2 = 1;
+        if (x2 < 1)
             x2 = 1;
         type = 2; // division
+
+        tuning = double(x1) / x2;
     }
 
-    if (x1 <= 0)
-        x1 = 1; // not allow zero frequency sounds (consider 0 as 1)
-
-    switch (type)
-    {
-        case 1:
-            x1 = (int) floor(x);
-            tmp = fmod(x, 1.0);
-            x2 = int(floor(tmp * 1e6));
-            tuning = pow(2.0, x / 1200.0);
-            break;
-        case 2:
-            x = ((double)x1) / x2;
-            tuning = x;
-            break;
-    }
-
-    tmpoctave[nline].text = reformatline(line);
-    tmpoctave[nline].tuning = tuning;
-    tmpoctave[nline].type = type;
-    tmpoctave[nline].x1 = x1;
-    tmpoctave[nline].x2 = x2;
-
+    octave[nline].tuning = tuning;
+    octave[nline].type = type;
+    octave[nline].x1 = x1;
+    octave[nline].x2 = x2;
     return 0; // ok
 }
 
 
 // Convert the text to tunings
-int Microtonal::texttotunings(const char *text)
+int Microtonal::texttotunings(string page)
 {
-    size_t i;
-    unsigned int k = 0, nl = 0;
-    char *lin;
-
-    lin = new char[MAX_LINE_SIZE + 1];
-    while (k < strlen(text))
+    size_t nl = 0;
+    string line;
+    while (!page.empty())
     {
-        for (i = 0; i < MAX_LINE_SIZE; ++i)
+        size_t pos = page.find('\n');
+        if (pos != string::npos)
         {
-            lin[i] = text[k++];
-            if (lin[i] < 0x20)
-                break;
+            line = page.substr(0, pos);
+            page = page.substr(pos + 1, page.length());
         }
-        lin[i] = '\0';
-        if (!strlen(lin))
-            continue;
-        int err = linetotunings(nl, lin);
+        else
+        {
+            line = page;
+            page = "";
+        }
+
+        int err = linetotunings(nl, line);
         if (err != 0)
-        {
-            delete [] lin;
-            return err; // Parse error
-        }
-        nl++;
+           return err; // Parse error
+        ++ nl;
     }
-    delete [] lin;
+
+
     if (nl > MAX_OCTAVE_SIZE)
         nl = MAX_OCTAVE_SIZE;
     if (!nl)
         return 0; // the input is empty
     octavesize = nl;
-    for (i = 0; i < octavesize; ++i)
-    {
-        octave[i].text = tmpoctave[i].text;
-        octave[i].tuning = tmpoctave[i].tuning;
-        octave[i].type = tmpoctave[i].type;
-        octave[i].x1 = tmpoctave[i].x1;
-        octave[i].x2 = tmpoctave[i].x2;
-    }
+    synth->setAllPartMaps();
     return octavesize; // ok
 }
 
 
 // Convert the text to mapping
-int Microtonal::texttomapping(const char *text)
+int Microtonal::texttomapping(string page)
 {
-    unsigned int i, k = 0;
-    char *lin;
-    int tmpMap [128];
-    lin = new char[MAX_LINE_SIZE + 1];
-    memset(lin, 0xff, MAX_LINE_SIZE);
+    size_t pos = page.find_last_not_of(" \t\n");
+    if (pos != string::npos)
+        page.erase(pos + 1);
     int tx = 0;
-    while (k < strlen(text))
+    if (page[0] >= ' ' && Pmapsize > 0)
     {
-        for (i = 0; i < MAX_LINE_SIZE; ++i)
+        string line;
+        while (!page.empty())
         {
-            lin[i] = text[k++];
-            if (lin[i] < 0x20)
-                break;
+            splitLine(page, line);
+            size_t pos = line.find('!');
+            if (pos != string::npos)
+            {
+                PmapComment[tx] = func::trimEnds(line.substr(pos + 1, line.length()));
+            }
+            else
+                PmapComment[tx] = "";
+
+            if (line.empty() || line[0] < '0' || line[0] > '9')
+            {
+                line = 'x';
+                Pmapping[tx] = -1;
+            }
+            else
+                Pmapping[tx] = stoi(line);
+            ++tx;
         }
-        lin[i] = 0;
-        if (!strlen(lin))
-            continue;
-
-        int tmp = 0;
-        if (!sscanf(lin, "%d", &tmp))
-            tmp = -1;
-        if (tmp < -1)
-            tmp = -1;
-        tmpMap[tx] = tmp;
-
-        if ((tx++) > 127)
-            break;
     }
-    delete [] lin;
-
-    if (tx)
+    while (tx < Pmapsize)
     {
-        Pmapsize = tx;
-        std::swap(Pmapping, tmpMap);
+        Pmapping[tx] = -1;
+        ++tx;
     }
-    else
-        return -6;
+    synth->setAllPartMaps();
     return tx;
 }
 
 
 string Microtonal::keymaptotext(void)
 {
-    string text;
-    for (int i = 0; i < Pmapsize; ++i)
+    string text = "";
+    if (Pmapsize > 0)
     {
-        if (i > 0)
-            text += "\n";
-        if (Pmapping[i] == -1)
-            text += "x";
-        else
-            text += std::to_string(Pmapping[i]);
+        for (int i = 0; i < Pmapsize; ++i)
+        {
+            if (i > 0)
+                text += "\n";
+            if (Pmapping[i] == -1)
+                text += "x";
+            else
+                text += to_string(Pmapping[i]);
+            if (!PmapComment[i].empty())
+            {
+                text += " ! ";
+                text += PmapComment[i];
+            }
+        }
     }
     return text;
 }
 
+
 // Convert tuning to text line
-void Microtonal::tuningtoline(unsigned int n, char *line, int maxn)
+void Microtonal::tuningtoline(unsigned int n, string& line)
 {
+    line = "";
     if (n > octavesize || n > MAX_OCTAVE_SIZE)
-    {
-        line[0] = '\0';
         return;
-    }
-    if (octave[n].type == 1)
-    {
-        string text = octave[n].text;
-        if (text > " ")
-            snprintf(line, maxn, "%s", text.c_str());
-        else
-            snprintf(line, maxn, "%04d.%06d", octave[n].x1,octave[n].x2);
-    }
+
+    string text = octave[n].text;
     if (octave[n].type == 2)
-        snprintf(line, maxn, "%d/%d", octave[n].x1, octave[n].x2);
+    {
+        line = (to_string(octave[n].x1) + "/" + to_string(octave[n].x2));
+    }
+    else if (octave[n].type == 1)
+    {
+        //printf(">%f\n",octave[n].tuning);
+        if (text > " ")
+            line = text;
+        else
+            line = (to_string(octave[n].x1) + "." + to_string(octave[n].x2));
+    }
 }
 
 
 string Microtonal::tuningtotext()
 {
     string text;
-    char *buff = new char[100];
+    string line;
     for (size_t i = 0; i < octavesize; ++i)
     {
         if (i > 0)
             text += "\n";
-        tuningtoline(i, buff, 100);
-        text += string(buff);
+        tuningtoline(i, line);
+        text += line;
+        if (!octave[i].comment.empty())
+        {
+            text += " ! ";
+            text += octave[i].comment;
+        }
     }
-    delete [] buff;
+    synth->setAllPartMaps();
     return text;
-}
-
-
-int Microtonal::loadLine(const string& text, size_t &point, char *line, size_t maxlen)
-{
-    do {
-        line[0] = 0;
-        C_lineInText(text, point, line, maxlen);
-    } while (line[0] == '!');
-    if (line[0] < ' ')
-        return -5;
-    return 0;
 }
 
 
@@ -484,41 +506,38 @@ int Microtonal::loadscl(const string& filename)
 {
     string text = loadText(filename);
     if (text == "")
-        return -3;
-    char tmp[BUFFSIZ];
-    size_t point = 0;
+        return SCALES::errors::noFile;
+    string line = "";
     int err = 0;
-    int nnotes;
-
+    int nnotes = 0;
     // loads the short description
-    if (loadLine(text, point, tmp, BUFFSIZ))
-        err = -4;
+    if (getLineFromText(text, line))
+    {
+        err = SCALES::errors::emptyFile;
+    }
     if (err == 0)
     {
-        for (int i = 0; i < 500; ++i)
-            if (tmp[i] < 32)
-                tmp[i] = 0;
         Pname = findLeafName(filename);
-        Pcomment = string(tmp);
+        Pcomment = string(line);
         // loads the number of the notes
-        if (loadLine(text, point, tmp, BUFFSIZ))
-            err = -5;
+        if (getLineFromText(text, line))
+            err = SCALES::errors::badFile;
     }
     if (err == 0)
     {
         nnotes = MAX_OCTAVE_SIZE;
-        sscanf(&tmp[0], "%d", &nnotes);
+        nnotes = func::string2int(line);
         if (size_t(nnotes) > MAX_OCTAVE_SIZE || nnotes < 2)
-            err = -6;
+            err = SCALES::errors::badOctaveSize;
     }
     if (err == 0)
     {
     // load the tunings
         for (int nline = 0; nline < nnotes; ++nline)
         {
-            err = loadLine(text, point, tmp, BUFFSIZ);
+            err = getLineFromText(text, line);
             if (err == 0)
-                err = linetotunings(nline, &tmp[0]);
+                err = linetotunings(nline, line);
             if (err < 0)
                 break;
         }
@@ -527,7 +546,6 @@ int Microtonal::loadscl(const string& filename)
         return err;
 
     octavesize = nnotes;
-    std::swap(octave, tmpoctave);
     synth->setAllPartMaps();
     synth->addHistory(filename, TOPLEVEL::XML::ScalaTune);
     return nnotes;
@@ -539,130 +557,199 @@ int Microtonal::loadkbm(const string& filename)
 {
     string text = loadText(filename);
     if (text == "")
-        return -3;
-    char tmp[BUFFSIZ];
-    size_t point = 0;
-    int err = 0;
-    int tmpMapSize;
+        return SCALES::errors::noFile;
+
+    string line = "";
     // loads the mapsize
-    if (loadLine(text, point, tmp, BUFFSIZ))
-        err = -4;
-    else if (!sscanf(&tmp[0], "%d",&tmpMapSize))
-        err = -2;
+    if (getLineFromText(text, line))
+        return SCALES::errors::badFile;
+    int tmpMapSize = func::string2int(line);
+    if (tmpMapSize < 0 || tmpMapSize >= MAX_OCTAVE_SIZE)
+            return SCALES::errors::badMapSize;
 
-    if (err == 0)
-    {
-        if (tmpMapSize < 1 || tmpMapSize > 127)
-            err = -6;
-    }
-
-    int tmpFirst;
-    if (err == 0)
-    {
-        // loads first MIDI note to retune
-        if (loadLine(text, point, tmp, BUFFSIZ))
-            err = -5;
-        else if (!sscanf(&tmp[0], "%d", &tmpFirst))
-            return -6;
-        else if (tmpFirst < 0 || tmpFirst > 127)
-            err = -7;
-    }
+    int tmpFirst = 0;
+    // loads first MIDI note to retune
+    if (getLineFromText(text, line))
+        return SCALES::errors::badFile;
+    tmpFirst = func::string2int(line);
+    if (tmpFirst < 0 || tmpFirst >= MAX_OCTAVE_SIZE)
+        return SCALES::errors::badNoteNumber;
 
     int tmpLast;
-    if (err == 0)
-    {
         // loads last MIDI note to retune
-       if (loadLine(text, point, tmp, BUFFSIZ))
-            err = -5;
-        else if (!sscanf(&tmp[0], "%d", &tmpLast))
-            return -6;
-        else if (tmpLast < 0 || tmpLast > 127)
-            err = -7;
-    }
+    if (getLineFromText(text, line))
+        return SCALES::errors::badFile;
+    tmpLast = func::string2int(line);
+    if (tmpLast < 0 || tmpLast >= MAX_OCTAVE_SIZE)
+        return SCALES::errors::badNoteNumber;
 
     int tmpMid;
-    if (err == 0)
-    {
         // loads the middle note where scale from scale degree=0
-       if (loadLine(text, point, tmp, BUFFSIZ))
-            err = -5;
-        else if (!sscanf(&tmp[0], "%d", &tmpMid))
-            return -6;
-        else if (tmpMid < 0 || tmpMid > 127)
-            err = -7;
-    }
+    if (getLineFromText(text, line))
+        return SCALES::errors::badFile;
+    tmpMid = func::string2int(line);
+    if (tmpMid < 0 || tmpMid >= MAX_OCTAVE_SIZE)
+        return SCALES::errors::badNoteNumber;
 
-    int tmpNote;
-    if (err == 0)
+    int tmpRefNote;
+    // loads the reference note
+    if (getLineFromText(text, line))
+    return SCALES::errors::badFile;
+    tmpRefNote = func::string2int(line);
+    if (tmpRefNote < 0 || tmpRefNote >= MAX_OCTAVE_SIZE)
+        return SCALES::errors::badNoteNumber;
+
+    float tmpRefFreq;
+    // loads the reference freq.
+    if (getLineFromText(text, line))
+        return SCALES::errors::badFile;
+    tmpRefFreq = func::string2float(line);
+    if (tmpRefFreq < 1)
+        return SCALES::errors::valueTooSmall;
+    if (tmpRefFreq > 20000)
+        return SCALES::errors::valueTooBig;
+
+    Pmappingenabled = 1;
+    Pmapsize = tmpMapSize;
+    Pfirstkey = tmpFirst;
+    Plastkey = tmpLast;
+    Pmiddlenote = tmpMid;
+    PrefNote = tmpRefNote;
+    PrefFreq = tmpRefFreq;
+    if (getLineFromText(text, line))
+        return SCALES::errors::badMapSize;
+    PformalOctaveSize = func::string2int(line);
+    if (tmpMapSize == 0)
     {
-        // loads the reference note
-       if (loadLine(text, point, tmp, BUFFSIZ))
-            err = -5;
-        else if (!sscanf(&tmp[0], "%d", &tmpNote))
-            return -6;
-        else if (tmpNote < 0 || tmpNote > 127)
-            err = -7;
-    }
-
-    float tmpPrefFreq;
-    if (err == 0)
-    {
-        // loads the reference freq.
-        if (loadLine(text, point, tmp, BUFFSIZ))
-            err = -6;
-        else
-        {
-
-            if (!sscanf(&tmp[0], "%f", &tmpPrefFreq))
-                err = -6;
-            else if (tmpPrefFreq < 1 || tmpPrefFreq > 20000)
-                err = -8;
-        }
+        synth->setAllPartMaps();
+        synth->addHistory(filename, TOPLEVEL::XML::ScalaMap);
+        return 1;
     }
 
     // the scale degree(which is the octave) is not loaded
     // it is obtained by the tunings with getoctavesize() method
-    if (loadLine(text, point, tmp, BUFFSIZ))
-        err = -6;
-
-    // load the mappings
-    int tmpMap [128];
-    int x;
-    if (err == 0)
+    // TODO this is wrong!
+    int x = 0;
+    int err = 0;
+    for (int nline = 0; nline < tmpMapSize; ++nline)
     {
-        for (int nline = 0; nline < tmpMapSize; ++nline)
+        if (getLineFromText(text, line)) // EOF
         {
-            if (loadLine(text, point, tmp, BUFFSIZ))
-            {
-                err = -5;
-                break;
-            }
-            if (!sscanf(&tmp[0], "%d", &x))
+        // It's permissible for source file to have fewer entries than the
+        // map size so we fill the rest as silent.
+            Pmapping[nline] = -1;
+            PmapComment[nline] = "";
+            continue;
+        }
+
+        else
+        {
+            if (line[0] < '0' || line[0] > '9') // catches all possibilities!
                 x = -1;
-            tmpMap[nline] = x;
+            else
+            {
+                x = std::stoi(line);
+                if (x >= tmpMapSize)
+                {
+                    err = SCALES::errors::valueTooBig;
+                    break;
+                }
+            }
+        }
+        Pmapping[nline] = x;
+        size_t pos = line.find_first_of(" !");
+        if (pos != std::string::npos)
+        {
+            if (line[pos + 1] == '!')
+                pos += 1; // don't want 2 comment markers
+            PmapComment[nline] = func::trimEnds(line.substr(pos + 1, line.length()));
+        }
+        else
+        {
+            PmapComment[nline] = "";
         }
     }
+
     if (err < 0)
         return err;
 
-    Pmappingenabled = 1;
     Pmapsize = tmpMapSize;
-    std::swap(Pmapping, tmpMap);
-    Pfirstkey = tmpFirst;
-    Plastkey = tmpLast;
-    Pmiddlenote = tmpMid;
-    PrefNote = tmpNote;
-    PrefFreq = tmpPrefFreq;
     synth->setAllPartMaps();
     synth->addHistory(filename, TOPLEVEL::XML::ScalaMap);
     return tmpMapSize;
 }
 
 
+string Microtonal::scale2scl()
+{
+    string text = "! ";
+    text += synth->microtonal.Pname;
+    text += "\n!\n ";
+    text += synth->microtonal.Pcomment;
+    text += "\n ";
+    text += to_string(synth->microtonal.octavesize);
+    text += "\n!\n";
+    for (size_t i = 0; i < synth->microtonal.octavesize; ++ i)
+    {
+        text += " ";
+        if (octave[i].type == 1)
+            text += synth->microtonal.octave[i].text;
+        else
+        {
+            text+= to_string(octave[i].x1);
+            text += "/";
+            text+= to_string(octave[i].x2);
+        }
+        if (!octave[i].comment.empty())
+        {
+            text += " ! ";
+            text += octave[i].comment;
+        }
+        text += "\n";
+    }
+    return text;
+}
+
+string Microtonal::map2kbm()
+{
+    string text = "! Scala keymap\n";
+    text += "!\n";
+//    text += "! map size\n";
+    text += to_string(Pmapsize);
+    text += "\n!\n";
+//    text += "! first note\n";
+    text += to_string(Pfirstkey);
+    text += "\n!\n";
+//    text += "! last note\n";
+    text += to_string(Plastkey);
+    text += "\n!\n";
+//    text += "! middle note\n";
+    text += to_string(Pmiddlenote);
+    text += "\n!\n";
+//    text += "! reference note\n";
+    text += to_string(PrefNote);
+    text += "\n!\n";
+//    text += "! reference frequency\n";
+    text += to_string(PrefFreq);
+    text += "\n!\n";
+//    text += "! formal octave\n";
+    text += to_string(PformalOctaveSize);
+    text += "\n";
+    if (Pmapsize != 0)
+    {
+        text += "!\n";
+        text += "! mapped notes\n";
+        text += keymaptotext();
+        text += "\n";
+    }
+    return text;
+}
+
+
 void Microtonal::add2XML(XMLwrapper *xml)
 {
-    xml->addparstr("name", Pname.c_str());
-    xml->addparstr("comment", Pcomment.c_str());
+    xml->addparstr("name", Pname);
+    xml->addparstr("comment", Pcomment);
 
     xml->addparbool("invert_up_down", Pinvertupdown);
     xml->addpar("invert_up_down_center", Pinvertupdowncenter);
@@ -698,20 +785,24 @@ void Microtonal::add2XML(XMLwrapper *xml)
             }
             if (octave[i].type == 2)
             {
+                xml->addparstr("cents_text",octave[i].text);
                 xml->addpar("numerator", octave[i].x1);
-                xml->addpar("denominator", octave[i].x2);
+                xml->addpar("denominator", octave[i].x2);;
             }
+            xml->addparstr("comment" , octave[i].comment);
             xml->endbranch();
         }
         xml->endbranch();
 
         xml->beginbranch("KEYBOARD_MAPPING");
         xml->addpar("map_size", Pmapsize);
+        xml->addpar("formal_octave_size", PformalOctaveSize);
         xml->addpar("mapping_enabled", Pmappingenabled);
         for (int i = 0; i < Pmapsize; ++i)
         {
             xml->beginbranch("KEYMAP", i);
             xml->addpar("degree", Pmapping[i]);
+            xml->addparstr("comment", PmapComment[i]);
             xml->endbranch();
         }
         xml->endbranch();
@@ -719,8 +810,9 @@ void Microtonal::add2XML(XMLwrapper *xml)
 }
 
 
-void Microtonal::getfromXML(XMLwrapper *xml)
+int Microtonal::getfromXML(XMLwrapper *xml)
 {
+    int err = 0;
     Pname = xml->getparstr("name");
     Pcomment = xml->getparstr("comment");
 
@@ -728,7 +820,7 @@ void Microtonal::getfromXML(XMLwrapper *xml)
     Pinvertupdowncenter=xml->getpar127("invert_up_down_center", Pinvertupdowncenter);
 
     Penabled=xml->getparbool("enabled", Penabled);
-    Pglobalfinedetune = xml->getparcombi("global_fine_detune", Pglobalfinedetune, 0, 127);
+    setglobalfinedetune(xml->getparcombi("global_fine_detune", Pglobalfinedetune, 0, 127));
 
     PrefNote = xml->getpar127("a_note", PrefNote);
     PrefFreq = xml->getparreal("a_freq", PrefFreq, 1.0, 10000.0);
@@ -745,6 +837,7 @@ void Microtonal::getfromXML(XMLwrapper *xml)
             octavesize = xml->getpar127("octave_size", octavesize);
             for (size_t i = 0; i < octavesize; ++i)
             {
+                octave[i].text = "";
                 if (!xml->enterbranch("DEGREE", i))
                     continue;
                 string text = xml->getparstr("cents_text");
@@ -764,16 +857,32 @@ void Microtonal::getfromXML(XMLwrapper *xml)
 
                 if (octave[i].x2)
                 {
+                    octave[i].text = text;
                     octave[i].type = 2;
-                    octave[i].tuning = ((double)octave[i].x1) / octave[i].x2;
+                    octave[i].tuning = double(octave[i].x1) / octave[i].x2;
                 }
                 else {
                     octave[i].type = 1;
                     //populate fields for display
-                    double x = log(octave[i].tuning) / LOG_2 * 1200.0;
-                    octave[i].x1 = (int) floor(x);
-                    octave[i].x2 = (int) (floor(fmod(x, 1.0) * 1e6));
+                    double x = (log(octave[i].tuning) / LOG_2) * 1200.0;
+                    octave[i].x1 = int(floor(x));
+                    // this is a fudge to get round wierd values of x2
+                    // it's only used if we don't have the text stored
+                    double tmp = fmod(x, 1.0);
+                    if (tmp < 0.0001)
+                        octave[i].x2 = 0;
+                    else if (tmp > 0.9999)
+                    {
+                        octave[i].x2 = 0;
+                        octave[i].x1 += 1;
+                    }
+                    else
+                        octave[i].x2 = int(floor(tmp * 1e6));
+
+                    //octave[i].x2 = int(floor(fmod(x, 1.0) * 1e6));
                 }
+                octave[i].comment = "";
+                octave[i].comment = xml->getparstr("comment");
                 xml->exitbranch();
             }
             xml->exitbranch();
@@ -782,18 +891,26 @@ void Microtonal::getfromXML(XMLwrapper *xml)
         if (xml->enterbranch("KEYBOARD_MAPPING"))
         {
             Pmapsize = xml->getpar127("map_size", Pmapsize);
+            PformalOctaveSize = xml->getpar127("formal_octave_size", PformalOctaveSize);
             Pmappingenabled = xml->getpar127("mapping_enabled", Pmappingenabled);
             for (int i = 0; i < Pmapsize; ++i)
             {
                 if (!xml->enterbranch("KEYMAP", i))
                     continue;
                 Pmapping[i] = xml->getpar("degree", Pmapping[i], -1, 127);
+                PmapComment[i] = xml->getparstr("comment");
+                if (Pmapping[i] >= Pmapsize)
+                {
+                    err = SCALES::errors::valueTooBig;
+                    break;
+                }
                 xml->exitbranch();
             }
             xml->exitbranch();
         }
         xml->exitbranch();
     }
+    return err;
 }
 
 
@@ -812,30 +929,36 @@ bool Microtonal::saveXML(const string& filename)
 }
 
 
-bool Microtonal::loadXML(const string& filename)
+int Microtonal::loadXML(const string& filename)
 {
+    int err = 0;
     XMLwrapper *xml = new XMLwrapper(synth);
     if (NULL == xml)
     {
         synth->getRuntime().Log("Microtonal: loadXML failed to instantiate new XMLwrapper", _SYS_::LogError);
-        return false;
+        return 1;
     }
     if (!xml->loadXMLfile(filename))
     {
         delete xml;
-        return false;
+        return 1;
     }
     if (!xml->enterbranch("MICROTONAL"))
     {
         synth->getRuntime().Log(filename + " is not a scale file", _SYS_::LogError);
         delete xml;
-        return false;
+        return 1;
     }
-    getfromXML(xml);
-    synth->setAllPartMaps();
+    err = getfromXML(xml);
+    if (err != 0)
+    {
+        delete xml;
+        return err;
+    }
     xml->exitbranch();
     delete xml;
-    return true;
+    synth->setAllPartMaps();
+    return 0;
 }
 
 float Microtonal::getLimits(CommandBlock *getData)
@@ -849,7 +972,7 @@ float Microtonal::getLimits(CommandBlock *getData)
     // microtonal defaults
     int min = 0;
     float def = 0;
-    int max = 127;
+    int max = MAX_OCTAVE_SIZE - 1;
     type |= TOPLEVEL::type::Integer;
     unsigned char learnable = TOPLEVEL::type::Learnable;
 
@@ -897,7 +1020,7 @@ float Microtonal::getLimits(CommandBlock *getData)
             type |= learnable;
             break;
         case SCALES::control::highKey:
-            def = 127;
+            def = MAX_OCTAVE_SIZE - 1;
             type |= learnable;
             break;
 
@@ -917,9 +1040,6 @@ float Microtonal::getLimits(CommandBlock *getData)
             max = 1;
             break;
         case SCALES::control::comment:
-            max = 1;
-            break;
-        case SCALES::control::retune:
             max = 1;
             break;
         case SCALES::control::clearAll:

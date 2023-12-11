@@ -128,6 +128,7 @@ namespace LISTS {
 static std::string basics [] = {
     "?  Help",       "show commands",
     "List",          "list current settings",
+    "GUide",         "show location of most recent HTML guide",
     "STop",          "all sound off",
     "RESet [s]",     "return to start-up conditions, 'ALL' clear MIDI-learn (if 'y')",
     "EXit [s]",      "tidy up and close Yoshimi (if 'y'), 'FOrce' instant exit regardless",
@@ -921,6 +922,9 @@ static std::string vectlist [] = {
 };
 
 static std::string scalelist [] = {
+    "<ON/OFF>",           "enables/disables microtonal scales",
+    "IMPort <s1> <s2>",   "Import Scala file s2 to s1 TUNing or KEYmap",
+    "EXPort <s1> <s2>",   "Export s1 TUNing or KEYmap to Scala file s2",
     "FRequency <n>",      "Reference note actual frequency",
     "NOte <n>",           "Reference note number",
     "Invert [s]",         "invert entire scale (ON, {other})",
@@ -932,13 +936,30 @@ static std::string scalelist [] = {
     "MIddle <n>",         "middle note number to map",
     "Last <n>",           "last note number to map",
     "Tuning <s1> [s2]",   "CSV tuning values (n1.n1 or n1/n1 , n2.n2 or n2/n2 , etc.)",
-    "","s1 = 'IMPort' from s2 named file",
     "Keymap <s1> [s2]",   "CSV keymap (n1, n2, n3, etc.)",
-    "","s1 = 'IMPort' from s2 named file",
+    "SIze <n>",           "actual keymap size",
     "NAme <s>",           "internal name for this scale",
     "DEscription <s>",    "description of this scale",
     "CLEar",              "clear all settings and revert to standard scale",
     "@end","@end"
+};
+
+static std::string scale_errors [] = {
+    "Nothing Entered",
+    "Value is too small",
+    "Value is too big",
+    "Invalid Character",
+    "Must be numbers (like 232.59) or divisions (like 121/64)",
+    "File not found",
+    "Empty file",
+    "Corrupted file",
+    "Missing entry",
+    "Invalid octave size",
+    "Invalid keymap size",
+    "Invalid note number",
+    "Value out of range",
+    "@end"
+
 };
 
 static std::string noteslist [] = { // from 21
@@ -1010,6 +1031,30 @@ static std::string testlist [] = {
     "EXEcute",          "actually trigger the test. Stops all other sound output.",
     "@end","@end"
 };
+
+
+static std::string presetgroups [] = {
+    "Pfilter",          "Filter", // dynfilter
+    "Pfiltern",         "Formant Filter Vowel", // dynfilter
+    "Peffect",          "Effect",
+    "Pfilter",          "Filter",
+    "Pfiltern",         "Formant Filter Vowel",
+    "Poscilgen",        "Waveform",
+    "Presonance",       "Resonance",
+    "Plfoamplitude",    "Amplitude LFO",
+    "Plfofrequency",    "Frequency LFO",
+    "Plfofilter",       "Filter LFO",
+    "Penvamplitude",    "Amplitude Envelope",
+    "Penvfrequency",    "Frequency Envelope",
+    "Penvfilter",       "Filter Envelope",
+    "Penvbandwidth",    "Bandwidth Envelope",
+    "Padsythn",         "AddSynth Voice",
+    "Padsyth",          "AddSynth",
+    "Psubsyth",         "SubSynth",
+    "Ppadsyth",         "PadSynth",
+    "@end","@end"
+};
+
 
 static std::string replies [] = {
     "OK",

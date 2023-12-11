@@ -8,7 +8,7 @@
   <name>Yoshimi</name>
   <summary>A Software Synthesizer for Linux</summary>
   <icon type="remote" width="64" height="64">https://a.fsdn.com/allura/p/yoshimi/icon</icon>
-  <icon type="local" width="64" height="64">/usr/share/pixmaps/yoshimi.png</icon>
+  <icon type="stock" width="64" height="64">/usr/share/pixmaps/yoshimi.png</icon>
   <description>
     <p>
     Yoshimi is a MIDI software synthesizer for Linux. It synthesizes in real time, can run polyphonic and/or monophonic in multiple simultaneous patches in one or more MIDI channels and has broad microtonal capability. It includes extensive additive, subtractive, and PAD synth capabilities which can be run simultaneously within the same patch. It also has comprehensive effects capabilities.
@@ -31,28 +31,43 @@
     <p>
     Version 2.3.0 has backward compatible high resolution controls where relevant and comprehensive GUI theme management enabling user defined colours.
     </p>
+    <p>
+    Version 2.3.1 has improved microtonal scales and the ability to export .scl and .kbm files.
+    </p>
   </description>
    <launchable type="desktop-id">yoshimi.desktop</launchable>
 
   <releases>
-​    <release type="stable" version="2.3.0" date="2023-5-29" />
-​  </releases>
+      <release type="stable" version="2.3.1.3" date="2023-12-02" />
+  </releases>
   <provides>
     <binary>yoshimi</binary>
   </provides>
 
   <screenshots>
     <screenshot type="default">
-       <image>https://a.fsdn.com/con/app/proj/yoshimi/screenshots/Main.png</image>
-       <caption>The main window showing Yoshimi running</caption>
+       <image>https://yoshimi.sourceforge.io/docs/user-guide/images/Main.png</image>
+       <caption>Yoshimi's main window</caption>
     </screenshot>
     <screenshot>
-       <image>https://a.fsdn.com/con/app/proj/yoshimi/screenshots/Mixer.png</image>
-       <caption>Yoshimi in action</caption>
+       <image>https://yoshimi.sourceforge.io/docs/user-guide/part/images/mixer.png</image>
+       <caption>The mixer panel with 16 parts loaded</caption>
     </screenshot>
     <screenshot>
-       <image>https://a.fsdn.com/con/app/proj/yoshimi/screenshots/MidiLearn.png</image>
-       <caption>The MIDI-learn window.</caption>
+       <image>https://yoshimi.sourceforge.io/docs/user-guide/add/images/voice.png</image>
+       <caption>An AddSynth Voice</caption>
+    </screenshot>
+    <screenshot>
+       <image>https://yoshimi.sourceforge.io/docs/user-guide/sub/images/sub.png</image>
+       <caption>The SubSynth window</caption>
+    </screenshot>
+    <screenshot>
+       <image>https://yoshimi.sourceforge.io/docs/user-guide/pad/images/padharmonic.png</image>
+       <caption>PadSynth Harmonic Structure</caption>
+    </screenshot>
+    <screenshot>
+       <image>https://yoshimi.sourceforge.io/docs/user-guide/mlearn/images/mlearn.png</image>
+       <caption>The MIDI Learn Window</caption>
     </screenshot>
   </screenshots>
   <categories>

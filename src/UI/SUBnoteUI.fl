@@ -69,6 +69,13 @@ decl {\#include "Misc/SynthHelper.h"
     using synth::getDetune;} {private local
 }
 
+decl {\#include "Misc/TextMsgBuffer.h"
+
+    namespace { // Implementation details...
+        TextMsgBuffer& textMsgBuffer = TextMsgBuffer::instance();
+    }} {private local
+}
+
 class SUBnoteharmonic {: {public Fl_Group}
 } {
   Function {make_window()} {} {
@@ -172,7 +179,7 @@ class SUBnoteharmonic {: {public Fl_Group}
   }
 }
 
-class SUBnoteUI {open : {public PresetsUI_}
+class SUBnoteUI {: {public PresetsUI_}
 } {
   Function {make_window()} {} {
     comment {randompan MUST be placed after panwidth} {in_source in_header
@@ -185,7 +192,7 @@ class SUBnoteUI {open : {public PresetsUI_}
     subSeen = false;
     o->hide();}
       xywh {463 28 735 470} type Double labelcolor 64 hide resizable
-      code0 {o->copy_label(synth->getGuiMaster()->setPartWindowTitle("SubSynth").c_str());}
+      code0 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("SubSynth"), npart, TOPLEVEL::windowTitle, kititem)).c_str());}
       code1 {subDW = o->w();subDH=o->h();}
       code2 {SUBparameters->size_range(subDW, subDH, 0, 0, 0, 0, 1);}
     } {
@@ -571,12 +578,16 @@ class SUBnoteUI {open : {public PresetsUI_}
       }
       Fl_Button subCopy {
         label C
-        callback {synth->getGuiMaster()->getPresetsUi()->copy(pars);}
+        callback {
+        //
+        synth->getGuiMaster()->getPresetsUi()->Ucopy(npart, kititem, PART::engine::subSynth);}
         xywh {540 449 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
       }
       Fl_Button subPaste {
         label P
-        callback {synth->getGuiMaster()->getPresetsUi()->paste(pars,this);}
+        callback {
+        //
+        synth->getGuiMaster()->getPresetsUi()->Upaste(npart, kititem, PART::engine::subSynth);}
         xywh {576 449 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
       }
       Fl_Button subClose {
