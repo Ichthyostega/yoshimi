@@ -32,7 +32,7 @@ Standards-Version: 4.6.2
 Rules-Requires-Root: no
 Vcs-Git: https://salsa.debian.org/multimedia-team/yoshimi.git
 Vcs-Browser: https://salsa.debian.org/multimedia-team/yoshimi
-Homepage: https://yoshimi.sourceforge.io
+Homepage: https://yoshimi.github.io
 
 Package: yoshimi
 Architecture: any
