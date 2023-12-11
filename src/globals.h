@@ -161,6 +161,7 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         insertEffects,
         bank = 244, // F4
         config = 248, // F8
+        guideLocation = 249,
         message = 250, // FA
         windowTitle = 252,
         /* The above is read-only and uses 'value' as the location of the
@@ -187,6 +188,11 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
             Write = 64,
             Integer = 128 // false = float
         };
+
+        // copy/paste preset types
+        const int List = Adjust; // fetch all entries of this group, alternatively group type
+        const int Copy = LearnRequest; // from section to file
+        const int Paste = Learnable; // from file to section, alternatively delete entry
     }
 
     namespace action {
@@ -199,7 +205,7 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
             // space for any other sources
             noAction = 15, // internal use (also a mask for the above)
             // remaining used bit-wise
-            forceUpdate = 32,
+            forceUpdate = 32, // currently only used by the GUI
             loop = 64, // internal use
             lowPrio = 128,
             muteAndLoop = 192
@@ -365,7 +371,7 @@ namespace BANK // usage BANK::control::
         selectBank = 16, // in root, by ID or read ID + name
         renameBank, // or read just the name
         createBank,
-        deleteBank, // not yet - currently 'remove' at top level
+        deleteBank, // not yet (currently done in main)
         findBankSize,
         selectFirstBankToSwap,
         selectSecondBankAndSwap,
@@ -471,14 +477,14 @@ namespace MIDI // usage MIDI::control::noteOn
         resetAllControllers,
         allNotesOff = 123,
 
-        pitchWheelInner = 128,
-        channelPressureInner,
-        keyPressureInner,
+        pitchWheelAdjusted = 128,
+        channelPressureAdjusted,
+        keyPressureAdjusted,
         soloType,
         soloCC,
 
         // the following are generated internally for MIDI-learn and
-        // are deliberately well outside the range on normal MIDI
+        // are deliberately well outside the range of normal MIDI
         pitchWheel = 640, // seen as 128
         channelPressure,  // 129
         keyPressure,      // 130
@@ -537,7 +543,7 @@ namespace SCALES // usage SCALES::control::refFrequency
         badChars,
         valueTooBig,
         valueTooSmall,
-        emptyEntry
+        emptyEntry // 0
     };
 }
 

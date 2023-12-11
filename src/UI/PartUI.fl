@@ -339,7 +339,7 @@ class PartKitItem {: {public Fl_Group}
   }
 }
 
-class PartUI {: {public Fl_Group, PartUI_}
+class PartUI {open : {public Fl_Group, PartUI_}
 } {
   Function {make_window()} {} {
     Fl_Window instrumenteditwindow {
@@ -728,14 +728,15 @@ class PartUI {: {public Fl_Group, PartUI_}
       Fl_Button effCopy {
         label C
         callback {//
-        synth->getGuiMaster()->getPresetsUi()->copy(part->partefx[ninseff]);}
+        synth->getGuiMaster()->getPresetsUi()->Ucopy(npart, 16, inseffnocounter->value()-1);
+        ;}
         xywh {346 3 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
       }
       Fl_Button effPaste {
         label P
         callback {//
-        synth->getGuiMaster()->getPresetsUi()->paste(part->partefx[ninseff], inseffectui);
-        synth->getRuntime().effectChange = npart | (ninseff << (EFFECT::type::dynFilter - EFFECT::type::none)); // temporary fix - for what?}
+        synth->getGuiMaster()->getPresetsUi()->Upaste(npart, 16, inseffnocounter->value()-1);
+        ;}
         xywh {346 19 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
       }
       Fl_Check_Button bypasseff {
@@ -1733,7 +1734,8 @@ class PartUI {: {public Fl_Group, PartUI_}
             break;
     }
     if (control == PART::control::enableAdd || control == PART::control::enableSub || control == PART::control::enablePad)
-    checkEngines();} {}
+        checkEngines();
+    ;} {}
   }
   Function {paste(CommandBlock *getData)} {} {
     code {//
@@ -1814,7 +1816,7 @@ class PartUI {: {public Fl_Group, PartUI_}
             //std::cout << "pad top level" << std::endl;
             if (padnoteui != NULL)
             {
-                if( padnoteui->padnotewindow->visible())
+                if(padnoteui->padnotewindow->visible())
                     padnoteui->refresh();
             }
             return;
@@ -2728,7 +2730,7 @@ class PartUI {: {public Fl_Group, PartUI_}
   }
   Function {fxRtext()} {} {
     code {//
-    if (lastfxW < 12)
+    if (lastfxW < 6)
     {
         ++lastfxW;
         return;

@@ -130,9 +130,7 @@ SynthEngine::SynthEngine(std::list<string>& allArgs, LV2PluginType _lv2PluginTyp
     interchange(this),
     midilearn(this),
     mididecode(this),
-    //unifiedpresets(this),
     Runtime(this, allArgs, getIsLV2Plugin()),
-    presetsstore(this),
     textMsgBuffer(TextMsgBuffer::instance()),
     fadeAll(0),
     fadeStepShort(0),
@@ -486,7 +484,6 @@ void SynthEngine::defaults(void)
     Runtime.noteOffSeen = 0;
 #endif
 
-    Runtime.effectChange = UNUSED; // temporary fix
     partonoffLock(0, 1); // enable the first part
 }
 
@@ -575,7 +572,7 @@ void SynthEngine::swapTestPADtable()
 
     using std::swap;
     swap(padSynth->waveTable, *testWavetable);
-    padSynth->presetsUpdated();
+    padSynth->paramsChanged();
     if (padSynth->PxFadeUpdate)
     {// rig a cross-fade for ongoing notes to pick up
         PADTables copy4fade{padSynth->Pquality};
@@ -3165,8 +3162,9 @@ void SynthEngine::add2XML(XMLwrapper *xml)
 }
 
 
-int SynthEngine::getalldata(char **data)
+int SynthEngine::getalldata(char **data) // to state from instance
 {
+    std::cout << "getstart" << std::endl;
     bool oldFormat = usingYoshiType;
     usingYoshiType = true; // make sure everything is saved
     getRuntime().xmlType = TOPLEVEL::XML::State;
@@ -3180,8 +3178,9 @@ int SynthEngine::getalldata(char **data)
 }
 
 
-void SynthEngine::putalldata(const char *data, int size)
+void SynthEngine::putalldata(const char *data, int size) // to instance from state
 {
+//std::cout << "putstart" << std::endl;
     while (isspace(*data))
         ++data;
     int a = size; size = a; // suppress warning (may be used later)
@@ -3197,6 +3196,7 @@ void SynthEngine::putalldata(const char *data, int size)
     midilearn.extractMidiListData(false, xml);
     setAllPartMaps();
     delete xml;
+//std::cout << "putend" << std::endl;
 }
 
 
@@ -3771,7 +3771,7 @@ float SynthEngine::getConfigLimits(CommandBlock *getData)
 }
 
 
-void SynthEngine::CBtest(CommandBlock *candidate, bool miscmsg)
+void SynthEngine::CBtest(CommandBlock *candidate, bool miscmsg) // default - don't read message
 {
     std::cout << "\n value " << candidate->data.value
             << "\n type " << int(candidate->data.type)
@@ -3784,6 +3784,8 @@ void SynthEngine::CBtest(CommandBlock *candidate, bool miscmsg)
             << "\n parameter " << int(candidate->data.parameter)
             << "\n offset " << int(candidate->data.offset)
             << std::endl;
-    if (!miscmsg)
+    if (miscmsg) // read this *without* deleting it
         std::cout << ">" << textMsgBuffer.fetch(candidate->data.miscmsg, false) << "<" << std::endl;
+    else
+        std::cout << " miscmsg " << int(candidate->data.miscmsg) << std::endl;
 }

@@ -1,0 +1,184 @@
+<!DOCTYPE html><html>
+<head>
+  <meta http-equiv="content~type" content="text/html; charset=UTF~8">
+  <title>Top Level</title>
+  <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+  <table>
+    <thead>
+      <tr>
+        <th>TOPLEVEL::control:: +</th>
+        <th>value</th>
+        <th>control</th>
+        <th>part /<br>section</th>
+        <th>kit</th>
+        <th>engine</th>
+        <th>insert</th>
+        <th>param<br>eter</th>
+        <th>offset</th>
+        <th>miscmsg</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+          <tr>
+        <td>guideLocation</td>
+        <td>ret. msg No.</td>
+        <td>~ ~</td>
+        <td>249</td>
+        <td>~ ~</td>
+        <td>~ ~</td>
+        <td>~ ~</td>
+        <td>~ ~</td>
+        <td>~ ~</td>
+        <td>~ ~</td>
+        <td>Shows location of latest HTML guide (read only)</td>
+      </tr>
+      <tr>
+        <td>windowTitle</td>
+        <td>ret. msg No.</td>
+        <td>0~63</td>
+        <td>252</td>
+        <td>0~15</td>
+        <td>0~2,8+(0~7)</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Builds window title. With text if ID passed in 'value'</td>
+      </tr>
+      <tr>
+        <td>copyPaste</td>
+        <td>0~2<br>ret. msg No.</td>
+        <td>251</td>
+        <td>0~63,241,242</td>
+        <td>0~15</td>
+        <td>0~2,8+(0~7),<br>255</td>
+        <td>0~2,255</td>
+        <td>0~3,255</td>
+        <td>0,255</td>
+        <td>msg No.</td>
+        <td>Perform actions List (find type), Copy, Paste (delete)</td>
+      </tr>
+      <tr>
+        <td>partBusy</td>
+        <td>Ret. 0,1</td>
+        <td>252</td>
+        <td>0~63</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Blocks further action. Internally set (read only)</td>
+      </tr>
+      <tr>
+        <td>unrecognised</td>
+        <td>~ ~</td>
+        <td>253</td>
+        <td>~ ~</td>
+        <td>~ ~</td>
+        <td>~ ~</td>
+        <td>~ ~</td>
+        <td>~ ~</td>
+        <td>~ ~</td>
+        <td>~ ~</td>
+        <td>Invalid entry in interpreter</td>
+      </tr>
+      <tr>
+        <td>textMessage</td>
+        <td>~ ~</td>
+        <td>254</td>
+        <td>250</td>
+        <td>~ ~</td>
+        <td>~ ~</td>
+        <td>255</td>
+        <td>255</td>
+        <td>128</td>
+        <td>msg No.</td>
+        <td>Just sends a non-blocking message to the GUI</td>
+      </tr>
+      <tr>
+        <td>forceExit</td>
+        <td>~ ~</td>
+        <td>255</td>
+        <td>~ ~</td>
+        <td>~ ~</td>
+        <td>~ ~</td>
+        <td>~ ~</td>
+        <td>~ ~</td>
+        <td>~ ~</td>
+        <td>~ ~</td>
+        <td>Force exit at any time from any section</td>
+      </tr>
+      <tr>
+        <td>instanceID</td>
+        <td>Ret. 0~31</td>
+        <td>~ ~</td>
+        <td>254</td>
+        <td>~ ~</td>
+        <td>~ ~</td>
+        <td>~ ~</td>
+        <td>~ ~</td>
+        <td>~ ~</td>
+        <td>~ ~</td>
+        <td>Returns numeric ID of current instance (read only)</td>
+      </tr>
+    </tbody>
+  </table>
+  <br>
+  <div class=comment>
+  &ensp;copyPaste variatons. This uses the 'type' field slightly differently.<br><br>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:6%">Command></th>
+        <th style="width:3%">value</th>
+        <th style="width:3%">type</th>
+        <th style="width:88%;text-align:left">Description</th>
+      </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td style="border:none"></td>
+        <td style="border:none"></td>
+        <td style="border:none"></td>
+        <td style="border:none"></td>
+      </tr>
+      <tr>
+        <td style="border:none">List</td>
+        <td style="border:none">0~2</td>
+        <td style="border:none">0</td>
+        <td style="text-align:left;border:none">Returns a lists of all the presets for the current section.<br>If 'value' = 1 returns a msgID for the preset type.<br>If 'value' = 2 only returns returns a msgID if there is a clipboard entry for that type.
+      </tr>
+      <tr>
+        <td style="border:none">&emsp;</td>
+        <td style="border:none"></td>
+        <td style="border:none"></td>
+        <td style="border:none"></td>
+      </tr>
+      <tr>
+        <td style="border:none">Copy</td>
+        <td style="border:none">0</td>
+        <td style="border:none">16</td>
+        <td style="text-align:left;border:none">Copies the selected preset to file, or to clipboard if no name given.
+      </tr>
+      <tr>
+        <td style="border:none">&emsp;</td>
+        <td style="border:none"></td>
+        <td style="border:none"></td>
+        <td style="border:none"></td>
+      </tr>
+      <tr>
+        <td style="border:none">Paste</td>
+        <td style="border:none">0,1</td>
+        <td style="border:none">32</td>
+        <td style="text-align:left;border:none">Pastes in the selected preset from file, or from clipboard if no name given.<br>If 'value' = 1 deletes the selected preset.
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</body>
+</html>

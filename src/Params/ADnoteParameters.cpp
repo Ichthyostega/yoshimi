@@ -40,10 +40,9 @@ int ADnoteParameters::ADnote_unison_sizes[] =
 {2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50, 0};
 
 ADnoteParameters::ADnoteParameters(fft::Calc& fft_, SynthEngine *_synth) :
-    Presets(_synth),
+    ParamBase(_synth),
     fft(fft_)
 {
-    setpresettype("Padsyth");
     GlobalPar.FreqEnvelope = new EnvelopeParams(0, 0, synth);
     GlobalPar.FreqEnvelope->ASRinit(64, 50, 64, 60);
     GlobalPar.FreqLfo = new LFOParams(70, 0, 64, 0, 0, 0, 0, 0, synth);

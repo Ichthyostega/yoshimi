@@ -1966,7 +1966,6 @@ if (pars->VoicePar[nvoice].PFMVoice >= 0) {
             ExtMod->deactivate();
             ExtModOsc->deactivate();
         }
-
         ADnoteVoiceParameters->show();} {}
   }
   Function {~ADvoiceUI()} {} {
@@ -2329,12 +2328,14 @@ send_data(0, ADDSYNTH::control::stereo, o->value(), TOPLEVEL::type::Integer);}
       }
       Fl_Button globalcopy {
         label C
-        callback {synth->getGuiMaster()->getPresetsUi()->copy(pars);}
+        callback {//
+        synth->getGuiMaster()->getPresetsUi()->Ucopy(npart, kititem, PART::engine::addSynth);}
         xywh {455 380 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
       }
       Fl_Button globalpaste {
         label P
-        callback {synth->getGuiMaster()->getPresetsUi()->paste(pars,this);}
+        callback {//
+        synth->getGuiMaster()->getPresetsUi()->Upaste(npart, kititem, PART::engine::addSynth);}
         xywh {485 380 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
       }
     }
@@ -2370,12 +2371,14 @@ o->hide();}
       }
       Fl_Button Vcopy {
         label C
-        callback {synth->getGuiMaster()->getPresetsUi()->copy(pars,nvoice);}
+        callback {//
+            synth->getGuiMaster()->getPresetsUi()->Ucopy(npart, kititem, nvoice + PART::engine::addVoice1);}
         xywh {600 580 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
       }
       Fl_Button Vpaste {
         label P
-        callback {synth->getGuiMaster()->getPresetsUi()->paste(pars,this,nvoice);}
+        callback {//
+            synth->getGuiMaster()->getPresetsUi()->Upaste(npart, kititem, nvoice + PART::engine::addVoice1);}
         xywh {630 580 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
       }
       Fl_Button g1 {
@@ -2551,7 +2554,8 @@ o->hide();}
             if (edit)
                 editVoice(7);
             break;
-    }} {}
+    }
+    ;} {}
   }
   Function {setTabColour(int num)} {} {
     code {//
@@ -2699,7 +2703,6 @@ o->hide();}
                 break;
             }
         }
-        //std::cout << "in addsynth" << std::endl;
         ;} {}
   }
   Function {ADnoteUI(ADnoteParameters *parameters, int npart_, int kititem_)} {} {
@@ -2770,7 +2773,8 @@ o->hide();}
         pvel->value(pars->GlobalPar.PPunchVelocitySensing);
         pvel->selection_color(setKnob(pvel->value(),72));
         detunevalueoutput->value(getDetune(pars->GlobalPar.PDetuneType, 0, pars->GlobalPar.PDetune));
-        freq->value(pars->GlobalPar.PDetune - 8192);
+        freq->value(pars->GlobalPar.PDetune -8192);
+        freq->selection_color(setSlider(freq->value(), 0));
 
         int k = pars->GlobalPar.PCoarseDetune / 1024;
         if (k >= 8)
@@ -2790,11 +2794,14 @@ o->hide();}
         freqenv->refresh();
         filterenv->refresh();
         filterui->refresh();
+        editVoice(nvoice);
         for (int i = 0; i < NUM_VOICES; ++i)
+        {
+            setTabColour(i);
             voicelistitem[i]->refreshlist();
-
+        }
         resui->refresh();
-        editVoice(nvoice);} {}
+        ;} {}
   }
   Function {ShowGlobal()} {} {
     code {//
@@ -2814,7 +2821,6 @@ o->hide();}
   }
   Function {set_voice(bool type)} {} {
     code {//
-
     voicelistitem[nvoice]->refreshlist();
     int fetchW, fetchH, fetchX, fetchY, fetchO;
 
@@ -2826,8 +2832,8 @@ o->hide();}
             fetchW = voiceDW;
             fetchH = voiceDH;
         }
-        ADnoteVoice->resize(fetchX, fetchY, fetchW, fetchH);
         checkSane(fetchX, fetchY, fetchW, fetchH, voiceDW, voiceDH);
+        ADnoteVoice->resize(fetchX, fetchY, fetchW, fetchH);
     }
 
     ADnoteVoice->redraw();
@@ -3038,9 +3044,9 @@ o->hide();}
   } {
     code {//
         nvoice = nvoice_;
-
         int adW = advoice->ADnoteVoiceParameters->w();
         int adH = advoice->ADnoteVoiceParameters->h();
+        bool lastVoiceState = advoice->voiceonbutton->value();
         advoice->hide();
         ADnoteVoice->remove(advoice);
         delete advoice;
@@ -3048,6 +3054,15 @@ o->hide();}
         advoice = new ADvoiceUI(0, 0, adW, adH);
         ADnoteVoice->add(advoice);
         advoice->init(pars, npart, kititem, nvoice);
+        /*
+        This is only needed to update the tab when a voice has been pasted,
+        but duplicates the action every time a different voice is selected.
+        Needs improvement!
+        */
+        if (advoice->voiceonbutton->value() != lastVoiceState)
+        {
+            setTabColour(nvoice);
+        }
         advoice->ADnoteVoiceParameters->size(adW, adH);
         advoice->show();
         addVoiceRtext();} {}

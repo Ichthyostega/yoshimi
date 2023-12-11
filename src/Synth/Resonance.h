@@ -27,13 +27,14 @@
 #ifndef RESONANCE_H
 #define RESONANCE_H
 
+#include "globals.h"
 #include "DSP/FFTwrapper.h"
 #include "Misc/XMLwrapper.h"
-#include "Params/Presets.h"
+#include "Params/ParamCheck.h"
 
 class SynthEngine;
 
-class Resonance : public Presets
+class Resonance : public ParamBase
 {
     public:
         Resonance(SynthEngine *_synth);

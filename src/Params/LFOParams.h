@@ -6,6 +6,7 @@
     Copyright 2009-2011, Alan Calvert
     Copyright 2017-2019, Will Godfrey
     Copyright 2020 Kristian Amlie
+    Copyright 2023 Kristian Amlie
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -30,12 +31,13 @@
 
 #include <sys/types.h>
 
+#include "globals.h"
 #include "Misc/XMLwrapper.h"
-#include "Params/Presets.h"
+#include "Params/ParamCheck.h"
 
 class SynthEngine;
 
-class LFOParams : public Presets
+class LFOParams : public ParamBase
 {
     public:
         LFOParams(float Pfreq_, float Pintensity_, float Pstartphase_,
@@ -47,15 +49,15 @@ class LFOParams : public Presets
         void defaults(void);
         void setPfreq(int32_t n);
         void getfromXML(XMLwrapper *xml);
-        void setPintensity(float n) { Pintensity = n; presetsUpdated(); }
+        void setPintensity(float n) { Pintensity = n; paramsChanged(); }
         void setPstartphase(float n) { Pstartphase = n; }
-        void setPLFOtype(unsigned char n) { PLFOtype = n; presetsUpdated(); }
-        void setPrandomness(float n) { Prandomness = n; presetsUpdated(); }
-        void setPfreqrand(float n) { Pfreqrand = n; presetsUpdated(); }
+        void setPLFOtype(unsigned char n) { PLFOtype = n; paramsChanged(); }
+        void setPrandomness(float n) { Prandomness = n; paramsChanged(); }
+        void setPfreqrand(float n) { Pfreqrand = n; paramsChanged(); }
         void setPdelay(float n) { Pdelay = n; }
         void setPbpm(unsigned char n) { Pbpm = n; }
-        void setPcontinous(unsigned char n) { Pcontinous = n; presetsUpdated(); }
-        void setPstretch(float n) { Pstretch = n; presetsUpdated(); }
+        void setPcontinous(unsigned char n) { Pcontinous = n; paramsChanged(); }
+        void setPstretch(float n) { Pstretch = n; paramsChanged(); }
 
         // MIDI Parameters
         int32_t PfreqI;

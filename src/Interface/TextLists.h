@@ -128,6 +128,7 @@ namespace LISTS {
 static std::string basics [] = {
     "?  Help",       "show commands",
     "List",          "list current settings",
+    "GUide",         "show location of most recent HTML guide",
     "STop",          "all sound off",
     "RESet [s]",     "return to start-up conditions, 'ALL' clear MIDI-learn (if 'y')",
     "EXit [s]",      "tidy up and close Yoshimi (if 'y'), 'FOrce' instant exit regardless",
@@ -1030,6 +1031,30 @@ static std::string testlist [] = {
     "EXEcute",          "actually trigger the test. Stops all other sound output.",
     "@end","@end"
 };
+
+
+static std::string presetgroups [] = {
+    "Pfilter",          "Filter", // dynfilter
+    "Pfiltern",         "Formant Filter Vowel", // dynfilter
+    "Peffect",          "Effect",
+    "Pfilter",          "Filter",
+    "Pfiltern",         "Formant Filter Vowel",
+    "Poscilgen",        "Waveform",
+    "Presonance",       "Resonance",
+    "Plfoamplitude",    "Amplitude LFO",
+    "Plfofrequency",    "Frequency LFO",
+    "Plfofilter",       "Filter LFO",
+    "Penvamplitude",    "Amplitude Envelope",
+    "Penvfrequency",    "Frequency Envelope",
+    "Penvfilter",       "Filter Envelope",
+    "Penvbandwidth",    "Bandwidth Envelope",
+    "Padsythn",         "AddSynth Voice",
+    "Padsyth",          "AddSynth",
+    "Psubsyth",         "SubSynth",
+    "Ppadsyth",         "PadSynth",
+    "@end","@end"
+};
+
 
 static std::string replies [] = {
     "OK",
