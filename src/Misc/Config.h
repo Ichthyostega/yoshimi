@@ -60,7 +60,7 @@ class Config
         void Announce(void);
         void Usage(void);
         void Log(const string& msg, char tostderr = _SYS_::LogNormal);
-    void LogError(const string& msg);
+        void LogError(const string& msg);
         void flushLog(void);
         bool loadPresetsList(void);
         bool savePresetsList(void);
@@ -153,6 +153,7 @@ class Config
         bool          logXMLheaders;
         bool          xmlmax;
         unsigned int  GzipCompression;
+        string        guideVersion;
 
         unsigned int  Samplerate;
         bool          rateChanged;
@@ -204,7 +205,6 @@ class Config
         unsigned char dataL;
         unsigned char dataH;
         bool          nrpnActive;
-        int           effectChange; // temporary fix
 
         struct{
             unsigned char Xaxis[NUM_MIDI_CHANNELS];
@@ -240,6 +240,10 @@ class Config
         Samples genMixr;
 
     private:
+        void *findManual(void);
+        static void *_findManual(void *arg);
+        pthread_t  findManualHandle;
+
         void applyOptions(Config*settings, list<string>& allArgs);
         void defaultPresets(void);
         bool extractBaseParameters(XMLwrapper *xml);
@@ -248,6 +252,8 @@ class Config
         int SSEcapability(void);
         void AntiDenormals(bool set_daz_ftz);
         void saveJackSession(void);
+        std::string findHtmlManual(void);
+
 
         int sigIntActive;
         int ladi1IntActive;
@@ -264,6 +270,7 @@ class Config
         friend class YoshimiLV2Plugin;
 
     public:
+        std::string manualFile;
         int exitType;
 };
 

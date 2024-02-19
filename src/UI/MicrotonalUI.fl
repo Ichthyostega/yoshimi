@@ -399,7 +399,7 @@ class MicrotonalUI {} {
   Function {send_data(int action, int control, float value, int type, int par = UNUSED, int miscmsg = UNUSED)} {} {
     code {//
         type |= TOPLEVEL::type::Write;
-        collect_data(synth, value, action, type, control, TOPLEVEL::section::scales, UNUSED, UNUSED, UNUSED, par, UNUSED, miscmsg);} {}
+        collect_writeData(synth, value, action, type, control, TOPLEVEL::section::scales, UNUSED, UNUSED, UNUSED, par, UNUSED, miscmsg);} {}
   }
   Function {fetchData(float value, int control, int part, int kititem = UNUSED, int engine = UNUSED, int insert = UNUSED, int parameter = UNUSED, int offset = UNUSED, int miscmsg = UNUSED, int request = UNUSED)} {return_type float
   } {
@@ -501,7 +501,7 @@ class MicrotonalUI {} {
                 anotecounter->value(func::string2int(splitline(msg)));
                 afreqinput->value(func::string2float(splitline(msg)));
                 //octavesizeoutput->value(func::string2float(splitline(msg))); // temporarily disabled
-                int formalOctave = func::string2float(splitline(msg));
+                //int formalOctave = func::string2float(splitline(msg)); // temporarily disabled
                 string map;
                 for (int i = 0; i < mapsize; ++i)
                     map += (splitline(msg) + char(10));
@@ -732,12 +732,6 @@ class MicrotonalUI {} {
   decl {SynthEngine *synth;} {private local
   }
   decl {float refFreq;} {private local
-  }
-  decl {int oldFirst;} {private local
-  }
-  decl {int oldMid;} {private local
-  }
-  decl {int oldLast;} {private local
   }
   decl {int scaleDW;} {private local
   }

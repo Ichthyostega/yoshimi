@@ -41,12 +41,13 @@ class LFO
         float lfoout(void);
         float amplfoout(void);
     private:
-        std::pair<float, float> getBpmFrac() {
+        std::pair<float, float> getBpmFrac()
+        {
             return func::LFOfreqBPMFraction((float)lfopars->PfreqI / float(Fmul2I));
         }
 
         LFOParams *lfopars;
-        Presets::PresetsUpdate lfoUpdate;
+        ParamBase::ParamsUpdate lfoUpdate;
         void Recompute(void);
         void RecomputeFreq(void);
         void computenextincrnd(void);

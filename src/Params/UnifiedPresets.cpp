@@ -24,30 +24,56 @@
 #include "Misc/SynthEngine.h"
 #include "Misc/TextMsgBuffer.h"
 #include "Misc/FileMgrFuncs.h"
+#include "Interface/TextLists.h"
 #include "Effects/EffectMgr.h"
 #include "Params/ADnoteParameters.h"
 #include "Params/SUBnoteParameters.h"
 #include "Params/PADnoteParameters.h"
 #include "Params/FilterParams.h"
+#include "Params/LFOParams.h"
+#include "Params/EnvelopeParams.h"
 
 
 using std::string;
-using std::cout;
-using std::endl;
-
 
 /*
- * type flags (set)
- * (none)        - list
- * LearnRequest  - save / store
- * Learnable     - load / fetch
- * no name given - from/to clipboard))
+   type flags (set)
+        List  - all entries of section type
+        Group - preset extension and name
+        Copy  - from section to file
+        Paste - from file to section
+
+   no name given - from/to clipboard))
  */
 
 string UnifiedPresets::section(SynthEngine *_synth, CommandBlock *getData)
 {
     synth = _synth;
-    //synth->CBtest(getData, false);
+    //synth->CBtest(getData, true);
+    int type = getData->data.type;
+    int value = getData->data.value;
+    human = value; // used for listing. 'value may change before it is read
+    if (type == TOPLEVEL::type::List && human > 0)
+    {
+        string group = findPresetType(getData);
+        if (human == 2)
+        {
+            /* here we abuse the list routines in order to find out
+             * if  there is a clipboard entry for this preset group
+            */
+            string filename = file::localDir() + "/clipboard/section." + group + EXTEN::presets;
+            if (file::isRegularFile(filename) == 0)
+            {
+                return ""; // no entry of this type
+            }
+        }
+        /*
+         * sending a message here was doubling the number of messages
+         * but only one was actually being read!
+         */
+        value = UNUSED;//synth->textMsgBuffer.push(group);
+        return findPresetType(getData); // human friendly extension
+    }
 
     string name = findPresetType(getData);
     if (name.empty())
@@ -61,26 +87,37 @@ string UnifiedPresets::section(SynthEngine *_synth, CommandBlock *getData)
         name = "Directory empty";
         return name;
     }
-    int type = getData->data.type;
-    if (type == TOPLEVEL::type::Adjust)
+
+    if (type == TOPLEVEL::type::List)
     {
         list(dirname, name);
     }
     else
     {
-        if (type & TOPLEVEL::type::LearnRequest)
+        if (type & TOPLEVEL::type::Copy)
         {
             saveUnif(getData);
             name = "";
         }
-        else if (type & TOPLEVEL::type::Learnable)
+        else if (type & TOPLEVEL::type::Paste)
         {
-            load(getData);
+            if (human == 0)
+                load(getData);
+            else
+                remove(getData);
         }
     }
     return name;
 }
 
+string UnifiedPresets::listpos(int count)
+{
+ // If human = 2 we want to get the extension not the freindly name
+    int test = 0;
+    if (human == 1)
+        test = 1;
+    return presetgroups[count * 2 + test];
+}
 
 string UnifiedPresets::findPresetType(CommandBlock *getData)
 {
@@ -99,12 +136,12 @@ string UnifiedPresets::findPresetType(CommandBlock *getData)
         if (insert == TOPLEVEL::insert::filterGroup)
         {
             if (offset == UNUSED)
-                return "Pfilter";
+                return listpos(0);//"Pfilter";
             else
-                return "Pfiltern";
+                return listpos(1);//"Pfiltern";
         }
         else
-            return "Peffect";
+            return listpos(2);//"Peffect";
     }
 
     switch (insert)
@@ -112,29 +149,29 @@ string UnifiedPresets::findPresetType(CommandBlock *getData)
         case TOPLEVEL::insert::filterGroup:
             {
                 if (offset == UNUSED)
-                    name = "Pfilter";
+                    name = listpos(3);//"Pfilter";
                 else
-                    name = "Pfiltern";
+                    name = listpos(4);//"Pfiltern";
             }
             break;
 
         case TOPLEVEL::insert::oscillatorGroup:
-            name = "Poscilgen";
+            name = listpos(5);//"Poscilgen";
             break;
         case TOPLEVEL::insert::resonanceGroup:
-            name = "Presonance";
+            name = listpos(6);//"Presonance";
             break;
         case TOPLEVEL::insert::LFOgroup:
             switch (parameter)
             {
                 case 0:
-                    name = "Plfoamplitude";
+                    name = listpos(7);//"Plfoamplitude";
                     break;
                 case 1:
-                    name = "Plfofrequency";
+                    name = listpos(8);//"Plfofrequency";
                     break;
                 case 2:
-                    name = "Plfofilter";
+                    name = listpos(9);//"Plfofilter";
                     break;
             }
             break;
@@ -142,16 +179,16 @@ string UnifiedPresets::findPresetType(CommandBlock *getData)
             switch (parameter)
             {
                 case 0:
-                    name = "Penvamplitude";
+                    name = listpos(10);//"Penvamplitude";
                     break;
                 case 1:
-                    name = "Penvfrequency";
+                    name = listpos(11);//"Penvfrequency";
                     break;
                 case 2:
-                    name = "Penvfilter";
+                    name = listpos(12);//"Penvfilter";
                     break;
                 case 3:
-                    name = "Penvbandwidth";
+                    name = listpos(13);//"Penvbandwidth";
                     break;
             }
             break;
@@ -160,18 +197,20 @@ string UnifiedPresets::findPresetType(CommandBlock *getData)
         return name;
 
     if (engineType >= PART::engine::addVoice1 && engineType < PART::engine::addVoiceModEnd)
-        return "Padsythn"; // all voice and modulator level have the same extension
+    {
+        return listpos(14);//"Padsythn"; // all voice and modulator level have the same extension
+    }
 
     switch (engineType)
     {
         case PART::engine::addSynth:
-            name = "Padsyth";
+            name = listpos(15);//"Padsyth";
             break;
         case PART::engine::subSynth:
-            name = "Psubsyth";
+            name = listpos(16);//presetgroups[32+human];//"Psubsyth";
             break;
         case PART::engine::padSynth:
-            name = "Ppadsyth";
+            name = listpos(17);//"Ppadsyth";
             break;
     }
     return name;
@@ -205,7 +244,6 @@ void UnifiedPresets::list(string dirname, string& name)
 
 string UnifiedPresets::findXML(XMLwrapper *xml, CommandBlock *getData, bool isLoad)
 {
-    int value = int(getData->data.value);
     int npart = getData->data.part;
     int kitItem = getData->data.kit;
     int engineType = getData->data.engine;
@@ -223,15 +261,15 @@ string UnifiedPresets::findXML(XMLwrapper *xml, CommandBlock *getData, bool isLo
             EffectMgr *sectionType;
             if (npart == TOPLEVEL::section::systemEffects)
             {
-                sectionType = synth->sysefx[value];
+                sectionType = synth->sysefx[engineType];
             }
             else if (npart == TOPLEVEL::section::insertEffects)
             {
-                sectionType = synth->insefx[value];
+                sectionType = synth->insefx[engineType];
             }
             else
             {
-                sectionType = synth->part[npart]->partefx[value];
+                sectionType = synth->part[npart]->partefx[engineType];
             }
             name = "Peffect";
 
@@ -314,19 +352,19 @@ string UnifiedPresets::findXML(XMLwrapper *xml, CommandBlock *getData, bool isLo
     {
         name = "Padsythn";
         ADnoteParameters *sectionType = synth->part[npart]->kit[kitItem].adpars;
-
+        size_t voice = engineType - PART::engine::addVoice1;
 
         if (isLoad)
         {
-            sectionType->defaults();
+            sectionType->voiceDefaults(voice);
             xml->enterbranch(name);
-            sectionType->getfromXMLsection(xml, engineType - PART::engine::addVoice1);
+            sectionType->getfromXMLsection(xml, voice);
             xml->exitbranch();
         }
         else
         {
             xml->beginbranch(name);
-            sectionType->add2XMLsection(xml, engineType - PART::engine::addVoice1);
+            sectionType->add2XMLsection(xml, voice);
             xml->endbranch();
         }
     }
@@ -416,7 +454,6 @@ string UnifiedPresets::oscilXML(XMLwrapper *xml,CommandBlock *getData, bool isLo
     int npart = getData->data.part;
     int kitItem = getData->data.kit;
     int engineType = getData->data.engine;
-    std::cout << "engine " << int(getData->data.engine) << std::endl;
     string name = "Poscilgen";
 
     OscilParameters *sectionType;
@@ -807,5 +844,17 @@ bool UnifiedPresets::load(CommandBlock *getData)
     xml->loadXMLfile(filename);
     findXML(xml, getData, true);
     delete xml;
+    return false;
+}
+
+bool UnifiedPresets::remove(CommandBlock *getData)
+{
+    human = 0; // we need the extension this time.
+    string type = findPresetType(getData);
+    string name = synth->textMsgBuffer.fetch(getData->data.miscmsg);
+    string dirname = synth->getRuntime().presetsDirlist[synth->getRuntime().presetsRootID];
+    string filename = dirname + "/" + name + "." + type + EXTEN::presets;
+    //std::cout << "file >" << filename << std::endl;
+    file::deleteFile(filename);
     return false;
 }

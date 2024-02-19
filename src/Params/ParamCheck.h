@@ -1,10 +1,7 @@
 /*
-    Presets.h - Presets and Clipboard management
+    ParamCheck.h - Checks control changes and updates respective parameters
 
-    Original ZynAddSubFX author Nasca Octavian Paul
-    Copyright (C) 2002-2005 Nasca Octavian Paul
-    Copyright 2009-2011, Alan Calvert
-    Copyright 2018-2019, Will Godfrey
+    Copyright 2018-2023, Kristian Amlie, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -23,12 +20,8 @@
     This file is derivative of ZynAddSubFX original code.
 */
 
-#ifndef PRESETS_H
-#define PRESETS_H
-
-#include "Misc/XMLwrapper.h"
-#include "Params/PresetsStore.h"
-#include <vector>
+#ifndef PARAMCHECK_H
+#define PARAMCHECK_H
 
 class SynthEngine;
 
@@ -54,34 +47,15 @@ private:
 };
 
 
-class Presets
+class ParamBase
 {
     public:
-        Presets(SynthEngine *_synth);
-        virtual ~Presets() { }
-
-        void copy(const char *name); // <if name == NULL, the clipboard is used
-        void paste(int npreset);     // npreset == 0 for clipboard
-        bool checkclipboardtype(void);
-        void deletepreset(int npreset);
-        void setelement(int n);
-        void rescanforpresets(void);
-
+        ParamBase(SynthEngine *_synth);
+        virtual ~ParamBase() { }
         SynthEngine *getSynthEngine() {return synth;}
 
-        char type[MAX_PRESETTYPE_SIZE];
-
-    protected:
-        void setpresettype(const char *type);
-
     private:
-        virtual void add2XML(XMLwrapper * /* xml */) = 0;
-        virtual void getfromXML(XMLwrapper * /* xml */) = 0;
-        virtual void defaults(void) = 0;
-        virtual void add2XMLsection(XMLwrapper * /* xml */, int /* n */) { }
-        virtual void getfromXMLsection(XMLwrapper * /* xml */, int /* n */) { }
-        virtual void defaults(int /* n */) { }
-        int nelement;
+        virtual void defaults() =0;
 
     protected:
         SynthEngine *synth;
@@ -93,44 +67,45 @@ class Presets
                        // important is that it's different.
 
     public:
-        class PresetsUpdate
+        class ParamsUpdate
         {
             public:
-                PresetsUpdate(Presets const& presets_) :
-                    presets(&presets_),
-                    lastUpdated(presets->updatedAt)
+                ParamsUpdate(ParamBase const& params_) :
+                    params(&params_),
+                    lastUpdated(params->updatedAt)
                 {}
 
-                // Checks if presets have been updated and resets counter.
+                // Checks if params have been updated and resets counter.
                 bool checkUpdated()
                 {
-                    bool result = presets->updatedAt != lastUpdated;
-                    lastUpdated = presets->updatedAt;
+                    bool result = params->updatedAt != lastUpdated;
+                    lastUpdated = params->updatedAt;
                     return result;
                 }
 
                 void forceUpdate()
                 {
-                    lastUpdated = presets->updatedAt - 1;
+                    lastUpdated = params->updatedAt - 1;
                 }
 
-                void changePresets(Presets const& presets_)
+                void changeParams(ParamBase const& params_)
                 {
-                    if (presets != &presets_)
+                    if (params != &params_)
                     {
-                        presets = &presets_;
+                        params = &params_;
                         forceUpdate();
                     }
                 }
 
             private:
-                const Presets *presets;
+                const ParamBase *params;
                 int lastUpdated;
         };
 
-        void presetsUpdated()
+        void paramsChanged()
         {
             updatedAt++;
+            //std::cout << "update " << updatedAt << std::endl;
         }
 };
 

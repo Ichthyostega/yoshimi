@@ -148,6 +148,9 @@ void Microtonal::defaults(int type)
         PformalOctaveSize = 12;
         Pmappingenabled = 0;
 
+        // suppress 'unused' warning till we know what to do with it!
+        PformalOctaveSize = PformalOctaveSize;
+
         for (int i = 0; i < 128; ++i)
         {
             Pmapping[i] = i;
@@ -858,7 +861,8 @@ int Microtonal::getfromXML(XMLwrapper *xml)
                     octave[i].type = 2;
                     octave[i].tuning = double(octave[i].x1) / octave[i].x2;
                 }
-                else {
+                else
+                {
                     octave[i].type = 1;
                     //populate fields for display
                     double x = (log(octave[i].tuning) / LOG_2) * 1200.0;

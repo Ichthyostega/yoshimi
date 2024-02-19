@@ -4,7 +4,7 @@
     Copyright 2016-2019, Will Godfrey & others
     Copyright 2020-2020, Kristian Amlie, Will Godfrey, & others
     Copyright 2021, Will Godfrey, Rainer Hans Liffers, & others
-    Copyright 2023, Will Godfrey, Ichthyostega & others
+    Copyright 2023 - 2024, Will Godfrey, Ichthyostega & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -195,7 +195,8 @@ void *InterChange::sortResultsThread(void)
 
 InterChange::~InterChange()
 {
-    if (sortResultsThreadHandle) {
+    if (sortResultsThreadHandle)
+    {
         // Get it to quit.
         spinSortResultsThread();
         pthread_join(sortResultsThreadHandle, 0);
@@ -227,72 +228,6 @@ void InterChange::muteQueueWrite(CommandBlock *getData)
 }
 
 
-std::string InterChange::findHtmlManual(void)
-{
-    string namestring = "doc/yoshimi/yoshimi_user_guide/files/yoshimi_user_guide_version";
-    string namelist = "";
-    if (isRegularFile("/usr/share/" + namestring))
-        namelist += ("/usr/share/" + namestring + "\n");
-    if (isRegularFile("/usr/local/share/" + namestring))
-        namelist += ("/usr/local/share/" + namestring + "\n");
-    if (namelist.empty())
-    {
-        if(!file::cmd2string("find /home/ -type f -name 'yoshimi_user_guide_version' 2>/dev/null", namelist))
-            return "";
-    }
-    //std::cout << namelist << std::endl;
-
-    size_t next = 0;
-    size_t lastversion = 0;
-    string found = "";
-    string name = "";
-    while (next != string::npos)
-    {
-        next = namelist.find("\n");
-        if (next != string::npos)
-        {
-            name = namelist.substr(0, next);
-
-            // check it's there and the most recent
-            size_t current = isRegularFile(name);
-            if (current > lastversion)
-            {
-                lastversion = current;
-                found = name;
-            }
-            namelist = namelist.substr( next +1);
-        }
-    }
-    return found;
-}
-
-
-std::string InterChange::manualSearch(std::string dir2search, std::string path2match)
-{
-    std::list<string> wanted;
-    listDir(&wanted, dir2search);
-    if (wanted.empty())
-    return "";
-    wanted.sort();
-
-    std::string path = "";
-    std::list<string>::reverse_iterator itr = wanted.rbegin();
-    while (itr != wanted.rend())
-    {
-        std::string tmp = *itr;
-        // some installs have a missing third digit so we trap it
-        if (tmp.find(path2match) != std::string::npos && tmp.rfind("2.0.pdf") == std::string::npos)
-        {
-            path = tmp;
-            itr = wanted.rend();
-        }
-        else
-            ++itr;
-    }
-    return path;
-}
-
-
 void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
 {
     int value = lrint(getData->data.value);
@@ -318,30 +253,21 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
     if (control == TOPLEVEL::control::copyPaste)
     {
         string name = synth->unifiedpresets.section(synth, getData);
-        if (type == TOPLEVEL::type::Adjust) // list (actually zero)
+        /*
+         * for Paste (load) 'name' is the type of the preset being loaded
+         * for List 'name' lists all the stored presets of the wanted preset type
+         *  alternatively it is the group type
+         * */
+        if (type == TOPLEVEL::type::List)
         {
-            // this seems impossible but somehow works!
-            // it's used by the CLI to list stored paste entries.
-            textMsgBuffer.push(name);
+            getData->data.value = textMsgBuffer.push(name);
         }
-        else if (type & TOPLEVEL::type::Learnable) // load
+        else if (engine == PART::engine::padSynth && type == TOPLEVEL::type::Paste && insert != UNUSED)
         {
-            // this comes *after* the relative section has been loaded.
-            if (getData->data.part == TOPLEVEL::section::systemEffects)
-            {
-                synth->syseffEnable[synth->syseffnum] = getData->data.spare0;
-            }
-            else if (getData->data.part == TOPLEVEL::section::insertEffects)
-            {
-                int tmp = getData->data.spare0;
-                if (tmp >=254)
-                    tmp = tmp - 256;
-                synth->Pinsparts[value] = tmp;
-            }
-            else if (getData->data.part <= TOPLEVEL::section::part64)
-            {
-                synth->partonoffWrite(getData->data.part, 2);
-            }
+            int localKit = kititem;
+            if (localKit >= NUM_KIT_ITEMS)//not part->Pkitmode)
+                localKit = 0;
+            synth->part[switchNum]->kit[localKit].padpars->buildNewWavetable((getData->data.parameter == 0));
         }
 #ifdef GUI_FLTK
         toGUI.write(getData->bytes);
@@ -439,7 +365,20 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
         case TOPLEVEL::section::config:
             value = indirectConfig(getData, synth, newMsg, guiTo, text);
             break;
-
+        case TOPLEVEL::section::guideLocation:
+        {
+            string man = synth->getRuntime().manualFile;
+            if (!man.empty())
+            {
+                size_t pos = man.find("files");
+                man = man.substr(0,pos);
+            }
+            else
+                man = "Can't find guide";
+            value = textMsgBuffer.push(man);
+            noForward = true;
+            break;
+        }
         case TOPLEVEL::section::message:
             newMsg = true;
             getData->data.source &= ~TOPLEVEL::action::lowPrio;
@@ -513,7 +452,7 @@ void InterChange::indirectTransfers(CommandBlock *getData, bool noForward)
                (getData->data.source & TOPLEVEL::action::noAction) == TOPLEVEL::action::fromGUI)
             {
                 getData->data.control = TOPLEVEL::control::textMessage;
-                getData->data.miscmsg = textMsgBuffer.push("File from ZynAddSubFX 3.0 or later has parameter types changed incompatibly with earlier versions, and with Yoshimi. It may not perform correctly.");
+                getData->data.miscmsg = textMsgBuffer.push("File from ZynAddSubFX 3.0 or later may have parameter types incompatible with earlier versions, and with Yoshimi so might perform strangely.");
                 returnsBuffer.write(getData->bytes);
             }
 #endif
@@ -979,10 +918,9 @@ int InterChange::indirectMain(CommandBlock *getData, SynthEngine *synth, unsigne
             break;
         case MAIN::control::openManual: // display user guide
         {
-            // first try html version
             text = "";
             getData->data.control = TOPLEVEL::control::textMessage;
-            string found  = findHtmlManual();
+            string found  = synth->getRuntime().manualFile;
             if (!found.empty())
             {
 
@@ -1871,7 +1809,7 @@ float InterChange::buildWindowTitle(CommandBlock *getData, SynthEngine *synth)
 
 void InterChange::resolveReplies(CommandBlock *getData)
 {
-    //synth->CBtest(getData, false);
+    //synth->CBtest(getData, true);
 
     unsigned char source = getData->data.source & TOPLEVEL::action::noAction;
     // making sure there are no stray top bits.
@@ -1983,49 +1921,6 @@ void InterChange::mediate()
             returns(&getData);
             more = true;
         }
-
-         /*
-          * temporary fix block
-          * this is just for preset paste
-
-          TODO find a better place to put this out of the main process!
-          */
-
-        int effpar = synth->getRuntime().effectChange;
-        if (effpar > 0xffff)
-        { std::cout << "In interchange temp fix" << std::endl;
-#ifdef GUI_FLTK
-            if (synth->getRuntime().showGui)
-            {
-                CommandBlock effData;
-                memset(&effData.bytes, 255, sizeof(effData));
-                unsigned char npart = effpar & 0xff;
-                unsigned char effnum = (effpar >> 8) & 0xff;
-                unsigned char efftype;
-                if (npart < NUM_MIDI_PARTS)
-                {
-                    efftype = synth->part[npart]->partefx[effnum]->geteffect();
-                    effData.data.control = PART::control::effectType;
-                }
-                else
-                {
-                    effData.data.control = EFFECT::sysIns::effectType;
-                    if (npart == TOPLEVEL::section::systemEffects)
-                        efftype = synth->sysefx[effnum]->geteffect();
-                    else
-                        efftype = synth->insefx[effnum]->geteffect();
-                }
-                effData.data.source = TOPLEVEL::action::fromGUI | TOPLEVEL::action::forceUpdate;
-                effData.data.type = TOPLEVEL::type::Write;
-                effData.data.value = efftype;
-                effData.data.part = npart;
-                effData.data.engine = effnum;
-                toGUI.write(effData.bytes);
-            }
-#endif
-            synth->getRuntime().effectChange = UNUSED;
-        } // end of temporary fix
-
     }
     while (more && synth->getRuntime().runSynth);
     syncWrite = false;
@@ -2171,28 +2066,11 @@ bool InterChange::commandSendReal(CommandBlock *getData)
         }
     }
 
-    unsigned char value = getData->data.value;
+    //unsigned char value = getData->data.value;
     unsigned char type = getData->data.type;
     unsigned char control = getData->data.control;
     if ((getData->data.source & TOPLEVEL::action::muteAndLoop) == TOPLEVEL::action::lowPrio)
     {
-        if (control == TOPLEVEL::control::copyPaste && (type & TOPLEVEL::type::Learnable))
-        {
-            if (getData->data.part == TOPLEVEL::section::systemEffects)
-            {
-                getData->data.spare0 = synth->syseffEnable[value];
-                synth->syseffEnable[synth->syseffnum] = 0; // off
-            }
-            else if (getData->data.part == TOPLEVEL::section::insertEffects)
-            {
-                getData->data.spare0 = synth->Pinsparts[value];
-                synth->Pinsparts[value] = -1; // effectively off
-            }
-            else if (getData->data.part <= TOPLEVEL::section::part64)
-            {
-                synth->partonoffWrite(getData->data.part, -1); // off
-            }
-        }
         return true; // indirect transfer
     }
 
@@ -2322,7 +2200,7 @@ bool InterChange::processAdd(CommandBlock *getData, SynthEngine *synth)
     {
         case UNUSED:
             commandAdd(getData);
-            part->kit[kititem].adpars->presetsUpdated();
+            part->kit[kititem].adpars->paramsChanged();
             break;
         case TOPLEVEL::insert::LFOgroup:
             commandLFO(getData);
@@ -2339,7 +2217,7 @@ bool InterChange::processAdd(CommandBlock *getData, SynthEngine *synth)
         case TOPLEVEL::insert::resonanceGroup:
         case TOPLEVEL::insert::resonanceGraphInsert:
             commandResonance(getData, part->kit[kititem].adpars->GlobalPar.Reson);
-            part->kit[kititem].adpars->presetsUpdated();
+            part->kit[kititem].adpars->paramsChanged();
             break;
         }
     return true;
@@ -2356,7 +2234,7 @@ bool InterChange::processVoice(CommandBlock *getData, SynthEngine *synth)
     {
         case UNUSED:
             commandAddVoice(getData);
-            part->kit[kititem].adpars->presetsUpdated();
+            part->kit[kititem].adpars->paramsChanged();
             break;
         case TOPLEVEL::insert::LFOgroup:
             commandLFO(getData);
@@ -2391,7 +2269,7 @@ bool InterChange::processVoice(CommandBlock *getData, SynthEngine *synth)
             else
             {
                 engine -= PART::engine::addVoice1;
-                if (control != PART::control::sustainPedalEnable) // how can this ever be true!!!
+                if (control != PART::control::sustainPedalEnable)
                 {
                     int voicechange = part->kit[kititem].adpars->VoicePar[engine].Pextoscil;
                     if (voicechange != -1)
@@ -2402,7 +2280,7 @@ bool InterChange::processVoice(CommandBlock *getData, SynthEngine *synth)
                 }
                 commandOscillator(getData,  part->kit[kititem].adpars->VoicePar[engine].POscil);
             }
-            part->kit[kititem].adpars->presetsUpdated();
+            part->kit[kititem].adpars->paramsChanged();
             break;
     }
     return true;
@@ -2413,19 +2291,23 @@ bool InterChange::processSub(CommandBlock *getData, SynthEngine *synth)
 {
     Part *part = synth->part[getData->data.part];
     int kititem = getData->data.kit;
+    bool write = (getData->data.type & TOPLEVEL::type::Write) > 0;
     switch(getData->data.insert)
     {
         case UNUSED:
             commandSub(getData);
-            part->kit[kititem].subpars->presetsUpdated();
+            if (write)
+                part->kit[kititem].subpars->paramsChanged();
             break;
         case TOPLEVEL::insert::harmonicAmplitude:
             commandSub(getData);
-            part->kit[kititem].subpars->presetsUpdated();
+            if (write)
+                part->kit[kititem].subpars->paramsChanged();
             break;
         case TOPLEVEL::insert::harmonicBandwidth:
             commandSub(getData);
-            part->kit[kititem].subpars->presetsUpdated();
+            if (write)
+                part->kit[kititem].subpars->paramsChanged();
             break;
         case TOPLEVEL::insert::filterGroup:
             commandFilter(getData);
@@ -2466,7 +2348,7 @@ bool InterChange::processPad(CommandBlock *getData)
     {
         case UNUSED:
             needApply = commandPad(getData, pars);
-            pars.presetsUpdated();
+            pars.paramsChanged();
             break;
         case TOPLEVEL::insert::LFOgroup:
             commandLFO(getData);
@@ -2486,27 +2368,27 @@ bool InterChange::processPad(CommandBlock *getData)
             break;
         case TOPLEVEL::insert::oscillatorGroup:
             commandOscillator(getData,  pars.POscil.get());
-            pars.presetsUpdated();
+            pars.paramsChanged();
             needApply = true;
             break;
         case TOPLEVEL::insert::harmonicAmplitude:
             commandOscillator(getData,  pars.POscil.get());
-            pars.presetsUpdated();
+            pars.paramsChanged();
             needApply = true;
             break;
         case TOPLEVEL::insert::harmonicPhase:
             commandOscillator(getData,  pars.POscil.get());
-            pars.presetsUpdated();
+            pars.paramsChanged();
             needApply = true;
             break;
         case TOPLEVEL::insert::resonanceGroup:
             commandResonance(getData, pars.resonance.get());
-            pars.presetsUpdated();
+            pars.paramsChanged();
             needApply = true;
             break;
         case TOPLEVEL::insert::resonanceGraphInsert:
             commandResonance(getData, pars.resonance.get());
-            pars.presetsUpdated();
+            pars.paramsChanged();
             needApply = true;
             break;
     }
@@ -4510,7 +4392,7 @@ void InterChange::commandAdd(CommandBlock *getData)
         case ADDSYNTH::control::detuneFrequency:
             if (write)
                 pars->GlobalPar.PDetune = value_int + 8192;
-            else
+            else // these steps are done to keep the GUI happy - sliders are strange :(
                 value = pars->GlobalPar.PDetune - 8192;
             break;
 
@@ -4573,11 +4455,17 @@ void InterChange::commandAdd(CommandBlock *getData)
             if (write)
             {
                 pars->GlobalPar.PBandwidth = value_int;
-                 pars->getBandwidthDetuneMultiplier();
+                pars->getBandwidthDetuneMultiplier();
             }
             else
                 value = pars->GlobalPar.PBandwidth;
             break;
+
+        case ADDSYNTH::control::bandwidthMultiplier:
+            if (write)
+                write = false; // read only
+            value = pars->getBandwidthDetuneMultiplier();
+        break;
 
         case ADDSYNTH::control::stereo:
             if (write)
@@ -4823,6 +4711,11 @@ void InterChange::commandAddVoice(CommandBlock *getData)
             else
                 value = pars->VoicePar[nvoice].Unison_frequency_spread;
             break;
+        case ADDVOICE::control::unisonSpreadCents:
+            if (write)
+                write = false; // read only
+            value = pars->getUnisonFrequencySpreadCents(nvoice);
+            break;
         case ADDVOICE::control::unisonPhaseRandomise:
             if (write)
                 pars->VoicePar[nvoice].Unison_phase_randomness = value_int;
@@ -4873,7 +4766,7 @@ void InterChange::commandAddVoice(CommandBlock *getData)
                     pars->VoicePar[nvoice].Unison_size = k;
             }
             else
-                value = (pars->VoicePar[nvoice].Unison_size > 1);
+                value = (pars->VoicePar[nvoice].Unison_size);
             break;
         }
 
@@ -5824,7 +5717,7 @@ void InterChange::commandOscillator(CommandBlock *getData, OscilParameters *osci
             oscil->Phmag[control] = value_int;
             if (value_int == 64)
                 oscil->Phphase[control] = 64;
-            oscil->presetsUpdated();
+            oscil->paramsChanged();
         }
         else
             getData->data.value = oscil->Phmag[control];
@@ -5835,7 +5728,7 @@ void InterChange::commandOscillator(CommandBlock *getData, OscilParameters *osci
         if (write)
         {
             oscil->Phphase[control] = value_int;
-            oscil->presetsUpdated();
+            oscil->paramsChanged();
         }
         else
             getData->data.value = oscil->Phphase[control];
@@ -5927,7 +5820,7 @@ void InterChange::commandOscillator(CommandBlock *getData, OscilParameters *osci
                     oscil->Pfiltertype = 0;
                     oscil->Psatype = 0;
                 }
-                oscil->presetsUpdated();
+                oscil->paramsChanged();
             }
             break;
 
@@ -6055,7 +5948,7 @@ void InterChange::commandOscillator(CommandBlock *getData, OscilParameters *osci
                     oscil->Phphase[i]=64;
                 }
                 oscil->Phmag[0]=127;
-                oscil->presetsUpdated();
+                oscil->paramsChanged();
             }
             break;
         case OSCILLATOR::control::convertToSine:
@@ -6064,7 +5957,7 @@ void InterChange::commandOscillator(CommandBlock *getData, OscilParameters *osci
                 fft::Calc fft(synth->oscilsize);
                 OscilGen gen(fft, NULL, synth, oscil);
                 gen.convert2sine();
-                oscil->presetsUpdated();
+                oscil->paramsChanged();
             }
             break;
     }
@@ -6321,7 +6214,7 @@ void InterChange::lfoReadWrite(CommandBlock *getData, LFOParams *pars)
     }
 
     if (write)
-        pars->presetsUpdated();
+        pars->paramsChanged();
     else
         getData->data.value = val;
 }
@@ -6598,7 +6491,7 @@ void InterChange::filterReadWrite(CommandBlock *getData, FilterParams *pars, uns
     }
 
     if (write)
-        pars->presetsUpdated();
+        pars->paramsChanged();
     else
         getData->data.value = val;
 }
@@ -6857,7 +6750,7 @@ void InterChange::envelopeReadWrite(CommandBlock *getData, EnvelopeParams *pars)
     }
     if (write)
     {
-        pars->presetsUpdated();
+        pars->paramsChanged();
     }
     getData->data.value = val;
     getData->data.offset = Xincrement;
@@ -6906,7 +6799,7 @@ void InterChange::envelopePointAdd(CommandBlock *getData, EnvelopeParams *pars)
                 pars->Penvval[point] = val;
                 getData->data.value = val;
                 getData->data.offset = Xincrement;
-                pars->presetsUpdated();
+                pars->paramsChanged();
             }
             else
             {
@@ -6935,7 +6828,7 @@ void InterChange::envelopePointAdd(CommandBlock *getData, EnvelopeParams *pars)
                 -- pars->Penvsustain;
             pars->Penvpoints = envpoints;
             getData->data.value = envpoints;
-            pars->presetsUpdated();
+            pars->paramsChanged();
         }
 
 }
@@ -6977,7 +6870,7 @@ void InterChange::envelopePointDelete(CommandBlock *getData, EnvelopeParams *par
                 pars->Penvval[point] = val;
                 getData->data.value = val;
                 getData->data.offset = Xincrement;
-                pars->presetsUpdated();
+                pars->paramsChanged();
             }
             else
             {
@@ -7014,7 +6907,7 @@ void InterChange::envelopePointDelete(CommandBlock *getData, EnvelopeParams *par
                 -- pars->Penvsustain;
             pars->Penvpoints = envpoints;
             getData->data.value = envpoints;
-            pars->presetsUpdated();
+            pars->paramsChanged();
         }
 }
 
@@ -7045,7 +6938,7 @@ void InterChange::envelopePointChange(CommandBlock *getData, EnvelopeParams *par
         {
             pars->Penvdt[point] = Xincrement;
         }
-        pars->presetsUpdated();
+        pars->paramsChanged();
     }
     else
     {
@@ -7206,7 +7099,11 @@ void InterChange::commandEffects(CommandBlock *getData)
     }
 
     if (eff->geteffectpar(EFFECT::control::bpm) == 1)
+    {
         getData->data.offset = 1; // mark this for reporting in Data2Text
+        if (eff->geteffectpar(EFFECT::control::sepLRDelay) == 1)
+            getData->data.offset = 3; // specific for Echo effect
+    }
 
     if (effSend == EFFECT::type::dynFilter && getData->data.insert != UNUSED)
     {
@@ -7527,9 +7424,9 @@ float InterChange::returnLimits(CommandBlock *getData)
             tempData.data.type = 0;
             tempData.data.source = 0;
             tempData.data.insert = UNUSED;
+            getData->data.offset = (getData->data.offset & 15) | (int(tempData.data.value) >> 4);
             tempData.data.control = EFFECT::control::preset;
             commandEffects(&tempData);
-            getData->data.spare1 = tempData.data.value;
         }
         return filterLimits.getFilterLimits(getData);
     }

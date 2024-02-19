@@ -1,22 +1,15 @@
-Version 2.3.1
+Version 2.3.2
 
-Microtonal tunings and keymaps can now be exported as well as imported.
+The Echo effect can now have separate left and right channel delay times.
 
-Zero size keymaps are handled correctly.
-
-The virtual keyboard now retains focus while selecting different instruments in a bank.
-
-Window title bar text has been made more consistent.
-
-Some of the MIDI example files have been revised.
-
-Improved metadata.
-
-More bugfixes, including a very obscure PadSynth one.
+Optimisations giving smaller code size and better efficiency.
 
 Small corrections and updates in the User Guide.
 
-Full details are in /doc/Yoshimi_2.3.1_features.txt
+Various bugfixes.
+
+
+Full details are in /doc/Yoshimi_2.3.2_features.txt
 
 Yoshimi source code is available from either:
 https://sourceforge.net/projects/yoshimi

@@ -122,7 +122,14 @@ XMLwrapper::XMLwrapper(SynthEngine *_synth, bool _isYoshi, bool includeBase) :
         else
         {
             minor = version.substr(0, pos);
-            revision = version.substr(pos + 1, version.length());
+            version = version.substr(pos + 1, version.length());
+
+            pos = version.find('.');
+            if (pos == string::npos)
+                revision = version;
+            else
+                revision = version.substr(0, pos);
+            //revision = version.substr(pos + 1, version.length());
         }
     }
     mxmlElementSetAttr(root, "Yoshimi-major", major.c_str());
@@ -144,6 +151,8 @@ XMLwrapper::XMLwrapper(SynthEngine *_synth, bool _isYoshi, bool includeBase) :
             addparU("active_instances", synth->getRuntime().activeInstance);
             addpar("show_CLI_context", synth->getRuntime().showCLIcontext);
             addpar("gzip_compression", synth->getRuntime().GzipCompression);
+            addparstr("guide_version", synth->getRuntime().guideVersion);
+            addparstr("manual", synth->getRuntime().manualFile);
         endbranch();
         return;
     }
@@ -708,7 +717,8 @@ float XMLwrapper::getparcombi(const std::string& name, float defaultpar, float m
         return defaultpar;
     float result = 0;
     const char *strval = mxmlElementGetAttr(node, "exact_value");
-    if (strval != NULL) {
+    if (strval != NULL)
+    {
         union { float out; uint32_t in; } convert;
         sscanf(strval+2, "%x", &convert.in);
         result = convert.out;
@@ -776,7 +786,8 @@ float XMLwrapper::getparreal(const std::string& name, float defaultpar)
         return defaultpar;
 
     const char *strval = mxmlElementGetAttr(node, "exact_value");
-    if (strval != NULL) {
+    if (strval != NULL)
+    {
         union { float out; uint32_t in; } convert;
         sscanf(strval+2, "%x", &convert.in);
         return convert.out;

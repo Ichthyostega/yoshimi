@@ -32,7 +32,7 @@
 #include "Params/OscilParameters.h"
 #include "Params/FilterParams.h"
 #include "Params/LFOParams.h"
-#include "Params/Presets.h"
+#include "Params/ParamCheck.h"
 #include "Synth/Resonance.h"
 #include "Synth/OscilGen.h"
 #include "Misc/XMLwrapper.h"
@@ -192,12 +192,13 @@ struct ADnoteVoiceParam { // Voice parameters
 };
 
 
-class ADnoteParameters : public Presets
+class ADnoteParameters : public ParamBase
 {
     public:
         ADnoteParameters(fft::Calc& fft_, SynthEngine *_synth);
         ~ADnoteParameters();
         void defaults(void);
+        void voiceDefaults(int n) {defaults(n);};
         void add2XML(XMLwrapper *xml);
         void getfromXML(XMLwrapper *xml);
         float getLimits(CommandBlock *getData);

@@ -4,7 +4,7 @@
     Idea developed from ZynAddSubFX Pdial
     Copyright 2016 Rob Couto & Will Godfrey
     Copyright 2017 Jesper Lloyd
-    Copyright 2019 Will Godfrey & others
+    Copyright 2019-2024 Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -95,7 +95,9 @@ void mwheel_val_slider::tooltip(const char* tip)
     if (customTip)
     {
         Fl_Widget::tooltip("");
-    } else {
+    }
+    else
+    {
         Fl_Widget::tooltip(tip);
     }
 }
@@ -122,7 +124,9 @@ int mwheel_val_slider::_handle(int res, int event)
             step_size *= step();
             if (range > 2560) // Scale stepping for large ranges
                 step_size *= 10;
-        } else {
+        }
+        else
+        {
             step_size *= range / 20;
         }
 

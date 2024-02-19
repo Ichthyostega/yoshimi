@@ -27,7 +27,7 @@
 #ifndef FILTER_PARAMS_H
 #define FILTER_PARAMS_H
 
-#include "Params/Presets.h"
+#include "Params/ParamCheck.h"
 #include "Misc/NumericFuncs.h"
 #include "globals.h"
 
@@ -39,7 +39,7 @@ using func::decibel;
 class XMLwrapper;
 class SynthEngine;
 
-class FilterParams : public Presets
+class FilterParams : public ParamBase
 {
     public:
         FilterParams(unsigned char Ptype_, float Pfreq, float Pq_, unsigned char Pfreqtrackoffset_, SynthEngine *_synth);
@@ -195,7 +195,7 @@ namespace DYNform{
     const DYNinsert Preset4V0F1 {80,122,64};
     const DYNinsert Preset4V1F0 {20,127,64};
     const DYNinsert Preset4V1F1 {100,121,64};
-};
+}
 
 namespace FILTSWITCH{
     const bool trackRange = false;

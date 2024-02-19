@@ -4,18 +4,14 @@ Yoshimi is a software audio synthesizer, currently only available for Linux.
 
 ### Current version
 
-Version 2.3.1
+Version 2.3.2
 
-* Microtonal tunings and keymaps can now be exported as well as imported.
-* Zero size keymaps are handled correctly.
-* The virtual keyboard now retains focus while selecting different instruments in a bank.
-* Window title bar text has been made more consistent.
-* Some of the MIDI example files have been revised.
-* Improved metadata.
-* More bugfixes, including a very obscure PadSynth one.
+* The Echo effect can now have separate left and right channel delay times.
+* Optimisations giving smaller code size and better efficiency.
 * Small corrections and updates in the User Guide.
+* Various bugfixes.
 
-Full details are in [/doc/Yoshimi_2.3.1_features.txt](doc/Yoshimi_2.3.1_features.txt)
+Full details are in [/doc/Yoshimi_2.3.2_features.txt](doc/Yoshimi_2.3.2_features.txt)
 
 ### Building
 

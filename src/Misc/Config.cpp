@@ -32,6 +32,7 @@
 #include <string>
 #include <libgen.h>
 #include <limits.h>
+#include <unistd.h>
 
 #if defined(__SSE__)
 #include <xmmintrin.h>
@@ -63,6 +64,7 @@ using file::isDirectory;
 using file::extendLocalPath;
 using file::setExtension;
 using file::renameFile;
+using file::loadText;
 
 using func::nearestPowerOf2;
 using func::asString;
@@ -243,10 +245,33 @@ void Config::flushLog(void)
     {
         while (LogList.size())
         {
-            cout << LogList.front() << endl;
+            //cout << LogList.front() << endl;
             LogList.pop_front();
         }
     }
+}
+
+
+void *Config::_findManual(void *arg)
+{
+    return static_cast<Config*>(arg)->findManual();
+}
+
+
+void *Config::findManual(void)
+{
+    Log("finding manual");
+    string currentV = string(YOSHIMI_VERSION);
+    manualFile = findHtmlManual();
+    guideVersion = loadText(manualFile);
+    size_t pos = guideVersion.find(" ");
+    if (pos != string::npos)
+        guideVersion = guideVersion.substr(0, pos);
+    Log("manual found");
+    string toSave = guideVersion + "\n";
+    toSave += manualFile;
+    file::saveText(toSave, file::configDir() + "/yoshimi-manual.source");
+    return NULL;
 }
 
 
@@ -379,6 +404,35 @@ bool Config::loadConfig(void)
     }
     loadPresetsList();
 
+    // find user guide
+    bool man_ok = false;
+    string manual_source = loadText(file::configDir() + "/yoshimi-manual.source");
+    if (!manual_source.empty())
+    {
+        size_t pos = manual_source.find("\n");
+        if (pos != string::npos)
+        {
+            guideVersion = manual_source.substr(0,pos);
+
+            manualFile = manual_source.substr(pos + 1);
+            size_t endCR = manualFile.rfind("\n");
+            if (endCR != string::npos)
+                manualFile = manualFile.substr(0,endCR);
+            string currentV = string(YOSHIMI_VERSION);
+            pos = currentV.find(" ");
+            if (pos != string::npos)
+                currentV = currentV.substr(0,pos);
+//cout << "\nm >" << manualFile << "<" << endl;
+//cout << "\nc " << currentV << "\ng " << guideVersion << endl;
+            if (currentV == guideVersion && file::isRegularFile(manualFile) != 0)
+                man_ok = true;
+        }
+    }
+//cout << "OK " << int(man_ok) << endl;;
+    if (!man_ok)
+    {
+        startThread(&findManualHandle, _findManual, this, false, 0, "CFG");
+    }
     //cout << "Session Stage " << sessionStage << endl;
 
     if (sessionStage == _SYS_::type::RestoreConf)
@@ -1320,7 +1374,7 @@ void Config::applyOptions(Config* settings, std::list<string>& allArgs)
             settings->configChanged = true;
             settings->bufferChanged = true;
             settings->Buffersize = string2int(line);
-            cout << "B "<< line << endl;
+            //cout << "B "<< line << endl;
             break;
 
         case 'c':
@@ -1466,6 +1520,47 @@ void Config::applyOptions(Config* settings, std::list<string>& allArgs)
     }
     if (jackSessionUuid.size() && jackSessionFile.size())
         restoreJackSession = true;
+}
+
+
+std::string Config::findHtmlManual(void)
+{
+    //string namestring = "doc/yoshimi/yoshimi_user_guide/files/yoshimi_user_guide_version";
+    string namelist = "";
+    string tempnames = "";
+    if(file::cmd2string("find /usr/share/ -type f -name 'yoshimi_user_guide_version' 2>/dev/null", tempnames))
+        namelist = tempnames;
+
+    if(file::cmd2string("find /usr/local/share/ -type f -name 'yoshimi_user_guide_version' 2>/dev/null", tempnames))
+        namelist += tempnames;
+
+    if(file::cmd2string("find /home/ -type f -name 'yoshimi_user_guide_version' 2>/dev/null", tempnames))
+        namelist += tempnames;
+
+    //cout << "man list" << namelist << endl;
+
+    size_t next = 0;
+    string lastversion = "";
+    string found = "";
+    string name = "";
+    string current = "";
+    while (next != string::npos)
+    {
+        next = namelist.find("\n");
+        if (next != string::npos)
+        {
+            name = namelist.substr(0, next);
+            current = loadText(name);
+            if (current > lastversion)
+            {
+                lastversion = current;
+                found = name;
+                //cout << "found >" << found << endl;
+            }
+            namelist = namelist.substr( next +1);
+        }
+    }
+    return found;
 }
 
 
