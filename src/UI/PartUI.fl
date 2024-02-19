@@ -12,6 +12,7 @@ comment {Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009-2011, Alan Calvert
 Copyright 2014-2023, Will Godfrey
+Copyright 2024 Kristian Amlie, Will Godfrey
 
 This file is part of yoshimi, which is free software: you can redistribute
 it and/or modify it under the terms of the GNU General Public
@@ -267,7 +268,7 @@ class PartKitItem {: {public Fl_Group}
   Function {send_data(int action, int control, float value, int type, int kititem = UNUSED, int engine = UNUSED, int insert = UNUSED, int parameter = UNUSED, int miscmsg = UNUSED)} {} {
     code {//
         type |= TOPLEVEL::type::Write;
-        collect_data(synth, value, action, type, control, synth->getRuntime().currentPart, kititem, engine, insert, parameter, UNUSED, miscmsg);} {}
+        collect_writeData(synth, value, action, type, control, synth->getRuntime().currentPart, kititem, engine, insert, parameter, UNUSED, miscmsg);} {}
   }
   Function {PartKitItem(int x,int y, int w, int h, const char *label=0):Fl_Group(x,y,w,h,label)} {} {
     code {//
@@ -485,7 +486,7 @@ class PartUI {: {public Fl_Group, PartUI_}
             int param = 0;
             if (Fl::event_state(FL_CTRL))
             param = 1;
-            send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate, PART::control::defaultInstrumentCopyright, 0, TOPLEVEL::type::Integer, npart, 255, 255, 255, param);}
+            send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate, PART::control::defaultInstrumentCopyright, 0, TOPLEVEL::type::Integer, npart, UNUSED, UNUSED, UNUSED, param);}
           tooltip {Load default author & copyright
  + Ctrl: save current text as default} xywh {327 25 63 20} labelsize 12 labelcolor 64
         }
@@ -728,14 +729,15 @@ class PartUI {: {public Fl_Group, PartUI_}
       Fl_Button effCopy {
         label C
         callback {//
-        synth->getGuiMaster()->getPresetsUi()->copy(part->partefx[ninseff]);}
+        synth->getGuiMaster()->getPresetsUi()->Ucopy(npart, 16, inseffnocounter->value()-1);
+        ;}
         xywh {346 3 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
       }
       Fl_Button effPaste {
         label P
         callback {//
-        synth->getGuiMaster()->getPresetsUi()->paste(part->partefx[ninseff], inseffectui);
-        synth->getRuntime().effectChange = npart | (ninseff << (EFFECT::type::dynFilter - EFFECT::type::none)); // temporary fix - for what?}
+        synth->getGuiMaster()->getPresetsUi()->Upaste(npart, 16, inseffnocounter->value()-1);
+        ;}
         xywh {346 19 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
       }
       Fl_Check_Button bypasseff {
@@ -1365,7 +1367,7 @@ class PartUI {: {public Fl_Group, PartUI_}
   Function {send_data(int action, int control, float value, int type, int npart, int kititem = UNUSED, int engine = UNUSED, int insert = UNUSED, int parameter = UNUSED, int miscmsg = UNUSED)} {} {
     code {//
         type |= TOPLEVEL::type::Write;
-        collect_data(synth, value, action, type, control, npart, kititem, engine, insert, parameter, UNUSED, miscmsg);} {}
+        collect_writeData(synth, value, action, type, control, npart, kititem, engine, insert, parameter, UNUSED, miscmsg);} {}
   }
   Function {fetchData(float value, int control, int part, int kititem = UNUSED, int engine = UNUSED, int insert = UNUSED, int parameter = UNUSED, int offset = UNUSED, int miscmsg = UNUSED, int request = UNUSED)} {return_type float
   } {
@@ -1524,7 +1526,14 @@ class PartUI {: {public Fl_Group, PartUI_}
             break;
 
         case PART::control::kitMode:
-            kitMode->value(valInt);
+            if (part->Pkitfade)
+            {
+                kitMode->value(3);
+            }
+            else
+            {
+                kitMode->value(valInt);
+            }
             partKitOn =  (kitMode->value() > 0);
             if (partKitOn > 0)
                 kitlist->activate();
@@ -1733,7 +1742,8 @@ class PartUI {: {public Fl_Group, PartUI_}
             break;
     }
     if (control == PART::control::enableAdd || control == PART::control::enableSub || control == PART::control::enablePad)
-    checkEngines();} {}
+        checkEngines();
+    ;} {}
   }
   Function {paste(CommandBlock *getData)} {} {
     code {//
@@ -1814,7 +1824,7 @@ class PartUI {: {public Fl_Group, PartUI_}
             //std::cout << "pad top level" << std::endl;
             if (padnoteui != NULL)
             {
-                if( padnoteui->padnotewindow->visible())
+                if(padnoteui->padnotewindow->visible())
                     padnoteui->refresh();
             }
             return;
@@ -1928,7 +1938,14 @@ class PartUI {: {public Fl_Group, PartUI_}
     code {//
         instrumentkitlist->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Kit List"), npart, TOPLEVEL::windowTitle)).c_str());
         drumMode->value(part->Pdrummode);
-        kitMode->value(part->Pkitmode);
+            if (part->Pkitfade)
+            {
+                kitMode->value(3);
+            }
+            else
+            {
+                kitMode->value(part->Pkitmode);
+            }
         if (kitMode->value())
         {
             partKitOn = true;
@@ -2728,7 +2745,7 @@ class PartUI {: {public Fl_Group, PartUI_}
   }
   Function {fxRtext()} {} {
     code {//
-    if (lastfxW < 12)
+    if (lastfxW < 6)
     {
         ++lastfxW;
         return;

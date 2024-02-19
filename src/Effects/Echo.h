@@ -5,6 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
     Copyright 2018-2019, Will Godfrey
+    Copyright 2024 Kristian Amlie
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -75,6 +76,7 @@ class Echo : public Effect
         unsigned char Pfb;      // 6 Feedback
         unsigned char Phidamp;  // 7 Dampening of the Echo
         bool Pbpm;
+        bool PsepLRDelay;
 
         void setvolume(unsigned char Pvolume_);
         void setdelay(unsigned char Pdelay_);

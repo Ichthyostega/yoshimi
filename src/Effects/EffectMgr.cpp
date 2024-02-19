@@ -4,7 +4,7 @@
     Original ZynAddSubFX author Nasca Octavian Paul
     Copyright (C) 2002-2009 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
-    Copyright 2017-2022, Will Godfrey
+    Copyright 2017-2023, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -30,7 +30,7 @@
 #include "Effects/EffectMgr.h"
 
 EffectMgr::EffectMgr(const bool insertion_, SynthEngine *_synth) :
-    Presets{_synth},
+    ParamBase{_synth},
     efxoutl{size_t(_synth->buffersize)},
     efxoutr{size_t(_synth->buffersize)},
     insertion{insertion_},
@@ -39,7 +39,6 @@ EffectMgr::EffectMgr(const bool insertion_, SynthEngine *_synth) :
     dryonly{false},
     efx{}
 {
-    setpresettype("Peffect");
     defaults();
 }
 
@@ -200,7 +199,9 @@ void EffectMgr::out(float *smpsl, float *smpsr)
             {
                 v1 = 1.0f;
                 v2 = volume * 2.0f;
-            } else {
+            }
+            else
+            {
                 v1 = (1.0f - volume) * 2.0f;
                 v2 = 1.0f;
             }
@@ -214,13 +215,17 @@ void EffectMgr::out(float *smpsl, float *smpsr)
                 smpsr[i] *= v1;
                 efxoutl[i] *= v2;
                 efxoutr[i] *= v2;
-            } else {
+            }
+            else
+            {
                 // normal instrument/insertion effect
                 smpsl[i] = smpsl[i] * v1 + efxoutl[i] * v2;
                 smpsr[i] = smpsr[i] * v1 + efxoutr[i] * v2;
             }
         }
-    } else { // System effect
+    }
+    else
+    { // System effect
         for (int i = 0; i < synth->sent_buffersize; ++i)
         {
             float volume = efx->volume.getAndAdvanceValue();

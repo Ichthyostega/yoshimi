@@ -11,7 +11,7 @@ comment {MasterUI.cc} {in_source not_in_header
 comment {Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009-2011, Alan Calvert
-Copyright 2014-2023, Will Godfrey & others
+Copyright 2014-2024, Will Godfrey & others
 
 This file is part of yoshimi, which is free software: you can redistribute
 it and/or modify it under the terms of the GNU General Public
@@ -927,9 +927,17 @@ class MasterUI {: {private GuiUpdates}
             label On
             callback {//
             if (o->value())
-                    sysefftype->activate();
-                else
-                    sysefftype->deactivate();
+            {
+                sysefftype->activate();
+                sysCopy->activate();
+                sysPaste->activate();
+            }
+            else
+            {
+                sysefftype->deactivate();
+                sysCopy->deactivate();
+                sysPaste->deactivate();
+            }
             send_data(0, EFFECT::sysIns::effectEnable, o->value(), TOPLEVEL::type::Integer, TOPLEVEL::section::systemEffects, nsyseff);}
             xywh {247 156 20 20} down_box DOWN_BOX value 1 selection_color 64 labelfont 3 labelcolor 226 align 4
             class Fl_Check_Button2
@@ -942,14 +950,17 @@ class MasterUI {: {private GuiUpdates}
           }
           Fl_Button sysCopy {
             label C
-            callback {presetsui->copy(synth->sysefx[nsyseff]);}
+            callback {//
+    synth->getGuiMaster()->getPresetsUi()->Ucopy(TOPLEVEL::section::systemEffects, 16, syseffnocounter->value()-1);
+;}
             xywh {350 152 25 14} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
           }
           Fl_Button sysPaste {
             label P
             callback {//
-            presetsui->paste(synth->sysefx[nsyseff], syseffectui);
-            synth->getRuntime().effectChange = TOPLEVEL::section::systemEffects + (nsyseff << 8); // temporary fix}
+            //
+            synth->getGuiMaster()->getPresetsUi()->Upaste(TOPLEVEL::section::systemEffects, 16, syseffnocounter->value()-1);
+;}
             xywh {350 167 25 14} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
           }
         }
@@ -985,14 +996,16 @@ class MasterUI {: {private GuiUpdates}
           } {}
           Fl_Button insCopy {
             label C
-            callback {presetsui->copy(synth->insefx[ninseff]);}
+            callback {//
+       synth->getGuiMaster()->getPresetsUi()->Ucopy(TOPLEVEL::section::insertEffects, 16, inseffnocounter->value()-1);
+       ;}
             xywh {350 152 25 14} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
           }
           Fl_Button insPaste {
             label P
             callback {//
-            presetsui->paste(synth->insefx[ninseff], inseffectui);
-            synth->getRuntime().effectChange = TOPLEVEL::section::insertEffects + (ninseff << 8); // temporary fix}
+            synth->getGuiMaster()->getPresetsUi()->Upaste(TOPLEVEL::section::insertEffects, 16, inseffnocounter->value()-1);
+;}
             xywh {350 167 25 14} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
           }
         }
@@ -2641,7 +2654,7 @@ Alan Calvert started the project}
         */
         if (control == MAIN::control::loadInstrumentByName && part == TOPLEVEL::section::main && miscmsg < NO_MSG)
         {
-            collect_data(synth, 0, action, type, control, part, engine, UNUSED, UNUSED, UNUSED, UNUSED, miscmsg);
+            collect_writeData(synth, 0, action, type, control, part, engine, UNUSED, UNUSED, UNUSED, UNUSED, miscmsg);
             return;
         }
 
@@ -2649,11 +2662,11 @@ Alan Calvert started the project}
             type |= Fl::event_button();
         if (parameter == 0)
         {
-            collect_data(synth, 0, action, type, control, part, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, miscmsg);
+            collect_writeData(synth, 0, action, type, control, part, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, miscmsg);
             return;
         }
 
-        collect_data(synth, value, action, type, control, part, UNUSED, engine, insert, parameter, UNUSED, miscmsg);} {}
+        collect_writeData(synth, value, action, type, control, part, UNUSED, engine, insert, parameter, UNUSED, miscmsg);} {}
   }
   Function {fetchData(float value, int control, int part, int kititem = UNUSED, int engine = UNUSED, int insert = UNUSED, int parameter = UNUSED, int offset = UNUSED, int miscmsg = UNUSED, int request = UNUSED)} {return_type float
   } {
@@ -3399,7 +3412,7 @@ Alan Calvert started the project}
   }
   Function {paste(CommandBlock *getData)} {} {
     code {//
-//        synth->CBtest(getData);
+        //synth->CBtest(getData);
 
         if (getData->data.part == TOPLEVEL::section::systemEffects)
         {
@@ -4024,7 +4037,8 @@ Alan Calvert started the project}
     syseffectui->activate();
     syseffectui->show();
     syseffectuigroup->activate();
-    syseffectuigroup->show();} {}
+    syseffectuigroup->show();
+    lastmainW = 0;} {}
   }
   Function {showInsEfxUI(void)} {private
   } {
@@ -4037,7 +4051,8 @@ Alan Calvert started the project}
     inseffectui->activate();
     inseffectui->show();
     inseffectuigroup->activate();
-    inseffectuigroup->show();} {}
+    inseffectuigroup->show();
+    lastmainW = 0;} {}
   }
   Function {showSysEffSends()} {} {
     code {//
@@ -4162,7 +4177,8 @@ size_t len = strlen(tmp);
 // Use const char references, since Fl_Spinner does not make an
 // internal copy.
 const char *format = "%.2f";
-if (tmp[len-1] == '0') {
+if (tmp[len-1] == '0')
+{
     format = "%.1f";
     if (tmp[len-2] == '0')
         format = "%.0f";
@@ -4438,7 +4454,7 @@ bpmfallback->format(format);} {}
     if (configui->presets->visible())
         configui->presetsRtext();
 
-    presetsui->presetsRtext();
+    presetsui->UpresetsRtext();
     bankui->wincheck();
     partui->wincheck();} {}
   }

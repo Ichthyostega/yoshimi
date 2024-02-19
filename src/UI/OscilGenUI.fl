@@ -432,7 +432,7 @@ class Oscilharmonic {: {public Fl_Group}
   Function {send_data(int action, int insert, int control, float value, int type)} {} {
     code {//
         type |= TOPLEVEL::type::Write;
-        collect_data(synth, value, action, type, control, npart, kititem, engine, insert);} {}
+        collect_writeData(synth, value, action, type, control, npart, kititem, engine, insert);} {}
   }
   Function {init(OscilParameters *oscil_,int n_,Fl_Group *display_,Fl_Widget *oldosc_,Fl_Widget *cbwidget_,Fl_Widget *applybutton_, SynthEngine *_synth, int npart_, int kititem_, int engine_)} {} {
     code {//
@@ -838,12 +838,14 @@ o->hide();}
       }
       Fl_Button oscilC {
         label C
-        callback {synth->getGuiMaster()->getPresetsUi()->copy(oscil);}
+        callback {//
+            synth->getGuiMaster()->getPresetsUi()->Ucopy(npart, kititem, engine, TOPLEVEL::insert::oscillatorGroup);}
         xywh {670 545 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
       }
       Fl_Button oscilP {
         label P
-        callback {synth->getGuiMaster()->getPresetsUi()->paste(oscil,this);}
+        callback {//
+            synth->getGuiMaster()->getPresetsUi()->Upaste(npart, kititem, engine, TOPLEVEL::insert::oscillatorGroup);}
         xywh {700 545 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
       }
       Fl_Scroll frame {
@@ -862,7 +864,7 @@ o->hide();}
         if (control == PADSYNTH::control::applyChanges)
             insert = UNUSED;
         type |= TOPLEVEL::type::Write;
-        collect_data(synth, value, action, type, control, npart, kititem, engine, insert);} {}
+        collect_writeData(synth, value, action, type, control, npart, kititem, engine, insert);} {}
   }
   Function {returns_update(CommandBlock *getData)} {} {
     code {//

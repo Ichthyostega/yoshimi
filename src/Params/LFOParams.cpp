@@ -39,7 +39,7 @@ LFOParams::LFOParams(float Pfreq_, float Pintensity_,
                      float Pstartphase_, unsigned char PLFOtype_,
                      float Prandomness_, float Pdelay_,
                      unsigned char Pcontinous_, int fel_, SynthEngine *_synth) :
-    Presets(_synth),
+    ParamBase(_synth),
     fel(fel_),
     Dfreq(Pfreq_),
     Dintensity(Pintensity_),
@@ -49,20 +49,8 @@ LFOParams::LFOParams(float Pfreq_, float Pintensity_,
     Ddelay(Pdelay_),
     Dcontinous(Pcontinous_)
 {
-    switch (fel)
-    {
-        case 0:
-            setpresettype("Plfofrequency");
-            break;
-        case 1:
-            setpresettype("Plfoamplitude");
-            break;
-        case 2:
-            setpresettype("Plfofilter");
-            break;
-    };
     defaults();
-    presetsUpdated();
+    paramsChanged();
 }
 
 
@@ -83,10 +71,9 @@ void LFOParams::defaults(void)
 
 void LFOParams::setPfreq(int32_t n)
 {
-
     PfreqI = n;
     Pfreq = (power<2>((float(n) / float(Fmul2I)) * 10.0f) - 1.0f) / 12.0f;
-    presetsUpdated();
+    paramsChanged();
 }
 
 
@@ -127,7 +114,7 @@ void LFOParams::getfromXML(XMLwrapper *xml)
     Pstretch = xml->getparcombi("stretch", Pstretch,0,127);
     Pcontinous = xml->getparbool("continous", Pcontinous);
     Pbpm = xml->getparbool("bpm", Pbpm);
-    presetsUpdated();
+    paramsChanged();
 }
 
 float LFOlimit::getLFOlimits(CommandBlock *getData)

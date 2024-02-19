@@ -201,7 +201,7 @@ class ADnote
         // Globals
         SynthEngine& synth;
         ADnoteParameters& adpars;
-        Presets::PresetsUpdate paramsUpdate;
+        ParamBase::ParamsUpdate paramsUpdate;
         Controller& ctl;
 
         Note note;

@@ -1,0 +1,263 @@
+<!DOCTYPE html><html>
+<head>
+  <meta http-equiv="content~type" content="text/html; charset=UTF~8">
+  <title>AddSynth</title>
+  <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+
+<body>
+  <table>
+     <thead>
+      <tr>
+        <th>ADDSYNTH::control:: +</th>
+        <th>value</th>
+        <th>control</th>
+        <th>part /<br>section</th>
+        <th>kit</th>
+        <th>engine</th>
+        <th>insert</th>
+        <th>param<br>eter</th>
+        <th>offset</th>
+        <th>miscmsg</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>volume</td>
+        <td>0~127</td>
+        <td>0</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Volume</td>
+      </tr>
+      <tr>
+        <td>velocitySense</td>
+        <td>0~127</td>
+        <td>1</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Velocity Sensitivity</td>
+      </tr>
+      <tr>
+        <td>panning</td>
+        <td>0~127</td>
+        <td>2</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Panning</td>
+      </tr>
+      <tr>
+        <td>enableRandomPan</td>
+        <td>0,1</td>
+        <td>3</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Set random panning behaviour</td>
+      </tr>
+      <tr>
+        <td>randomWidth</td>
+        <td>0~63</td>
+        <td>4</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>L/R range of random panning</td>
+      </tr>
+      <tr>
+        <td>detuneFrequency</td>
+        <td>-8192~8191</td>
+        <td>32</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Fine detune frequency</td>
+      </tr>
+      <tr>
+        <td>octave</td>
+        <td>-8~7</td>
+        <td>35</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Octave</td>
+      </tr>
+      <tr>
+        <td>detuneType</td>
+        <td>1~4</td>
+        <td>36</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Detune type (L linear, E exponential)<br>L35 cents, L10 cents, E100 cents, E1000 cents</td>
+      </tr>
+      <tr>
+        <td>coarseDetune</td>
+        <td>-64~63</td>
+        <td>37</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Coarse detune</td>
+      </tr>
+      <tr>
+        <td>relativeBandwidth</td>
+        <td>0~127</td>
+        <td>39</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Detune multiplier for voices that have been detuned</td>
+      </tr>
+      <tr>
+        <td>bandwidthMultiplier</td>
+        <td>0~127</td>
+        <td>40</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Value returned to voice user interface - Read only</td>
+      </tr>
+      <tr>
+        <td>stereo</td>
+        <td>0,1</td>
+        <td>112</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Stereo on/off</td>
+      </tr>
+      <tr>
+        <td>randomGroup</td>
+        <td>0,1</td>
+        <td>113</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Random group on/off</td>
+      </tr>
+      <tr>
+        <td>dePop</td>
+        <td>0~127</td>
+        <td>120</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>'Pop' suppression</td>
+      </tr>
+      <tr>
+        <td>punchStrength</td>
+        <td>0~127</td>
+        <td>121</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Punch strength</td>
+      </tr>
+      <tr>
+        <td>punchDuration</td>
+        <td>0~127</td>
+        <td>122</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Punch duration</td>
+      </tr>
+      <tr>
+        <td>punchStretch</td>
+        <td>0~127</td>
+        <td>123</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Punch stretch</td>
+      </tr>
+      <tr>
+        <td>punchVelocity</td>
+        <td>0~127</td>
+        <td>124</td>
+        <td>0~63</td>
+        <td>0~15</td>
+        <td>0</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Punch velocity sensitivity</td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>

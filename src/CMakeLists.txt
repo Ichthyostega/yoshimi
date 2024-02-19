@@ -3,6 +3,7 @@
 #
 #   Copyright 2009-2011, Alan Calvert
 #   Copyright 2014-2023, Will Godfrey & others
+#   Copyright 2024, Kristian Amlie, Will Godfrey
 #
 #   This file is part of yoshimi, which is free software: you can
 #   redistribute it and/or modify it under the terms of the GNU General
@@ -30,8 +31,8 @@ endif ()
 
 #set(CMAKE_CXX_COMPILER "clang++")
 
-set (CMAKE_CXX_STANDARD 14) # we seem to need both for
-add_definitions(-std=gnu++14) # various versions of cmake
+set (CMAKE_CXX_STANDARD 17) # we seem to need both for
+add_definitions(-std=gnu++17) # various versions of cmake
 
 add_definitions(-Wall)
 
@@ -52,7 +53,7 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 #add_definitions(-Wno-unqualified-std-cast-call) # supresses clang warning 'unqualified call'
 # ^^^ comment these out on release pushes
 
-set (YOSHIMI_VERSION "2.3.1")
+set (YOSHIMI_VERSION "2.3.2")
 
 add_definitions (-DMIN_CONFIG_MAJOR=2)
 add_definitions (-DMIN_CONFIG_MINOR=3)
@@ -106,7 +107,7 @@ option (LV2Plugin "Build yoshimi lv2 plugin interface" ON)
 
 # developer info
 option (ShowNoteOnTimes "Report Note-On Times" OFF)
-option (ReportNotes "Report Notes On/Off" OFF)
+option (ReportNoteEvents "Report Notes On/Off" OFF)
 
 
 set (BuildOptions_X86
@@ -304,6 +305,7 @@ set (Interface_Sources
     Interface/MidiDecode.cpp
     Interface/RingBuffer.h
     Interface/TextLists.h
+    Interface/TextLists.cpp
 )
 
 set (CLI_Sources
@@ -316,8 +318,8 @@ set (Params_sources
     Params/ADnoteParameters.cpp  Params/EnvelopeParams.cpp
     Params/FilterParams.cpp  Params/LFOParams.cpp
     Params/SUBnoteParameters.cpp  Params/PADnoteParameters.cpp
-    Params/Controller.cpp  Params/Presets.cpp
-    Params/PresetsStore.cpp  Params/UnifiedPresets.cpp
+    Params/Controller.cpp  Params/ParamCheck.cpp
+    Params/UnifiedPresets.cpp
     Params/OscilParameters.cpp
 )
 
@@ -384,7 +386,7 @@ if (ShowNoteOnTimes)
     add_definitions (-DREPORT_NOTEON)
 endif ()
 
-if (ReportNotes)
+if (ReportNoteEvents)
     add_definitions (-DREPORT_NOTES_ON_OFF)
 endif ()
 

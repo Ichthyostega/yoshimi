@@ -31,11 +31,11 @@
 #include "Misc/XMLwrapper.h"
 #include "Params/EnvelopeParams.h"
 #include "Params/FilterParams.h"
-#include "Params/Presets.h"
+#include "Params/ParamCheck.h"
 
 class SynthEngine;
 
-class SUBnoteParameters : public Presets
+class SUBnoteParameters : public ParamBase
 {
     public:
         SUBnoteParameters(SynthEngine *_synth);
