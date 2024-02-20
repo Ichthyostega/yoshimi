@@ -1,12 +1,17 @@
-yoshimi (2.3.2-1ppa1~noble) noble; urgency=low
+yoshimi (2.3.2-1ppa2~xenial) xenial; urgency=low
 
   * New upstream minor release 2.3.2
   * Update copyright information
   * Sync with official DEB package definition
-  * Rebuild/Backport for Ubuntu/Noble(24.04 LTS upcoming).
-  * unofficial DEB package by Ichthyostega
+  * publish unofficial DEB package by Ichthyostega
+  * Rebuild/Backport for Ubuntu/Xenial (16.04 LTS)
+  * As of 2/2024, this is the latest (minor) Yoshimi release
+  * use GCC-9 from ppa:ubuntu-toolchain-r/test
+  * tweaks to allow build on this somewhat old platform
+    * force build with -fPIC
+    * lower debhelper and compliance level
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Mon, 19 Feb 2024 23:44:55 +0100
+ -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 20 Feb 2024 01:42:55 +0100
 
 yoshimi (2.3.1.3-1) unstable; urgency=medium
 
@@ -63,7 +68,7 @@ yoshimi (2.2.3-1~buster) Lumiera-buster-tool; urgency=low
   * Rebuild/Backport for Debian/Buster(oldstable).
   * unofficial DEB package by Ichthyostega
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Wed, 15 Feb 2023 01:16:20 +0100
+ -- Hermann Vosseler <deb@ichthyostega.de>  Wed, 15 Feb 2023 01:16:23 +0100
 
 yoshimi (2.2.2.1-2~buster) Lumiera-buster-tool; urgency=low
 
@@ -130,7 +135,7 @@ yoshimi (2.1.0-1~buster) Lumiera-buster-tool; urgency=low
   * Rebuild/Backport for Debian/Buster(stable).
   * unofficial DEB package by Ichthyostega
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Mon, 23 Aug 2021 12:44:02 +0200
+ -- Hermann Vosseler <deb@ichthyostega.de>  Mon, 23 Aug 2021 12:44:55 +0200
 
 yoshimi (2.0.2-1~buster) Lumiera-buster-tool; urgency=low
 
@@ -149,7 +154,7 @@ yoshimi (2.0.1-1~buster) Lumiera-buster-tool; urgency=low
   [ Mattia Rizzolo ]
   * Remove unused build-dependency on liboost-dev.
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 27 Apr 2021 00:31:05 +0200
+ -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 27 Apr 2021 00:42:55 +0200
 
 yoshimi (2.0-1~buster) Lumiera-buster-tool; urgency=low
 
@@ -166,7 +171,7 @@ yoshimi (2.0-1~buster) Lumiera-buster-tool; urgency=low
     + Change license for desktop/metainfo/* and Util/YoshimiSplash.svg to CC-BY-4.0
   * Fix license name of yoshimi.appdata.xml to make lintian happy
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Fri, 05 Mar 2021 01:12:42 +0100
+ -- Hermann Vosseler <deb@ichthyostega.de>  Fri, 05 Mar 2021 01:23:42 +0100
 
 yoshimi (1.7.1-1~buster) Lumiera-buster-tool; urgency=low
 

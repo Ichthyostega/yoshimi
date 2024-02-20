@@ -1,11 +1,19 @@
 #!/usr/bin/make -f
 
-export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export DEB_LDFLAGS_MAINT_APPEND=-Wl,--as-needed -fPIC
+export DEB_CXXFLAGS_MAINT_APPEND=-fPIC
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=-pie
 
 export LV2_PATH = /usr/lib/lv2
 
 %:
 	dh $@ --sourcedirectory=src
+
+# use GCC-9 for compilation
+override_dh_auto_configure:
+	dh_auto_configure -O--sourcedirectory=src -- -DCMAKE_CXX_COMPILER=g++-9
+
 
 DEB_COPYRIGHT_CHECK_IGNORE_REGEX = \
         debian/.*|doc/yoshimi_user_guide/(.*/)*images/.*\.png|doc/examples/Original Zyn Patchsets/.*|doc/examples/.*\.x..|doc/examples/(Out_There|Arram_Koth_Finale)\.mid|banks/.*\.xiz|dev_notes/Yoshimi Control Numbers\.ods|doc/The Short Yoshimi Guide\.odt|doc/Histories/Yoshimi CCs and NRPNs\.pdf
