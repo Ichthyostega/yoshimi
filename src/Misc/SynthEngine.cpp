@@ -359,6 +359,7 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
         Runtime.LogError("interChange init failed");
         goto bail_out;
     }
+
     // we seem to need this here only for first time startup :(
     bank.setCurrentBankID(Runtime.tempBank, false);
     return true;
@@ -1951,6 +1952,7 @@ void SynthEngine::resetAll(bool andML)
         putData.data.control = MIDILEARN::control::clearAll;
         putData.data.part = TOPLEVEL::section::midiLearn;
         midilearn.generalOperations(&putData);
+        textMsgBuffer.clear();
     }
 }
 

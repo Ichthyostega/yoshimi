@@ -4,7 +4,7 @@
     Copyright 2016-2019, Will Godfrey & others
     Copyright 2020-2020, Kristian Amlie, Will Godfrey, & others
     Copyright 2021, Will Godfrey, Rainer Hans Liffers, & others
-    Copyright 2023, Will Godfrey, Ichthyostega & others
+    Copyright 2023 - 2024, Will Godfrey, Ichthyostega & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -195,7 +195,8 @@ void *InterChange::sortResultsThread(void)
 
 InterChange::~InterChange()
 {
-    if (sortResultsThreadHandle) {
+    if (sortResultsThreadHandle)
+    {
         // Get it to quit.
         spinSortResultsThread();
         pthread_join(sortResultsThreadHandle, 0);
@@ -2268,7 +2269,7 @@ bool InterChange::processVoice(CommandBlock *getData, SynthEngine *synth)
             else
             {
                 engine -= PART::engine::addVoice1;
-                if (control != PART::control::sustainPedalEnable) // how can this ever be true!!!
+                if (control != PART::control::sustainPedalEnable)
                 {
                     int voicechange = part->kit[kititem].adpars->VoicePar[engine].Pextoscil;
                     if (voicechange != -1)
@@ -2290,19 +2291,23 @@ bool InterChange::processSub(CommandBlock *getData, SynthEngine *synth)
 {
     Part *part = synth->part[getData->data.part];
     int kititem = getData->data.kit;
+    bool write = (getData->data.type & TOPLEVEL::type::Write) > 0;
     switch(getData->data.insert)
     {
         case UNUSED:
             commandSub(getData);
-            part->kit[kititem].subpars->paramsChanged();
+            if (write)
+                part->kit[kititem].subpars->paramsChanged();
             break;
         case TOPLEVEL::insert::harmonicAmplitude:
             commandSub(getData);
-            part->kit[kititem].subpars->paramsChanged();
+            if (write)
+                part->kit[kititem].subpars->paramsChanged();
             break;
         case TOPLEVEL::insert::harmonicBandwidth:
             commandSub(getData);
-            part->kit[kititem].subpars->paramsChanged();
+            if (write)
+                part->kit[kititem].subpars->paramsChanged();
             break;
         case TOPLEVEL::insert::filterGroup:
             commandFilter(getData);
@@ -4387,7 +4392,7 @@ void InterChange::commandAdd(CommandBlock *getData)
         case ADDSYNTH::control::detuneFrequency:
             if (write)
                 pars->GlobalPar.PDetune = value_int + 8192;
-            else
+            else // these steps are done to keep the GUI happy - sliders are strange :(
                 value = pars->GlobalPar.PDetune - 8192;
             break;
 
@@ -4450,11 +4455,17 @@ void InterChange::commandAdd(CommandBlock *getData)
             if (write)
             {
                 pars->GlobalPar.PBandwidth = value_int;
-                 pars->getBandwidthDetuneMultiplier();
+                pars->getBandwidthDetuneMultiplier();
             }
             else
                 value = pars->GlobalPar.PBandwidth;
             break;
+
+        case ADDSYNTH::control::bandwidthMultiplier:
+            if (write)
+                write = false; // read only
+            value = pars->getBandwidthDetuneMultiplier();
+        break;
 
         case ADDSYNTH::control::stereo:
             if (write)
@@ -4700,6 +4711,11 @@ void InterChange::commandAddVoice(CommandBlock *getData)
             else
                 value = pars->VoicePar[nvoice].Unison_frequency_spread;
             break;
+        case ADDVOICE::control::unisonSpreadCents:
+            if (write)
+                write = false; // read only
+            value = pars->getUnisonFrequencySpreadCents(nvoice);
+            break;
         case ADDVOICE::control::unisonPhaseRandomise:
             if (write)
                 pars->VoicePar[nvoice].Unison_phase_randomness = value_int;
@@ -4750,7 +4766,7 @@ void InterChange::commandAddVoice(CommandBlock *getData)
                     pars->VoicePar[nvoice].Unison_size = k;
             }
             else
-                value = (pars->VoicePar[nvoice].Unison_size > 1);
+                value = (pars->VoicePar[nvoice].Unison_size);
             break;
         }
 
@@ -7083,7 +7099,11 @@ void InterChange::commandEffects(CommandBlock *getData)
     }
 
     if (eff->geteffectpar(EFFECT::control::bpm) == 1)
+    {
         getData->data.offset = 1; // mark this for reporting in Data2Text
+        if (eff->geteffectpar(EFFECT::control::sepLRDelay) == 1)
+            getData->data.offset = 3; // specific for Echo effect
+    }
 
     if (effSend == EFFECT::type::dynFilter && getData->data.insert != UNUSED)
     {
@@ -7404,9 +7424,9 @@ float InterChange::returnLimits(CommandBlock *getData)
             tempData.data.type = 0;
             tempData.data.source = 0;
             tempData.data.insert = UNUSED;
+            getData->data.offset = (getData->data.offset & 15) | (int(tempData.data.value) >> 4);
             tempData.data.control = EFFECT::control::preset;
             commandEffects(&tempData);
-            getData->data.spare1 = tempData.data.value;
         }
         return filterLimits.getFilterLimits(getData);
     }

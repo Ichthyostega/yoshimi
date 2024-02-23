@@ -1,7 +1,7 @@
 /*
     CmdInterpreter.cpp
 
-    Copyright 2019 - 2023, Will Godfrey and others.
+    Copyright 2019 - 2024, Will Godfrey and others.
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -1251,6 +1251,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
          */
         if (controlType == type_read)
             value = 1; // dummy value
+
         switch (nFXtype)
         {
             case 1:
@@ -1281,7 +1282,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
                     if (value < 0)
                         return REPLY::done_msg; // error already reported
                 }
-                else if (selected == EFFECT::control::bpm && value == -1)
+                else if ((selected == EFFECT::control::bpm || selected == EFFECT::control::sepLRDelay) && value == -1)
                 {
                     input.skipChars();
                     value = (input.toggle() == 1);
@@ -3668,7 +3669,7 @@ int CmdInterpreter::commandExportScale(Parser& input)
     if (name.empty())
         return REPLY::value_msg;
     size_t miscmsg = textMsgBuffer.push(name);
-    std::cout << "name >" << name << std::endl;
+    //std::cout << "name >" << name << std::endl;
     return sendDirect(synth, TOPLEVEL::action::lowPrio, 1, TOPLEVEL::type::Write, command, TOPLEVEL::section::scales, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, miscmsg);
 }
 
@@ -4299,7 +4300,7 @@ int CmdInterpreter::subSynth(Parser& input, unsigned char controlType)
         insert = TOPLEVEL::insert::kitGroup;
     }
     int enable = (input.toggle());
-    // This is a part command, but looks like SubSynth the the CLI user
+    // This is a part command, but looks like SubSynth to the CLI user
     if (enable > -1)
         sendNormal(synth, 0, enable, controlType, PART::control::enableSub, npart, kit, UNUSED, insert);
 
@@ -6167,13 +6168,13 @@ int CmdInterpreter::commandReadnSet(Parser& input, unsigned char controlType)
     {
         if (input.lineEnd(controlType))
             return REPLY::value_msg;
-        return sendNormal(synth, 0, string2int127(input), controlType, MAIN::control::volume, TOPLEVEL::section::main);
+        return sendNormal(synth, 0, string2float(input), controlType, MAIN::control::volume, TOPLEVEL::section::main);
     }
     if (input.matchnMove(2, "detune"))
     {
         if (input.lineEnd(controlType))
             return REPLY::value_msg;
-        return sendNormal(synth, TOPLEVEL::action::lowPrio, string2int127(input), controlType, MAIN::control::detune, TOPLEVEL::section::main);
+        return sendNormal(synth, TOPLEVEL::action::lowPrio, string2float(input), controlType, MAIN::control::detune, TOPLEVEL::section::main);
     }
 
     if (input.matchnMove(2, "shift"))

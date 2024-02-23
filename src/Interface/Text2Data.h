@@ -2,6 +2,7 @@
     Text2Data.h - conversion of text to commandBlock entries
 
     Copyright 2021, Will Godfrey
+    Copyright 2024, Kristian Amlie
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -43,7 +44,9 @@ class TextData
         void nextWord(string &line);
         bool findCharNum(string &line, unsigned char &value);
         bool findAndStep(string &line, string text, bool step = true);
-        int findListEntry(string &line, int step, string list []);
+        int findListEntry(string &line, int step, const string list []);
+        int mapToEffectNumber(int textIndex, const int list []);
+        int findEffectFromText(string &line, int step, const string list [], const int listmap []);
         void encodeLoop(string source, CommandBlock &allData);
 
         void encodeMain(string &source, CommandBlock &allData);
