@@ -1,7 +1,8 @@
 /*
     Data2Text.cpp - conversion of commandBlock entries to text
 
-    Copyright 2021 - 2023 Will Godfrey
+    Copyright 2021 - 2023, Will Godfrey
+    Copyright 2024, Will Godfrey, Kristian Amlie
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -3363,9 +3364,10 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
     else
         contstr = ""; //" Control " + to_string(control + 1);
     string controlType = "";
-    int ref = control; // we frequently modify this
-    bool isBPM = (ref == 2 && offset == 1);
-    //std::cout << "isbpm " << int(isBPM) << std::endl;
+    int ref = control; // we frequently modify this#
+    bool isBPM = ((ref == 2 && (offset == 1 || offset == 3)) || (ref == 3 && offset == 3));
+    //std::cout << "control " << int(control) << std::endl;
+    //std::cout << "offset " << int(offset) << std::endl;
     switch (effType)
     {
         case EFFECT::type::none:
@@ -3374,8 +3376,7 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
             break;
         case EFFECT::type::reverb:
         {
-            if (ref > 4) // there is no 5 or 6 in the list names
-                ref -= 2;
+            ref = mapFromEffectNumber(ref, reverblistmap);
             effname = " Reverb ";
             controlType = reverblist[(ref) * 2];
             if (control == 10 && addValue == true)// && offset > 0)
@@ -3398,24 +3399,25 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
         }
         case EFFECT::type::echo:
             effname = " Echo ";
-            if (ref > 6) // there is no 7-16 in the list names
-                ref -= 10;
+            ref = mapFromEffectNumber(ref, echolistmap);;
             controlType = echolist[ref * 2];
-            if (addValue & isBPM)
+            if (addValue == true) // && offset > 0)
             {
-                showValue = false;
-                contstr += (" " + bpm2text(float(value) / 127.0f));
+                if (isBPM)
+                {
+                    showValue = false;
+                    contstr += (" " + bpm2text(float(value) / 127.0f));
+                }
+                if (control == 7 || control == 17)
+                    yesno = true;
             }
             break;
         case EFFECT::type::chorus:
         {
             effname = " Chorus ";
-            if (ref > 10) // there is no 11-16 in the list names
-                ref -= 6;
-            else if (ref > 9) // there is no 10 in the list names
-                ref --;
+            ref = mapFromEffectNumber(ref, choruslistmap);
             controlType = choruslist[ref * 2];
-            if (addValue == true && offset > 0)
+            if (addValue && offset > 0)
             {
                 if (control == 4)
                 {
@@ -3425,29 +3427,29 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
                     else
                         contstr = " Sine";
                 }
-                else if (control == 11)
-                {
-                    showValue = false;
-                    if (value)
-                        contstr += " - on";
-                    else
-                        contstr+= " - off";
-                }
-                else if (addValue & isBPM)
+                else if (isBPM)
                 {
                     showValue = false;
                     contstr += (" " + bpm2text(float(value) / 127.0f));
+                }
+                if (control == 11 || control == 17)
+                {
+                    yesno = true;
                 }
             }
             break;
         }
         case EFFECT::type::phaser:
             effname = " Phaser ";
-            if (ref > 14) // there is no 15-16 in the list names
-                ref -= 2;
+            ref = mapFromEffectNumber(ref, phaserlistmap);
             controlType = phaserlist[ref * 2];
-            if (addValue == true && offset > 0)
+            if (addValue == true) // && offset > 0)
             {
+                if (isBPM)
+                {
+                    showValue = false;
+                    contstr += (" " + bpm2text(float(value) / 127.0f));
+                }
                 switch (control)
                 {
                     case 4:
@@ -3460,45 +3462,40 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
                     case 10:
                     case 12:
                     case 14:
-                        showValue = false;
-                        if (value)
-                            contstr = " - on";
-                        else
-                        contstr = " - off";
+                    case 17:
+                        yesno = true;
                         break;
-                }
-                if (addValue & isBPM)
-                {
-                    showValue = false;
-                    contstr += (" " + bpm2text(float(value) / 127.0f));
                 }
             }
             break;
         case EFFECT::type::alienWah:
             effname = " AlienWah ";
-            if (ref > 10) // there is no 11-16 in the list names
-                ref -= 6;
+            ref = mapFromEffectNumber(ref, alienwahlistmap);
             controlType = alienwahlist[ref * 2];
-            if (control == 4 && addValue == true  && offset > 0)
+            if (addValue == true) // && offset > 0)
             {
-                showValue = false;
-                if (value)
-                    contstr = " Triangle";
-                else
+                if (isBPM)
+                {
+                    showValue = false;
+                    contstr += (" " + bpm2text(float(value) / 127.0f));
+                }
+                if (control == 4  && offset > 0)
+                {
+                    showValue = false;
+                    if (value)
+                        contstr = " Triangle";
+                    else
                     contstr = " Sine";
-            }
-            if (addValue & isBPM)
-            {
-                showValue = false;
-                contstr += (" " + bpm2text(float(value) / 127.0f));
+                }
+                else if (control == 17)
+                    yesno = true;
             }
             break;
         case EFFECT::type::distortion:
         {
             effname = " Distortion ";
-            if (ref > 5) // there is an extra line in the list names
-                ++ ref;
-            if (addValue == true && offset > 0)
+            ref = mapFromEffectNumber(ref, distortionlistmap);
+            if (addValue == true) // && offset > 0)
             {
                 switch (ref)
                 {
@@ -3509,21 +3506,13 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
                     case 11:
                     {
                         contstr = " Pre dist.";
-                        if (value)
-                            contstr += " - on";
-                        else
-                            contstr+= " - off";
-                        showValue = false;
+                        yesno = true;
                         break;
                     }
                     case 7:
                     case 10:
                     {
-                        if (value)
-                            contstr += " - on";
-                        else
-                            contstr+= " - off";
-                        showValue = false;
+                        yesno = true;
                         break;
                     }
                 }
@@ -3543,16 +3532,11 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
             {
                 if (offset > 0)
                     effname += "(Band " + to_string(int(parameter) + 1) + ") ";
-                if (ref > 10)
-                    ref -= 7;
-                else    // there is no 3 to 9 in the list names
-                {       // but there is an extra line after 10
-                    ref -= 8;
-                    if (addValue == true && offset > 0)
-                    {
-                        showValue = false;
-                        contstr = " " + stringCaps(eqtypes[value], 1);
-                    }
+                ref = mapFromEffectNumber(ref, eqlistmap);
+                if (ref < 4 && addValue == true && offset > 0)
+                {
+                    showValue = false;
+                    contstr = " " + stringCaps(eqtypes[value], 1);
                 }
             }
             controlType = eqlist[ref * 2];
@@ -3560,11 +3544,16 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
         }
         case EFFECT::type::dynFilter:
             effname = " DynFilter ";
-            if (ref > 10) // there is no 11-16 in the list names
-                ref -= 6;
+            ref = mapFromEffectNumber(ref, dynfilterlistmap);
             controlType = dynfilterlist[ref * 2];
-            if (addValue == true && offset > 0)
+            if (addValue == true)// && offset > 0)
             {
+                if (control == 17)
+                {
+                    contstr = "bpm";
+                    yesno = true;
+                    return (name + effname + contstr);
+                }
                 if (control == 4)
                 {
                     showValue = false;
@@ -3575,17 +3564,13 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
                 }
                 else if (control == 8)
                 {
-                    showValue = false;
-                    if (value)
-                        contstr += " - on";
-                    else
-                        contstr+= " - off";
+                    yesno = true;
                 }
-            }
-            if (addValue & isBPM)
-            {
-                showValue = false;
-                contstr += (" " + bpm2text(float(value) / 127.0f));
+                if (offset == 1 && ref == 2)
+                {
+                    showValue = false;
+                    contstr += (" " + bpm2text(float(value) / 127.0f));
+                }
             }
             break;
 
@@ -3594,7 +3579,7 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
             contstr = " Unrecognised Effect";
             break;
     }
-    //std::cout << "control " << int(control) << std::endl;
+
     if (control == EFFECT::control::preset && effType != EFFECT::type::eq)
     {
         contstr = " Preset " + to_string (value + 1);
@@ -3603,9 +3588,23 @@ string DataText::resolveEffects(CommandBlock *getData, bool addValue)
     else if (offset)
     {
         controlType = controlType.substr(0, controlType.find(' '));
-        effname += stringCaps(controlType , 1);
+        effname += stringCaps(controlType, 1);
     }
 
-
     return (name + effname + contstr);
+}
+
+int DataText::mapFromEffectNumber(int effectIndex, const int list [])
+{
+    for (int index = 0; list[index] >= 0; index++)
+    {
+        if (list[index] == effectIndex)
+        {
+            return index;
+        }
+    }
+    // Kind of bad to return a bogus entry, but this function is often called
+    // even when the result will not be used, and the index is often out of
+    // range then.
+    return 0;
 }

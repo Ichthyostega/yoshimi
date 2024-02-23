@@ -3,6 +3,7 @@
 #
 #   Copyright 2014, Andrew Deryabin <andrewderyabin@gmail.com>
 #   Copyright 2018-2023, Will Godfrey & others
+#   Copyright 2024 Kristian Amlie
 #
 #   This file is part of yoshimi, which is free software: you can
 #   redistribute it and/or modify it under the terms of the GNU General
@@ -50,6 +51,7 @@ file (GLOB yoshimi_interface_files
     ../Interface/InterChange.cpp ../Interface/InterChange.h
     ../Interface/Data2Text.cpp ../Interface/Data2text.h
     ../Interface/Text2Data.cpp ../Interface/Text2Data.h
+    ../Interface/TextLists.cpp ../Interface/TextLists.h
     ../Interface/RingBuffer.h
     ../Interface/MidiLearn.cpp ../Interface/MidiLearn.h
     ../UI/MiscGui.cpp ../UI/MiscGui.h)

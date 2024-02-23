@@ -2,6 +2,7 @@
     globals.h - general static definitions
 
     Copyright 2018-2023, Will Godfrey & others
+    Copyright 2024 Kristian Amlie
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -750,6 +751,7 @@ namespace ADDSYNTH // usage ADDSYNTH::control::volume
         detuneType, // L35 cents, L10 cents, E100 cents, E1200 cents
         coarseDetune,
         relativeBandwidth = 39,
+        bandwidthMultiplier,
 
         stereo = 112,
         randomGroup,
@@ -791,13 +793,14 @@ namespace ADDVOICE // usage ADDVOICE::control::volume
         enableFrequencyLFO,
 
         unisonFrequencySpread = 48,
+        unisonSpreadCents,
         unisonPhaseRandomise,
         unisonStereoSpread,
         unisonVibratoDepth,
         unisonVibratoSpeed,
         unisonSize,
         unisonPhaseInvert, // None, Random, 50%, 33%, 25%, 20%
-        enableUnison = 56,
+        enableUnison,
 
         bypassGlobalFilter = 64, // TODO not seen on return?
         enableFilter = 68,
@@ -1086,6 +1089,7 @@ namespace EFFECT // usage EFFECT::control::level
         level = 0, // volume, wet/dry, gain for EQ
         panning, // band for EQ
         frequency, // time reverb, delay echo, L/R-mix dist, Not EQ
+        sepLRDelay = 7, // Echo
         preset = 16, // not EQ
         bpm,
         bpmStart,
@@ -1103,7 +1107,7 @@ namespace EFFECT // usage EFFECT::control::level
     };
 
     enum type : unsigned char { // sits above part kits
-        none = NUM_KIT_ITEMS,
+        none = NUM_KIT_ITEMS, // must not be moved
         reverb,
         echo,
         chorus,

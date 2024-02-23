@@ -5,6 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
     Copyright 2019-2023, Will Godfrey
+    Copyringt 2024 Kristian Amlie
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -230,7 +231,8 @@ void FilterParams::formantfilterH(int nvowel, int nfreqs, float *freqs)
             c[2] = -alpha / tmp * sqrtf(filter_q + 1);
             d[1] = -2.0f * cs / tmp * (-1);
             d[2] = (1 - alpha) / tmp * (-1);
-        } else
+        }
+        else
             continue;
 
         for (int i = 0; i < nfreqs; ++i)
@@ -399,12 +401,12 @@ float filterLimit::getFilterLimits(CommandBlock *getData)
     int control = getData->data.control;
     int effType = getData->data.kit;
     int engine = getData->data.engine;
+    int offset = getData->data.offset;
     int dynPreset = 0;
 
     if (effType == EFFECT::type::dynFilter)
     {
-        dynPreset = getData->data.spare1;
-        //std::cout << "pres " << dynPreset << std::endl;
+        dynPreset = offset << 4;
     }
     unsigned char type = 0;
 

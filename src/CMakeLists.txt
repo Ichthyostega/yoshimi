@@ -3,6 +3,7 @@
 #
 #   Copyright 2009-2011, Alan Calvert
 #   Copyright 2014-2023, Will Godfrey & others
+#   Copyright 2024, Kristian Amlie, Will Godfrey
 #
 #   This file is part of yoshimi, which is free software: you can
 #   redistribute it and/or modify it under the terms of the GNU General
@@ -30,8 +31,8 @@ endif ()
 
 #set(CMAKE_CXX_COMPILER "clang++")
 
-set (CMAKE_CXX_STANDARD 14) # we seem to need both for
-add_definitions(-std=gnu++14) # various versions of cmake
+set (CMAKE_CXX_STANDARD 17) # we seem to need both for
+add_definitions(-std=gnu++17) # various versions of cmake
 
 add_definitions(-Wall)
 
@@ -45,14 +46,14 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 # vvv
 #add_definitions(-Wpedantic) # full ISO spec
 #add_definitions(-Werror) # warnings as errors
-add_definitions(-Wfatal-errors) # stop on first
-add_definitions(-Werror=format-security)
-add_definitions(-Wextra)
-add_definitions(-Wno-vla) # Nothing wrong with variable length arrays
+#add_definitions(-Wfatal-errors) # stop on first
+#add_definitions(-Werror=format-security)
+#add_definitions(-Wextra)
+#add_definitions(-Wno-vla) # Nothing wrong with variable length arrays
 #add_definitions(-Wno-unqualified-std-cast-call) # supresses clang warning 'unqualified call'
 # ^^^ comment these out on release pushes
 
-set (YOSHIMI_VERSION "2.3.1.3")
+set (YOSHIMI_VERSION "2.3.2")
 
 add_definitions (-DMIN_CONFIG_MAJOR=2)
 add_definitions (-DMIN_CONFIG_MINOR=3)
@@ -106,7 +107,7 @@ option (LV2Plugin "Build yoshimi lv2 plugin interface" ON)
 
 # developer info
 option (ShowNoteOnTimes "Report Note-On Times" OFF)
-option (ReportNotes "Report Notes On/Off" OFF)
+option (ReportNoteEvents "Report Notes On/Off" OFF)
 
 
 set (BuildOptions_X86
@@ -304,6 +305,7 @@ set (Interface_Sources
     Interface/MidiDecode.cpp
     Interface/RingBuffer.h
     Interface/TextLists.h
+    Interface/TextLists.cpp
 )
 
 set (CLI_Sources
@@ -343,9 +345,6 @@ if (BuildWithFLTK)
         "MidiLearnUI"
     )
 
-    set (guitmp generated-gui-sources)
-    file (MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/${guitmp}")
-
 # workaround fltk_wrap_ui breakage
     set (FltkUI_sources)
     set (FltkUI_headers)
@@ -355,10 +354,7 @@ if (BuildWithFLTK)
         set (headerfile "${basename}.h")
         add_custom_command(
             OUTPUT ${sourcefile}
-            WORKING_DIRECTORY ${guitmp}
             COMMAND ${FLTK_FLUID_EXECUTABLE} ARGS -c -o .cpp ${fluidfile}
-            COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different ${sourcefile} ..
-            COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different ${headerfile} ..
             DEPENDS ${fluidfile}
         )
         set (FltkUI_sources ${FltkUI_sources} "${sourcefile}")
@@ -390,7 +386,7 @@ if (ShowNoteOnTimes)
     add_definitions (-DREPORT_NOTEON)
 endif ()
 
-if (ReportNotes)
+if (ReportNoteEvents)
     add_definitions (-DREPORT_NOTES_ON_OFF)
 endif ()
 

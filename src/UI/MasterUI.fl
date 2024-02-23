@@ -11,7 +11,7 @@ comment {MasterUI.cc} {in_source not_in_header
 comment {Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009-2011, Alan Calvert
-Copyright 2014-2023, Will Godfrey & others
+Copyright 2014-2024, Will Godfrey & others
 
 This file is part of yoshimi, which is free software: you can redistribute
 it and/or modify it under the terms of the GNU General Public
@@ -2654,7 +2654,7 @@ Alan Calvert started the project}
         */
         if (control == MAIN::control::loadInstrumentByName && part == TOPLEVEL::section::main && miscmsg < NO_MSG)
         {
-            collect_data(synth, 0, action, type, control, part, engine, UNUSED, UNUSED, UNUSED, UNUSED, miscmsg);
+            collect_writeData(synth, 0, action, type, control, part, engine, UNUSED, UNUSED, UNUSED, UNUSED, miscmsg);
             return;
         }
 
@@ -2662,11 +2662,11 @@ Alan Calvert started the project}
             type |= Fl::event_button();
         if (parameter == 0)
         {
-            collect_data(synth, 0, action, type, control, part, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, miscmsg);
+            collect_writeData(synth, 0, action, type, control, part, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, miscmsg);
             return;
         }
 
-        collect_data(synth, value, action, type, control, part, UNUSED, engine, insert, parameter, UNUSED, miscmsg);} {}
+        collect_writeData(synth, value, action, type, control, part, UNUSED, engine, insert, parameter, UNUSED, miscmsg);} {}
   }
   Function {fetchData(float value, int control, int part, int kititem = UNUSED, int engine = UNUSED, int insert = UNUSED, int parameter = UNUSED, int offset = UNUSED, int miscmsg = UNUSED, int request = UNUSED)} {return_type float
   } {
@@ -4037,7 +4037,8 @@ Alan Calvert started the project}
     syseffectui->activate();
     syseffectui->show();
     syseffectuigroup->activate();
-    syseffectuigroup->show();} {}
+    syseffectuigroup->show();
+    lastmainW = 0;} {}
   }
   Function {showInsEfxUI(void)} {private
   } {
@@ -4050,7 +4051,8 @@ Alan Calvert started the project}
     inseffectui->activate();
     inseffectui->show();
     inseffectuigroup->activate();
-    inseffectuigroup->show();} {}
+    inseffectuigroup->show();
+    lastmainW = 0;} {}
   }
   Function {showSysEffSends()} {} {
     code {//
@@ -4175,7 +4177,8 @@ size_t len = strlen(tmp);
 // Use const char references, since Fl_Spinner does not make an
 // internal copy.
 const char *format = "%.2f";
-if (tmp[len-1] == '0') {
+if (tmp[len-1] == '0')
+{
     format = "%.1f";
     if (tmp[len-2] == '0')
         format = "%.0f";
