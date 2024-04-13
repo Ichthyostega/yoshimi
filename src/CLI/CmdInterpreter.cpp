@@ -51,6 +51,9 @@
 #include "Misc/FormatFuncs.h"
 #include "Misc/CliFuncs.h"
 #include "Misc/Util.h"
+///////////////////////////////////////////////////////////TODO Debug
+#include "Misc/ddump.h"
+///////////////////////////////////////////////////////////TODO Debug
 
 
 // used to hold back shutdown when running sound generation for test
@@ -6456,6 +6459,27 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
         return Reply::DONE;
     }
 #endif
+///////////////////////////////////////////////////////////TODO Debug
+    if (input.matchnMove(2, "dump"))
+    {
+        int enable = input.toggle();
+        if (enable == 1)
+        {
+            dDump.enabled = true;
+        }
+        else
+        if (enable == 0)
+        {
+            dDump.enabled = false;
+        }
+        else
+        if (!input.isAtEnd())
+            return REPLY::op_msg; //"Which Operation?"
+
+        cout << "DebugDump "<< (dDump.enabled? "ON":"OFF") << endl;
+        return Reply::DONE;
+    }
+///////////////////////////////////////////////////////////TODO Debug
     if (input.matchnMove(5, "filer"))
     {
         string result;
