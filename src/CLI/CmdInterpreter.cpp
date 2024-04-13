@@ -6473,10 +6473,30 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
             dDump.enabled = false;
         }
         else
+        if (input.matchnMove(1, "file"))
+        {
+            if (not dDump.log2file(input))
+                return Reply::what("logfile problem");
+        }
+        else
+        if (input.matchnMove(4, "stdout")
+           or input.matchnMove(1, "out")
+           )
+            dDump.log2std(false);
+        else
+        if (input.matchnMove(4, "stderr")
+           or input.matchnMove(1, "err")
+           )
+            dDump.log2std(true);
+        else
         if (!input.isAtEnd())
             return REPLY::op_msg; //"Which Operation?"
 
-        cout << "DebugDump "<< (dDump.enabled? "ON":"OFF") << endl;
+        // show current dump-logging status
+        if (dDump.enabled)
+            cout << "DebugDump ▷ " << dDump.showTarget() << endl;
+        else
+            cout << "DebugDump OFF" <<endl;
         return Reply::DONE;
     }
 ///////////////////////////////////////////////////////////TODO Debug

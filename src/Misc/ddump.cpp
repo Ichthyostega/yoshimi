@@ -21,11 +21,72 @@
 
 #include "Misc/ddump.h"
 
-//#include <unordered_map>
-//#include <climits>
-//#include <chrono>
-//#include <atomic>
-//#include <mutex>
+#include <filesystem>
+#include <string>
+
+using std::string;
+
+namespace fs = std::filesystem;
+
+
+namespace { // filesystem permission checks...
+
+    inline bool has_perm(fs::path const& p, fs::perms permissionMask)
+    {
+    return (fs::status(p).permissions() & permissionMask) == permissionMask;
+    }
+
+    inline bool can_write(fs::path const& p)
+    {
+        if (fs::exists(p) and fs::is_regular_file(p))
+            return has_perm(p, fs::perms::owner_write);
+
+        if (p.has_filename())
+        {// path for not(yet) existing file....
+            fs::path dir = p.parent_path();
+            return fs::exists(dir) and has_perm(dir, fs::perms::owner_write);
+        }
+        return false;
+    }
+}
+
+
+
+bool DebugDump::log2file(string filename)
+{
+    fs::path p{filename};
+    p = fs::absolute(p);
+    if (can_write(p))
+    {
+        logfile.open(p, std::ios_base::out |std::ios_base::app);
+        if (logfile.good())
+        {
+            logfile << "\n=============================" <<endl;
+            if (logfile.good())
+            {
+                this->enabled = true;
+                this->sink = & logfile;
+                this->target = fs::canonical(p);
+                return true;
+            }
+        }
+    }
+    std::cerr << "Unable to open for writing: "<<p<<endl;
+    return false;
+}
+
+
+void DebugDump::log2std(bool toERR)
+{
+    if (logfile.is_open())
+        logfile.close();
+
+    sink   = toERR? &std::cerr : &std::cout;
+    target = toERR? "STDERR"   : "STDOUT";
+    enabled = true;
+}
+
+
 
 /** global debug output stream */
 DebugDump dDump;
