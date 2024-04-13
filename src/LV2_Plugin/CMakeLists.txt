@@ -38,6 +38,7 @@ file (GLOB yoshimi_effects_files
     ../Effects/Phaser.h  ../Effects/Reverb.h  ../Effects/EQ.h
     ../Effects/Distorsion.h  ../Effects/DynamicFilter.h)
 file (GLOB yoshimi_misc_files
+    ../Misc/ddump.cpp ../Misc/ddump.h
     ../Misc/Config.cpp ../Misc/Config.h ../Misc/ConfBuild.h
     ../Misc/DataBlockBuff.cpp ../Misc/DataBlockBuff.h
     ../Misc/MirrorData.h ../Misc/OpaqueBlock.h
