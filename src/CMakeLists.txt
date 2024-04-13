@@ -473,6 +473,7 @@ endif ()
 add_executable (yoshimi ${ProgSources} main.cpp)
 
 target_link_libraries (yoshimi ${ExternLibraries})
+target_link_libraries (yoshimi stdc++fs)
 
 
 if (ARGP_LIB)
