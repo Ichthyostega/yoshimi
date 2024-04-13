@@ -44,8 +44,11 @@ class DebugDump
     std::ostream* sink;
 
 public:
+    bool enabled;
+
     DebugDump()
         : sink(& std::cout)
+        , enabled{true}
         { }
 
 
@@ -53,27 +56,31 @@ public:
     template<class VAL>
     DebugDump& operator<<(VAL const& data)
     {
-        *sink << data;
+        if (enabled)
+            *sink << data;
         return *this;
     }
 
     /** handle stream manipulator, e.g. endl, flush, setw, setfill... */
     DebugDump& operator<<(ManipFun manipulator)
     {
-        manipulator(*sink);
+        if (enabled)
+            manipulator(*sink);
         return *this;
     }
 
     /** handle flags on the stream, e.g. setiosflags, resetiosflags... */
     DebugDump& operator<<(FlagsFun flagSetter)
     {
-        flagSetter(*sink);
+        if (enabled)
+            flagSetter(*sink);
         return *this;
     }
 
     void flush()
     {
-        std::flush (*sink);
+        if (enabled)
+            std::flush (*sink);
     }
 };
 
