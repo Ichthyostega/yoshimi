@@ -23,18 +23,17 @@
 
 #include "globals.h"
 #include "Misc/FormatFuncs.h"
-//#include <cassert>
-//#include <utility>
-//#include <memory>
 #include <iostream>
 #include <iomanip>
+#include <fstream>
 
 using std::cout;
 using std::endl;
 
 
 /**
- * Debug logging helper for output to console or file
+ * Debug logging helper for output to console or file.
+ * See: https://stackoverflow.com/a/40424272/444796
  */
 class DebugDump
 {
@@ -42,15 +41,20 @@ class DebugDump
     typedef std::ios_base& (*FlagsFun)(std::ios_base&);
 
     std::ostream* sink;
+    std::ofstream logfile;
+    std::string   target;
 
 public:
     bool enabled;
 
     DebugDump()
         : sink(& std::cout)
+        , logfile{}
+        , target{"COUT"}
         , enabled{true}
         { }
 
+    /* ======== forward stream operations ===== */
 
     /** forward any value to the stream sink */
     template<class VAL>
@@ -81,6 +85,18 @@ public:
     {
         if (enabled)
             std::flush (*sink);
+    }
+
+    /**
+     * attempt to open / truncate the designated file and activate logging
+     * @return `true` if logging to this file could be enabled
+     */
+    bool log2file(std::string filename);
+    void log2std(bool toERR);
+
+    std::string showTarget()
+    {
+        return target;
     }
 };
 
