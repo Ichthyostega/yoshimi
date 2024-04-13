@@ -38,6 +38,7 @@ file (GLOB yoshimi_effects_files
     ../Effects/Phaser.h  ../Effects/Reverb.h  ../Effects/EQ.h
     ../Effects/Distorsion.h  ../Effects/DynamicFilter.h)
 file (GLOB yoshimi_misc_files
+    ../Misc/ddump.cpp ../Misc/ddump.h
     ../Misc/Alloc.h ../Misc/Bank.cpp ../Misc/Bank.h
     ../Misc/BuildScheduler.cpp ../Misc/BuildScheduler.h ../Misc/DataBlockBuff.h
     ../Misc/Config.cpp ../Misc/Config.h ../Misc/ConfBuild.h
@@ -160,6 +161,7 @@ target_link_libraries(yoshimi_lv2
                       z
                       ${LIBDL_LINUX_LIBS}
 )
+target_link_libraries (yoshimi_lv2 stdc++fs)
 
 add_dependencies(yoshimi_lv2 yoshimi_lv2_ttl)
 
