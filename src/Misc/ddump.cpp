@@ -20,7 +20,6 @@
 
 
 #include "Misc/ddump.h"
-#include "Misc/FormatFuncs.h"
 
 //#include <unordered_map>
 //#include <climits>
@@ -28,3 +27,5 @@
 //#include <atomic>
 //#include <mutex>
 
+/** global debug output stream */
+DebugDump dDump;

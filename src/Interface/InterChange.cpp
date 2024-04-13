@@ -57,6 +57,9 @@
 #ifdef GUI_FLTK
     #include "MasterUI.h"
 #endif
+///////////////////////////////////////////////////////////TODO Debug
+#include "Misc/ddump.h"
+///////////////////////////////////////////////////////////TODO Debug
 
 enum envControl: unsigned char {
     input,
@@ -3373,6 +3376,7 @@ void InterChange::commandMain(CommandBlock *getData)
         case MAIN::control::partNumber:
             if (write)
             {   // from various causes which change the current active part
+dDump << "Rabäääh" << 1.0/3 << " oink " << std::setprecision(3) << 1.0/3 << endl;
                 synth->getRuntime().currentPart = value_int;
                 synth->pushEffectUpdate(value_int);
             }           // send current part-effect data to GUI
