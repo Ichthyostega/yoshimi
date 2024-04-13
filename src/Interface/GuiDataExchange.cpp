@@ -28,6 +28,9 @@
 #include <chrono>
 #include <atomic>
 #include <mutex>
+///////////////////////////////////////////////////////////TODO Debug
+#include "Misc/ddump.h"
+///////////////////////////////////////////////////////////TODO Debug
 
 
                                 //////////////// !! NOTE important : add all relevant types here which shall be published via GuiDataExchange !!
@@ -49,7 +52,13 @@ namespace {
     /** when to consider an asynchronous data message still "on time" */
     inline bool isTimely(std::chrono::milliseconds millis)
     {
-        return 0ms <= millis and millis < 500ms;
+///////////////////////////////////////////////////////////////////////////////TODO Debug
+bool timely {0ms <= millis and millis < 500ms};
+if (not timely)
+    dDump << "|GUI| update TOO LATE. Delay="<< millis.count() <<" ms" << endl;
+        return timely;
+//      return 0ms <= millis and millis < 500ms;
+///////////////////////////////////////////////////////////////////////////////TODO Debug
     }
 }
 
