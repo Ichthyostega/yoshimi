@@ -51,7 +51,7 @@ public:
         : sink(& std::cout)
         , logfile{}
         , target{"COUT"}
-        , enabled{true}
+        , enabled{false}
         { }
 
     /* ======== forward stream operations ===== */
