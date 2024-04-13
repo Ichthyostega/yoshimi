@@ -3376,7 +3376,7 @@ void InterChange::commandMain(CommandBlock *getData)
         case MAIN::control::partNumber:
             if (write)
             {   // from various causes which change the current active part
-dDump << "Rabäääh" << 1.0/3 << " oink " << std::setprecision(3) << 1.0/3 << endl;
+dDump << "|CMD|Change Part: "<< value_int << endl;
                 synth->getRuntime().currentPart = value_int;
                 synth->pushEffectUpdate(value_int);
             }           // send current part-effect data to GUI
@@ -4166,6 +4166,7 @@ void InterChange::commandPart(CommandBlock *getData)
         case PART::control::effectNumber:
             if (write)
             {
+dDump << "|CMD| Part-Eff-No: "<< value_int << endl;
                 part->Peffnum = value_int;
                 getData->data.parameter = (part->partefx[value_int]->geteffectpar(-1) != 0);
                 getData->data.engine = value_int;
@@ -7130,11 +7131,13 @@ void InterChange::commandSysIns(CommandBlock *getData)
                 {
                     if (isSysEff)
                     {
+dDump << "|CMD| Sys-Eff-No: "<< value_int << endl;
                         synth->syseffnum = value_int;
                         getData->data.parameter = (synth->sysefx[value_int]->geteffectpar(-1) != 0);
                     }
                     else
                     {
+dDump << "|CMD| Ins-Eff-No: "<< value_int << endl;
                         synth->inseffnum = value_int;
                         getData->data.parameter = (synth->insefx[value_int]->geteffectpar(-1) != 0);
                     }
