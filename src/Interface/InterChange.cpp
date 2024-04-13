@@ -3473,6 +3473,7 @@ void InterChange::commandMain(CommandBlock& cmd)
         case MAIN::control::partNumber:
             if (write)
             {   // from various causes which change the current active part
+dDump << "|CMD|Change Part: "<< value_int << endl;
                 synth.getRuntime().currentPart = value_int;
                 synth.pushEffectUpdate(value_int);
             }           // send current part-effect data to GUI
