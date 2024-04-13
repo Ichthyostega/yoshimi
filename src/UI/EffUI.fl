@@ -62,7 +62,11 @@ decl {\#include "Effects/EffectMgr.h"} {public local
 
 decl {\#include "Misc/MirrorData.h"} {public local
 }
-
+decl {// ///////////////////////////////////////////////////TODO Debug
+\#include "Misc/ddump.h"
+///////////////////////////////////////////////////////////TODO Debug
+} {public local
+}
 decl {\#include "PresetsUI.h"} {public local
 }
 
