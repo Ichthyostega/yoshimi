@@ -61,6 +61,11 @@ decl {\#include "MasterUI.h"} {private global
 decl {\#include "Misc/FormatFuncs.h"
     using func::asString;} {private local
 }
+decl {// ///////////////////////////////////////////////////TODO Debug
+\#include "Misc/ddump.h"
+///////////////////////////////////////////////////////////TODO Debug
+} {public local
+}
 
 decl {\#include "UI/ScaleTrackedWindow.h"} {public global
 }
@@ -1915,6 +1920,7 @@ class PartUI {: {public Fl_Group, PartUI_}
   }
   Function {effectsrefresh()} {} {
     code {//
+dDump << "    ‖◆ PartUI::effectsrefresh"<<endl;
         partfx->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Effects"), npart, TOPLEVEL::windowTitle)).c_str());
         refreshEffUI();
         bool isChanged = inseffectui->isChanged();

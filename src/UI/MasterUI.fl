@@ -3830,6 +3830,7 @@ Alan Calvert started the project}
   }
   Function {partSwitch(int next)} {} {
     code {//
+dDump << "    ‖◆ MasterUI::partSwitch("<<npart<<" -> "<<next<<")  activePart="<<activePart<<" .synth-part="<<synth->getRuntime().currentPart<<endl;
     if (npart != next)
     {
         npartcounter->value(next + 1);

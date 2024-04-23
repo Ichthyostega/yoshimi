@@ -2331,6 +2331,7 @@ effect.onUpdate([conEffect,npart_](EffectDTO dto){
   }
   Function {refresh(int npart_)} {} {
     code {//
+dDump << "    ‖◆ refresh(npart="<<npart_<<")  prev="<<npart<<endl;
     npart = npart_;
     this->hide();
     effnullwindow->hide();
