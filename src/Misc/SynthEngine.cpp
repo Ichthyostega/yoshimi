@@ -2556,7 +2556,7 @@ void SynthEngine::pushEffectUpdate(uchar partNum)
 
     if (isPart)
 {//////////////////////////////////////////////////////////////////////////////TODO Debug
-dDump << "|SYN| publish -> Part-"<< uint(partNum) << endl;
+dDump << "|SYN| publish -> Part-"<< uint(partNum)<<" (currPart="<<getRuntime().currentPart<<") effNr="<<uint(currPart.Peffnum)<<" type="<<effInstance[effnum]->geteffect() << endl;
         partEffectUiCon.publish(dto);
 }//////////////////////////////////////////////////////////////////////////////TODO Debug
     else if (isInsert)

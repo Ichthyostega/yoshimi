@@ -253,7 +253,14 @@ void GuiDataExchange::pushUpdates(size_t idx)
     DataManager::Registry& reg{manager->registry};
     auto entry = reg.find(tag);
     if (entry == reg.end())
+{//////////////////////////////////////////////////////////////////////////////TODO Debug
+dDump << "|GUI| Update DROPPED -- no subscribers "<< endl;
         return; // no(longer any) subscribers for this conversation channel
+}//////////////////////////////////////////////////////////////////////////////TODO Debug
+else
+{//////////////////////////////////////////////////////////////////////////////TODO Debug
+dDump << "|GUI| Update Dispatch slot-#"<<idx <<endl;
+}//////////////////////////////////////////////////////////////////////////////TODO Debug
     for (Subscription* p = entry->second; p; p=p->next)
         p->pushUpdate(tag, rawData);
 }

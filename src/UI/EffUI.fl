@@ -2295,6 +2295,11 @@ If Sep is enabled: Right Delay} xywh {172 45 30 30} box ROUND_UP_BOX labelsize 1
     code {//
     synth = synth_;
     effect.activate(GuiDataExchange::Connection<EffectDTO>{synth->interchange.guiDataExchange, conEffect});
+{//////////////////////////////////////////////////////////////////////////////TODO Debug
+effect.onUpdate([conEffect,npart_](EffectDTO dto){
+    dDump << "|GUI| EffUI-getPush. Part="<< npart_ <<" ConnID:"<< conEffect.identity << " effNr="<<uint(dto.effNum)<<" enabled:"<<dto.enabled<< endl;
+});
+}//////////////////////////////////////////////////////////////////////////////TODO Debug
     npart = npart_;
 
     make_null_window();
