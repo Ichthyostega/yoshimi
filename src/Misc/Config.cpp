@@ -77,9 +77,10 @@ bool         Config::autoInstance = false;
 unsigned int Config::activeInstance = 0;
 int          Config::showCLIcontext = 1;
 
-string jUuid = "";
+string Config::globalJackSessionUuid = "";
 
-Config::Config(SynthEngine *_synth, std::list<string>& allArgs, bool isLV2Plugin) :
+
+Config::Config(SynthEngine *_synth, bool isLV2Plugin) :
     build_ID(BUILD_NUMBER),
     stateChanged(false),
     restoreJackSession(false),
@@ -179,7 +180,8 @@ Config::Config(SynthEngine *_synth, std::list<string>& allArgs, bool isLV2Plugin
     static bool torun = true;
     if (torun) // only the first stand-alone synth can read args
     {
-        applyOptions(this, allArgs);
+        //////////////////////////////////////////////////////////////////////////////OOO should better handle this directly in InstanceManager for the primarySynth!!
+        instances().getCmdOptions().applyTo(*this);
         torun = false;
     }
     if (!loadConfig())
@@ -230,8 +232,8 @@ bool Config::Setup(void)
     Oscilsize = nearestPowerOf2(Oscilsize, MIN_OSCIL_SIZE, MAX_OSCIL_SIZE);
     Buffersize = nearestPowerOf2(Buffersize, MIN_BUFFER_SIZE, MAX_BUFFER_SIZE);
 
-    if (!jUuid.empty())
-        jackSessionUuid = jUuid;
+    if (!Config::globalJackSessionUuid.empty())
+        jackSessionUuid = Config::globalJackSessionUuid;
     return true;
 }
 
@@ -1389,6 +1391,7 @@ void Config::saveJackSession(void)
 }
 
 
+/////////////////////////////////////////////////////////////////////////////////////OOO this function is obsolete -- remove it!!
 void Config::applyOptions(Config* settings, std::list<string>& allArgs)
 {
     if (allArgs.empty())
@@ -1547,7 +1550,7 @@ void Config::applyOptions(Config* settings, std::list<string>& allArgs)
 
         case 'U':
             if (!line.empty())
-                jUuid = line;
+                Config::globalJackSessionUuid = line;
             break;
 
         case '@':
