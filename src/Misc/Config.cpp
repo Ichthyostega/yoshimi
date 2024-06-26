@@ -244,14 +244,9 @@ Config::~Config()
 
 void Config::flushLog(void)
 {
-    if (LogList.size())
-    {
-        while (LogList.size())
-        {
-            //cout << LogList.front() << endl;
-            LogList.pop_front();
-        }
-    }
+//  for (auto& line : logList)
+//      cout << line <<endl;
+    logList.clear();
 }
 
 
@@ -1047,7 +1042,7 @@ void Config::Log(const string& msg, char tostderr)
     else if(!(tostderr & _SYS_::LogError))
     {
         if (showGui && toConsole)
-            LogList.push_back(msg);
+            logList.push_back(msg);
         else
             std::cout << msg << std::endl;
     }
