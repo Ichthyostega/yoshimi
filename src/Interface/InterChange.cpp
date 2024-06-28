@@ -154,11 +154,21 @@ bool InterChange::Init()
 }
 
 #ifdef GUI_FLTK
-MasterUI& InterChange::createGuiMaster(size_t slotIDX)
+MasterUI& InterChange::createGuiMaster()
 {
-    guiMaster.reset(new MasterUI(*this, slotIDX));
-    assert(guiMaster);
-    return *guiMaster;
+    CommandBlock bootstrapMsg;
+    if (toGUI.read(bootstrapMsg.bytes)
+        and bootstrapMsg.data.control == TOPLEVEL::control::dataExchange)
+    {
+        size_t slotIDX = bootstrapMsg.data.offset;
+        guiMaster.reset(new MasterUI(*this, slotIDX));
+        assert(guiMaster);
+        return *guiMaster;
+    }
+    else
+    {
+        ////////////////////////////////////////OOO we have a problem: there is no suitable bootstrap-message in the queue
+    }
 }
 
 void InterChange::closeGui()
