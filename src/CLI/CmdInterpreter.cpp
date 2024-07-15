@@ -6623,7 +6623,7 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
             int forceId = string2int(input);
             if (forceId < 1 || forceId >= 32)
                 forceId = 0;
-            sendDirect(synth, TOPLEVEL::action::lowPrio, forceId, TOPLEVEL::type::Write, MAIN::control::startInstance, TOPLEVEL::section::main);
+            sendNormal(synth, TOPLEVEL::action::lowPrio, forceId, TOPLEVEL::type::Write, MAIN::control::startInstance, TOPLEVEL::section::main);
             return Reply::DONE;
         }
         else
@@ -6746,7 +6746,7 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
                     Runtime.Log("Instance can't close itself");
                 else
                 {
-                    sendDirect(synth, TOPLEVEL::action::lowPrio, to_close, TOPLEVEL::type::Write, MAIN::control::stopInstance, TOPLEVEL::section::main);
+                    sendNormal(synth, TOPLEVEL::action::lowPrio, to_close, TOPLEVEL::type::Write, MAIN::control::stopInstance, TOPLEVEL::section::main);
                 }
                 return Reply::DONE;
             }
