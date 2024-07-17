@@ -1774,7 +1774,7 @@ float Config::getConfigLimits(CommandBlock *getData)
 
 
 #ifdef GUI_FLTK
-void GuiThreadMsg::processGuiMessages()
+void GuiThreadMsg::processGuiMessages() //////////////////////////////////OOO now completely obsolete
 {
     GuiThreadMsg *msg = (GuiThreadMsg *)Fl::thread_message();
     if (msg)

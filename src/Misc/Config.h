@@ -54,6 +54,7 @@ class Config
     public:
         /** convenience access to the global InstanceManager */
         static InstanceManager& instances() { return InstanceManager::get(); }
+        static Config&          primary()   { return instances().accessPrimaryConfig(); }
 
 
         Config(SynthEngine *_synth, bool isLV2Plugin);

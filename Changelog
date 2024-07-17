@@ -1,5 +1,13 @@
 yoshimi 2.3.2 M
 
+2024-7-17 Hermann
+bn ##TODO
+Rework main() to introduce an InstanceManager.
+* Instances of SynthEngine and MusicIO maintained with lifecycle state
+* Start-up, GUI connection and post-boot-hook rearranged
+* request to start a new instance always via command system
+* remove FLTK messaging and locking, rework LV2 plugin top-level
+
 2024-7-18 Will
 bn 2343
 BugFix: Config code not correctly readingXML getPar(
