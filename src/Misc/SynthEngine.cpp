@@ -419,7 +419,7 @@ void SynthEngine::postBootHook()
         loadHistory();
     installBanks();
     maybePublishEffectsToGui();
-}// push "control::masterReset" into GUI
+}// note InterChange::commandMain() will also push into GUI: (control=control::dataExchange, part=section::main)
 
 
 #ifdef GUI_FLTK
