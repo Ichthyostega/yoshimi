@@ -65,7 +65,8 @@ class Config
         Config& operator=(Config&&)      = delete;
         Config& operator=(Config const&) = delete;
 
-        void setup();
+        void setup(bool);
+        void populateFromPrimary();
         void startupReport(const string& clientName);
         void announce();
         void usage();
@@ -74,7 +75,8 @@ class Config
         void flushLog();
         bool loadPresetsList();
         bool savePresetsList();
-        bool saveConfig(bool master = false);
+        bool saveMasterConfig();
+        bool saveInstanceConfig();
         bool loadConfig();
         bool updateConfig(int control, int value);
         void restoreConfig(SynthEngine*);
@@ -116,6 +118,7 @@ class Config
         bool          oldConfig;
 
         static bool          showSplash;
+        static bool          singlePath;
         static bool          autoInstance;
         static unsigned int  activeInstance_OBSOLETE;
         static bitset<32>    activeInstances;
@@ -180,7 +183,6 @@ class Config
         bool          showCli;
         bool          storedCli;
         bool          cliChanged;
-        bool          singlePath;
         bool          banksChecked;
         unsigned char panLaw;
         bool          configChanged;
@@ -254,7 +256,7 @@ class Config
         Samples genMixr;
 
     private:
-        void* findManual();
+        void findManual();
         static void* _findManual(void*);
         pthread_t  findManualHandle;
 
