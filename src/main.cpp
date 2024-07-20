@@ -46,6 +46,7 @@
     #include "UI/Splash.h"
 #endif
 
+using std::string;
 using std::this_thread::sleep_for;
 using std::chrono_literals::operator ""us;
 using std::chrono_literals::operator ""ms;
@@ -114,7 +115,7 @@ static void *mainThread(void*)
     int winH=10, winW=50;
     int LbX=2, LbY=2, LbW=2, LbH=2;
     int timeout =3;
-    std::string startup = YOSHIMI_VERSION;
+    string startup = YOSHIMI_VERSION;
 
     if (showGUI)
     {
@@ -232,7 +233,7 @@ void *commandThread(void *)
     return 0;
 }
 
-std::string runShellCommand(std::string command)
+string runShellCommand(string command)
 {
     string returnLine = "";
     file::cmd2string(command, returnLine);
@@ -255,8 +256,8 @@ int main(int argc, char *argv[])
      * (regardless of settings) as it is useful to be able to read and/or manually
      * change settings under fault conditions.
      */
-    std::string Home = getenv("HOME");
-    std::string Config = file::loadText(Home + "/.config/yoshimi/yoshimi.config");
+    string Home = getenv("HOME");
+    string Config = file::loadText(Home + "/.config/yoshimi/yoshimi.config");
     if (Config.empty())
     {
         std::cout << "Config not there" << std::endl;
@@ -270,18 +271,18 @@ int main(int argc, char *argv[])
         int found = 0;
         while (!Config.empty() && count < 16 && found < 2)
         { // no need to count beyond 16 lines!
-            std::string line = func::nextLine(Config);
+            string line = func::nextLine(Config);
             ++ count;
-            if (line.find("enable_splash") != std::string::npos)
+            if (line.find("enable_splash") != string::npos)
             {
                 ++ found;
-                if (line.find("yes") != std::string::npos)
+                if (line.find("yes") != string::npos)
                     showSplash = true;
             }
-            if (line.find("enable_single_master") != std::string::npos)
+            if (line.find("enable_single_master") != string::npos)
             {
                 ++ found;
-                if (line.find("yes") != std::string::npos)
+                if (line.find("yes") != string::npos)
                     isSingleMaster = true;
             }
         }
@@ -290,7 +291,7 @@ int main(int argc, char *argv[])
     if (isSingleMaster)
     {
 
-        std::string firstText = runShellCommand("pgrep -o -x yoshimi");
+        string firstText = runShellCommand("pgrep -o -x yoshimi");
         int firstpid = std::stoi(firstText);
         int firstTime = std::stoi(runShellCommand("ps -o etimes= -p " + firstText));
         int secondTime = std::stoi(runShellCommand("ps -o etimes= -p " + std::to_string(getpid())));

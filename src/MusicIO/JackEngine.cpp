@@ -30,14 +30,15 @@
 #include "Misc/FormatFuncs.h"
 #include "MusicIO/JackEngine.h"
 
+using std::move;
 using func::asString;
 using func::asHexString;
 using std::this_thread::sleep_for;
 using std::chrono_literals::operator ""us;
 
 
-JackEngine::JackEngine(SynthEngine& _synth, shared_ptr<BeatTracker> _beatTracker)
-    : MusicIO{_synth, move(_beatTracker)}
+JackEngine::JackEngine(SynthEngine& _synth, shared_ptr<BeatTracker> beat)
+    : MusicIO{_synth, move(beat)}
     , jackClient{nullptr}
     , audio{}
     , midiPort{nullptr}

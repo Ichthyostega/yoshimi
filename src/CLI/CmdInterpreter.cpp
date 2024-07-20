@@ -1495,7 +1495,7 @@ int CmdInterpreter::effects(Parser& input, unsigned char controlType)
             else
             {
                 value = string2int(input) - 1;
-                if (value >= Runtime.NumAvailableParts || value < 0)
+                if (value >= int(Runtime.NumAvailableParts) || value < 0)
                     return REPLY::range_msg;
             }
             effSend = value;
@@ -5406,14 +5406,14 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
 
     if (input.isdigit())
     {
-        tmp = string2int127(input);
+        uint num = string2int127(input);
         input.skipChars();
-        if (tmp > 0)
+        if (num > 0)
         {
-            tmp -= 1;
+            num -= 1;
             if (!inKitEditor)
             {
-                if (tmp >= Runtime.NumAvailableParts)
+                if (num >= Runtime.NumAvailableParts)
                 {
                     Runtime.Log("Part number too high");
                     return REPLY::done_msg;
@@ -5421,7 +5421,7 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
 
                 //if (npart != tmp) // TODO sort this properly!
                 {
-                    npart = tmp;
+                    npart = num;
                     section = npart;
                     if (controlType == TOPLEVEL::type::Write)
                     {
@@ -5440,9 +5440,9 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
             {
                 if (controlType == TOPLEVEL::type::Write)
                 {
-                    if (tmp >= NUM_KIT_ITEMS)
+                    if (num >= NUM_KIT_ITEMS)
                         return REPLY::range_msg;
-                    kitNumber = tmp;
+                    kitNumber = num;
                     voiceNumber = 0;// to avoid confusion
                 }
                 Runtime.Log("Kit item number " + to_string(kitNumber + 1));
@@ -6489,7 +6489,7 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
                     input.reset_to_mark();
                 else
                 {
-                    int tmp = string2int(input);
+                    uint tmp = string2int(input);
                     if (tmp < 1 || tmp > Runtime.NumAvailableParts)
                         return REPLY::range_msg;
 

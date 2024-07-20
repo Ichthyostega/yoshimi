@@ -38,12 +38,12 @@
 using func::asString;
 
 
-MusicIO::MusicIO(SynthEngine& _synth, shared_ptr<BeatTracker>&& _beatTracker)
+MusicIO::MusicIO(SynthEngine& _synth, shared_ptr<BeatTracker>&& beat)
     : LV2_engine{_synth.getIsLV2Plugin()}
     , bufferAllocation{}   // Allocation happens later in prepBuffers()
     , zynLeft{0}
     , zynRight{0}
-    , beatTracker{std::move(_beatTracker)}
+    , beatTracker{std::move(beat)}
     , synth{_synth}
     { }
 

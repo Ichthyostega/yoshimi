@@ -291,8 +291,8 @@ void Config::populateFromPrimary()
 
 void Config::flushLog(void)
 {
-//  for (auto& line : logList)
-//      cout << line <<endl;
+    for (auto& line : logList)
+        std::cout << line << std::endl;
     logList.clear();
 }
 

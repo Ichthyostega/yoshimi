@@ -33,6 +33,7 @@
 using Mircos = std::chrono::duration<int64_t, std::micro>;
 using std::chrono::steady_clock;
 using std::chrono::floor;
+using std::move;
 
 using func::asString;
 using util::unConst;

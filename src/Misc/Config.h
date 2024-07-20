@@ -199,7 +199,7 @@ class Config
         bool          ignoreResetCCs;
         bool          monitorCCin;
         bool          showLearnedCC;
-        int           NumAvailableParts;
+        uint          NumAvailableParts;
         int           currentPart;
         unsigned int  currentBank;
         unsigned int  currentRoot;

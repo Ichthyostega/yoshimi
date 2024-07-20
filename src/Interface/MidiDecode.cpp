@@ -554,7 +554,7 @@ void MidiDecode::nrpnDirectPart(int dHigh, int par)
     switch (dHigh)
     {
         case 0: // set part number to use for later calls
-            if (par < synth->getRuntime().NumAvailableParts)
+            if (par < int(synth->getRuntime().NumAvailableParts))
             {
                 synth->getRuntime().dataL = par;
                 synth->getRuntime().vectordata.Part = par;
@@ -724,7 +724,7 @@ void MidiDecode::setMidiProgram(unsigned char ch, int prg, bool in_place)
 {
     if (!synth->getRuntime().EnableProgChange)
         return;
-    int maxparts = synth->getRuntime().NumAvailableParts;
+    uint maxparts = synth->getRuntime().NumAvailableParts;
     if (ch >= maxparts)
         return;
 
@@ -747,7 +747,7 @@ void MidiDecode::setMidiProgram(unsigned char ch, int prg, bool in_place)
      */
     if (ch < NUM_MIDI_CHANNELS)
     {
-        for (int npart = 0; npart < maxparts; ++ npart)
+        for (uint npart = 0; npart < maxparts; ++ npart)
         {
             if (ch == synth->part[npart]->Prcvchn)
             {

@@ -91,7 +91,7 @@ int main(void)
     while (idx > 0)
     {
         --idx;
-        midiList << ourlist[idx] << endl;
+        midiList << ourlist[idx] << std::endl;
     }
     midiList.close();
     return 0;

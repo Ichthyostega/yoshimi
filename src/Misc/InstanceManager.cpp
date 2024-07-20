@@ -36,6 +36,7 @@
 #include <memory>
 #include <thread>
 #include <utility>
+#include <iostream>
 #include <algorithm>
 #include <string>
 #include <array>
@@ -47,6 +48,8 @@ using std::make_unique;
 using std::unique_ptr;
 using std::for_each;
 using std::move;
+using std::cout;
+using std::endl;
 
 using func::asString;
 using util::contains;
@@ -277,7 +280,7 @@ InstanceManager::Instance& InstanceManager::SynthGroom::find(uint id)
  */
 bool InstanceManager::Instance::startUp()
 {
-    std::cout << "\nStart-up Synth-Instance("<< getID() << ")..."<< std::endl;
+    cout << "\nStart-up Synth-Instance("<< getID() << ")..."<< endl;
     state = BOOTING;
     runtime().setup(false); // not LV2 ////////////////////OOO clarify how to configure LV2
     assert (not runtime().runSynth);
@@ -320,9 +323,9 @@ bool InstanceManager::Instance::startUp()
                 runtime().startupReport(client->midiClientName());
 
                 if (isPrimary())
-                    std::cout << "\nYay! We're up and running :-)\n";
+                    cout << "\nYay! We're up and running :-)\n";
                 else
-                    std::cout << "\nStarted "<< synth->getUniqueId() << "\n";
+                    cout << "\nStarted Synth-Instance("<< synth->getUniqueId() << ")\n";
 
                 state = BOOTING;
                 assert (runtime().runSynth);
@@ -346,7 +349,7 @@ void InstanceManager::Instance::shutDown()
 {
     state = WANING;
     runtime().activeInstances.reset(getID());
-    std::cout << "Stopping Synth-Instance("<< getID() << ")..."<< std::endl;
+    cout << "Stopping Synth-Instance("<< getID() << ")..."<< endl;
     runtime().runSynth.store(false, std::memory_order_release); // signal to synth and background threads
     synth->saveBanks();
     client->close();  // may block until background threads terminate
@@ -483,8 +486,8 @@ void InstanceManager::SynthGroom::handleStartRequest()
             if (not success)
                 primary->runtime().Log("FAILED to launch Synth-Instance("
                                       +asString(instance.getID())+")", _SYS_::LogError);
-            return;  // only one per duty cycle
-        }
+            return;
+        }// only one per duty cycle
 }
 
 void InstanceManager::SynthGroom::clearZombies()

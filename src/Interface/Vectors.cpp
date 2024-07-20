@@ -109,7 +109,7 @@ unsigned char Vectors::loadVector(unsigned char baseChan, const string& name, bo
 
 unsigned char Vectors::extractVectorData(unsigned char baseChan, XMLwrapper& xml, const string& name)
 {
-    int lastPart = NUM_MIDI_PARTS;
+    uint lastPart = NUM_MIDI_PARTS;
     unsigned char tmp;
     string newname = xml.getparstr("name");
 

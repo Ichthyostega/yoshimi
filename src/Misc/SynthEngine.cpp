@@ -654,7 +654,7 @@ void SynthEngine::NoteOn(unsigned char chan, unsigned char note, unsigned char v
     struct timeval tv1, tv2;
     gettimeofday(&tv1, NULL);
 #endif
-    for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
+    for (uint npart = 0; npart < Runtime.NumAvailableParts; ++npart)
     {
         if (chan == part[npart]->Prcvchn)
         {
@@ -687,7 +687,7 @@ void SynthEngine::NoteOff(unsigned char chan, unsigned char note)
         Runtime.Log("Note off diff " + to_string(Runtime.noteOffSent - Runtime.noteOffSeen));
 #endif
 
-    for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
+    for (uint npart = 0; npart < Runtime.NumAvailableParts; ++npart)
     {
         // mask values 16 - 31 to still allow a note off
         if (chan == (part[npart]->Prcvchn & 0xef) && partonoffRead(npart))
@@ -1625,7 +1625,7 @@ int SynthEngine::SetSystemValue(int type, int value)
                 putData.data.source = TOPLEVEL::action::fromCLI | TOPLEVEL::action::lowPrio;
                 putData.data.control = PART::control::keyShift;
 
-                for (int i = 0; i < Runtime.NumAvailableParts; ++ i)
+                for (uint i = 0; i < Runtime.NumAvailableParts; ++ i)
                 {
                     if (partonoffRead(i) && part[i]->Prcvchn == (type - 64))
                     {
@@ -1792,7 +1792,7 @@ bool SynthEngine::vectorInit(int dHigh, unsigned char chan, int par)
             Runtime.Log(name);
             return true;
         }
-        int parts = 2* NUM_MIDI_CHANNELS * (dHigh + 1);
+        uint parts = 2* NUM_MIDI_CHANNELS * (dHigh + 1);
         if (parts > Runtime.NumAvailableParts)
             Runtime.NumAvailableParts = parts;
         if (dHigh == 0)
@@ -2160,12 +2160,12 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
      * prio thread completes and re-enables the part, it will not
      * actually be seen until the start of the next period.
      */
-    for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
+    for (uint npart = 0; npart < Runtime.NumAvailableParts; ++npart)
             partLocal[npart] = partonoffRead(npart);
 
     if (sound == _SYS_::mute::Active)
     {
-        for (int npart = 0; npart < (Runtime.NumAvailableParts); ++npart)
+        for (uint npart = 0; npart < (Runtime.NumAvailableParts); ++npart)
         {
             if (partLocal[npart])
             {
@@ -2182,7 +2182,7 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
     else
     {
         // Compute part samples and store them ->partoutl,partoutr
-        for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
+        for (uint npart = 0; npart < Runtime.NumAvailableParts; ++npart)
         {
             if (partLocal[npart])
             {
@@ -2205,7 +2205,7 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
 
         // Apply the part volumes and pannings (after insertion effects)
         unsigned char panLaw = Runtime.panLaw;
-        for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
+        for (uint npart = 0; npart < Runtime.NumAvailableParts; ++npart)
         {
             if (!partLocal[npart])
                 continue;
@@ -2239,7 +2239,7 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
                 continue; // is off
 
             // Mix the channels according to the part settings about System Effect
-            for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
+            for (uint npart = 0; npart < Runtime.NumAvailableParts; ++npart)
             {
                 if (partLocal[npart]               // it's enabled
                  && Psysefxvol[nefx][npart]        // it's sending an output
@@ -2281,7 +2281,7 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
             }
         }
 
-        for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
+        for (uint npart = 0; npart < Runtime.NumAvailableParts; ++npart)
         {
             if (part[npart]->Paudiodest & 2){    // Copy separate parts
 
@@ -2326,7 +2326,7 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
             mainR[idx] *= volume;
             if (sound == _SYS_::mute::Fading) // fadeLevel must also have been set
             {
-                for (int npart = 0; npart < (Runtime.NumAvailableParts); ++npart)
+                for (uint npart = 0; npart < (Runtime.NumAvailableParts); ++npart)
                 {
                     if (part[npart]->Paudiodest & 2)
                     {
@@ -2357,7 +2357,7 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
         }
 
         // Peak computation for part vu meters
-        for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
+        for (uint npart = 0; npart < Runtime.NumAvailableParts; ++npart)
         {
             if (partLocal[npart])
             {
@@ -2388,7 +2388,7 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
             VUpeak.values.vuOutPeakR = 1e-12f;
             VUpeak.values.vuRmsPeakL = 1e-12f;
             VUpeak.values.vuRmsPeakR = 1e-12f;
-            for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
+            for (uint npart = 0; npart < Runtime.NumAvailableParts; ++npart)
             {
                 if (partLocal[npart])
                 {
@@ -2438,7 +2438,7 @@ void SynthEngine::fetchMeterData()
     else
         VUdata.values.vuOutPeakR = fade;
 
-    for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
+    for (uint npart = 0; npart < Runtime.NumAvailableParts; ++npart)
     {
         if (VUpeak.values.parts[npart] < 0.0)
             VUdata.values.parts[npart] = -1.0f;
