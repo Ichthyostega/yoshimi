@@ -210,10 +210,11 @@ class InstanceManager::SynthGroom
 
         void dutyCycle(function<void(SynthEngine&)>& handleEvents);
         void shutdownAllClients();
+        void persistRunningInstances();
     private:
-        uint allocateID(uint);
-        void handleStartRequest();
         void clearZombies();
+        void handleStartRequest();
+        uint allocateID(uint);
 };
 
 
@@ -348,7 +349,6 @@ bool InstanceManager::Instance::startUp()
 void InstanceManager::Instance::shutDown()
 {
     state = WANING;
-    runtime().activeInstances.reset(getID());
     cout << "Stopping Synth-Instance("<< getID() << ")..."<< endl;
     runtime().runSynth.store(false, std::memory_order_release); // signal to synth and background threads
     synth->saveBanks();
@@ -365,7 +365,6 @@ bool InstanceManager::bootPrimary(int argc, char *argv[])
     CmdOptions baseSettings(argc,argv);
     Instance& primary = groom->createInstance(0);
     baseSettings.applyTo(primary.runtime());
-    //////////////////////////////////////////OOO TODO ensure that further special handling for the primary is done!!
     return primary.startUp();
 }
 
@@ -507,9 +506,22 @@ void InstanceManager::SynthGroom::clearZombies()
 /** invoked when leaving main-event-thread because primary synth stopped */
 void InstanceManager::performShutdownActions()
 {
-    groom->getPrimary().runtime().saveMasterConfig(); // notably persist the running instances
+    groom->persistRunningInstances();
     groom->getPrimary().getSynth().saveHistory();
-    groom->getPrimary().getSynth().saveBanks();
+}
+
+/** detect all instances currently running and store this information persistently */
+void InstanceManager::SynthGroom::persistRunningInstances()
+{
+    auto& cfg = getPrimary().runtime();
+    cfg.activeInstances.reset();
+    cfg.activeInstances.set(0); // always mark the primary
+    for (auto& [id,instance] : registry)
+        if (instance.getState() == RUNNING
+                and instance.runtime().runSynth.load(std::memory_order_acquire))
+            cfg.activeInstances.set(id);
+    // persist the running instances
+    cfg.saveMasterConfig();
 }
 
 /** terminate and disconnect all IO on all instances */
@@ -575,7 +587,6 @@ void InstanceManager::Instance::enterRunningState()
     registerAudioPorts();
 
     // this instance is now in fully operational state...
-    runtime().activeInstances.set(this->getID());
     state = RUNNING;
 }
 
