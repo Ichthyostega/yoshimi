@@ -35,13 +35,13 @@
 using func::power;
 
 
-Resonance::Resonance(SynthEngine *_synth) : ParamBase(_synth)
+Resonance::Resonance(SynthEngine& _synth) : ParamBase{_synth}
 {
     defaults();
 }
 
 
-void Resonance::defaults(void)
+void Resonance::defaults()
 {
     Penabled = 0;
     PmaxdB = 20;
@@ -160,16 +160,16 @@ void Resonance::smooth()
 // Randomize the resonance function
 void Resonance::randomize(int type)
 {
-    uint32_t r = synth->randomINT() >> 24;
+    uint32_t r = synth.randomINT() >> 24;
     for (int i = 0; i < MAX_RESONANCE_POINTS; ++i)
     {
         Prespoints[i] = r;
-        if (type == 0 && synth->numRandom() < 0.1f)   // draw new random only for 10% of all slots
-            r = synth->randomINT() >> 24;
-        if (type == 1 && synth->numRandom() < 0.3f)   // ...only for 30% of all slots
-            r = synth->randomINT() >> 24;
+        if (type == 0 && synth.numRandom() < 0.1f)   // draw new random only for 10% of all slots
+            r = synth.randomINT() >> 24;
+        if (type == 1 && synth.numRandom() < 0.3f)   // ...only for 30% of all slots
+            r = synth.randomINT() >> 24;
         if (type == 2)
-            r = synth->randomINT() >> 24;
+            r = synth.randomINT() >> 24;
     }
     smooth();
 }
@@ -216,20 +216,20 @@ float Resonance::getfreqpos(float freq)
 
 
 // Get the center frequency of the resonance graph
-float Resonance::getcenterfreq(void)
+float Resonance::getcenterfreq()
 {
     return 10000.0 * power<10>(-(1.0f - Pcenterfreq / 127.0f) * 2.0f);
 }
 
 
 // Get the number of octave that the resonance functions applies to
-float Resonance::getoctavesfreq(void)
+float Resonance::getoctavesfreq()
 {
     return 0.25 + 10.0 * Poctavesfreq / 127.0;
 }
 
 
-void Resonance::sendcontroller(unsigned short int ctl, float par)
+void Resonance::sendcontroller(ushort ctl, float par)
 {
     if (ctl == MIDI::CC::resonanceCenter)
         ctlcenter = par;
@@ -238,39 +238,39 @@ void Resonance::sendcontroller(unsigned short int ctl, float par)
 }
 
 
-void Resonance::add2XML(XMLwrapper *xml)
+void Resonance::add2XML(XMLwrapper& xml)
 {
-    xml->addparbool("enabled",Penabled);
+    xml.addparbool("enabled",Penabled);
 
-    if ((Penabled==0)&&(xml->minimal)) return;
+    if ((Penabled==0)&&(xml.minimal)) return;
 
-    xml->addparcombi("max_db",PmaxdB);
-    xml->addparcombi("center_freq",Pcenterfreq);
-    xml->addparcombi("octaves_freq",Poctavesfreq);
-    xml->addparbool("protect_fundamental_frequency",Pprotectthefundamental);
-    xml->addpar("resonance_points",MAX_RESONANCE_POINTS);
-    for (int i=0;i<MAX_RESONANCE_POINTS;i++)
+    xml.addparcombi("max_db",PmaxdB);
+    xml.addparcombi("center_freq",Pcenterfreq);
+    xml.addparcombi("octaves_freq",Poctavesfreq);
+    xml.addparbool("protect_fundamental_frequency",Pprotectthefundamental);
+    xml.addpar("resonance_points",MAX_RESONANCE_POINTS);
+    for (int i=0; i<MAX_RESONANCE_POINTS; i++)
     {
-        xml->beginbranch("RESPOINT",i);
-        xml->addpar("val",Prespoints[i]);
-        xml->endbranch();
+        xml.beginbranch("RESPOINT",i);
+        xml.addpar("val",Prespoints[i]);
+        xml.endbranch();
     }
 }
 
 
-void Resonance::getfromXML(XMLwrapper *xml)
+void Resonance::getfromXML(XMLwrapper& xml)
 {
-    Penabled=xml->getparbool("enabled",Penabled);
+    Penabled=xml.getparbool("enabled",Penabled);
 
-    PmaxdB=xml->getparcombi("max_db",PmaxdB,0,127);
-    Pcenterfreq=xml->getparcombi("center_freq",Pcenterfreq,0,127);
-    Poctavesfreq=xml->getparcombi("octaves_freq",Poctavesfreq,0,127);
-    Pprotectthefundamental=xml->getparbool("protect_fundamental_frequency",Pprotectthefundamental);
-    for (int i=0;i<MAX_RESONANCE_POINTS;i++)
+    PmaxdB=xml.getparcombi("max_db",PmaxdB,0,127);
+    Pcenterfreq=xml.getparcombi("center_freq",Pcenterfreq,0,127);
+    Poctavesfreq=xml.getparcombi("octaves_freq",Poctavesfreq,0,127);
+    Pprotectthefundamental=xml.getparbool("protect_fundamental_frequency",Pprotectthefundamental);
+    for (int i=0; i<MAX_RESONANCE_POINTS; i++)
     {
-        if (xml->enterbranch("RESPOINT",i)==0) continue;
-        Prespoints[i]=xml->getpar127("val",Prespoints[i]);
-        xml->exitbranch();
+        if (xml.enterbranch("RESPOINT",i)==0) continue;
+        Prespoints[i]=xml.getpar127("val",Prespoints[i]);
+        xml.exitbranch();
     }
 }
 

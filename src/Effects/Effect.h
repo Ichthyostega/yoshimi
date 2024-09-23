@@ -29,23 +29,45 @@
 
 #include "Params/FilterParams.h"
 #include "Misc/SynthHelper.h"
+#include "globals.h"
+
+#include <array>
+
+ /// maximum number of parameters supported in all effect modules
+constexpr int EFFECT_PARAM_CNT = 46;
+
+using EffectParArray = std::array<uchar, EFFECT_PARAM_CNT>;
+
+ /// resolution (distinct points) for rendering the EQ transfer function
+constexpr int EQ_GRAPH_STEPS = 300;
+
+using EQGraphArray = std::array<float, EQ_GRAPH_STEPS>;
+
+
 
 class Effect
 {
     public:
-        Effect(bool insertion_, float *efxoutl_, float *efxoutr_,
-               FilterParams *filterpars_, unsigned char Ppreset_,
-               SynthEngine *synth_);
-        virtual ~Effect() { };
+        virtual ~Effect()  = default; ///< this is an interface
 
-        virtual void setpreset(unsigned char npreset) = 0;
-        virtual void changepar(int npar, unsigned char value) = 0;
-        virtual unsigned char getpar(int npar) = 0;
+        Effect(bool insertion_, float *efxoutl_, float *efxoutr_,
+               FilterParams *filterpars_, uchar Ppreset_,
+               SynthEngine&);
+        // shall not be copied nor moved
+        Effect(Effect&&)                 = delete;
+        Effect(Effect const&)            = delete;
+        Effect& operator=(Effect&&)      = delete;
+        Effect& operator=(Effect const&) = delete;
+
+        virtual void setpreset(uchar npreset) = 0;
+        virtual void changepar(int npar, uchar value) = 0;
+        virtual uchar getpar(int npar) const = 0;
+        virtual void getAllPar(EffectParArray&) const;
+
         virtual void out(float *smpsl, float *smpsr) = 0;
         virtual void cleanup();
-        virtual float getfreqresponse(float /* freq */) { return (0); };
 
-        unsigned char Ppreset; // Current preset
+        uchar Ppreset; // Current preset
         float *const efxoutl;
         float *const efxoutr;
         synth::InterpolatedValue<float> outvolume;
@@ -63,7 +85,7 @@ class Effect
         char  Plrcross; // L/R mix
         synth::InterpolatedValue<float> lrcross;
 
-        SynthEngine *synth;
+        SynthEngine& synth;
 };
 
 #endif

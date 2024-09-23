@@ -1,4 +1,282 @@
-yoshimi 2.3.2
+yoshimi 2.3.3
+
+2024-9-23
+bn 2359
+Final testing and doc updates
+Set release version 2.3.3
+
+2024-9-21 Will + Hermann
+bn 2358
+Initial preparations for release.
+BugFix: init audio/midi device names before opening the backend.
+Set version as 2.3.3 rc3
+
+2024-9-20 Will
+bn 2357
+BugFix: Not honouring last seen mixer panel format.
+Further updates to mixer panel control.
+Set version as 2.3.3 rc2
+
+2024-9-19 Will
+bn 2356
+Revised panel window control, reinstating link between MasterUI
+    and ConfigUI for this.
+
+2024-9-18 Will
+bn 2355
+Set version as 2.3.3 rc1
+Made corrections and updates to HTML user guide.
+Updated /Util/ programs and notes.
+Included BugFix from Hermann.
+
+2024-9-16 Will
+bn 2354
+Added missing conversion for note time reporting
+    (only seen when activated at build time)
+    clarified Build time labels
+Removed System Effects C/P buttons de-activation
+Corrected history location comment in globals.h
+
+2024-9-15 Hermann
+bn 2353
+Rework main() to introduce an InstanceManager.
+* Instances of SynthEngine and MusicIO maintained with lifecycle state
+* Start-up, GUI connection and post-boot-hook rearranged
+* request to start a new instance always via command system
+* remove FLTK messaging and locking, rework LV2 plugin top-level
+
+2024-9-7 Will
+bn 2352
+Updated HTML User Guide images to reflect current appearance.
+
+2024-9-5 Will
+bn 2351
+BugFix: mixer panel not updating with correct colours.
+    MasterUI was duplicating MasterMiscUI and hadn't had
+    background colours changed.
+More work on high contrast theme.
+
+2024-9-2 Will
+bn 2350
+Revised theme colour control, providing better bank colours.
+Also started development of high contrast theme.
+
+2024-8-25 Will
+bn 2349
+Most keyboard shortcuts (alt+underlined) at the first couple
+    of context levels now working.
+User guide partly updated - not graphics.
+
+2024-8-22 Will
+bn 2348
+Theme tab now changes its own display when setting 'Monochrome'.
+Removed non-working event handler in PartUI.
+
+2024-8-16 Will
+bn 2347
+BugFix: temporary fix for segfault in SubSynth
+    See src/Synth/SUBnote.cpp/initparameters(
+Changed new drum sound name from:
+    Pitched Bass Drum
+to:
+    Soft Bass Drum
+Updated HTML User Guide
+
+2024-8-6 Will
+bn 2346
+Corrected State menu options.
+Further adjustments to zread.
+Improved and added to keyboard shortcuts.
+Updated User Guide.
+
+2024-7-30 Will
+bn 2345
+Revised CLI zread - now includes offset.
+    Updated dev_notes
+
+2024-7-22 Will
+bn 2344
+Revised and simplified CLI Y/N query code.
+A few updates to User Guide.
+
+2024-7-18 Will
+bn 2343
+BugFix: Config code not correctly readingXML getPar(
+
+2024-7-15 Will
+bn 2342
+Removed redundant CLI common controls list.
+Updated User Guide.
+
+2024-7-12 Will
+bn 2341
+Added synTaiko to banks/Drums.
+Uodate User Guide (miscellany).
+Cosmetic changes to some windows.
+
+2024-7-9 Will
+bn 2340
+file::isDirectory() now reports the last change time.
+Adding or removing themes now updates the window.
+
+2024-7-1 Will
+bn 2339
+Corrected minor errors in HTML Control Data files.
+Added red-tint-clr to doc/examples.
+
+2024-6-27 Will
+bn 2338
+Some minor GUI cleanups.
+Clarifed some comments in FileMgrFuncs.h
+Doc updates.
+
+2024-6-21 Will
+bn 2337
+Removed some redundant UI 'damage()' calls.
+All spinbox arrows now show correct colour.
+    Arrows also rescale nicely.
+Corrected UI/WidgetSpinner copyright info.
+
+2024-6-20 Will
+bn 2336
+Theme changes now auto-detected.
+
+2024-6-19 Will
+bn 2335
+BugFix: Scales->Center *doesn't* need microtonal to be enabled.
+Temporarily disabled delay in PartUI->fxRtext()
+Temporarily disabled delay in EffUI from line 2691.
+Theme changes no longer close and reopen windows.
+
+Revised some theme labels for improved clarity.
+
+2024-6-16 Will
+bn 2334
+Config->Theme 'monchrome' button now takes immediate effect.
+Updated HTML guide.
+
+2024-6-9 Will
+bn 2333
+Merged in crossfade branch.
+Updated CmakeLists.txt for min version 3.5
+Moved project name down below primary cmake commands.
+
+Further refined crossfade action.
+Changed internal note velocity to float.
+Added internal note volume.
+
+Performed initial separation of crossfade multiplier from fade type.
+
+2024-6-2 Will
+bn 2332
+BugFix: Not saving root and bank changes.
+Updated Control Data.
+
+2024-5-26 Will
+bn 2331
+Changed crossfade ID to uchar crossfadeType ready for alternative types,
+reading and retaining old saved xml bool type for backward compatibility.
+
+Added superFat instument to 'companion' and updated user guide.
+
+
+2024-5-24 Will
+bn 2330
+Updated some dev-notes.
+Clarified microtonal error reporting.
+Commented out test messages in updateConfig.
+
+2024-5-6 Will
+bn 2329
+BugFix: Not updating 'banks_checked' in config file.
+
+2024-5-3 Will
+bn 2328
+Updated config images in user guide.
+Re-ordered early guide entries.
+Added a proper 'Monochrome' button to themes.
+Adjusted EQ window sizes to match others.
+
+2024-4-24 Will
+bn 2327
+Applied instrument change GUI bugfix patch from Hermann.
+Removed some now redundant config change notification code.
+
+2024-4-21 Will
+bn 2326
+Removed all reference to singleRowPanel.
+All currently defined config setting now immediate.
+Updated GUI.
+Disabled automatic config save on exit.
+User manual location now properly integrated into config.
+
+2024-4-19 Will
+bn 2325
+Structure of UpdateConfig now complete. Just details to fill in now.
+Added missing Control Data entries.
+Corrected some Control Data labels.
+Collapsed config numbers from 'defaultStateStert' onwards.
+
+2024-4-17 Will
+Further revision of base config for better isolation and correctness.
+
+2024-4-13 Will
+bn 2324
+Reorganised control values for config so all base ones are together
+    and order in files matches list order.
+Removed 'check_pad_synth' from config.
+    It's not been relevant for years!
+Most of base config now changed immediately.
+Updated Control Data
+
+2024-3-30 Will
+bn 2323
+CLI startup disabling GUI is now temporary and not marked changed.
+CLI startup disabling itself is now temporary and not marked changed.
+Started work on immediate saving of config changes (not yet active).
+
+2024-3-24 Will
+Added missing .xiy file needed for Dooo Flute.
+Added True Drawbars instrument.
+Updated User Guide.
+
+2024-3-22 Will
+bn 2322
+Added more instruments to Drums and Noises
+Updated User Guide
+System effect sends now show percentages
+MIDI CCs now show percentages
+Master window volume panning velocity show real values
+
+2024-3-17 Will
+bn 2321
+Split off config state loading from LV2
+
+**Reverted this change**
+
+BugFix: "Enable Single Master" accesssable on secondary instances.
+Removed (now redundant) disabled code from SynthEngine.cpp
+Also removed long unused SSE code from Config.cpp
+
+2024-3-11 Will
+bn 2320
+BugFix: CLI not recognising 'type' returned by limits code.
+BugFix: Master detune not identified as float type.
+
+BugFix: CLI not checking XML copmpression range.
+Forced type to integer for all CLI config tests.
+
+Moved config limits from SynthEngine to Config.
+    Don't seem to be used anywhere though.
+
+Transfered Vector load/save from SynthEngine to
+    new /Interchange/Vectors
+
+2024-3-7 Will
+bn 2319
+Merged in new GUI/core interface from Hermann
+Cleaned up some doccumentation
+Set CMakeLists for (usually) faster GUI compilation
 
 2024-2-19 Will
 bn 2318

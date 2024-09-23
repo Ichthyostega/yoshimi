@@ -3,6 +3,11 @@ Test headless build.
 
 Ensure all new files have been added to commit!!!
 
+Don't forget to create and push the tag on releases!
+
+Rebase yoshipi branch to release version.
+This is so that owners of this unit can upgrade to a stable version.
+
 use /usr/bin/appstream-util validate {file} to check metadata
 get images from:
 https://yoshimi.sourceforge.io/docs/user-guide
@@ -11,7 +16,7 @@ https://yoshimi.sourceforge.io/docs/user-guide
     Ensure version number is correct.
     Disable extra compiler tests.
 
-Before the commit (but after build) run the python file /home/{user}/yoshimi-code/update_guide_version.py
+Before the commit (but after build) run the python file /home/{user}/yoshimi-code/Util/update_guide_version.py
 This will ensure the guide has the correct version number.
 
 /desktop/yoshimi.1
@@ -27,9 +32,8 @@ This will ensure the guide has the correct version number.
     Ensure these notes are up-to-date - especially ToDo.txt
 
 /doc
-    Ensure these are up-to-date - especially check
-    yoshimi-user-manual has correct version number.
-    Move Yoshimi_2.n.x_features.txt into Histories and
+    Ensure these are up-to-date - especially check yoshimi-user-manual is up to date and has correct version number.
+    Move Yoshimi_2.n.x_features.txt into doc/Histories and
     replace with new one for the current version.
 
 Changelog
