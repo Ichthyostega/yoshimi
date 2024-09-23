@@ -5,7 +5,7 @@
     Copyright (C) 2002-2005 Nasca Octavian Paul
     Copyright 2009-2011, Alan Calvert
     Copyright 2013, Nikita Zlobin
-    Copyright 2014-2023, Will Godfrey & others
+    Copyright 2014-2024, Will Godfrey & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -33,10 +33,8 @@
 #include <libgen.h>
 #include <limits.h>
 #include <unistd.h>
-
-#if defined(__SSE__)
-#include <xmmintrin.h>
-#endif
+#include <cassert>
+#include <memory>
 
 #if defined(JACK_SESSION)
 #include <jack/session.h>
@@ -54,9 +52,6 @@
 #endif
 #include "ConfBuild.h"
 
-using std::cout;
-using std::endl;
-
 using file::isRegularFile;
 using file::createDir;
 using file::copyDir;
@@ -70,129 +65,157 @@ using func::nearestPowerOf2;
 using func::asString;
 using func::string2int;
 
-unsigned char panLaw = 1;
+using std::string;
+using std::cout;
+using std::cerr;
+using std::endl;
 
-bool         Config::showSplash = true;
-bool         Config::autoInstance = false;
-unsigned int Config::activeInstance = 0;
-int          Config::showCLIcontext = 1;
+namespace { // Implementation details...
 
-string jUuid = "";
+    TextMsgBuffer& textMsgBuffer = TextMsgBuffer::instance();
+}
 
-Config::Config(SynthEngine *_synth, std::list<string>& allArgs, bool isLV2Plugin) :
-    build_ID(BUILD_NUMBER),
-    stateChanged(false),
-    restoreJackSession(false),
-    oldConfig(false),
-    runSynth(true),
-    finishedCLI(true),
-    VirKeybLayout(0),
-    audioEngine(DEFAULT_AUDIO),
-    engineChanged(false),
-    midiEngine(DEFAULT_MIDI),
-    midiChanged(false),
-    alsaMidiType(1), // search
-    audioDevice("default"),
-    midiDevice("default"),
-    jackServer("default"),
-    jackMidiDevice("default"),
-    startJack(false),
-    connectJackaudio(true),
-    connectJackChanged(false),
-    alsaAudioDevice("default"),
-    alsaMidiDevice("default"),
-    loadDefaultState(false),
-    sessionStage(_SYS_::type::Normal),
-    Interpolation(0),
-    xmlType(0),
-    instrumentFormat(1),
-    EnableProgChange(1), // default will be inverted
-    toConsole(0),
-    consoleTextSize(12),
-    hideErrors(0),
-    showTimes(0),
-    logXMLheaders(0),
-    xmlmax(0),
-    GzipCompression(3),
-    Samplerate(48000),
-    rateChanged(false),
-    Buffersize(256),
-    bufferChanged(false),
-    Oscilsize(512),
-    oscilChanged(false),
-    showGui(true),
-    guiChanged(false),
-    showCli(true),
-    cliChanged(false),
-    singlePath(false),
-    banksChecked(false),
-    panLaw(1),
-    configChanged(false),
-    handlePadSynthBuild(0),
-    rtprio(40),
-    midi_bank_root(0), // 128 is used as 'disabled'
-    midi_bank_C(32),   // 128 is used as 'disabled'
-    midi_upper_voice_C(128),
-    enable_NRPN(true),
-    ignoreResetCCs(false),
-    monitorCCin(false),
-    showLearnedCC(true),
-    single_row_panel(1),
-    NumAvailableParts(NUM_MIDI_CHANNELS),
-    currentPart(0),
-    currentBank(0),
-    currentRoot(0),
-    bankHighlight(false),
-    lastBankPart(UNUSED),
-    presetsRootID(0),
-    tempBank(0),
-    tempRoot(0),
-    VUcount(0),
-    channelSwitchType(0),
-    channelSwitchCC(128),
-    channelSwitchValue(0),
-    nrpnL(127),
-    nrpnH(127),
-    nrpnActive(false),
-    sigIntActive(0),
-    ladi1IntActive(0),
-    sse_level(0),
-    programcommand("yoshimi"),
-    synth(_synth),
-    bRuntimeSetupCompleted(false),
-    exitType(EXIT_SUCCESS)
+uchar panLaw = 1;
+
+bool       Config::showSplash{true};
+bool       Config::singlePath{false};
+bool       Config::autoInstance{false};
+bitset<32> Config::activeInstances{0};
+int        Config::showCLIcontext{1};
+
+string Config::globalJackSessionUuid = "";
+
+
+Config::Config(SynthEngine& synthInstance)
+    : synth{synthInstance}
+    , isLV2{false}
+    , isMultiFeed{false}
+    , build_ID{BUILD_NUMBER}
+    , lastXMLmajor{0}
+    , lastXMLminor{0}
+    , stateChanged{false}
+    , oldConfig{false}
+    , runSynth{false}          // will be set by Instance::startUp()
+    , finishedCLI{true}
+    , isLittleEndian{true}
+    , virKeybLayout{0}
+    , audioEngine{DEFAULT_AUDIO}
+    , engineChanged{false}
+    , midiEngine{DEFAULT_MIDI}
+    , midiChanged{false}
+    , alsaMidiType{1}          // search
+    , audioDevice{"default"}
+    , midiDevice{"default"}
+    , jackServer{"default"}
+    , jackMidiDevice{"default"}
+    , startJack{false}
+    , connectJackaudio{true}
+    , connectJackChanged{false}
+    , alsaAudioDevice{"default"}
+    , alsaMidiDevice{"default"}
+    , loadDefaultState{false}
+    , defaultStateName{}
+    , defaultSession{}
+    , configFile{}
+    , paramsLoad{}
+    , instrumentLoad{}
+    , load2part{0}
+    , midiLearnLoad{}
+    , rootDefine{}
+    , stateFile{}
+    , guiThemeID{0}
+    , guiTheme{}
+    , remoteGuiTheme{}
+    , restoreJackSession{false}
+    , jackSessionFile{}
+    , sessionStage{_SYS_::type::Normal}
+    , Interpolation{0}
+    , xmlType{0}
+    , instrumentFormat{1}
+    , enableProgChange{1}      // default will be inverted
+    , toConsole{0}
+    , consoleTextSize{12}
+    , hideErrors{0}
+    , showTimes{0}
+    , logXMLheaders{0}
+    , xmlmax{0}
+    , gzipCompression{3}
+    , samplerate{48000}
+    , rateChanged{false}
+    , buffersize{256}
+    , bufferChanged{false}
+    , oscilsize{512}
+    , oscilChanged{false}
+    , showGui{true}
+    , storedGui{true}
+    , guiChanged{false}
+    , showCli{true}
+    , storedCli{true}
+    , cliChanged{false}
+    , banksChecked{false}
+    , panLaw{1}
+    , configChanged{false}
+    , handlePadSynthBuild{0}
+    , rtprio{40}
+    , midi_bank_root{0}        // 128 is used as 'disabled'
+    , midi_bank_C{32}          // 128 is used as 'disabled'
+    , midi_upper_voice_C{128}  // disabled
+    , enable_NRPN{true}
+    , ignoreResetCCs{false}
+    , monitorCCin{false}
+    , showLearnedCC{true}
+    , numAvailableParts{NUM_MIDI_CHANNELS}
+    , currentPart{0}
+    , currentBank{0}
+    , currentRoot{0}
+    , bankHighlight{false}
+    , lastBankPart{UNUSED}
+    , presetsRootID{0}
+    , tempBank{0}
+    , tempRoot{0}
+#ifdef REPORT_NOTES_ON_OFF
+    , noteOnSent{0}
+    , noteOnSeen{0}
+    , noteOffSent{0}
+    , noteOffSeen{0}
+#endif //REPORT_NOTES_ON_OFF
+    , VUcount{0}
+    , channelSwitchType{0}
+    , channelSwitchCC{128}     // disabled
+    , channelSwitchValue{0}
+    , nrpnL{127}               // off
+    , nrpnH{127}               // off
+    , dataL{0xff}              // disabled
+    , dataH{0x80}
+    , nrpnActive{false}
+    , vectordata{}
+    , logList{}
+    , manualFile{}
+    , exitType{}
+    , genTmp1{}
+    , genTmp2{}
+    , genTmp3{}
+    , genTmp4{}
+    , genMixl{}
+    , genMixr{}
+    , findManual_Thread{}
+    , sigIntActive{0}
+    , ladi1IntActive{0}
+    , jsessionSave{0}
+    , programcommand{"yoshimi"}
+    , jackSessionDir{}
+    , baseConfig{}
+    , presetDir{}
 {
     std::cerr.precision(4);
-
-    if (isLV2Plugin)
-    {
-        //Log("LV2 only");
-        if (!loadConfig())
-            Log("\n\nCould not load config. Using default values.\n");
-        bRuntimeSetupCompleted = true;
-        //skip further setup, which is irrelevant for lv2 plugin instance.
-        return;
-    }
-
-    //Log("Standalone Only");
-    static bool torun = true;
-    if (torun) // only the first stand-alone synth can read args
-    {
-        applyOptions(this, allArgs);
-        torun = false;
-    }
-    if (!loadConfig())
-    {
-        string message = "Could not load config. Using default values.";
-        TextMsgBuffer::instance().push(message); // needed for CLI
-        Log("\n\n" + message + "\n");
-    }
-    bRuntimeSetupCompleted = Setup();
 }
 
 
-bool Config::Setup(void)
+
+void Config::init()
 {
+    if (isLV2) return; //skip further setup, which is irrelevant for LV2 plugin instance.
+
     switch (audioEngine)
     {
         case alsa_audio:
@@ -207,7 +230,7 @@ bool Config::Setup(void)
             audioDevice.clear();
             break;
     }
-    if (!audioDevice.size())
+    if (audioDevice.empty())
         audioDevice = "default";
     switch (midiEngine)
     {
@@ -224,41 +247,93 @@ bool Config::Setup(void)
             midiDevice.clear();
             break;
     }
-    if (!midiDevice.size())
-        midiDevice = "";
-    Oscilsize = nearestPowerOf2(Oscilsize, MIN_OSCIL_SIZE, MAX_OSCIL_SIZE);
-    Buffersize = nearestPowerOf2(Buffersize, MIN_BUFFER_SIZE, MAX_BUFFER_SIZE);
+    oscilsize = nearestPowerOf2(oscilsize, MIN_OSCIL_SIZE, MAX_OSCIL_SIZE);
+    buffersize = nearestPowerOf2(buffersize, MIN_BUFFER_SIZE, MAX_BUFFER_SIZE);
 
-    if (!jUuid.empty())
-        jackSessionUuid = jUuid;
-    return true;
+    if (!Config::globalJackSessionUuid.empty())
+        jackSessionUuid = Config::globalJackSessionUuid;
 }
 
 
-Config::~Config()
-{;}
-
-
-void Config::flushLog(void)
+/**
+ * when starting a new instance without pre-existing instance config,
+ * fill in some relevant base settings from the primary config.
+ */
+void Config::populateFromPrimary()
 {
-    if (LogList.size())
-    {
-        while (LogList.size())
-        {
-            //cout << LogList.front() << endl;
-            LogList.pop_front();
-        }
-    }
+    assert (0 < synth.getUniqueId());
+    Config& primary = instances().accessPrimaryConfig();
+
+    // The following are actually base config values,
+    // yet unfortunately they are duplicated in each config instance,
+    // and thus undesirable default values can sometimes spread around,
+    // since parts of the code blindly use the values from current Synth.
+    handlePadSynthBuild = primary.handlePadSynthBuild;
+    gzipCompression     = primary.gzipCompression;
+    guideVersion        = primary.guideVersion;
+    manualFile          = primary.manualFile;
+
+    // The following are instance settings, yet still desirable to initialise
+    // with the values from the primary engine instance in case a config is missing
+    paramsLoad          = primary.paramsLoad;
+    instrumentLoad      = primary.instrumentLoad;
+    load2part           = primary.load2part;
+    midiLearnLoad       = primary.midiLearnLoad;
+    rootDefine          = primary.rootDefine;
+    lastXMLmajor        = primary.lastXMLmajor;
+    lastXMLminor        = primary.lastXMLminor;
+    virKeybLayout       = primary.virKeybLayout;
+    audioEngine         = primary.audioEngine;
+    midiEngine          = primary.midiEngine;
+    alsaMidiType        = primary.alsaMidiType;
+    connectJackaudio    = primary.connectJackaudio;
+    loadDefaultState    = primary.loadDefaultState;
+    Interpolation       = primary.Interpolation;
+//presetsDirlist                                        /////TODO shouldn't we populate these too? if yes -> use a STL container (e.g. std::array), which can be bulk copied
+    instrumentFormat    = primary.instrumentFormat;
+    enableProgChange    = primary.enableProgChange;
+    toConsole           = primary.toConsole;
+    consoleTextSize     = primary.consoleTextSize;
+    hideErrors          = primary.hideErrors;
+    showTimes           = primary.showTimes;
+    logXMLheaders       = primary.logXMLheaders;
+    xmlmax              = primary.xmlmax;
+    samplerate          = primary.samplerate;
+    buffersize          = primary.buffersize;
+    oscilsize           = primary.oscilsize;
+    panLaw              = primary.panLaw;
+    midi_bank_root      = primary.midi_bank_root;
+    midi_bank_C         = primary.midi_bank_C;
+    midi_upper_voice_C  = primary.midi_upper_voice_C;
+    enable_NRPN         = primary.enable_NRPN;
+    ignoreResetCCs      = primary.ignoreResetCCs;
+    monitorCCin         = primary.monitorCCin;
+    showLearnedCC       = primary.showLearnedCC;
+    bankHighlight       = primary.bankHighlight;
+    presetsRootID       = primary.presetsRootID;
+    channelSwitchType   = primary.channelSwitchType;
+    channelSwitchCC     = primary.channelSwitchCC;
+    channelSwitchValue  = primary.channelSwitchValue;
+}
+
+
+void Config::flushLog()
+{
+    for (auto& line : logList)
+        cout << line << endl;
+    logList.clear();
 }
 
 
 void *Config::_findManual(void *arg)
 {
-    return static_cast<Config*>(arg)->findManual();
+    assert(arg);
+    static_cast<Config*>(arg)->findManual();
+    return nullptr;
 }
 
 
-void *Config::findManual(void)
+void Config::findManual()
 {
     Log("finding manual");
     string currentV = string(YOSHIMI_VERSION);
@@ -268,14 +343,23 @@ void *Config::findManual(void)
     if (pos != string::npos)
         guideVersion = guideVersion.substr(0, pos);
     Log("manual found");
-    string toSave = guideVersion + "\n";
-    toSave += manualFile;
-    file::saveText(toSave, file::configDir() + "/yoshimi-manual.source");
-    return NULL;
+
+    saveMasterConfig();
 }
 
 
-bool Config::loadConfig(void)
+void Config::loadConfig()
+{
+    bool success = initFromPersistentConfig();
+    if (not success)
+    {
+        string message = "Problems loading config. Using default values.";
+        TextMsgBuffer::instance().push(message); // needed for CLI
+        Log("\n\n" + message + "\n");
+    }
+}
+
+bool Config::initFromPersistentConfig()
 {
     if (file::userHome() == "/tmp")
         Log ("Failed to find 'Home' directory - using tmp.\nSettings will be lost on computer shutdown.");
@@ -296,14 +380,13 @@ bool Config::loadConfig(void)
 
     baseConfig = foundConfig + yoshimi + string(EXTEN::config);
 
-    int thisInstance = synth->getUniqueId();
-    defaultSession = defaultStateName + "-" + asString(thisInstance) + EXTEN::state;
-    yoshimi += ("-" + asString(thisInstance));
-    //cout << "\nsession >" << defaultSession << "<\n" << endl;
+    int currentInstance = synth.getUniqueId();
+    defaultSession = defaultStateName + "-" + asString(currentInstance) + EXTEN::state;
+    yoshimi += ("-" + asString(currentInstance));
 
-    ConfigFile = foundConfig + yoshimi + EXTEN::instance;
+    configFile = foundConfig + yoshimi + EXTEN::instance;
 
-    if (thisInstance == 0 && sessionStage != _SYS_::type::RestoreConf)
+    if (currentInstance == 0 && sessionStage != _SYS_::type::RestoreConf)
     {
         TextMsgBuffer::instance().init(); // sneaked it in here so it's early
 
@@ -332,7 +415,7 @@ bool Config::loadConfig(void)
         }
 
         // conversion for old location
-        string newInstance0 = ConfigFile;
+        string newInstance0 = configFile;
         if (isRegularFile(baseConfig) && !isRegularFile(newInstance0), 0)
         {
             file::copyFile(baseConfig, newInstance0, 0);
@@ -350,150 +433,297 @@ bool Config::loadConfig(void)
 
     if (!isRegularFile(baseConfig))
     {
-        Log("Basic configuration " + baseConfig + " not found, will use default settings");
-            defaultPresets();
+        Log("Basic configuration " + baseConfig + " not found, will use default settings.");
+        defaultPresets();
+        saveMasterConfig(); // generates a pristine "yoshimi.config"
     }
 
-    bool isok = true;
-    if (!isRegularFile(ConfigFile))
+    bool success{false};
+    if (!isRegularFile(configFile))
     {
-        Log("Configuration " + ConfigFile + " not found, will use default settings");
-        configChanged = true; // give the user the choice
+        if (0 < synth.getUniqueId())
+        {
+            populateFromPrimary();
+            Log("Create new file " + configFile + " with initial values from primary Synth instance.");
+        }
+        else
+        {
+            Log("Configuration " + configFile + " not found, will use default settings.");
+        }
+        saveInstanceConfig(); // generates a new "yoshimi-#.instance"
     }
     else
     {
-        XMLwrapper *xml = new XMLwrapper(synth, true);
-        if (!xml)
-            Log("loadConfig failed XMLwrapper allocation");
+        // load baseConfig (always from the primary file)
+        auto xml{std::make_unique<XMLwrapper>(synth, true)};
+        success = xml->loadXMLfile(baseConfig);   // note: we want correct base values even in a secondary config instance
+        if (success)
+            success = extractBaseParameters(*xml);
         else
-        {
-            // get base first
-            isok = xml->loadXMLfile(baseConfig);
-            if (isok)
-                isok = extractBaseParameters(xml);
-            else
-                Log("loadConfig load base failed");
-            delete xml;
-
-            // now the instance data
-            if (isok)
-            {
-                XMLwrapper *xml = new XMLwrapper(synth, true);
-                if (!xml)
-                    Log("loadConfig failed XMLwrapper allocation");
-                else
-                {
-                    isok = xml->loadXMLfile(ConfigFile);
-                    if (isok)
-                        isok = extractConfigData(xml);
-                    else
-                        Log("loadConfig load instance failed");
-                    delete xml;
-                }
-            }
-            if (thisInstance == 0 && sessionStage != _SYS_::type::RestoreConf)
-            {
-                int currentVersion = lastXMLmajor * 10 + lastXMLminor;
-                int storedVersion = MIN_CONFIG_MAJOR * 10 + MIN_CONFIG_MINOR;
-                if (currentVersion < storedVersion)
-                    oldConfig = true;
-                else
-                    oldConfig = false;
-            }
-        }
+            Log("loadConfig load base failed");
     }
-    loadPresetsList();
 
-    // find user guide
-    bool man_ok = false;
-    string manual_source = loadText(file::configDir() + "/yoshimi-manual.source");
-    if (!manual_source.empty())
+    if (success)
     {
-        size_t pos = manual_source.find("\n");
-        if (pos != string::npos)
-        {
-            guideVersion = manual_source.substr(0,pos);
-
-            manualFile = manual_source.substr(pos + 1);
-            size_t endCR = manualFile.rfind("\n");
-            if (endCR != string::npos)
-                manualFile = manualFile.substr(0,endCR);
-            string currentV = string(YOSHIMI_VERSION);
-            pos = currentV.find(" ");
-            if (pos != string::npos)
-                currentV = currentV.substr(0,pos);
-//cout << "\nm >" << manualFile << "<" << endl;
-//cout << "\nc " << currentV << "\ng " << guideVersion << endl;
-            if (currentV == guideVersion && file::isRegularFile(manualFile) != 0)
-                man_ok = true;
-        }
+        // the instance data
+        auto xml{std::make_unique<XMLwrapper>(synth, true)};
+        success = xml->loadXMLfile(configFile);
+        if (success)
+            success = extractConfigData(*xml);
+        else
+            Log("loadConfig load instance failed");
     }
-//cout << "OK " << int(man_ok) << endl;;
-    if (!man_ok)
+    if (currentInstance == 0 && sessionStage != _SYS_::type::RestoreConf)
     {
-        startThread(&findManualHandle, _findManual, this, false, 0, "CFG");
+        int currentVersion = lastXMLmajor * 10 + lastXMLminor;
+        int storedVersion = MIN_CONFIG_MAJOR * 10 + MIN_CONFIG_MINOR;
+        if (currentVersion < storedVersion)
+            oldConfig = true;
+        else
+            oldConfig = false;
     }
-    //cout << "Session Stage " << sessionStage << endl;
 
     if (sessionStage == _SYS_::type::RestoreConf)
         return true;
 
     if (sessionStage != _SYS_::type::Normal)
     {
-        XMLwrapper *xml = new XMLwrapper(synth, true);
-        if (!xml)
-            Log("loadConfig failed XMLwrapper allocation");
-        else
+        auto xml{std::make_unique<XMLwrapper>(synth, true)};
+        success = xml->loadXMLfile(stateFile);
+        if (success)
         {
-            isok = xml->loadXMLfile(StateFile);
-            if (isok)
-            {
-                if (sessionStage == _SYS_::type::StartupFirst)
-                    sessionStage = _SYS_::type::StartupSecond;
-                else if (sessionStage == _SYS_::type::JackFirst)
-                    sessionStage = _SYS_::type::JackSecond;
-                isok = extractConfigData(xml);
-            }
-            else
-                Log("loadConfig load instance failed");
-            delete xml;
+            if (sessionStage == _SYS_::type::StartupFirst)
+                sessionStage = _SYS_::type::StartupSecond;
+            else if (sessionStage == _SYS_::type::JackFirst)
+                sessionStage = _SYS_::type::JackSecond;
+            success = extractConfigData(*xml);
+        }
+        else
+            Log("loadConfig load instance failed");
+    }
+    if (success)
+        loadPresetsList();
+
+    if (success && currentInstance == 0)
+    {
+        // find user guide
+        bool man_ok = false;
+        string currentV = string(YOSHIMI_VERSION);
+        size_t pos = currentV.find(" ");
+        if (pos != string::npos)
+            currentV = currentV.substr(0,pos);
+        if (currentV == guideVersion && isRegularFile(manualFile))
+            man_ok = true;
+
+        if (!man_ok)
+        {
+            startThread(&findManual_Thread, _findManual, this, false, 0, "CFG");
         }
     }
-    return isok;
+    return success;
 }
 
-void Config::restoreConfig(SynthEngine *_synth)
+
+bool Config::updateConfig(int control, int value)
 {
-    size_t tmpRoot = _synth->ReadBankRoot();
-    size_t tmpBank = _synth->ReadBank();
-    int tmpChanged = configChanged;
-    sessionStage = _SYS_::type::RestoreConf;
+    /*
+     * This routine only stores settings that the user has directly changed
+     * and not those changed via CLI startup parameters, nor changes made
+     * by loading sessions etc.
+     *
+     * It loads the previously saved config into an array so it doesn't
+     * disrupt the complete config currently in place. It then overwrites
+     * just the parameter the user changed, and resaves everything
+     * including system generated entries.
+     *
+     * Text entries are handled via textMsgBuffer so only a single array
+     * type is needed, simplifying the code.
+     *
+     * Some assumptions are made based on the fact the parameters must be
+     * in the correct range as they otherwise couldn't have been created.
+     */
 
-    // restore old settings
-    loadConfig();
+    bool success{false};
+    if (control <= CONFIG::control::XMLcompressionLevel)
+    {// handling base config
+        int baseData[CONFIG::control::XMLcompressionLevel+1];
+        xmlType = TOPLEVEL::XML::MasterUpdate;
+        baseConfig = file::configDir() + "/yoshimi" + string(EXTEN::config);
+        auto xml{std::make_unique<XMLwrapper>(synth, true)};
+        success = xml->loadXMLfile(baseConfig);
 
-    // but keep current root and bank
-    _synth->setRootBank(tmpRoot, tmpBank);
-    // and ESPECIALLY 'load as default' status!
-    configChanged = tmpChanged;
+        if (success)
+        {
+            xml->enterbranch("BASE_PARAMETERS");
+            baseData[CONFIG::control::enableGUI] = xml->getparbool("enable_gui",true);
+            baseData[CONFIG::control::showSplash] = xml->getparbool("enable_splash",true);
+            baseData[CONFIG::control::enableCLI] = xml->getparbool("enable_cli",true);
+            baseData[CONFIG::control::exposeStatus] = xml->getpar("show_cli_context",3,0,3);
+            baseData[CONFIG::control::enableSinglePath] = xml->getparbool("enable_single_master",false);
+            baseData[CONFIG::control::enableAutoInstance] = xml->getparbool("enable_auto_instance",false);
+            baseData[CONFIG::control::handlePadSynthBuild] = xml->getparU("handle_padsynth_build",0);
+            baseData[CONFIG::control::XMLcompressionLevel] = xml->getpar("gzip_compression",3,0,9);
+
+            xml->exitbranch(); // BASE_PARAMETERS
+
+            // Change the specific config value given
+            baseData[control] = value;
+
+            // Write back the consolidated base config
+            auto xml{std::make_unique<XMLwrapper>(synth, true)};
+            xml->beginbranch("BASE_PARAMETERS");
+            xml->addparbool("enable_gui",baseData[CONFIG::control::enableGUI]);
+            xml->addparbool("enable_splash",baseData[CONFIG::control::showSplash]);
+            xml->addparbool("enable_cli",baseData[CONFIG::control::enableCLI]);
+            xml->addpar("show_cli_context",baseData[CONFIG::control::exposeStatus]);
+            xml->addparbool("enable_single_master",baseData[CONFIG::control::enableSinglePath]);
+            xml->addparbool("enable_auto_instance",baseData[CONFIG::control::enableAutoInstance]);
+            xml->addparU("handle_padsynth_build",baseData[CONFIG::control::handlePadSynthBuild]);
+            xml->addparbool("banks_checked",baseData[CONFIG::control::banksChecked]);
+            xml->addpar("gzip_compression",baseData[CONFIG::control::XMLcompressionLevel]);
+
+            // the following are system defined;
+            xml->addparU("active_instances", activeInstances.to_ulong());
+            xml->addparstr("guide_version",  guideVersion);
+            xml->addparstr("manual", manualFile);
+            xml->endbranch(); // BASE_PARAMETERS
+
+            if (!xml->saveXMLfile(baseConfig, false))
+            {
+                Log("Failed to update master config", _SYS_::LogNotSerious);
+            }
+        }
+        else
+        {
+            Log("loadConfig load base failed");
+        }
+    }
+    else
+    {// handling current session config
+        const int offset = CONFIG::control::defaultStateStart;
+        const int arraySize = CONFIG::control::historyLock - offset;
+        const string instance = asString(synth.getUniqueId());
+
+        xmlType = TOPLEVEL::XML::Config;
+        string configFile = file::configDir() + "/yoshimi-" + instance + string(EXTEN::instance);
+        int configData[arraySize]; // historyLock is handled elsewhere
+        auto xml{std::make_unique<XMLwrapper>(synth, true)};
+        success = xml->loadXMLfile(configFile);
+        string tempText = "";
+
+        if (success)
+        {
+            xml->enterbranch("CONFIGURATION");
+            configData[CONFIG::control::defaultStateStart - offset] = xml->getpar("defaultState", 0, 0, 1);
+            configData[CONFIG::control::bufferSize - offset] = xml->getpar("sound_buffer_size", 0, MIN_BUFFER_SIZE, MAX_BUFFER_SIZE);
+            configData[CONFIG::control::oscillatorSize - offset] = xml->getpar("oscil_size", 0, MIN_OSCIL_SIZE, MAX_OSCIL_SIZE);
+            configData[CONFIG::control::reportsDestination - offset] = xml->getpar("reports_destination", 0, 0, 1);
+            configData[CONFIG::control::logTextSize - offset] = xml->getpar("console_text_size", 0, 11, 100);
+            configData[CONFIG::control::padSynthInterpolation - offset] = xml->getpar("interpolation", 0, 0, 1);
+            configData[CONFIG::control::virtualKeyboardLayout - offset] = xml->getpar("virtual_keyboard_layout", 0, 1, 6) - 1;
+            configData[CONFIG::control::savedInstrumentFormat - offset] = xml->getpar("saved_instrument_format",0, 1, 3);
+            configData[CONFIG::control::hideNonFatalErrors - offset] = xml->getpar("hide_system_errors", 0, 0, 1);
+            configData[CONFIG::control::logInstrumentLoadTimes - offset] = xml->getpar("report_load_times", 0, 0, 1);
+            configData[CONFIG::control::logXMLheaders - offset] = xml->getpar("report_XMLheaders", 0, 0, 1);
+            configData[CONFIG::control::saveAllXMLdata - offset] = xml->getpar("full_parameters", 0, 0, 1);
+            configData[CONFIG::control::enableHighlight - offset] = xml->getparbool("bank_highlight", bankHighlight);
+            configData[CONFIG::control::jackMidiSource - offset] = textMsgBuffer.push(xml->getparstr("linux_jack_midi_dev"));// string
+            configData[CONFIG::control::jackServer - offset] =  textMsgBuffer.push(xml->getparstr("linux_jack_server"));// string
+            configData[CONFIG::control::jackAutoConnectAudio - offset] = xml->getpar("connect_jack_audio", 0, 0, 1);
+            configData[CONFIG::control::alsaMidiSource - offset] = textMsgBuffer.push(xml->getparstr("linux_alsa_midi_dev"));// string
+            configData[CONFIG::control::alsaMidiType - offset] = xml->getpar("alsa_midi_type", 0, 0, 2);
+            configData[CONFIG::control::alsaAudioDevice - offset] = textMsgBuffer.push(xml->getparstr("linux_alsa_audio_dev"));// string
+            configData[CONFIG::control::alsaSampleRate - offset] = xml->getpar("sample_rate", samplerate, 44100, 192000);
+            configData[CONFIG::control::readAudio - offset] = (audio_driver)xml->getpar("audio_engine", 0, no_audio, alsa_audio);
+            configData[CONFIG::control::readMIDI - offset] = (midi_driver)xml->getpar("midi_engine", 0, no_midi, alsa_midi);
+            //configData[CONFIG::control::addPresetRootDir - offset] = // string NOT stored
+            //configData[CONFIG::control::removePresetRootDir - offset] = // returns string NOT used
+            configData[CONFIG::control::currentPresetRoot - offset] = xml->getpar("presetsCurrentRootID", 0, 0, MAX_PRESETS);
+            configData[CONFIG::control::bankRootCC - offset] = xml->getpar("midi_bank_root", 0, 0, 128);
+            configData[CONFIG::control::bankCC - offset] = xml->getpar("midi_bank_C", midi_bank_C, 0, 128);
+            configData[CONFIG::control::enableProgramChange - offset] = 1 - xml->getpar("ignore_program_change", 0, 0, 1); // inverted for Zyn compatibility
+            configData[CONFIG::control::extendedProgramChangeCC - offset] = xml->getpar("midi_upper_voice_C", 0, 0, 128);// return string (in use)
+            configData[CONFIG::control::ignoreResetAllCCs - offset] = xml->getpar("ignore_reset_all_CCs",0,0, 1);
+            configData[CONFIG::control::logIncomingCCs - offset] = xml->getparbool("monitor-incoming_CCs", monitorCCin);
+            configData[CONFIG::control::showLearnEditor - offset] = xml->getparbool("open_editor_on_learned_CC", showLearnedCC);
+            configData[CONFIG::control::enableNRPNs - offset] = xml->getparbool("enable_incoming_NRPNs", enable_NRPN);
+            //configData[CONFIG::control::saveCurrentConfig - offset] = // return string (dummy)
+
+            xml->exitbranch(); // CONFIGURATION
+
+            // this is the one that changed
+
+            //cout << "control "<< control << "  val " << value << std::endl;
+            //cout << control - offset << std::endl;
+            configData[control - offset] = value;
+
+            if (success)
+            {
+                auto xml{std::make_unique<XMLwrapper>(synth, true)};
+                xml->beginbranch("CONFIGURATION");
+                xml->addpar("defaultState", configData[CONFIG::control::defaultStateStart - offset]);
+                xml->addpar("sound_buffer_size", configData[CONFIG::control::bufferSize - offset]);
+                xml->addpar("oscil_size", configData[CONFIG::control::oscillatorSize - offset]);
+                xml->addpar("reports_destination", configData[CONFIG::control::reportsDestination - offset]);
+                xml->addpar("console_text_size", configData[CONFIG::control::logTextSize - offset]);
+                xml->addpar("interpolation", configData[CONFIG::control::padSynthInterpolation - offset]);
+                xml->addpar("virtual_keyboard_layout", configData[CONFIG::control::virtualKeyboardLayout - offset] + 1);
+                xml->addpar("saved_instrument_format", configData[CONFIG::control::savedInstrumentFormat - offset]);
+                xml->addpar("hide_system_errors", configData[CONFIG::control::hideNonFatalErrors - offset]);
+                xml->addpar("report_load_times", configData[CONFIG::control::logInstrumentLoadTimes - offset]);
+                xml->addpar("report_XMLheaders", configData[CONFIG::control::logXMLheaders - offset]);
+                xml->addpar("full_parameters", configData[CONFIG::control::saveAllXMLdata - offset]);
+                xml->addparbool("bank_highlight", configData[CONFIG::control::enableHighlight - offset]);
+                xml->addpar("audio_engine", configData[CONFIG::control::readAudio - offset]);
+                xml->addpar("midi_engine", configData[CONFIG::control::readMIDI - offset]);
+                xml->addparstr("linux_jack_server", textMsgBuffer.fetch(configData[CONFIG::control::jackServer - offset]));
+                xml->addparstr("linux_jack_midi_dev", textMsgBuffer.fetch(configData[CONFIG::control::jackMidiSource - offset]));
+                xml->addpar("connect_jack_audio", configData[CONFIG::control::jackAutoConnectAudio - offset]);
+                xml->addpar("alsa_midi_type", configData[CONFIG::control::alsaMidiType - offset]);
+                xml->addparstr("linux_alsa_audio_dev", textMsgBuffer.fetch(configData[CONFIG::control::alsaAudioDevice - offset]));
+                xml->addparstr("linux_alsa_midi_dev", textMsgBuffer.fetch(configData[CONFIG::control::alsaMidiSource - offset]));
+                xml->addpar("sample_rate", configData[CONFIG::control::alsaSampleRate - offset]);
+                xml->addpar("presetsCurrentRootID", configData[CONFIG::control::currentPresetRoot - offset]);
+                xml->addpar("midi_bank_root", configData[CONFIG::control::bankRootCC - offset]);
+                xml->addpar("midi_bank_C", configData[CONFIG::control::bankCC - offset]);
+                xml->addpar("midi_upper_voice_C", configData[CONFIG::control::extendedProgramChangeCC - offset]);
+                xml->addpar("ignore_program_change", (1 - configData[CONFIG::control::enableProgramChange - offset]));
+                xml->addpar("enable_part_on_voice_load", 1); // for backward compatibility
+                xml->addparbool("enable_incoming_NRPNs", configData[CONFIG::control::enableNRPNs - offset]);
+                xml->addpar("ignore_reset_all_CCs",configData[CONFIG::control::ignoreResetAllCCs - offset]);
+                xml->addparbool("monitor-incoming_CCs", configData[CONFIG::control::logIncomingCCs - offset]);
+                xml->addparbool("open_editor_on_learned_CC",configData[CONFIG::control::showLearnEditor - offset]);
+
+                xml->addpar("root_current_ID", currentRoot); // always store the current root
+                xml->addpar("bank_current_ID", currentBank); // always store the current bank
+                xml->endbranch(); // CONFIGURATION
+
+                if (!xml->saveXMLfile(configFile, true))
+                {
+                    Log("Failed to update instance config", _SYS_::LogNotSerious);
+                }
+            }
+        }
+        else
+        {
+            Log("loadConfig load instance config" + instance + " failed");
+        }
+    }
+    return success;
 }
 
 
-void Config::defaultPresets(void)
+void Config::defaultPresets()
 {
     string presetdirs[]  = {
-        //string(getenv("HOME")) + "/.local/yoshimi/presets",
         presetDir,
         extendLocalPath("/presets"),
-        // The following is not a default one.
-        //string(getenv("HOME")) + "/" + string(EXTEN::config) + "/yoshimi/presets",
+        /*
+         * TODO
+         * We shouldn't be setting these directly
+         */
         "/usr/share/yoshimi/presets",
         "/usr/local/share/yoshimi/presets",
-        /*
-         * We no longer include zyn presets as they changed the filenames.
-        "/usr/share/zynaddsubfx/presets",
-        "/usr/local/share/zynaddsubfx/presets",
-        */
         "@end"
     };
     int i = 0;
@@ -511,37 +741,32 @@ void Config::defaultPresets(void)
 }
 
 
-bool Config::extractBaseParameters(XMLwrapper *xml)
+bool Config::extractBaseParameters(XMLwrapper& xml)
 {
-    if (synth->getUniqueId() != 0)
-        return true;
-
-    if (!xml)
-    {
-        Log("extractConfigData on NULL");
-        return false;
-    }
-    if (!xml->enterbranch("BASE_PARAMETERS"))
+    if (!xml.enterbranch("BASE_PARAMETERS"))
     {
         Log("extractConfigData, no BASE_PARAMETERS branch");
         return false;
     }
 
+    storedGui = xml.getparbool("enable_gui", showGui);
     if (!guiChanged)
-        showGui = xml->getparbool("enable_gui", showGui);
-    showSplash = xml->getparbool("enable_splash", showSplash);
+        showGui = storedGui;
+
+    showSplash = xml.getparbool("enable_splash", showSplash);
+
+    storedCli = xml.getparbool("enable_CLI", showCli);
     if (!cliChanged)
-        showCli = xml->getparbool("enable_CLI", showCli);
-    singlePath = xml->getparbool("enable_single_master", singlePath);
-    banksChecked = xml->getparbool("banks_checked", banksChecked);
-    autoInstance = xml->getparbool("enable_auto_instance", autoInstance);
+        showCli = storedCli;
+
+    singlePath  = xml.getparbool("enable_single_master", singlePath);
+    banksChecked = xml.getparbool("banks_checked", banksChecked);
+    autoInstance = xml.getparbool("enable_auto_instance", autoInstance);
     if (autoInstance)
-        activeInstance = xml->getparU("active_instances", 0);
-    else
-        activeInstance = 1;
-    handlePadSynthBuild = xml->getparU("handle_padsynth_build", 1, 0, 2);  // 0 = blocking/muted, 1 = background thread (=default), 2 = auto-Apply on param change
-    showCLIcontext = xml->getpar("show_CLI_context", 1, 0, 2);
-    GzipCompression = xml->getpar("gzip_compression", GzipCompression, 0, 9);
+        activeInstances = bitset<32>{xml.getparU("active_instances", 0)};
+    handlePadSynthBuild = xml.getparU("handle_padsynth_build", 1, 0, 2);  // 0 = blocking/muted, 1 = background thread (=default), 2 = auto-Apply on param change
+    showCLIcontext  = xml.getpar("show_CLI_context", 1, 0, 2);
+    gzipCompression = xml.getpar("gzip_compression", gzipCompression, 0, 9);
 
     // get preset dirs
     int count = 0;
@@ -550,16 +775,16 @@ bool Config::extractBaseParameters(XMLwrapper *xml)
     {
         for (int i = 0; i < MAX_PRESET_DIRS; ++i)
         {
-            if (xml->enterbranch("PRESETSROOT", i))
+            if (xml.enterbranch("PRESETSROOT", i))
             {
-                string dir = xml->getparstr("presets_root");
+                string dir = xml.getparstr("presets_root");
                 if (isDirectory(dir))
                 {
                     presetsDirlist[count] = dir;
                     found = true;
                     ++count;
                 }
-                xml->exitbranch();
+                xml.exitbranch();
             }
         }
 
@@ -567,24 +792,21 @@ bool Config::extractBaseParameters(XMLwrapper *xml)
         {
             defaultPresets();
             presetsRootID = 0;
-            configChanged = true; // give the user the choice
-
             savePresetsList(); // move these to new location
         }
     }
 
-    xml->exitbranch(); // BaseParameters
+
+    guideVersion = xml.getparstr("guide_version");
+    manualFile = xml.getparstr("manual");
+
+    xml.exitbranch(); // BaseParameters
     return true;
 }
 
-bool Config::extractConfigData(XMLwrapper *xml)
+bool Config::extractConfigData(XMLwrapper& xml)
 {
-    if (!xml)
-    {
-        Log("extractConfigData on NULL");
-        return false;
-    }
-    if (!xml->enterbranch("CONFIGURATION"))
+    if (!xml.enterbranch("CONFIGURATION"))
     {
         Log("extractConfigData, no CONFIGURATION branch");
         Log("Running with defaults");
@@ -596,13 +818,13 @@ bool Config::extractConfigData(XMLwrapper *xml)
      */
     if (sessionStage == _SYS_::type::Normal)
     {
-        loadDefaultState = xml->getpar("defaultState", loadDefaultState, 0, 1);
+        loadDefaultState = xml.getpar("defaultState", loadDefaultState, 0, 1);
         if (loadDefaultState)
         {
-            xml->exitbranch(); // CONFIGURATION
+            xml.exitbranch(); // CONFIGURATION
             configChanged = true;
             sessionStage = _SYS_::type::Default;
-            StateFile = defaultSession;
+            stateFile = defaultSession;
             Log("Loading default state");
             return true;
         }
@@ -611,241 +833,203 @@ bool Config::extractConfigData(XMLwrapper *xml)
     if (sessionStage != _SYS_::type::InProgram)
     {
 
-        if (!rateChanged)
-            Samplerate = xml->getpar("sample_rate", Samplerate, 44100, 192000);
         if (!bufferChanged)
-            Buffersize = xml->getpar("sound_buffer_size", Buffersize, MIN_BUFFER_SIZE, MAX_BUFFER_SIZE);
+            buffersize = xml.getpar("sound_buffer_size", buffersize, MIN_BUFFER_SIZE, MAX_BUFFER_SIZE);
         if (!oscilChanged)
-            Oscilsize = xml->getpar("oscil_size", Oscilsize, MIN_OSCIL_SIZE, MAX_OSCIL_SIZE);
-        single_row_panel = xml->getpar("single_row_panel", single_row_panel, 0, 1);
-        toConsole = xml->getpar("reports_destination", toConsole, 0, 1);
-        consoleTextSize = xml->getpar("console_text_size", consoleTextSize, 11, 100);
-        hideErrors = xml->getpar("hide_system_errors", hideErrors, 0, 1);
-        showTimes = xml->getpar("report_load_times", showTimes, 0, 1);
-        logXMLheaders = xml->getpar("report_XMLheaders", logXMLheaders, 0, 1);
-        VirKeybLayout = xml->getpar("virtual_keyboard_layout", VirKeybLayout, 1, 6) - 1;
-        xmlmax = xml->getpar("full_parameters", xmlmax, 0, 1);
+            oscilsize = xml.getpar("oscil_size", oscilsize, MIN_OSCIL_SIZE, MAX_OSCIL_SIZE);
+        toConsole = xml.getpar("reports_destination", toConsole, 0, 1);
+        consoleTextSize = xml.getpar("console_text_size", consoleTextSize, 11, 100);
+        Interpolation = xml.getpar("interpolation", Interpolation, 0, 1);
+        virKeybLayout = xml.getpar("virtual_keyboard_layout", virKeybLayout, 1, 6) - 1;
+        hideErrors = xml.getpar("hide_system_errors", hideErrors, 0, 1);
+        showTimes = xml.getpar("report_load_times", showTimes, 0, 1);
+        logXMLheaders = xml.getpar("report_XMLheaders", logXMLheaders, 0, 1);
+        xmlmax = xml.getpar("full_parameters", xmlmax, 0, 1);
 
-        bankHighlight = xml->getparbool("bank_highlight", bankHighlight);
+        bankHighlight = xml.getparbool("bank_highlight", bankHighlight);
         loadPresetsList();
-        presetsRootID = xml->getpar("presetsCurrentRootID", presetsRootID, 0, MAX_PRESETS);
+        presetsRootID = xml.getpar("presetsCurrentRootID", presetsRootID, 0, MAX_PRESETS);
 
-        Interpolation = xml->getpar("interpolation", Interpolation, 0, 1);
 
         // engines
         if (!engineChanged)
-            audioEngine = (audio_drivers)xml->getpar("audio_engine", audioEngine, no_audio, alsa_audio);
+            audioEngine = (audio_driver)xml.getpar("audio_engine", audioEngine, no_audio, alsa_audio);
         if (!midiChanged)
-            midiEngine = (midi_drivers)xml->getpar("midi_engine", midiEngine, no_midi, alsa_midi);
-        alsaMidiType = xml->getpar("alsa_midi_type", 0, 0, 2);
+            midiEngine = (midi_driver)xml.getpar("midi_engine", midiEngine, no_midi, alsa_midi);
+        alsaMidiType = xml.getpar("alsa_midi_type", 0, 0, 2);
 
         // alsa settings
-        alsaAudioDevice = xml->getparstr("linux_alsa_audio_dev");
-        alsaMidiDevice = xml->getparstr("linux_alsa_midi_dev");
+        alsaAudioDevice = xml.getparstr("linux_alsa_audio_dev");
+        alsaMidiDevice = xml.getparstr("linux_alsa_midi_dev");
+        if (!rateChanged)
+            samplerate = xml.getpar("sample_rate", samplerate, 44100, 192000);
 
         // jack settings
-        jackServer = xml->getparstr("linux_jack_server");
-        jackMidiDevice = xml->getparstr("linux_jack_midi_dev");
+        jackServer = xml.getparstr("linux_jack_server");
+        jackMidiDevice = xml.getparstr("linux_jack_midi_dev");
         if (!connectJackChanged)
-            connectJackaudio = xml->getpar("connect_jack_audio", connectJackaudio, 0, 1);
+            connectJackaudio = xml.getpar("connect_jack_audio", connectJackaudio, 0, 1);
 
         // midi options
-        midi_bank_root = xml->getpar("midi_bank_root", midi_bank_root, 0, 128);
-        midi_bank_C = xml->getpar("midi_bank_C", midi_bank_C, 0, 128);
-        midi_upper_voice_C = xml->getpar("midi_upper_voice_C", midi_upper_voice_C, 0, 128);
-        EnableProgChange = 1 - xml->getpar("ignore_program_change", EnableProgChange, 0, 1); // inverted for Zyn compatibility
-        instrumentFormat = xml->getpar("saved_instrument_format",instrumentFormat, 1, 3);
-        enable_NRPN = xml->getparbool("enable_incoming_NRPNs", enable_NRPN);
-        ignoreResetCCs = xml->getpar("ignore_reset_all_CCs",ignoreResetCCs,0, 1);
-        monitorCCin = xml->getparbool("monitor-incoming_CCs", monitorCCin);
-        showLearnedCC = xml->getparbool("open_editor_on_learned_CC", showLearnedCC);
+        midi_bank_root = xml.getpar("midi_bank_root", midi_bank_root, 0, 128);
+        midi_bank_C = xml.getpar("midi_bank_C", midi_bank_C, 0, 128);
+        midi_upper_voice_C = xml.getpar("midi_upper_voice_C", midi_upper_voice_C, 0, 128);
+        enableProgChange = 1 - xml.getpar("ignore_program_change", enableProgChange, 0, 1); // inverted for Zyn compatibility
+        instrumentFormat = xml.getpar("saved_instrument_format",instrumentFormat, 1, 3);
+        enable_NRPN = xml.getparbool("enable_incoming_NRPNs", enable_NRPN);
+        ignoreResetCCs = xml.getpar("ignore_reset_all_CCs",ignoreResetCCs,0, 1);
+        monitorCCin = xml.getparbool("monitor-incoming_CCs", monitorCCin);
+        showLearnedCC = xml.getparbool("open_editor_on_learned_CC", showLearnedCC);
     }
     if (tempRoot == 0)
-        tempRoot = xml->getpar("root_current_ID", 0, 0, 127);
+        tempRoot = xml.getpar("root_current_ID", 0, 0, 127);
 
     if (tempBank == 0)
-    tempBank = xml->getpar("bank_current_ID", 0, 0, 127);
-    xml->exitbranch(); // CONFIGURATION
+    tempBank = xml.getpar("bank_current_ID", 0, 0, 127);
+    xml.exitbranch(); // CONFIGURATION
     return true;
 }
 
 
-bool Config::saveConfig(bool master)
+bool Config::saveMasterConfig()
 {
-    bool result = false;
-    if (master)
-    {
-        //cout << "saving master" << endl;
-        xmlType = TOPLEVEL::XML::MasterConfig;
-        XMLwrapper *xml = new XMLwrapper(synth, true);
-        if (!xml)
-        {
-            Log("saveConfig failed xml allocation", _SYS_::LogNotSerious);
-            return result;
-        }
-        string resConfigFile = baseConfig;
+    xmlType = TOPLEVEL::XML::MasterConfig;
+    auto xml{std::make_unique<XMLwrapper>(synth, true)};
+    // Note: the XMLwrapper ctor automatically populates the BASE_PARAMETERS
+    string resConfigFile = baseConfig;
 
-        if (xml->saveXMLfile(resConfigFile, false))
-        {
-            configChanged = false;
-            result = true;
-        }
-        else
-            Log("Failed to save master config to " + resConfigFile, _SYS_::LogNotSerious);
-
-        delete xml;
-    }
-    xmlType = TOPLEVEL::XML::Config;
-    XMLwrapper *xml = new XMLwrapper(synth, true);
-    if (!xml)
-    {
-        Log("saveConfig failed xml allocation", _SYS_::LogNotSerious);
-        return result;
-    }
-    addConfigXML(xml);
-    string resConfigFile = ConfigFile;
-
-    if (xml->saveXMLfile(resConfigFile))
-    {
+    bool success = xml->saveXMLfile(resConfigFile, false);
+    if (success)
         configChanged = false;
-        result = true;
-    }
+    else
+        Log("Failed to save master config to " + resConfigFile, _SYS_::LogNotSerious);
+    return success;
+}
+
+bool Config::saveInstanceConfig()
+{
+    xmlType = TOPLEVEL::XML::Config;
+    auto xml{std::make_unique<XMLwrapper>(synth, true)};
+    addConfigXML(*xml);
+    string resConfigFile = configFile;
+
+    bool success = xml->saveXMLfile(resConfigFile);
+    if (success)
+        configChanged = false;
     else
         Log("Failed to save instance to " + resConfigFile, _SYS_::LogNotSerious);
-
-    delete xml;
-    return result;
+    return success;
 }
 
 
-void Config::addConfigXML(XMLwrapper *xml)
+void Config::addConfigXML(XMLwrapper& xml)
 {
-    xml->beginbranch("CONFIGURATION");
-    xml->addpar("defaultState", loadDefaultState);
+    xml.beginbranch("CONFIGURATION");
+    xml.addpar("defaultState", loadDefaultState);
 
-    xml->addpar("sample_rate", synth->getRuntime().Samplerate);
-    xml->addpar("sound_buffer_size", synth->getRuntime().Buffersize);
-    xml->addpar("oscil_size", synth->getRuntime().Oscilsize);
+    xml.addpar("sound_buffer_size", buffersize);
+    xml.addpar("oscil_size", oscilsize);
+    xml.addpar("reports_destination", toConsole);
+    xml.addpar("console_text_size", consoleTextSize);
+    xml.addpar("interpolation", Interpolation);
+    xml.addpar("virtual_keyboard_layout", virKeybLayout + 1);
+    xml.addpar("saved_instrument_format", instrumentFormat);
+    xml.addpar("hide_system_errors", hideErrors);
+    xml.addpar("report_load_times", showTimes);
+    xml.addpar("report_XMLheaders", logXMLheaders);
+    xml.addpar("full_parameters", xmlmax);
 
-    xml->addpar("single_row_panel", single_row_panel);
-    xml->addpar("reports_destination", toConsole);
-    xml->addpar("console_text_size", consoleTextSize);
-    xml->addpar("hide_system_errors", hideErrors);
-    xml->addpar("report_load_times", showTimes);
-    xml->addpar("report_XMLheaders", logXMLheaders);
-    xml->addpar("virtual_keyboard_layout", VirKeybLayout + 1);
-    xml->addpar("full_parameters", xmlmax);
+    xml.addparbool("bank_highlight", bankHighlight);
 
-    xml->addparbool("bank_highlight", bankHighlight);
+    xml.addpar("audio_engine", audioEngine);
+    xml.addpar("midi_engine",  midiEngine);
 
-    xml->addpar("presetsCurrentRootID", presetsRootID);
+    xml.addparstr("linux_jack_server", jackServer);
+    xml.addparstr("linux_jack_midi_dev", jackMidiDevice);
+    xml.addpar("connect_jack_audio", connectJackaudio);
 
-    xml->addpar("interpolation", Interpolation);
+    xml.addpar("alsa_midi_type", alsaMidiType);
+    xml.addparstr("linux_alsa_audio_dev", alsaAudioDevice);
+    xml.addparstr("linux_alsa_midi_dev", alsaMidiDevice);
+    xml.addpar("sample_rate", samplerate);
 
-    xml->addpar("audio_engine", synth->getRuntime().audioEngine);
-    xml->addpar("midi_engine", synth->getRuntime().midiEngine);
-    xml->addpar("alsa_midi_type", synth->getRuntime().alsaMidiType);
-
-    xml->addparstr("linux_alsa_audio_dev", alsaAudioDevice);
-    xml->addparstr("linux_alsa_midi_dev", alsaMidiDevice);
-
-    xml->addparstr("linux_jack_server", jackServer);
-    xml->addparstr("linux_jack_midi_dev", jackMidiDevice);
-    xml->addpar("connect_jack_audio", connectJackaudio);
-
-    xml->addpar("midi_bank_root", midi_bank_root);
-    xml->addpar("midi_bank_C", midi_bank_C);
-    xml->addpar("midi_upper_voice_C", midi_upper_voice_C);
-    xml->addpar("ignore_program_change", (1 - EnableProgChange));
-    xml->addpar("enable_part_on_voice_load", 1); // for backward compatibility
-    xml->addpar("saved_instrument_format", instrumentFormat);
-    xml->addparbool("enable_incoming_NRPNs", enable_NRPN);
-    xml->addpar("ignore_reset_all_CCs",ignoreResetCCs);
-    xml->addparbool("monitor-incoming_CCs", monitorCCin);
-    xml->addparbool("open_editor_on_learned_CC",showLearnedCC);
-    xml->addpar("check_pad_synth", 1); // for backward compatibility
-    xml->addpar("root_current_ID", synth->ReadBankRoot());
-    xml->addpar("bank_current_ID", synth->ReadBank());
-    xml->endbranch(); // CONFIGURATION
+    xml.addpar("presetsCurrentRootID", presetsRootID);
+    xml.addpar("midi_bank_root", midi_bank_root);
+    xml.addpar("midi_bank_C", midi_bank_C);
+    xml.addpar("midi_upper_voice_C", midi_upper_voice_C);
+    xml.addpar("ignore_program_change", (1 - enableProgChange));
+    xml.addpar("enable_part_on_voice_load", 1); // for backward compatibility
+    xml.addparbool("enable_incoming_NRPNs", enable_NRPN);
+    xml.addpar("ignore_reset_all_CCs",ignoreResetCCs);
+    xml.addparbool("monitor-incoming_CCs", monitorCCin);
+    xml.addparbool("open_editor_on_learned_CC",showLearnedCC);
+    xml.addpar("root_current_ID", synth.ReadBankRoot());
+    xml.addpar("bank_current_ID", synth.ReadBank());
+    xml.endbranch(); // CONFIGURATION
 }
 
 
 bool Config::saveSessionData(string savefile)
 {
     savefile = setExtension(savefile, EXTEN::state);
-    synth->getRuntime().xmlType = TOPLEVEL::XML::State;
-    XMLwrapper *xml = new XMLwrapper(synth, true);
-    if (!xml)
-    {
-        Log("saveSessionData failed xml allocation", _SYS_::LogNotSerious | _SYS_::LogError);
-        return false;
-    }
-    bool ok = true;
-    addConfigXML(xml);
-    synth->add2XML(xml);
-    synth->midilearn.insertMidiListData(xml);
+    xmlType = TOPLEVEL::XML::State;
+    auto xml{std::make_unique<XMLwrapper>(synth, true)};
+    bool success{false};
+    addConfigXML(*xml);
+    synth.add2XML(*xml);
+    synth.midilearn.insertMidiListData(*xml);
     if (xml->saveXMLfile(savefile))
-        Log("Session data saved to " + savefile, _SYS_::LogNotSerious);
-    else
     {
-        ok = false;
-        Log("Failed to save session data to " + savefile, _SYS_::LogNotSerious);
+        Log("Session data saved to " + savefile, _SYS_::LogNotSerious);
+        success = true;
     }
-    if (xml)
-        delete xml;
-    return ok;
+    else
+        Log("Failed to save session data to " + savefile, _SYS_::LogNotSerious);
+
+    return success;
 }
 
 
 bool Config::restoreSessionData(string sessionfile)
 {
-    XMLwrapper *xml = NULL;
-    bool ok = false;
+    bool success{false};
 
     if (sessionfile.size() && !isRegularFile(sessionfile))
         sessionfile = setExtension(sessionfile, EXTEN::state);
     if (!sessionfile.size() || !isRegularFile(sessionfile))
     {
         Log("Session file " + sessionfile + " not available", _SYS_::LogNotSerious);
-        goto end_game;
+        return false;
     }
-    if (!(xml = new XMLwrapper(synth, true)))
-    {
-        Log("Failed to init xml for restoreState", _SYS_::LogNotSerious | _SYS_::LogError);
-        goto end_game;
-    }
+    auto xml{std::make_unique<XMLwrapper>(synth, true)};
     if (!xml->loadXMLfile(sessionfile))
     {
         Log("Failed to load xml file " + sessionfile, _SYS_::LogNotSerious);
-        goto end_game;
+        return false;
     }
 
 
-    ok = extractConfigData(xml);
-    if (ok)
+    success = extractConfigData(*xml);
+    if (success)
     {
         // mark as soon as anything changes
-        synth->getRuntime().stateChanged = true;
-        for (int npart = 0; npart < NUM_MIDI_PARTS; ++ npart)
-            synth->part[npart]->defaults(npart);
+        this->stateChanged = true;
 
-        ok = synth->getfromXML(xml);
-        if (ok)
-            synth->setAllPartMaps();
-        bool oklearn = synth->midilearn.extractMidiListData(false, xml);
+        synth.defaults();
+        success = synth.getfromXML(*xml);
+        if (success)
+            synth.setAllPartMaps();
+        bool oklearn = synth.midilearn.extractMidiListData(false, *xml);
         if (oklearn)
-            synth->midilearn.updateGui(MIDILEARN::control::hideGUI);
+            synth.midilearn.updateGui(MIDILEARN::control::hideGUI);
             // handles possibly undefined window
-        }
+    }
 
-end_game:
-    if (xml)
-        delete xml;
-    return ok;
+    return success;
 }
 
 
-bool Config::loadPresetsList(void)
+bool Config::loadPresetsList()
 {
     string presetDirname = file::localDir()  + "/presetDirs";
     if (!isRegularFile(presetDirname))
@@ -855,22 +1039,16 @@ bool Config::loadPresetsList(void)
     }
     xmlType = TOPLEVEL::XML::PresetDirs;
 
-    XMLwrapper *xml = new XMLwrapper(synth, true);
-    if (!xml)
-    {
-        Log("loadPresetDirs failed xml allocation");
-        return false;
-    }
+    auto xml{std::make_unique<XMLwrapper>(synth, true)};
     xml->loadXMLfile(presetDirname);
 
     if (!xml->enterbranch("PRESETDIRS"))
     {
         Log("loadPresetDirsData, no PRESETDIRS branch");
-        delete xml;
         return false;
     }
     int count = 0;
-    bool ok = false;
+    bool ok{false};
     do
     {
         if (xml->enterbranch("XMZ_FILE", count))
@@ -885,23 +1063,17 @@ bool Config::loadPresetsList(void)
     }
     while (ok);
     xml->endbranch();
-    delete xml;
 
     return true;
 }
 
 
-bool Config::savePresetsList(void)
+bool Config::savePresetsList()
 {
     string presetDirname = file::localDir()  + "/presetDirs";
     xmlType = TOPLEVEL::XML::PresetDirs;
 
-    XMLwrapper *xml = new XMLwrapper(synth, true);
-    if (!xml)
-    {
-        Log("savePresetDirs failed xml allocation");
-        return false;
-    }
+    auto xml{std::make_unique<XMLwrapper>(synth, true)};
     xml->beginbranch("PRESETDIRS");
     {
         int count = 0;
@@ -916,36 +1088,36 @@ bool Config::savePresetsList(void)
     xml->endbranch();
     if (!xml->saveXMLfile(presetDirname))
         Log("Failed to save data to " + presetDirname);
-    delete xml;
+
     return true;
 }
 
 
-void Config::Log(const string& msg, char tostderr)
+void Config::Log(string const& msg, char tostderr)
 {
     if ((tostderr & _SYS_::LogNotSerious) && hideErrors)
         return;
     else if(!(tostderr & _SYS_::LogError))
     {
         if (showGui && toConsole)
-            LogList.push_back(msg);
+            logList.push_back(msg);
         else
             cout << msg << endl;
     }
     else
-        std::cerr << msg << endl; // error log
+        cerr << msg << endl; // error log
 }
 
 
 void Config::LogError(const string &msg)
 {
-    std::cerr << "[ERROR] " << msg << endl;
+    cerr << "[ERROR] " << msg << endl;
 }
 
 
-void Config::StartupReport(const string& clientName)
+void Config::startupReport(string const& clientName)
 {
-    bool fullInfo = (synth->getUniqueId() == 0);
+    bool fullInfo = (synth.getUniqueId() == 0);
     if (fullInfo)
         Log("Build Number " + std::to_string(build_ID));
     Log("Clientname: " + clientName);
@@ -962,6 +1134,7 @@ void Config::StartupReport(const string& clientName)
 
         default:
             report += "nada";
+            break;
     }
     report += (" -> '" + audioDevice + "'");
     Log(report, _SYS_::LogNotSerious);
@@ -978,6 +1151,7 @@ void Config::StartupReport(const string& clientName)
 
         default:
             report += "nada";
+            break;
     }
     if (!midiDevice.size())
         midiDevice = "default";
@@ -985,9 +1159,9 @@ void Config::StartupReport(const string& clientName)
     Log(report, _SYS_::LogNotSerious);
     if (fullInfo)
     {
-        Log("Oscilsize: " + asString(synth->oscilsize), _SYS_::LogNotSerious);
-        Log("Samplerate: " + asString(synth->samplerate), _SYS_::LogNotSerious);
-        Log("Period size: " + asString(synth->buffersize), _SYS_::LogNotSerious);
+        Log("Oscilsize: " + asString(synth.oscilsize), _SYS_::LogNotSerious);
+        Log("Samplerate: " + asString(synth.samplerate), _SYS_::LogNotSerious);
+        Log("Period size: " + asString(synth.buffersize), _SYS_::LogNotSerious);
     }
 }
 
@@ -1000,8 +1174,8 @@ void Config::setRtprio(int prio)
 
 
 // general thread start service
-bool Config::startThread(pthread_t *pth, void *(*thread_fn)(void*), void *arg,
-                         bool schedfifo, char priodec, const string& name)
+bool Config::startThread(pthread_t *pth, ThreadFun* threadFun, void *arg,
+                         bool schedfifo, char priodec, string const& name)
 {
     pthread_attr_t attr;
     int chk;
@@ -1044,7 +1218,7 @@ bool Config::startThread(pthread_t *pth, void *(*thread_fn)(void*), void *arg,
                     continue;
                 }
             }
-            if (!(chk = pthread_create(pth, &attr, thread_fn, arg)))
+            if (!(chk = pthread_create(pth, &attr, threadFun, arg)))
             {
                 outcome = true;
                 break;
@@ -1076,7 +1250,7 @@ bool Config::startThread(pthread_t *pth, void *(*thread_fn)(void*), void *arg,
 }
 
 
-void Config::signalCheck(void)
+void Config::signalCheck()
 {
     #if defined(JACK_SESSION)
         int jsev = __sync_fetch_and_add(&jsessionSave, 0);
@@ -1091,7 +1265,7 @@ void Config::signalCheck(void)
 
                 case JackSessionSaveAndQuit:
                     saveJackSession();
-                    runSynth = false;
+                    runSynth.store(false, std::memory_order_release);
                     break;
 
                 case JackSessionSaveTemplate: // not implemented
@@ -1106,28 +1280,28 @@ void Config::signalCheck(void)
     if (ladi1IntActive)
     {
         __sync_and_and_fetch(&ladi1IntActive, 0);
-        saveSessionData(StateFile);
+        saveSessionData(stateFile);
     }
 
     if (sigIntActive)
-        runSynth = false;
+        runSynth.store(false, std::memory_order_release);
 }
 
 
-void Config::setInterruptActive(void)
+void Config::setInterruptActive()
 {
     Log("Interrupt received", _SYS_::LogError);
     __sync_or_and_fetch(&sigIntActive, 0xFF);
 }
 
 
-void Config::setLadi1Active(void)
+void Config::setLadi1Active()
 {
     __sync_or_and_fetch(&ladi1IntActive, 0xFF);
 }
 
 
-bool Config::restoreJsession(void)
+bool Config::restoreJsession()
 {
     #if defined(JACK_SESSION)
         return restoreSessionData(jackSessionFile);
@@ -1137,7 +1311,7 @@ bool Config::restoreJsession(void)
 }
 
 
-void Config::setJackSessionSave(int event_type, const string& session_file)
+void Config::setJackSessionSave(int event_type, string const& session_file)
 {
     jackSessionFile = session_file;
     __sync_and_and_fetch(&jsessionSave, 0);
@@ -1184,6 +1358,7 @@ string Config::testCCvalue(int cc)
 
         default:
             result = masterCCtest(cc);
+            break;
     }
     return result;
 }
@@ -1247,7 +1422,6 @@ string Config::masterCCtest(int cc)
             break;
 
         default:
-        {
             if (cc < 128) // don't compare with 'disabled' state
             {
                 if (cc == midi_bank_C)
@@ -1259,285 +1433,31 @@ string Config::masterCCtest(int cc)
                 else if (cc == channelSwitchCC)
                     result = "channel switcher";
             }
-        }
+            break;
     }
     return result;
 }
 
 
-void Config::saveJackSession(void)
+void Config::saveJackSession()
 {
     saveSessionData(jackSessionFile);
     jackSessionFile.clear();
 }
 
 
-int Config::SSEcapability(void)
+std::string Config::findHtmlManual()
 {
-    #if !defined(__SSE__)
-        return 0;
-    #else
-        #if defined(__x86_64__)
-            int64_t edx;
-            __asm__ __volatile__ (
-                "mov %%rbx,%%rdi\n\t" // save PIC register
-                "movl $1,%%eax\n\t"
-                "cpuid\n\t"
-                "mov %%rdi,%%rbx\n\t" // restore PIC register
-                : "=d" (edx)
-                : : "%rax", "%rcx", "%rdi"
-            );
-        #else
-            int32_t edx;
-            __asm__ __volatile__ (
-                "movl %%ebx,%%edi\n\t" // save PIC register
-                "movl $1,%%eax\n\t"
-                "cpuid\n\t"
-                "movl %%edi,%%ebx\n\t" // restore PIC register
-                : "=d" (edx)
-                : : "%eax", "%ecx", "%edi"
-            );
-        #endif
-        return ((edx & 0x02000000 /*SSE*/) | (edx & 0x04000000 /*SSE2*/)) >> 25;
-    #endif
-}
-/*
-SSEcapability() draws gratefully on the work of others.
-*/
-
-/*
- * The code below has been replaced with specific anti-denormal code where needed.
- * Although the new code is slightly less efficient it is compatible across platforms,
- * where as the 'daz' processor code is not available on platforms such as ARM.
- */
-
-/*void Config::AntiDenormals(bool set_daz_ftz)
-{
-    return;
-    if (synth->getIsLV2Plugin())
-    {
-        return;// no need to set floating point rules for lv2 - host should control it.
-    }
-    #if defined(__SSE__)
-        if (set_daz_ftz)
-        {
-            sse_level = SSEcapability();
-            if (sse_level & 0x01)
-                // SSE, turn on flush to zero (FTZ) and round towards zero (RZ)
-                _mm_setcsr(_mm_getcsr() | 0x8000|0x6000);
-            if (sse_level & 0x02)
-                // SSE2, turn on denormals are zero (DAZ)
-               _mm_setcsr(_mm_getcsr() | 0x0040);
-        }
-        else if (sse_level)
-        {
-            // Clear underflow and precision flags,
-            // turn DAZ, FTZ off, restore round to nearest (RN)
-            _mm_setcsr(_mm_getcsr() & ~(0x0030|0x8000|0x0040|0x6000));
-        }
-    #endif
-}*/
-
-void Config::applyOptions(Config* settings, std::list<string>& allArgs)
-{
-    if (allArgs.empty())
-        return;
-    for (std::list<string>::iterator it = allArgs.begin(); it != allArgs.end(); ++it)
-    {
-        string line = *it;
-        size_t pos = line.find(":");
-        char cmd = line.at(0);
-        line = line.substr(pos +1);
-        switch (cmd)
-        {
-            case 'A':
-                settings->configChanged = true;
-                settings->engineChanged = true;
-                settings->audioEngine = alsa_audio;
-                if (!line.empty())
-                    settings->audioDevice = line;
-                else
-                    settings->audioDevice = settings->alsaAudioDevice;
-            break;
-
-        case 'a':
-            settings->configChanged = true;
-            settings->midiChanged = true;
-            settings->midiEngine = alsa_midi;
-            if (!line.empty())
-                settings->midiDevice = line;
-            else
-                settings->midiDevice = string(settings->alsaMidiDevice);
-            break;
-
-        case 'b':
-            settings->configChanged = true;
-            settings->bufferChanged = true;
-            settings->Buffersize = string2int(line);
-            //cout << "B "<< line << endl;
-            break;
-
-        case 'c':
-            settings->configChanged = true;
-            settings->cliChanged = true;
-            settings->showCli = false;
-            break;
-
-        case 'C':
-            settings->configChanged = true;
-            settings->cliChanged = true;
-            settings->showCli = true;
-            break;
-
-        case 'D':
-            if (!line.empty())
-                settings->rootDefine = line;
-            break;
-
-        case 'i':
-            settings->configChanged = true;
-            settings->guiChanged = true;
-            settings->showGui = false;
-            break;
-
-        case 'I':
-            settings->configChanged = true;
-            settings->guiChanged = true;
-            settings->showGui = true;
-            break;
-
-        case 'J':
-            settings->configChanged = true;
-            settings->engineChanged = true;
-            settings->audioEngine = jack_audio;
-            if (!line.empty())
-                settings->audioDevice = line;
-            break;
-
-        case 'j':
-            settings->configChanged = true;
-            settings->midiChanged = true;
-            settings->midiEngine = jack_midi;
-            if (!line.empty())
-                settings->midiDevice = line;
-            else
-                settings->midiDevice = string(settings->jackMidiDevice);
-            break;
-
-        case 'K':
-            settings->configChanged = true;
-            settings->connectJackChanged = true;
-            settings->connectJackaudio = true;
-            break;
-
-        case 'k':
-            settings->startJack = true;
-            break;
-
-        case 'l': settings->paramsLoad = line; break;
-
-        case 'L':
-        {
-            unsigned int partLoad = 0;
-            size_t pos = line.rfind("@");
-            // this provides a way to specify which part to load to
-            if (pos != string::npos)
-            {
-                if (line.length() - pos <= 3)
-                {
-                    partLoad = (stoi("0" + line.substr(pos + 1))) - 1;
-                }
-                if (partLoad >= 64)
-                    partLoad = 0;
-                line = line.substr(0, pos);
-            }
-            settings->load2part = partLoad;
-            settings->instrumentLoad = line;
-            break;
-        }
-
-        case 'M':settings->midiLearnLoad = line; break;
-
-        case 'N': settings->nameTag = line; break;
-
-        case 'o':
-            settings->configChanged = true;
-            settings->oscilChanged = true;
-            settings->Oscilsize = string2int(line);
-            break;
-
-        case 'R':
-        {
-            settings->configChanged = true;
-            settings->rateChanged = true;
-            int num = (string2int(line) / 48 ) * 48;
-            if (num < 48000 || num > 192000)
-                num = 44100; // play safe
-            settings->Samplerate = num;
-            break;
-        }
-
-        case 'S':
-            if (!line.empty())
-            {
-                settings->sessionStage = _SYS_::type::StartupFirst;
-                settings->configChanged = true;
-                settings->StateFile = line;
-            }
-            break;
-
-        case 'T':
-            if (!line.empty())
-            {
-                settings->remoteGuiTheme = line;
-            }
-            break;
-
-        case 'u':
-            if (!line.empty())
-            {
-                settings->sessionStage = _SYS_::type::JackFirst;
-                settings->configChanged = true;
-                settings->StateFile = setExtension(line, EXTEN::state);
-            }
-            break;
-
-        case 'U':
-            if (!line.empty())
-                jUuid = line;
-            break;
-
-        case '@':
-            settings->configChanged = true;
-            settings->engineChanged = true;
-            settings->midiChanged = true;
-            settings->audioEngine = no_audio;
-            settings->midiEngine  = no_midi;
-            break;
-        }
-
-        //cout << cmd << " line " << line << endl;
-    }
-    if (jackSessionUuid.size() && jackSessionFile.size())
-        restoreJackSession = true;
-}
-
-
-std::string Config::findHtmlManual(void)
-{
-    //string namestring = "doc/yoshimi/yoshimi_user_guide/files/yoshimi_user_guide_version";
     string namelist = "";
     string tempnames = "";
-    if(file::cmd2string("find /usr/share/ -type f -name 'yoshimi_user_guide_version' 2>/dev/null", tempnames))
+    if(file::cmd2string("find /usr/share/ -xdev -type f -name 'yoshimi_user_guide_version' 2>/dev/null", tempnames))
         namelist = tempnames;
 
-    if(file::cmd2string("find /usr/local/share/ -type f -name 'yoshimi_user_guide_version' 2>/dev/null", tempnames))
+    if(file::cmd2string("find /usr/local/share/ -xdev -type f -name 'yoshimi_user_guide_version' 2>/dev/null", tempnames))
         namelist += tempnames;
 
-    if(file::cmd2string("find /home/ -type f -name 'yoshimi_user_guide_version' 2>/dev/null", tempnames))
+    if(file::cmd2string("find /home/ -xdev -type f -name 'yoshimi_user_guide_version' 2>/dev/null", tempnames))
         namelist += tempnames;
-
-    //cout << "man list" << namelist << endl;
 
     size_t next = 0;
     string lastversion = "";
@@ -1555,7 +1475,6 @@ std::string Config::findHtmlManual(void)
             {
                 lastversion = current;
                 found = name;
-                //cout << "found >" << found << endl;
             }
             namelist = namelist.substr( next +1);
         }
@@ -1564,38 +1483,170 @@ std::string Config::findHtmlManual(void)
 }
 
 
-#ifdef GUI_FLTK
-void GuiThreadMsg::processGuiMessages()
+float Config::getConfigLimits(CommandBlock* getData)
 {
-    GuiThreadMsg *msg = (GuiThreadMsg *)Fl::thread_message();
-    if (msg)
-    {
-        SynthEngine *synth = ((SynthEngine *)msg->data);
-        MasterUI *guiMaster = synth->getGuiMaster((msg->type == GuiThreadMsg::NewSynthEngine));
-        if (msg->type == GuiThreadMsg::NewSynthEngine)
-        {
-            // This *defines* guiMaster
-            if (!guiMaster)
-                std::cerr << "Error starting Main UI!" << endl;
-            else
-            {
-                guiMaster->Init(guiMaster->getSynth()->getWindowTitle().c_str());
+    float value = getData->data.value;
+    int request = int(getData->data.type & TOPLEVEL::type::Default);
+    int control = getData->data.control;
 
-                if (synth->getRuntime().audioEngine < 1)
-                    alert(synth, "Yoshimi could not connect to any sound system. Running with no Audio.");
-                if (synth->getRuntime().midiEngine < 1)
-                    alert(synth, "Yoshimi could not connect to any MIDI system. Running with no MIDI.");
-            }
-        }
-        else if (guiMaster)
-        {
-            switch(msg->type)
-            {
-                default:
-                    break;
-            }
-        }
-        delete msg;
+    int min = 0;
+    int max = 1;
+    float def{0};
+    uchar type{TOPLEVEL::type::Integer};
+
+    switch (control)
+    {
+        case CONFIG::control::oscillatorSize:
+            min = MIN_OSCIL_SIZE;
+            def = 1024;
+            max = MAX_OSCIL_SIZE;
+            break;
+        case CONFIG::control::bufferSize:
+            min = MIN_BUFFER_SIZE;
+            def = 512;
+            max = MAX_BUFFER_SIZE;
+           break;
+        case CONFIG::control::padSynthInterpolation:
+            break;
+        case CONFIG::control::handlePadSynthBuild:
+            max = 2;
+            break;
+        case CONFIG::control::virtualKeyboardLayout:
+            max = 3;
+            break;
+        case CONFIG::control::XMLcompressionLevel:
+            def = 3;
+            max = 9;
+            break;
+        case CONFIG::control::reportsDestination:
+            break;
+        case CONFIG::control::logTextSize:
+            def = 12;
+            min = 11;
+            max = 100;
+            break;
+        case CONFIG::control::savedInstrumentFormat:
+            max = 3;
+            break;
+        case CONFIG::control::defaultStateStart:
+            break;
+        case CONFIG::control::hideNonFatalErrors:
+            break;
+        case CONFIG::control::showSplash:
+            def = 1;
+            break;
+        case CONFIG::control::logInstrumentLoadTimes:
+            break;
+        case CONFIG::control::logXMLheaders:
+            break;
+        case CONFIG::control::saveAllXMLdata:
+            break;
+        case CONFIG::control::enableGUI:
+            def = 1;
+            break;
+        case CONFIG::control::enableCLI:
+            def = 1;
+            break;
+        case CONFIG::control::enableAutoInstance:
+            def = 1;
+            break;
+        case CONFIG::control::exposeStatus:
+            def = 1;
+            max = 2;
+            break;
+        case CONFIG::control::enableHighlight:
+            break;
+
+        case CONFIG::control::jackMidiSource:
+            min = 3; // anything greater than max
+            def = textMsgBuffer.push("default");
+            break;
+        case CONFIG::control::jackPreferredMidi:
+            def = 1;
+            break;
+        case CONFIG::control::jackServer:
+            min = 3;
+            def = textMsgBuffer.push("default");
+            break;
+        case CONFIG::control::jackPreferredAudio:
+            def = 1;
+            break;
+        case CONFIG::control::jackAutoConnectAudio:
+            def = 1;
+            break;
+
+        case CONFIG::control::alsaMidiSource:
+            min = 3;
+            def = textMsgBuffer.push("default");
+            break;
+        case CONFIG::control::alsaPreferredMidi:
+            def = 1;
+            break;
+        case CONFIG::control::alsaAudioDevice:
+            min = 3;
+            def = textMsgBuffer.push("default");
+            break;
+        case CONFIG::control::alsaPreferredAudio:
+            break;
+        case CONFIG::control::alsaSampleRate:
+            def = 2;
+            max = 3;
+            break;
+
+        case CONFIG::control::bankRootCC: // runtime midi checked elsewhere
+            def = 0;
+            max = 119;
+            break;
+        case CONFIG::control::bankCC: // runtime midi checked elsewhere
+            def = 32;
+            max = 119;
+            break;
+        case CONFIG::control::enableProgramChange:
+            break;
+        case CONFIG::control::extendedProgramChangeCC: // runtime midi checked elsewhere
+            def = 110;
+            max = 119;
+            break;
+        case CONFIG::control::ignoreResetAllCCs:
+            break;
+        case CONFIG::control::logIncomingCCs:
+            break;
+        case CONFIG::control::showLearnEditor:
+            def = 1;
+            break;
+        case CONFIG::control::enableNRPNs:
+            def = 1;
+            break;
+
+        case CONFIG::control::saveCurrentConfig:
+            break;
+
+        default:
+            type |= TOPLEVEL::type::Error;
+            break;
     }
+    getData->data.type = type;
+    if (type & TOPLEVEL::type::Error)
+        return 1;
+
+    switch (request)
+    {
+        case TOPLEVEL::type::Adjust:
+            if (value < min)
+                value = min;
+            else if (value > max)
+                value = max;
+        break;
+        case TOPLEVEL::type::Minimum:
+            value = min;
+            break;
+        case TOPLEVEL::type::Maximum:
+            value = max;
+            break;
+        case TOPLEVEL::type::Default:
+            value = def;
+            break;
+    }
+    return value;
 }
-#endif
+

@@ -33,36 +33,50 @@
 #include "DSP/AnalogFilter.h"
 #include "Effects/Effect.h"
 
+#include <algorithm>
 #include <memory>
 
-const unsigned char EQmaster_def = 67;
-const unsigned char EQfreq_def = 64;
-const unsigned char EQgain_def = 64;
-const unsigned char EQq_def = 64;
+const uchar EQmaster_def = 67;
+const uchar EQfreq_def = 64;
+const uchar EQgain_def = 64;
+const uchar EQq_def = 64;
 
 class EQ : public Effect
 {
     public:
-        EQ(bool insertion_, float *efxoutl_, float *efxoutr_, SynthEngine *_synth);
-        ~EQ() { };
-        void out(float *smpsl, float *smpr);
-        void setpreset(unsigned char npreset);
-        void changepar(int npar, unsigned char value);
-        unsigned char getpar(int npar);
-        void cleanup(void);
-        float getfreqresponse(float freq);
+        EQ(bool insertion_, float *efxoutl_, float *efxoutr_, SynthEngine&);
+       ~EQ() = default;
+
+        void out(float *smpsl, float *smpr)   override;
+        void setpreset(uchar npreset)         override;
+        void changepar(int npar, uchar value) override;
+        uchar getpar(int npar)          const override;
+        void getAllPar(EffectParArray&) const override;
+        void cleanup()                        override;
+
+        /** render transfer function for UI */
+        void renderResponse(EQGraphArray & lut) const;
+
+        /** scale helpers for the response diagram */
+        static float xScaleFreq(float fac);
+        static float xScaleFac(float freq);
+        static float yScaleFac(float dB);
 
     private:
-        void setvolume(unsigned char Pvolume_);
+        constexpr static auto GRAPH_MIN_FREQ = 20;
+        constexpr static auto GRAPH_MAX_dB   = 30;
+
+        void setvolume(uchar Pvolume_);
+        float calcResponse(float freq) const;
 
         // Parameters
         bool Pchanged;
-        unsigned char Pvolume;
-        unsigned char Pband;
+        uchar Pvolume;
+        uchar Pband;
 
         struct FilterParam
         {
-            unsigned char Ptype, Pfreq, Pgain, Pq, Pstages; // parameters
+            uchar Ptype, Pfreq, Pgain, Pq, Pstages; // parameters
             synth::InterpolatedValue<float> freq, gain, q;
             std::unique_ptr<AnalogFilter> l; // internal values
             std::unique_ptr<AnalogFilter> r; // internal values
@@ -76,12 +90,15 @@ class EQ : public Effect
                 ,freq{0, synth.samplerate}
                 ,gain{0, synth.samplerate}
                 ,q   {0, synth.samplerate}
-                ,l{new AnalogFilter(TOPLEVEL::filter::Peak2, 1000.0, 1.0, 0, &synth)}
-                ,r{new AnalogFilter(TOPLEVEL::filter::Peak2, 1000.0, 1.0, 0, &synth)}
+                ,l{new AnalogFilter(synth, TOPLEVEL::filter::Peak2, 1000.0, 1.0, 0)}
+                ,r{new AnalogFilter(synth, TOPLEVEL::filter::Peak2, 1000.0, 1.0, 0)}
             { }
         };
 
         FilterParam filter[MAX_EQ_BANDS];
+
+        class FilterSnapshot;
+        mutable std::unique_ptr<FilterSnapshot> filterSnapshot;
 };
 
 class EQlimit
@@ -90,6 +107,27 @@ class EQlimit
         float getlimits(CommandBlock *getData);
 };
 
-#endif
 
 
+
+inline float EQ::xScaleFreq(float fac)
+{
+    if (fac > 1.0)
+        fac = 1.0;
+    return GRAPH_MIN_FREQ * power<1000>(fac);
+}
+
+inline float EQ::xScaleFac(float freq)
+{
+    if (freq < GRAPH_MIN_FREQ)
+        freq = GRAPH_MIN_FREQ;
+    return logf(freq / GRAPH_MIN_FREQ) / logf(1000.0);
+}
+
+inline float EQ::yScaleFac(float dB)
+{
+    return (1 + dB / GRAPH_MAX_dB) / 2.0;
+}
+
+
+#endif /*EQ.h*/

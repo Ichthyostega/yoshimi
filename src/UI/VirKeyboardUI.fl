@@ -12,7 +12,7 @@ comment {
 Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009-2010, Alan Calvert
-Copyright 2014-2023, Will Godfrey
+Copyright 2014-2024, Will Godfrey
 
 This file is part of yoshimi, which is free software: you can redistribute
 it and/or modify it under the terms of the GNU General Public
@@ -193,12 +193,18 @@ class VirKeys {: {public Fl_Box}
     int ly = h();
     int x_ = Fl::event_x() - x();
     int y_ = Fl::event_y() - y();
+    if (Fl::event_alt())
+    {
+        auto key = Fl::event_key();
+        if (key == 'c')
+            return 0;
+    }
+
     if (x_ < 0 && x_ > w() && y_ < 0 && y_>h())
         return 0;
     if (event == FL_PUSH || event == FL_DRAG || event == FL_RELEASE)
     {
         int kpos = -1;
-
         if (y_ > ly * 3 / 5)
         {   // white keys
             int pos = x_ / (*keyWhite);
@@ -246,17 +252,17 @@ class VirKeys {: {public Fl_Box}
     const int *keysoct1 = keysoct1qwerty;
     const int *keysoct2 = keysoct2qwerty;
 
-    if (synth->getRuntime().VirKeybLayout == 1)
+    if (synth->getRuntime().virKeybLayout == 1)
     {
         keysoct1 = keysoct1dw;
         keysoct2 = keysoct2dw;
     }
-    else if (synth->getRuntime().VirKeybLayout == 2)
+    else if (synth->getRuntime().virKeybLayout == 2)
     {
         keysoct1 = keysoct1qwertz;
         keysoct2 = keysoct2qwertz;
     }
-    else if (synth->getRuntime().VirKeybLayout == 3)
+    else if (synth->getRuntime().virKeybLayout == 3)
     {
         keysoct1 = keysoct1azerty;
         keysoct2 = keysoct2azerty;
@@ -422,7 +428,7 @@ z x c v b n m ...} xywh {365 110 45 15} type Simple labelsize 10 align 4 when 6 
         code0 {o->value(virkeys->midioct);}
       }
       Fl_Button virtClose {
-        label Close
+        label {&Close}
         callback {//
         relaseallkeys();
         virkeyboardwindow->hide();
@@ -643,7 +649,8 @@ z x c v b n m ...} xywh {365 110 45 15} type Simple labelsize 10 align 4 when 6 
     virtSeen = true;
     lastvirtW = 0;} {}
   }
-  Function {Hide()} {} {
+  Function {Hide()} {open
+  } {
     code {//
     virkeyboardwindow->hide();} {}
   }
@@ -665,6 +672,7 @@ z x c v b n m ...} xywh {365 110 45 15} type Simple labelsize 10 align 4 when 6 
 
     key->labelsize(size);
         key->textsize(size);
+    key->damage();
     oct1->labelsize(size);
     maps->labelsize(size);
         maps->textsize(size);
@@ -694,7 +702,7 @@ z x c v b n m ...} xywh {365 110 45 15} type Simple labelsize 10 align 4 when 6 
   }
   decl {int virtDH;} {private local
   }
-  decl {int lastvirtW;} {private local
+  decl {int lastvirtW;} {public local
   }
   decl {bool virtSeen;} {private local
   }

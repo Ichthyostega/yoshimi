@@ -28,14 +28,15 @@
 
 #include "Misc/SynthEngine.h"
 #include "Effects/EffectMgr.h"
+#include "Effects/EQ.h"
 
-EffectMgr::EffectMgr(const bool insertion_, SynthEngine *_synth) :
+EffectMgr::EffectMgr(const bool insertion_, SynthEngine& _synth) :
     ParamBase{_synth},
-    efxoutl{size_t(_synth->buffersize)},
-    efxoutr{size_t(_synth->buffersize)},
+    efxoutl{size_t(_synth.buffersize)},
+    efxoutr{size_t(_synth.buffersize)},
     insertion{insertion_},
     filterpars{NULL},
-    nefx{0}, // type none resolves to zero internally
+    effectType{0}, // type none resolves to zero internally
     dryonly{false},
     efx{}
 {
@@ -45,7 +46,7 @@ EffectMgr::EffectMgr(const bool insertion_, SynthEngine *_synth) :
 
 
 
-void EffectMgr::defaults(void)
+void EffectMgr::defaults()
 {
     changeeffect(0); // type none resolves to zero internally
     setdryonly(false);
@@ -56,11 +57,10 @@ void EffectMgr::defaults(void)
 void EffectMgr::changeeffect(int _nefx)
 {
     cleanup();
-    if (nefx == _nefx)
+    if (effectType == _nefx)
         return;
-    //std::cout << "Change eff" << std::endl;
-    nefx = _nefx;
-    switch (nefx + EFFECT::type::none)
+    effectType = _nefx;
+    switch (effectType + EFFECT::type::none)
     {
         case EFFECT::type::reverb:
             efx.reset(new Reverb{insertion, efxoutl.get(), efxoutr.get(), synth});
@@ -105,40 +105,32 @@ void EffectMgr::changeeffect(int _nefx)
 
 
 // Obtain the effect number
-int EffectMgr::geteffect(void)
+int EffectMgr::geteffect()
 {
-    return (nefx);
+    return (effectType);
 }
 
 
 // Cleanup the current effect
-void EffectMgr::cleanup(void)
+void EffectMgr::cleanup()
 {
-    memset(efxoutl.get(), 0, synth->bufferbytes);
-    memset(efxoutr.get(), 0, synth->bufferbytes);
+    memset(efxoutl.get(), 0, synth.bufferbytes);
+    memset(efxoutr.get(), 0, synth.bufferbytes);
     if (efx)
         efx->cleanup();
 }
 
 
 // Get the preset of the current effect
-unsigned char EffectMgr::getpreset(void)
+uchar EffectMgr::getpreset()
 {
-    if (efx)
-    {
-        //cout << "Effect preset " << int(efx->Ppreset) << endl;
-        return efx->Ppreset;
-    }
-    else
-    {
-        //cout << "No effect" << endl;
-        return 0;
-    }
+    return efx? efx->Ppreset
+              : 0;
 }
 
 
 // Change the preset of the current effect
-void EffectMgr::changepreset(unsigned char npreset)
+void EffectMgr::changepreset(uchar npreset)
 {
     if (efx)
         efx->setpreset(npreset);
@@ -146,7 +138,7 @@ void EffectMgr::changepreset(unsigned char npreset)
 
 
 // Change a parameter of the current effect
-void EffectMgr::seteffectpar(int npar, unsigned char value)
+void EffectMgr::seteffectpar(int npar, uchar value)
 {
     if (!efx)
         return;
@@ -155,12 +147,21 @@ void EffectMgr::seteffectpar(int npar, unsigned char value)
 
 
 // Get a parameter of the current effect
-unsigned char EffectMgr::geteffectpar(int npar)
+uchar EffectMgr::geteffectpar(int npar)
 {
     if (!efx)
         return 0;
     return efx->getpar(npar);
 }
+
+void EffectMgr::getAllPar(EffectParArray& target) const
+{
+    if (efx)
+        efx->getAllPar(target);
+    else
+        target = {0};
+}
+
 
 
 // Apply the effect
@@ -170,28 +171,28 @@ void EffectMgr::out(float *smpsl, float *smpsr)
     {
         if (!insertion)
         {
-            memset(smpsl, 0, synth->sent_bufferbytes);
-            memset(smpsr, 0, synth->sent_bufferbytes);
-            memset(efxoutl.get(), 0, synth->sent_bufferbytes);
-            memset(efxoutr.get(), 0, synth->sent_bufferbytes);
+            memset(smpsl, 0, synth.sent_bufferbytes);
+            memset(smpsr, 0, synth.sent_bufferbytes);
+            memset(efxoutl.get(), 0, synth.sent_bufferbytes);
+            memset(efxoutr.get(), 0, synth.sent_bufferbytes);
         }
         return;
     }
-    memset(efxoutl.get(), 0, synth->sent_bufferbytes);
-    memset(efxoutr.get(), 0, synth->sent_bufferbytes);
+    memset(efxoutl.get(), 0, synth.sent_bufferbytes);
+    memset(efxoutr.get(), 0, synth.sent_bufferbytes);
     efx->out(smpsl, smpsr);
 
-    if (nefx == (EFFECT::type::eq - EFFECT::type::none))
+    if (effectType == (EFFECT::type::eq - EFFECT::type::none))
     {   // this is need only for the EQ effect
-        memcpy(smpsl, efxoutl.get(), synth->sent_bufferbytes);
-        memcpy(smpsr, efxoutr.get(), synth->sent_bufferbytes);
+        memcpy(smpsl, efxoutl.get(), synth.sent_bufferbytes);
+        memcpy(smpsr, efxoutr.get(), synth.sent_bufferbytes);
         return;
     }
 
     // Insertion effect
     if (insertion != 0)
     {
-        for (int i = 0; i < synth->sent_buffersize; ++i)
+        for (int i = 0; i < synth.sent_buffersize; ++i)
         {
             float volume = efx->volume.getAndAdvanceValue();
             float v1, v2;
@@ -205,8 +206,9 @@ void EffectMgr::out(float *smpsl, float *smpsr)
                 v1 = (1.0f - volume) * 2.0f;
                 v2 = 1.0f;
             }
-            if (nefx == 1 || nefx==2)
-                v2 *= v2; // for Reverb and Echo, the wet function is not linear
+            if (effectType == (EFFECT::type::reverb - EFFECT::type::none)
+                || effectType==(EFFECT::type::echo - EFFECT::type::none))
+                v2 *= v2; //  wet function is not linear for Reverb/Echo
 
             if (dryonly)
             {
@@ -226,7 +228,7 @@ void EffectMgr::out(float *smpsl, float *smpsr)
     }
     else
     { // System effect
-        for (int i = 0; i < synth->sent_buffersize; ++i)
+        for (int i = 0; i < synth.sent_buffersize; ++i)
         {
             float volume = efx->volume.getAndAdvanceValue();
             efxoutl[i] *= 2.0f * volume;
@@ -239,16 +241,22 @@ void EffectMgr::out(float *smpsl, float *smpsr)
 
 
 // Get the effect volume for the system effect
-float EffectMgr::sysefxgetvolume(void)
+float EffectMgr::sysefxgetvolume()
 {
     return (!efx) ? 1.0f : efx->outvolume.getValue();
 }
 
 
-// Get the EQ response
-float EffectMgr::getEQfreqresponse(float freq)
+/**
+ * Prepare a LUT for the UI to display the current
+ * amplitude/frequency response of the EQ's filter
+ */
+void EffectMgr::renderEQresponse(EQGraphArray& lut) const
 {
-    return  (nefx == 7) ? efx->getfreqresponse(freq) : 0.0f;
+    if (effectType != (EFFECT::type::eq - EFFECT::type::none))
+        return;
+    auto eqImpl = static_cast<EQ const*> (efx.get());
+    eqImpl->renderResponse(lut);
 }
 
 
@@ -258,71 +266,67 @@ void EffectMgr::setdryonly(bool value)
 }
 
 
-void EffectMgr::add2XML(XMLwrapper *xml)
+void EffectMgr::add2XML(XMLwrapper& xml)
 {
-    xml->addpar("type", geteffect());
+    xml.addpar("type", geteffect());
 
     if (!efx || !geteffect())
         return;
-    xml->addpar("preset", efx->Ppreset);
+    xml.addpar("preset", efx->Ppreset);
 
-    xml->beginbranch("EFFECT_PARAMETERS");
+    xml.beginbranch("EFFECT_PARAMETERS");
     for (int n = 0; n < 128; ++n)
     {   // \todo evaluate who should oversee saving and loading of parameters
         int par = geteffectpar(n);
         if (par == 0)
             continue;
-        xml->beginbranch("par_no", n);
-        xml->addpar("par", par);
-        xml->endbranch();
+        xml.beginbranch("par_no", n);
+        xml.addpar("par", par);
+        xml.endbranch();
     }
     if (filterpars)
     {
-        xml->beginbranch("FILTER");
+        xml.beginbranch("FILTER");
         filterpars->add2XML(xml);
-        xml->endbranch();
+        xml.endbranch();
     }
-    xml->endbranch();
+    xml.endbranch();
 }
 
 
-void EffectMgr::getfromXML(XMLwrapper *xml)
+void EffectMgr::getfromXML(XMLwrapper& xml)
 {
-    changeeffect(xml->getpar127("type", geteffect())); // not convinced this is OK?
+    changeeffect(xml.getpar127("type", geteffect())); // not convinced this is OK?
     if (!efx || !geteffect())
         return;
-    changepreset(xml->getpar127("preset", efx->Ppreset));
+    changepreset(xml.getpar127("preset", efx->Ppreset));
 
     bool isChanged = false;
-    if (xml->enterbranch("EFFECT_PARAMETERS"))
+    if (xml.enterbranch("EFFECT_PARAMETERS"))
     {
         for (int n = 0; n < 128; ++n)
         {
             int par = geteffectpar(n); // find default
             seteffectpar(n, 0); // erase effect parameter
-            if (xml->enterbranch("par_no", n) == 0)
+            if (xml.enterbranch("par_no", n) == 0)
                 continue;
-            seteffectpar(n, xml->getpar127("par", par));
+            seteffectpar(n, xml.getpar127("par", par));
             if (par != geteffectpar(n))
             {
                 isChanged = true;
-                //cout << "changed par " << n << endl;
-                //may use this later to ID
             }
-            xml->exitbranch();
+            xml.exitbranch();
         }
         seteffectpar(-1, isChanged);
         if (filterpars)
         {
-            if (xml->enterbranch("FILTER"))
+            if (xml.enterbranch("FILTER"))
             {
                 filterpars->getfromXML(xml);
-                xml->exitbranch();
+                xml.exitbranch();
             }
         }
-        xml->exitbranch();
-        //if (geteffectpar(-1))
-            //cout << "Some pars changed" << endl;
+        xml.exitbranch();
     }
     cleanup();
 }

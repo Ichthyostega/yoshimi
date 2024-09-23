@@ -32,6 +32,8 @@
 #include <cairo.h>
 #include <cairo-xlib.h>
 
+#include <iostream>
+
 using std::to_string;
 using std::ostringstream;
 
@@ -63,7 +65,7 @@ float collect_readData(SynthEngine *synth, float value, unsigned char control, u
     putData.data.parameter = parameter;
     putData.data.offset = offset;
     putData.data.miscmsg = miscmsg;
-    float result = synth->interchange.readAllData(&putData);
+    float result = synth->interchange.readAllData(putData);
     if (miscmsg != NO_MSG) // outgoing value - we want to read this text
         result = putData.data.miscmsg; // returned message ID
     return result;
@@ -89,7 +91,6 @@ void collect_writeData(SynthEngine *synth, float value, unsigned char action, un
     putData.data.parameter = parameter;
     putData.data.offset = offset;
     putData.data.miscmsg = miscmsg;
-    //synth->CBtest(&putData);
     if (action == TOPLEVEL::action::fromMIDI)
         type = type | 1; // faking MIDI from virtual keyboard
     else
@@ -106,9 +107,7 @@ void collect_writeData(SynthEngine *synth, float value, unsigned char action, un
                 // check range & if learnable
                 float newValue;
                 putData.data.type = 3 | TOPLEVEL::type::Limits;
-                newValue = synth->interchange.readAllData(&putData);
-                //if (newValue != value)
-                    //std::cout << "Gui limits " << value <<" to " << newValue << std::endl;
+                newValue = synth->interchange.readAllData(putData);
                 if (Fl::event_state(FL_CTRL) != 0)
                 {
                     if (putData.data.type & TOPLEVEL::type::Learnable)
@@ -125,7 +124,6 @@ void collect_writeData(SynthEngine *synth, float value, unsigned char action, un
                 }
                 else if (insert != TOPLEVEL::insert::filterGroup  || parameter == UNUSED)
                 {
-                    //std::cout << "setting for button 3";
                     putData.data.value = newValue;
                     type = TOPLEVEL::type::Write;
                     action |= TOPLEVEL::action::forceUpdate;
@@ -167,14 +165,21 @@ string input_text(SynthEngine *synth, string label, string text)
 }
 
 
+GuiUpdates::GuiUpdates(InterChange& _interChange, size_t slotIDX)
+    : interChange{_interChange}
+    , anchor{interChange.guiDataExchange.bootstrapConnection<InterfaceAnchor>(slotIDX)}
+{
+    // cause update to be pushed into MirrorData buffer
+    interChange.guiDataExchange.pushUpdates(slotIDX);
+}
+
+
 void GuiUpdates::read_updates(SynthEngine *synth)
 {
     CommandBlock getData;
     while (synth->interchange.toGUI.read(getData.bytes))
     {
-        Fl::lock();
         decode_updates(synth, &getData);
-        Fl::unlock();
     }
 
     // test refresh time
@@ -194,10 +199,10 @@ void GuiUpdates::read_updates(SynthEngine *synth)
     */
 
     // and pull up to 5 entries from log
-    for (int i = 0; !synth->getRuntime().LogList.empty() && i < 5; ++i)
+    for (int i = 0; !synth->getRuntime().logList.empty() && i < 5; ++i)
     {
-        synth->getGuiMaster()->Log(synth->getRuntime().LogList.front());
-        synth->getRuntime().LogList.pop_front();
+        synth->getGuiMaster()->Log(synth->getRuntime().logList.front());
+        synth->getRuntime().logList.pop_front();
     }
 }
 
@@ -243,16 +248,27 @@ void GuiUpdates::decode_envelope(SynthEngine *synth, CommandBlock *getData)
 
 void GuiUpdates::decode_updates(SynthEngine *synth, CommandBlock *getData)
 {
-    unsigned char control = getData->data.control;
-    unsigned char npart = getData->data.part;
-    unsigned char kititem = getData->data.kit;
-    unsigned char engine = getData->data.engine;
-    unsigned char insert = getData->data.insert;
-    unsigned char parameter = getData->data.parameter;
-    unsigned char miscmsg = getData->data.miscmsg;
+    uchar control   = getData->data.control;
+    uchar npart     = getData->data.part;
+    uchar kititem   = getData->data.kit;
+    uchar engine    = getData->data.engine;
+    uchar insert    = getData->data.insert;
+    uchar parameter = getData->data.parameter;
+    uchar miscmsg   = getData->data.miscmsg;
 
-    //synth->CBtest(getData);
-    if (getData->data.control == TOPLEVEL::control::copyPaste)
+    if (control == TOPLEVEL::control::dataExchange)
+    {
+        if (npart == TOPLEVEL::section::message)
+        {// push data messages via GuiDataExchange -> deliver directly to MirrorData receivers
+            synth->interchange.guiDataExchange.dispatchUpdates(*getData);
+            return;
+        }
+        else if (npart == TOPLEVEL::section::main)
+        {// Global refresh when SynthEngine becomes ready
+            synth->getGuiMaster()->refreshInit();
+    }   }
+
+    if (control == TOPLEVEL::control::copyPaste)
     {
         if (getData->data.type == TOPLEVEL::type::Adjust)
             return; // just looking
@@ -319,8 +335,8 @@ void GuiUpdates::decode_updates(SynthEngine *synth, CommandBlock *getData)
     if (npart != TOPLEVEL::section::main && kititem >= EFFECT::type::none && kititem < EFFECT::type::count) // effects
     { // maybe we should go to main first?
         if (npart == TOPLEVEL::section::systemEffects)
-        {
-            if (engine != synth->getGuiMaster()->nsyseff)
+        {   // note: prior to processing the returns, a push-update has been sent to the effect-UI
+            if (engine != synth->getGuiMaster()->syseffectui->effNum())
                 return;
             if (insert == TOPLEVEL::insert::filterGroup) // dynefilter filter insert
                 synth->getGuiMaster()->syseffectui->fwin_filterui->returns_update(getData);
@@ -329,7 +345,7 @@ void GuiUpdates::decode_updates(SynthEngine *synth, CommandBlock *getData)
         }
         else if (npart == TOPLEVEL::section::insertEffects)
         {
-            if (engine != synth->getGuiMaster()->ninseff)
+            if (engine != synth->getGuiMaster()->inseffectui->effNum())
                 return;
             if (insert == TOPLEVEL::insert::filterGroup) // dynefilter filter insert
                 synth->getGuiMaster()->inseffectui->fwin_filterui->returns_update(getData);
@@ -338,7 +354,7 @@ void GuiUpdates::decode_updates(SynthEngine *synth, CommandBlock *getData)
         }
         else if (npart < NUM_MIDI_PARTS && allowPartUpdate)
         {
-            if (engine != synth->getGuiMaster()->partui->ninseff)
+            if (engine != synth->getGuiMaster()->partui->inseffectui->effNum())
                 return;
             if (insert == TOPLEVEL::insert::filterGroup) // dynefilter filter insert
                 synth->getGuiMaster()->partui->inseffectui->fwin_filterui->returns_update(getData);
@@ -657,8 +673,8 @@ string convert_value(ValueType type, float val)
         case VC_pitchWheel:
             return(custom_value_units(-val,"",1));
 
-        case VC_percent127:
-            return(custom_value_units(val / 127.0f * 100.0f+0.05f,"%",1));
+        case VC_percent127: // removed offset to get zero W.G.
+            return(custom_value_units(val / 127.0f * 100.0f,"%",1));
 
         case VC_percent128:
             return(custom_value_units(val / 128.0f * 100.0f+0.05f,"%",1));
@@ -1500,14 +1516,14 @@ ValueType getFilterFreqTrackType(int offset)
     }
 }
 
-/** convert a millesconds value to a logarithmic dial setting */
+/** convert a milliseconds value to a logarithmic dial setting */
 int millisec2logDial(unsigned int ms)
 {
     return ms==0? -1
                 : log10f(float(ms)) * 1000;
 }
 
-/** convert setting from a logarithmic dial back to millesconds */
+/** convert setting from a logarithmic dial back to milliseconds */
 unsigned int logDial2millisec(int dial)
 {
     return dial<0? 0

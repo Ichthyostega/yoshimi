@@ -30,6 +30,7 @@
 #include "Misc/Part.h"
 #include "Misc/FormatFuncs.h"
 
+#include <optional>
 #include <string>
 #include <map>
 
@@ -132,10 +133,11 @@ class Bank
         unsigned int findFirstBank(size_t newRootID);
         bool setCurrentBankID(size_t newBankID, bool ignoreMissing = true);
         size_t addRootDir(const string& newRootDir);
-        bool parseBanksFile(XMLwrapper *xml);
+        bool establishBanks(std::optional<string> bankFile);
         bool installRoots();
         bool installNewRoot(size_t rootID, string rootdir, bool reload = false);
-        void saveToConfigFile(XMLwrapper *xml);
+        void saveToConfigFile(XMLwrapper& xml);
+        void loadFromConfigFile(XMLwrapper& xml);
 
         string getBankPath(size_t rootID, size_t bankID);
         string getRootPath(size_t rootID);
@@ -149,12 +151,12 @@ class Bank
         string getRootFileTitle(size_t root);
         int InstrumentsInBanks;
         int BanksInRoots;
-        int readVersion(void)
+        int readVersion()
             {return BanksVersion;}
         void writeVersion(int version)
             {BanksVersion = version;}
         int BanksVersion;
-        void checkLocalBanks(void);
+        void checkLocalBanks();
         size_t generateSingleRoot(const string& newRoot, bool clear = true);
 
     private:
