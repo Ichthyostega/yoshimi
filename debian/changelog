@@ -1,7 +1,7 @@
-yoshimi (2.3.3-1~bullseye) Lumiera-bullseye-tool; urgency=low
+yoshimi (2.3.3-1~bookworm) Lumiera-bookworm-tool; urgency=low
 
   * New upstream minor release 2.3.3
-  * Rebuild/Backport for Debian/Bullseye(oldstable).
+  * Rebuild/Backport for Debian/Bookworm(stable).
   * unofficial DEB package by Ichthyostega
 
  -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 24 Sep 2024 01:24:55 +0200
