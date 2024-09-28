@@ -31,9 +31,6 @@ Files: src/DSP/*
        src/Misc/Part.cpp
        src/Misc/Part.h
        src/Misc/RandomGen.h
-       src/Misc/Splash.cpp
-       src/Misc/Splash.h
-       src/Misc/SplashPngHex
        src/Misc/SynthEngine.cpp
        src/Misc/SynthEngine.h
        src/Misc/WavFile.cpp
