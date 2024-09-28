@@ -26,19 +26,28 @@
 
 #include "Misc/NumericFuncs.h"
 #include "Misc/SynthEngine.h"
+#include "Misc/Util.h"
 #include "Effects/EQ.h"
+
+#include <cstddef>
+#include <cassert>
 
 using func::power;
 using func::powFrac;
 using func::asDecibel;
+using util::unConst;
+using util::max;
+
+using std::make_unique;
 
 
-EQ::EQ(bool insertion_, float *efxoutl_, float *efxoutr_, SynthEngine *_synth)
+EQ::EQ(bool insertion_, float *efxoutl_, float *efxoutr_, SynthEngine& _synth)
     : Effect(insertion_, efxoutl_, efxoutr_, NULL, 0, _synth)
     , Pchanged{false}
     , Pvolume{}
     , Pband{0}
-    , filter{*synth,*synth,*synth,*synth,*synth,*synth,*synth,*synth} // MAX_EQ_BANDS
+    , filter{synth,synth,synth,synth,synth,synth,synth,synth} // MAX_EQ_BANDS
+    , filterSnapshot{}
 {
     // default values
     setvolume(50);
@@ -48,7 +57,7 @@ EQ::EQ(bool insertion_, float *efxoutl_, float *efxoutr_, SynthEngine *_synth)
 
 
 // Cleanup the effect
-void EQ::cleanup(void)
+void EQ::cleanup()
 {
     Effect::cleanup();
     for (int i = 0; i < MAX_EQ_BANDS; ++i)
@@ -62,11 +71,11 @@ void EQ::cleanup(void)
 // Effect output
 void EQ::out(float *smpsl, float *smpsr)
 {
-    outvolume.advanceValue(synth->sent_buffersize);
+    outvolume.advanceValue(synth.sent_buffersize);
 
-    memcpy(efxoutl, smpsl, synth->sent_bufferbytes);
-    memcpy(efxoutr, smpsr, synth->sent_bufferbytes);
-    for (int i = 0; i < synth->sent_buffersize; ++i)
+    memcpy(efxoutl, smpsl, synth.sent_bufferbytes);
+    memcpy(efxoutr, smpsr, synth.sent_bufferbytes);
+    for (int i = 0; i < synth.sent_buffersize; ++i)
     {
         efxoutl[i] *= volume.getValue();
         efxoutr[i] *= volume.getValue();
@@ -78,7 +87,7 @@ void EQ::out(float *smpsl, float *smpsr)
             continue;
 
         float oldval = filter[i].freq.getValue();
-        filter[i].freq.advanceValue(synth->sent_buffersize);
+        filter[i].freq.advanceValue(synth.sent_buffersize);
         float newval = filter[i].freq.getValue();
         if (oldval != newval)
         {
@@ -89,7 +98,7 @@ void EQ::out(float *smpsl, float *smpsr)
         }
 
         oldval = filter[i].gain.getValue();
-        filter[i].gain.advanceValue(synth->sent_buffersize);
+        filter[i].gain.advanceValue(synth.sent_buffersize);
         newval = filter[i].gain.getValue();
         if (oldval != newval)
         {
@@ -100,7 +109,7 @@ void EQ::out(float *smpsl, float *smpsr)
         }
 
         oldval = filter[i].q.getValue();
-        filter[i].q.advanceValue(synth->sent_buffersize);
+        filter[i].q.advanceValue(synth.sent_buffersize);
         newval = filter[i].q.getValue();
         if (oldval != newval)
         {
@@ -118,7 +127,7 @@ void EQ::out(float *smpsl, float *smpsr)
 
 // Parameter control
 
-void EQ::setvolume(unsigned char Pvolume_)
+void EQ::setvolume(uchar Pvolume_)
 {
     Pvolume = Pvolume_;
     float tmp = 10.0f * powFrac<200>(1.0f - Pvolume / 127.0f);
@@ -127,11 +136,11 @@ void EQ::setvolume(unsigned char Pvolume_)
 }
 
 
-void EQ::setpreset(unsigned char npreset)
+void EQ::setpreset(uchar npreset)
 {
     const int PRESET_SIZE = 1;
     const int NUM_PRESETS = 2;
-    unsigned char presets[NUM_PRESETS][PRESET_SIZE] = {
+    uchar presets[NUM_PRESETS][PRESET_SIZE] = {
         { EQmaster_def }, // EQ 1
         { EQmaster_def }  // EQ 2
     };
@@ -145,7 +154,7 @@ void EQ::setpreset(unsigned char npreset)
 }
 
 
-void EQ::changepar(int npar, unsigned char value)
+void EQ::changepar(int npar, uchar value)
 {
     if (npar == -1)
     {
@@ -169,36 +178,45 @@ void EQ::changepar(int npar, unsigned char value)
         return;
     int bp = npar % 5; // band parameter
 
-    float tmp;
+
+    // how to translate filter parameter into the internal value used for computation....
+    auto calcFreqVal = [](uchar par){ return 600.0f * power<30>((par - 64.0f) / 64.0f);  };
+    auto calcGainVal = [](uchar par){ return 30.0f * (par - 64.0f) / 64.0f;              };
+    auto calcQVal    = [](uchar par){ return power<30>((par - 64.0f) / 64.0f);           };
+
     switch (bp)
     {
         case 0:
+            // Change type of the filter band
             filter[nb].Ptype = value;
-            if (value > 9)
-                filter[nb].Ptype = 0; // has to be changed if more filters will be added
+            if (value > AnalogFilter::MAX_TYPES)
+                filter[nb].Ptype = 0;
             if (filter[nb].Ptype != 0)
             {
                 filter[nb].l->settype(value - 1);
                 filter[nb].r->settype(value - 1);
+                // need to re-sync the interpolated filter parameters
+                // to ensure a change is detected and the filter coefficients are recomputed.
+                // (without this the filter will sound neutral on very first usage of a EQ band)
+                filter[nb].freq.setTargetValue(calcFreqVal(filter[nb].Pfreq));
+                filter[nb].gain.setTargetValue(calcGainVal(filter[nb].Pgain));
+                filter[nb].q   .setTargetValue(calcQVal   (filter[nb].Pq   ));
             }
             break;
 
         case 1:
             filter[nb].Pfreq = value;
-            tmp = 600.0f * power<30>((value - 64.0f) / 64.0f);
-            filter[nb].freq.setTargetValue(tmp);
+            filter[nb].freq.setTargetValue(calcFreqVal(value));
             break;
 
         case 2:
             filter[nb].Pgain = value;
-            tmp = 30.0f * (value - 64.0f) / 64.0f;
-            filter[nb].gain.setTargetValue(tmp);
+            filter[nb].gain.setTargetValue(calcGainVal(value));
             break;
 
         case 3:
             filter[nb].Pq = value;
-            tmp = power<30>((value - 64.0f) / 64.0f);
-            filter[nb].q.setTargetValue(tmp);
+            filter[nb].q.setTargetValue(calcQVal(value));
             break;
 
         case 4:
@@ -213,7 +231,7 @@ void EQ::changepar(int npar, unsigned char value)
 }
 
 
-unsigned char EQ::getpar(int npar)
+uchar EQ::getpar(int npar) const
 {
     switch (npar)
     {
@@ -257,17 +275,13 @@ unsigned char EQ::getpar(int npar)
 }
 
 
-float EQ::getfreqresponse(float freq)
+/**
+ * Special implementation, since only EQ uses the high number of parameters.
+ */
+void EQ::getAllPar(EffectParArray& target) const
 {
-    float resp = 1.0f;
-    for (int i = 0; i < MAX_EQ_BANDS; ++i)
-    {
-        if (filter[i].Ptype == 0)
-            continue;
-        resp *= filter[i].l->H(freq);
-    }
-    // Only for UI purposes, use target value.
-    return asDecibel(resp * outvolume.getTargetValue());
+    for (uint i=0; i<target.size(); ++i)
+        target[i] = this->getpar(i);
 }
 
 
@@ -280,8 +294,8 @@ float EQlimit::getlimits(CommandBlock *getData)
     int min = 0;
     int max = 127;
     int def = 0;
-    unsigned char canLearn = TOPLEVEL::type::Learnable;
-    unsigned char isInteger = TOPLEVEL::type::Integer;
+    uchar canLearn = TOPLEVEL::type::Learnable;
+    uchar isInteger = TOPLEVEL::type::Integer;
 
     switch (control)
     {
@@ -337,3 +351,98 @@ float EQlimit::getlimits(CommandBlock *getData)
     return float(value);
 }
 
+
+
+/**
+ * Helper: an inline buffer to maintain a temporary copy of an AnalogFilter,
+ * used to compute the filter coefficients and then the response for GUI presentation.
+ * We can not use the actual filters, since their values will be interpolated gradually.
+ * Rather, we need to work from the pristine FilterParameter settings of this EQ.
+ */
+class EQ::FilterSnapshot
+{
+    // a chunk of raw uninitialised storage of suitable size
+    alignas(AnalogFilter)
+        std::byte buffer_[sizeof(AnalogFilter)];
+
+    EQ const& eq;
+
+public:
+   ~FilterSnapshot()
+    { destroy(); }
+
+    FilterSnapshot(EQ const& outer)
+        : eq{outer}
+    {
+        emplaceFilter(0, 1000, 1.0, 1, 1.0);
+    }// ensure there is always a dummy object emplaced
+
+
+    void captureBand(uint idx)
+    {
+        assert(idx < MAX_EQ_BANDS);
+        FilterParam const& par{eq.filter[idx]};
+        destroy();
+        emplaceFilter(max(0, par.Ptype-1)       // Ptype == 0 means disabled -- skipped in calcResponse()
+                     ,par.freq.getTargetValue()
+                     ,par.q.getTargetValue()
+                     ,par.Pstages
+                     ,par.gain.getTargetValue()
+                     );
+    }
+
+    AnalogFilter& access()
+    {
+        return * std::launder (reinterpret_cast<AnalogFilter*> (&buffer_));
+    }
+
+private:
+    void emplaceFilter(uchar type, float freq, float q, uchar stages, float dBgain)
+    {
+        new(&buffer_) AnalogFilter(unConst(eq).synth, type,freq,q,stages,dBgain);
+    }
+
+    void destroy()
+    {
+        access().~AnalogFilter();
+    }
+};
+
+
+/**
+ * Prepare the Lookup-Table used by the EQGraph-UI to display the
+ * gain response as function of the frequency. The number of step points in the LUT
+ * is defined by EQ_GRAPH_STEPS; these »slots« span an X-axis running from [0.0 ... 1.0].
+ * The translation of these scale points into actual frequencies is defined by xScaleFac(freq),
+ * where 0.0 corresponds to 20Hz and 1.0 corresponds to 20kHz. This render calculation is
+ * invoked on each push-update for an EQ -- see SynthEngine::pushEffectUpdate(part);
+ * this is unconditionally invoked on each parameter change (yet seems to be fast enough).
+ */
+void EQ::renderResponse(EQGraphArray & lut) const
+{
+    auto subNyquist = [this](float f){ return f <= synth.halfsamplerate_f; };
+    for (uint i=0; i<lut.size(); ++i)
+    {
+        float gridFactor = float(i) / (lut.size()-1);  // »fence post problem« : both 0.0 and 1.0 included
+        float slotFreq = xScaleFreq(gridFactor);
+        lut[i] = subNyquist(slotFreq)? yScaleFac(calcResponse(slotFreq))
+                                     : -1.0f;
+    }
+}
+
+float EQ::calcResponse(float freq) const
+{
+    if (not filterSnapshot)
+        filterSnapshot = make_unique<FilterSnapshot>(*this);
+
+    float response{1.0};
+    for (int i = 0; i < MAX_EQ_BANDS; ++i)
+    {
+        if (filter[i].Ptype == 0)
+            continue;
+        filterSnapshot->captureBand(i);
+        response *= filterSnapshot->access().calcFilterResponse(freq);
+    }
+    // Only for UI purposes, use target value.
+    return asDecibel(response * outvolume.getTargetValue());
+}

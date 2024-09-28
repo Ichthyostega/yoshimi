@@ -11,7 +11,7 @@ comment {BankUI.cc} {in_source not_in_header
 comment {Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009-2010, Alan Calvert
-Copyright 2014-2023, Will Godfrey & others
+Copyright 2014-2024, Will Godfrey & others
 
 This file is part of yoshimi, which is free software: you can redistribute
 it and/or modify it under the terms of the GNU General Public
@@ -32,10 +32,14 @@ This file is derivative of original ZynAddSubFX code.
 } {selected in_source in_header
 }
 
+decl {\#include <unistd.h>} {public local
+}
+
 decl {\#include <iostream>} {public local
 }
 
-decl {\#include <unistd.h>} {public local
+decl {\#include <string>
+    using std::string;} {public local
 }
 
 decl {\#include <FL/Fl_Button.H>} {public local
@@ -67,6 +71,8 @@ decl {\#include "Interface/TextLists.h"} {public local
 
 decl {\#include "MasterUI.h"} {private local
 }
+decl {\#include "UI/Themes.h"} {private local
+}
 
 decl {\#include "Misc/FormatFuncs.h"
     using func::string2int;
@@ -84,7 +90,7 @@ decl {using std::to_string;} {private global
 }
 
 class BankProcess_ {} {
-  Function {process(void)} {return_type {virtual void}
+  Function {process()} {return_type {virtual void}
   } {
     code {;} {}
   }
@@ -161,48 +167,38 @@ class BankSlot {: {public Fl_Button, BankProcess_}
   } {
     code {//
     if (type() == FL_HIDDEN_BUTTON) return;
-    int acol, scol, pcol, bcol;
+    int acol, scol, pcol;
     int wid = w() * 0.334;
     int engine = bank->engines_used(rootID, bankID, nslot);
+    if (engine > 0)
+    {
+        acol = bank_back_used; // occupied background
+        scol = bank_back_used;
+        pcol = bank_back_used;
+    }
+    else
+    {
+        acol = bank_back; // normal background
+        scol = bank_back;
+        pcol = bank_back;
+    }
+
     if (*nselected == nslot)
     {
         acol = bank_swap_back; // selected item background
         scol = bank_swap_back;
         pcol = bank_swap_back;
     }
-    else if (bank->emptyslot(rootID, bankID, nslot))
-    {
-        if (nslot < 128)
-        {
-            acol = 45; // normal background
-            scol = 45;
-            pcol = 45;
-        }
-        else
-        {
-            acol = 47; // extended instruments background
-            scol = 47;
-            pcol = 47;
-        }
-    }
     else
     {
-        if (nslot < 128)
-            bcol = 50; // 'occupied' normal background
-        else
-            bcol = 55; // 'occupied' extended instruments background
         if (engine & 1)
             acol = add_back;
-        else
-            acol = bcol;
+
         if (engine & 2)
             scol = sub_back;
-        else
-            scol = bcol;
+
         if (engine & 4)
             pcol = pad_back;
-        else
-            pcol = bcol;
 
         if ((lastSeen & 0x7f) == rootID && ((lastSeen >> 8) & 0x7f) == bankID  && ((lastSeen >> 15) == nslot))
             labelfont(1);
@@ -216,17 +212,7 @@ class BankSlot {: {public Fl_Button, BankProcess_}
     //frame for label
     draw_box(value() ? (down_box() ? down_box() : fl_down(box())) : box(), x(), y(), w(), h(), Fl_Color(17));
 
-    //draw_backdrop();
-
-    Fl_Color col = value() ? selection_color() : color();
-    if (labeltype() == FL_NORMAL_LABEL && value())
-    {
-        Fl_Color c = labelcolor();
-        labelcolor(fl_contrast(c, col));
-        draw_label();
-        labelcolor(c);
-    }
-    else
+    labelcolor(bank_text);
         draw_label();
 
     if (Fl::focus() == this) draw_focus();} {}
@@ -240,7 +226,7 @@ class BankSlot {: {public Fl_Button, BankProcess_}
 }
 
 class RootProcess_ {} {
-  Function {rootprocess(void)} {return_type {virtual void}
+  Function {rootprocess()} {return_type {virtual void}
   } {
     code {;} {}
   }
@@ -299,17 +285,18 @@ class RootSlot {: {public Fl_Button, RootProcess_}
     code {//
         string bankName = root->getBankName(nslot, rootID);
         if (bankName.empty())
-            color(46);
+            color(bank_back);
         else
         {
              bankName = std::to_string(nslot) + ". " + bankName;
              if ((unsigned int) nslot == currentBank)
-                color(252);
+                color(bank_highlight);
             else
-                color(51);
+                color(bank_back_used);
             if (*rselected == nslot)
-                color(6);
+                color(bank_swap_back);
         }
+        labelcolor(bank_text);
         copy_label(bankName.c_str());} {}
   }
   decl {int *what, *whatslot, nslot, highlight, *nselected, *rselected;} {private local
@@ -827,7 +814,7 @@ class BankUI {: {public BankProcess_, RootProcess_}
         callback {//
         if (selectedRootID >= 0)
         {
-            synth->getBankRef().removeRoot(selectedRootID);
+            synth->bank.removeRoot(selectedRootID);
             synth->saveBanks();
             readbankcfg();
         }
@@ -867,7 +854,7 @@ class BankUI {: {public BankProcess_, RootProcess_}
       Fl_Spinner changeIDbutton {
         label {New ID}
         callback {Pend->show();}
-        xywh {344 240 45 19} labelsize 12 labelcolor 64 align 5 minimum 0 maximum 126 textsize 12 textcolor 64 deactivate
+        xywh {344 240 45 19} selection_color 64 labelsize 12 labelcolor 64 align 5 minimum 0 maximum 126 textsize 12 textcolor 64 deactivate
         code0 {oldrootID = o->value();}
         class WidgetSpinner
       }
@@ -1015,7 +1002,7 @@ class BankUI {: {public BankProcess_, RootProcess_}
                 alert(synth, message);
             break;
         case BANK::control::renameInstrument:
-            if (message.find("FAILED") != std::string::npos)
+            if (message.find("FAILED") != string::npos)
             {
                 if (source == TOPLEVEL::action::fromGUI)
                     alert(synth, message);
@@ -1024,7 +1011,7 @@ class BankUI {: {public BankProcess_, RootProcess_}
                 bs[insert]->copy_label(message.c_str());
             break;
         case BANK::control::saveInstrument:
-            if (message.find("FAILED") != std::string::npos)
+            if (message.find("FAILED") != string::npos)
             {
                 if (source == TOPLEVEL::action::fromGUI)
                     alert(synth, message);
@@ -1033,7 +1020,7 @@ class BankUI {: {public BankProcess_, RootProcess_}
                 refreshinstrumentwindow();
             break;
         case BANK::control::deleteInstrument:
-            if (message.find("FAILED") != std::string::npos)
+            if (message.find("FAILED") != string::npos)
             {
                 if (source == TOPLEVEL::action::fromGUI)
                     alert(synth, message);
@@ -1045,7 +1032,7 @@ class BankUI {: {public BankProcess_, RootProcess_}
             break;
         case BANK::control::selectSecondInstrumentAndSwap:
 
-            if (message.find("FAILED") != std::string::npos)
+            if (message.find("FAILED") != string::npos)
                 if (source == TOPLEVEL::action::fromGUI)
                     alert(synth, message);
             rescan_for_banks();
@@ -1055,13 +1042,13 @@ class BankUI {: {public BankProcess_, RootProcess_}
             rescan_for_banks();
             break;
         case BANK::control::renameBank:
-        if (message.find("FAILED") != std::string::npos)
+        if (message.find("FAILED") != string::npos)
                 if (source == TOPLEVEL::action::fromGUI)
                     alert(synth, message);
             rescan_for_banks();
             break;
         case BANK::control::createBank:
-            if (message.find("FAILED") != std::string::npos)
+            if (message.find("FAILED") != string::npos)
                 if (source == TOPLEVEL::action::fromGUI)
                     alert(synth, message);
             readbankcfg();
@@ -1071,7 +1058,7 @@ class BankUI {: {public BankProcess_, RootProcess_}
         case BANK::control::selectFirstBankToSwap:
             break;
         case BANK::control::selectSecondBankAndSwap:
-            if (message.find("FAILED") != std::string::npos)
+            if (message.find("FAILED") != string::npos)
                 if (source == TOPLEVEL::action::fromGUI)
                     alert(synth, message);
             rescan_for_banks();
@@ -1104,9 +1091,9 @@ class BankUI {: {public BankProcess_, RootProcess_}
     code {//
     synth = _synth;
     fnr = &RootProcess_::rootprocess;
-    root = synth->getBankPtr();
+    root = & synth->bank;
     fnc = &BankProcess_::process;
-    bank = synth->getBankPtr();
+    bank = & synth->bank;
     what = 0;
     nselected = -1;
     rselected = -1;
@@ -1504,32 +1491,32 @@ class BankUI {: {public BankProcess_, RootProcess_}
           {
               if(instrumentuiwindow->visible())
               {
-                  instrumentuiwindow->hide();
-                  instrumentuiwindow->show();
+                  lastinstrumentW = 0;
+                  instrumentRtext();
               }
           }
           if (searchSeen)
           {
               if(searchwin->visible())
               {
-                  searchwin->hide();
-                  searchwin->show();
+                  lastsearchW = 0;
+                  searchRtext();
               }
           }
           if (bankSeen)
           {
               if(bankuiwindow->visible())
               {
-                  bankuiwindow->hide();
-                  bankuiwindow->show();
+                  lastbankW = 0;
+                  bankRtext();
               }
           }
           if (rootSeen)
           {
               if(rootuiwindow->visible())
               {
-                  rootuiwindow->hide();
-                  rootuiwindow->show();
+                  lastrootW = 0;
+                  rootRtext();
               }
           }
          ;} {}
@@ -1699,6 +1686,7 @@ class BankUI {: {public BankProcess_, RootProcess_}
     Pend->labelsize(int(10 * dScale));
     changeIDbutton->labelsize(size);
         changeIDbutton->textsize(size);
+    changeIDbutton->redraw();
 
     rootClose->labelsize(size);
     rootsbrowse->textsize(size);
@@ -1789,7 +1777,7 @@ class BankUI {: {public BankProcess_, RootProcess_}
     code {//
     string tmp;
     rootsbrowse->clear();
-    const RootEntryMap &roots = synth->getBankRef().getRoots();
+    const RootEntryMap &roots = synth->bank.getRoots();
     RootEntryMap::const_iterator it;
     for (it = roots.begin(); it != roots.end(); ++it)
     {

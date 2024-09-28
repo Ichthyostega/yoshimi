@@ -11,7 +11,7 @@ comment {MasterUI.cc} {in_source not_in_header
 comment {Original ZynAddSubFX author Nasca Octavian Paul
 Copyright (C) 2002-2005 Nasca Octavian Paul
 Copyright 2009-2011, Alan Calvert
-Copyright 2014-2023, Will Godfrey
+Copyright 2014-2024, Will Godfrey
 
 This file is part of yoshimi, which is free software: you can redistribute
 it and/or modify it under the terms of the GNU General Public
@@ -115,6 +115,7 @@ class VUMeter {: {public Fl_Box}
     code {// the "part_" parameters sets the part (if it is >=0), else it sets the master
     synth = _synth;
     label(NULL);
+    tick500 = 0;
     npart = part_;
     oldpeakl = 0;
     oldpeakr = 0;
@@ -331,7 +332,14 @@ class VUMeter {: {public Fl_Box}
     if (npart >= 0)
         draw_part();
     else
-        draw_master();} {}
+    {
+        draw_master();
+        ++tick500;
+        if (!(tick500 & 15)) // approx 500mS delay
+        {
+            synth->getGuiMaster()->configui->halfSecTimer();
+        }
+    }} {}
   }
   Function {tickdraw(VUMeter *o)} {return_type {static void}
   } {
@@ -360,13 +368,15 @@ class VUMeter {: {public Fl_Box}
                 maxdbl = NO_DB;
                 maxdbr = NO_DB;
                 clipped = 0;
-               	MasterUI *masterUI = synth->getGuiMaster(false);
+               	MasterUI *masterUI = synth->getGuiMaster();
                	if (masterUI)
                     masterUI->resetPartsClip();
             }
             return 1;
     }
     return 0;} {}
+  }
+  decl {int tick500;} {private local
   }
   decl {int npart;} {private local
   }
@@ -449,13 +459,13 @@ class Panellistitem {: {public Fl_Group}
 } {
   Function {make_window()} {} {
     Fl_Window panellistitem {
-      xywh {648 54 65 270} type Double hide
-      class Fl_Group
+      xywh {648 54 65 270} type Double
+      class Fl_Group visible
     } {
       Fl_Group panellistitemgroup {
         xywh {0 -5 65 279} box PLASTIC_THIN_UP_BOX
-        code0 {if (!synth->partonoffRead(npart + *plgroup)) o->deactivate();}
-        code1 {if (synth->getRuntime().audioEngine != jack_audio && synth->getLV2PluginType() != LV2PluginTypeMulti) audiosend->deactivate();}
+        code0 {if (not synth->partonoffRead(npart + *plgroup)) o->deactivate();}
+        code1 {if (not synth->getRuntime().isMultiFeed) audiosend->deactivate();}
       } {
         Fl_Group {} {
           xywh {30 64 26 112} box ENGRAVED_FRAME
@@ -613,13 +623,9 @@ Right mouse button: Instrument edit} xywh {12 248 40 20} box PLASTIC_UP_BOX labe
   }
   Function {refresh()} {} {
     code {//
-
     int setpart = npart | *plgroup; // assumes *plgroup always power of 2
 
     partenabled->value(synth->partonoffRead(setpart));
-
-    setPartLabel(setpart);
-
     partvolume->value(synth->part[setpart]->Pvolume);
     partvolume->selection_color(setSlider(partvolume->value(),96));
     partpanning->value(synth->part[setpart]->Ppanning);
@@ -638,7 +644,6 @@ Right mouse button: Instrument edit} xywh {12 248 40 20} box PLASTIC_UP_BOX labe
     else
         partrcv->textcolor(midi_solo_release);
 
-    partname->copy_label(synth->part[setpart]->Pname.c_str());
     int tmp = synth->part[setpart]->Paudiodest - 1;
     if (tmp < 0 or tmp > 3)
         tmp = 0;
@@ -646,11 +651,11 @@ Right mouse button: Instrument edit} xywh {12 248 40 20} box PLASTIC_UP_BOX labe
     if ((int)bankui->cbwig->value() != (setpart + 1))
         panellistitemgroup->color(FL_BACKGROUND_COLOR);
     else
-        panellistitemgroup->color(223);
+        panellistitemgroup->color(panels);
     panellistitemgroup->redraw();
     string num = asString(setpart + 1);
     partenabled->copy_label(num.c_str());
-
+    setPartLabel(setpart);
     if (synth->partonoffRead(setpart))
         panellistitemgroup->activate();
     else
@@ -658,27 +663,26 @@ Right mouse button: Instrument edit} xywh {12 248 40 20} box PLASTIC_UP_BOX labe
   }
   Function {setPartLabel(int npart)} {} {
     code {//
-    partadd->damage(1);
-    partsub->damage(1);
-    partpad->damage(1);
     int engine = findengines(npart);
+
     if (engine & 1)
         partadd->color(add_back);
     else
-        partadd->color(FL_BACKGROUND_COLOR);
+        partadd->color(bank_back_used);
     if (engine & 2)
         partsub->color(sub_back);
     else
-        partsub->color(FL_BACKGROUND_COLOR);
+        partsub->color(bank_back_used);
     if (engine & 4)
         partpad->color(pad_back);
     else
-        partpad->color(FL_BACKGROUND_COLOR);
+        partpad->color(bank_back_used);
     if (synth->part[npart | *plgroup]->PyoshiType)
         partname->labelcolor(yoshi_ins_typ);
     else
         partname->labelcolor(gen_text);
-    partname->copy_label(synth->part[npart | *plgroup]->Pname.c_str());} {}
+    partname->copy_label(synth->part[npart | *plgroup]->Pname.c_str());
+    ;} {}
   }
   Function {findengines(int npart)} {return_type {unsigned int}
   } {

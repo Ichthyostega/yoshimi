@@ -18,9 +18,8 @@
 #   You should have received a copy of the GNU General Public License
 #   along with yoshimi.  If not, see <http://www.gnu.org/licenses/>.
 
-project (Yoshimi)
-cmake_minimum_required (VERSION 3.0)
-cmake_policy (VERSION 3.0)
+cmake_minimum_required (VERSION 3.5)
+cmake_policy (VERSION 3.5)
 cmake_policy (SET CMP0004 NEW)
 if (POLICY CMP0046)
     cmake_policy (SET CMP0046 NEW)
@@ -42,18 +41,21 @@ cmake_policy (SET CMP0063 NEW)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 
-
 # vvv
 #add_definitions(-Wpedantic) # full ISO spec
 #add_definitions(-Werror) # warnings as errors
 #add_definitions(-Wfatal-errors) # stop on first
-#add_definitions(-Werror=format-security)
-#add_definitions(-Wextra)
-#add_definitions(-Wno-vla) # Nothing wrong with variable length arrays
+add_definitions(-Werror=format-security)
+#add_definitions(-fsanitize=address)
+add_definitions(-Wextra)
+add_definitions(-Wno-vla) # Nothing wrong with variable length arrays
 #add_definitions(-Wno-unqualified-std-cast-call) # supresses clang warning 'unqualified call'
 # ^^^ comment these out on release pushes
 
-set (YOSHIMI_VERSION "2.3.2")
+
+project (Yoshimi)
+
+set (YOSHIMI_VERSION "2.3.3.1")
 
 add_definitions (-DMIN_CONFIG_MAJOR=2)
 add_definitions (-DMIN_CONFIG_MINOR=3)
@@ -99,6 +101,7 @@ option (BuildForCore2_X86_64 "Build for Intel Core2 x86_64 system" OFF)
 option (BuildForRasPi4 "Build for ARM Cortex A9 system" OFF)
 option (BuildForThisCPU "Build for presently running system" OFF)
 option (BuildForDebug "Debug build without optimisation. Enable gdb debugging support" OFF)
+option (BuildForDiagnostic "Add diagnostics and debug info for optimised release build" OFF)
 
 option (BuildWithFLTK "Build with FLTK GUI" ON)
 
@@ -107,7 +110,7 @@ option (LV2Plugin "Build yoshimi lv2 plugin interface" ON)
 
 # developer info
 option (ShowNoteOnTimes "Report Note-On Times" OFF)
-option (ReportNoteEvents "Report Notes On/Off" OFF)
+option (ReportNoteEvents "Report Notes On/Off Count" OFF)
 
 
 set (BuildOptions_X86
@@ -130,19 +133,21 @@ set (BuildOptions_RasPi4
     CACHE STRING "Raspberry Pi V4 compiler options"
 )
 
-set (BuildOptionsThisCPU
+set (BuildOptions_ThisCPU
     "-march=native -mtune=native -Wall"
     CACHE STRING "Current CPU compiler options"
 )
 
-set (BuildOptionsBasic
+set (BuildOptions_Basic
     "-ffast-math -fomit-frame-pointer"
     CACHE STRING "basic compiler options"
 )
 
-set (BuildOptionsDebug
-    "-O0 -g3 -ggdb -Wpointer-arith -Wpedantic -Wextra" CACHE STRING "Compile without optimisation and with debug information")
-set (BuildOptionsRelease
+set (BuildOptions_Debug
+    "-O0 -Wpointer-arith -Wpedantic -Wextra" CACHE STRING "Compile without optimisation and with debug information")
+set (BuildOptions_Diagnostic
+    "-g3 -ggdb" CACHE STRING "Additional flags for debug information and diagnostics")
+set (BuildOptions_Release
     "-O3" CACHE STRING "Compile with optimisation for Release builds")
 
 if (BuildWithFLTK)
@@ -258,19 +263,25 @@ elseif (BuildForCore2_X86_64)
 elseif (BuildForNEON)
     set (OurCxxFlags ${BuildOptions_NEON})
 elseif (BuildForThisCPU)
-    set (OurCxxFlags ${BuildOptionsThisCPU})
+    set (OurCxxFlags ${BuildOptions_ThisCPU})
 else()
-    set (OurCxxFlags ${BuildOptionsBasic})
+    set (OurCxxFlags ${BuildOptions_Basic})
 endif ()
 set (CMAKE_CXX_FLAGS "${OurCxxFlags} ${CMAKE_CXX_FLAGS}")
 
+if (BuildForDiagnostic OR BuildForDebug)
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${BuildOptions_Diagnostic}")
+else()
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -DNDEBUG ")
+endif ()
+
 if (BuildForDebug)
     set (CMAKE_BUILD_TYPE "Debug")
-    set (CMAKE_CXX_FLAGS_DEBUG ${BuildOptionsDebug})
+    set (CMAKE_CXX_FLAGS_DEBUG ${BuildOptions_Debug})
     message (STATUS "DEBUG Build, flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG}")
 else()
     set (CMAKE_BUILD_TYPE "Release")
-    set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptionsRelease})
+    set (CMAKE_CXX_FLAGS_RELEASE ${BuildOptions_Release})
     message (STATUS "RELEASE Build, flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE}")
 endif ()
 
@@ -292,16 +303,20 @@ set (Effects_sources
 )
 
 set (Misc_sources
-    Misc/CmdOptions.cpp  Misc/Config.cpp  Misc/SynthEngine.cpp  Misc/Bank.cpp
-    Misc/BuildScheduler.cpp Misc/Microtonal.cpp   Misc/Part.cpp Misc/Splash.cpp
-    Misc/WavFile.cpp Misc/XMLwrapper.cpp
+    Misc/Bank.cpp  Misc/BuildScheduler.cpp  Misc/CmdOptions.cpp
+    Misc/Config.cpp  Misc/InstanceManager.cpp  Misc/Microtonal.cpp  Misc/Part.cpp
+    Misc/SynthEngine.cpp  Misc/WavFile.cpp  Misc/XMLwrapper.cpp
 )
 
 set (Interface_Sources
     Interface/InterChange.cpp
     Interface/Data2Text.cpp
+    Interface/GuiDataExchange.h
+    Interface/GuiDataExchange.cpp
+    Interface/InterfaceAnchor.h
     Interface/Text2Data.cpp
     Interface/MidiLearn.cpp
+    Interface/Vectors.cpp
     Interface/MidiDecode.cpp
     Interface/RingBuffer.h
     Interface/TextLists.h
@@ -310,7 +325,6 @@ set (Interface_Sources
 
 set (CLI_Sources
     CLI/CmdInterface.cpp
-    #CLI/ConfigCLI.cpp
     CLI/CmdInterpreter.cpp
 )
 
@@ -345,6 +359,9 @@ if (BuildWithFLTK)
         "MidiLearnUI"
     )
 
+    set (guitmp generated-gui-sources)
+    file (MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/${guitmp}")
+
 # workaround fltk_wrap_ui breakage
     set (FltkUI_sources)
     set (FltkUI_headers)
@@ -354,7 +371,10 @@ if (BuildWithFLTK)
         set (headerfile "${basename}.h")
         add_custom_command(
             OUTPUT ${sourcefile}
+            WORKING_DIRECTORY ${guitmp}
             COMMAND ${FLTK_FLUID_EXECUTABLE} ARGS -c -o .cpp ${fluidfile}
+            COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different ${sourcefile} ..
+            COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different ${headerfile} ..
             DEPENDS ${fluidfile}
         )
         set (FltkUI_sources ${FltkUI_sources} "${sourcefile}")
@@ -370,6 +390,7 @@ if (BuildWithFLTK)
         UI/WidgetMWSlider.cpp
         UI/YoshiWin.cpp
         UI/MiscGui.cpp
+        UI/Splash.cpp
     )
     set (YOSHI_INCLUDES ${FLTK_INCLUDE_DIR})
 endif ()
@@ -383,7 +404,7 @@ add_definitions (
 add_definitions (-DYOSHIMI="yoshimi")
 
 if (ShowNoteOnTimes)
-    add_definitions (-DREPORT_NOTEON)
+    add_definitions (-DREPORT_NOTE_ON_TIME)
 endif ()
 
 if (ReportNoteEvents)

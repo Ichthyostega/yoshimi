@@ -27,8 +27,12 @@
 #include "Misc/SynthEngine.h"
 #include "Misc/FileMgrFuncs.h"
 #include "Misc/FormatFuncs.h"
+#include "Misc/MirrorData.h"
 
 #include "UI/Themes.h"
+
+#include "Interface/InterfaceAnchor.h"
+using RoutingTag = GuiDataExchange::RoutingTag;
 
 using file::saveText;
 using file::loadText;
@@ -151,10 +155,38 @@ ValueType getFilterFreqTrackType(int offset);
 int millisec2logDial(unsigned int);
 unsigned int logDial2millisec(int);
 
-class GuiUpdates {
+
+/**
+ * Base class mixed into MasterUI, which is the root of the Yoshimi FLTK UI.
+ * Provides functions to establish communication with the Core.
+ */
+class GuiUpdates
+{
+protected:
+    GuiUpdates(InterChange&, size_t);
+
+    // must not be copied nor moved
+    GuiUpdates(GuiUpdates &&)                =delete;
+    GuiUpdates(GuiUpdates const&)            =delete;
+    GuiUpdates& operator=(GuiUpdates &&)     =delete;
+    GuiUpdates& operator=(GuiUpdates const&) =delete;
+
+    void read_updates(SynthEngine *synth);
 
 public:
-    void read_updates(SynthEngine *synth);
+    InterChange& interChange;
+    MirrorData<InterfaceAnchor> anchor;
+
+    auto connectSysEffect() { return GuiDataExchange::Connection<EffectDTO>(interChange.guiDataExchange, anchor.get().sysEffectParam); }
+    auto connectInsEffect() { return GuiDataExchange::Connection<EffectDTO>(interChange.guiDataExchange, anchor.get().insEffectParam); }
+    auto connectPartEffect(){ return GuiDataExchange::Connection<EffectDTO>(interChange.guiDataExchange, anchor.get().partEffectParam);}
+
+    template<class DAT>
+    GuiDataExchange::Connection<DAT> connectCore(GuiDataExchange::RoutingTag InterfaceAnchor::*tag)
+    {
+        (anchor.get().*tag).verifyType<DAT>();
+        return GuiDataExchange::Connection<DAT>(interChange.guiDataExchange, anchor.get().*tag);
+    }
 
 private:
     void decode_envelope(SynthEngine *synth, CommandBlock *getData);
@@ -165,7 +197,6 @@ inline void saveWin(SynthEngine *synth, int w, int h, int x, int y, int o, std::
 {
     std::string ID = std::to_string(synth->getUniqueId()) + "-";
     std::string values =  std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(w) + " " + std::to_string(h) + " " + std::to_string(o);
-    //std::cout << values << std::endl;
     saveText(values, file::configDir() + "/windows/" + ID + filename);
 }
 
@@ -173,7 +204,6 @@ inline void loadWin(SynthEngine *synth, int& w, int& h, int& x, int& y, int& o, 
 {
     std::string ID = std::to_string(synth->getUniqueId()) + "-";
     std::string values = loadText(file::configDir() + "/windows/" + ID + filename);
-    //std::cout << file::configDir() << "/windows/" << ID << filename << std::endl;
     w = h = o = 0;
     if (values == "")
     {
@@ -210,7 +240,6 @@ inline void loadWin(SynthEngine *synth, int& w, int& h, int& x, int& y, int& o, 
             if (pos == string::npos)
                 return;
             o = string2int(values.substr(pos));
-            //std::cout << "x " << x << "   y " << y  << "   w " << w << "   h " << h <<  "   o " << o << "  " << filename << std::endl;
         }
     }
 }
@@ -219,7 +248,6 @@ inline int lastSeen(SynthEngine *synth, std::string filename)
 {
     std::string ID = std::to_string(synth->getUniqueId()) + "-";
     std::string values = loadText(file::configDir() + "/windows/" + ID + filename);
-    //std::cout << values << " " << filename << std::endl;
     size_t pos = values.rfind(' ');
     if (pos == string::npos)
         return false;
@@ -239,7 +267,6 @@ inline void setVisible(SynthEngine *synth, bool v, std::string filename)
     if (vis == v)
         return;
     values.replace(pos, 1, std::to_string(v));
-    //std::cout << v << " " << values << " " << filename << std::endl;
     saveText(values, file::configDir() + "/windows/" + ID + filename);
 }
 
@@ -301,8 +328,6 @@ inline void checkSane(int& x, int& y, int& w, int& h, int defW, int defH, bool h
     // Restore position relative to screen position.
     x += minX;
     y += minY;
-
-    //std::cout << "x " << x << "  y " << y << "  w " << w << "  h " << h << std::endl;
 }
 
 inline void voiceOscUpdate(SynthEngine *synth_, int npart, int kititem, int nvoice, int &nvs, int &nvp)
@@ -333,4 +358,4 @@ inline void voiceOscUpdate(SynthEngine *synth_, int npart, int kititem, int nvoi
         */
 }
 
-#endif
+#endif /*MISCGUI_H*/

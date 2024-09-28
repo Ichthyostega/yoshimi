@@ -61,14 +61,14 @@ class SynthEngine;
 class Chorus : public Effect
 {
     public:
-        Chorus(bool insertion_, float *efxoutl_, float *efxoutr_, SynthEngine *_synth);
-        ~Chorus() { }
+        Chorus(bool insertion_, float *efxoutl_, float *efxoutr_, SynthEngine&);
+       ~Chorus() = default;
 
-        void out(float *smpsl, float *smpsr);
-        void setpreset(unsigned char npreset);
-        void changepar(int npar, unsigned char value);
-        unsigned char getpar(int npar);
-        void cleanup();
+        void out(float *smpsl, float *smpsr) override;
+        void setpreset(unsigned char npreset) override;
+        void changepar(int npar, unsigned char value) override;
+        unsigned char getpar(int npar) const override;
+        void cleanup() override;
 
     private:
         // Chorus Parameters

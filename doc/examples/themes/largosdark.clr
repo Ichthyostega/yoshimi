@@ -46,7 +46,7 @@ This would corrupt the colour map.
 0,0,255, Tooltip curve
 0,0,0, Tooltip text
 150,150,150, Tooltip faint text
-0,0,0, RESERVED
+255,255,255, Bank/Instrument text
 0,145,255, VU 1dB marker
 63,218,255, VU 5dB marker
 140,180,220, VU 10dB marker
@@ -100,7 +100,7 @@ This would corrupt the colour map.
 255,255,0, PadSynth fading
 87,87,255, PadSynth built
 255,120,0, Pending button
-0,0,0, RESERVED
+50,50,50, Occupied bank tile
 255,255,0, Formant filter marker
 150,150,0, Formant filter ghost marker
 0,182,191, Dynfilter filter button
@@ -112,7 +112,7 @@ This would corrupt the colour map.
 200,200,80, EQ graph line disabled
 255,255,255, Effect preset
 255,51,51, Effect preset changed
-0,0,0, RESERVED
+40,40,40, Unused bank tile
 255,255,255, Envelope control point
 0,255,255, Envelope control point selected
 255,255,0, Envelope sustain line

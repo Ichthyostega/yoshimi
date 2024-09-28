@@ -38,16 +38,20 @@ file (GLOB yoshimi_effects_files
     ../Effects/Phaser.h  ../Effects/Reverb.h  ../Effects/EQ.h
     ../Effects/Distorsion.h  ../Effects/DynamicFilter.h)
 file (GLOB yoshimi_misc_files
+    ../Misc/Alloc.h ../Misc/Bank.cpp ../Misc/Bank.h
+    ../Misc/BuildScheduler.cpp ../Misc/BuildScheduler.h ../Misc/DataBlockBuff.h
     ../Misc/Config.cpp ../Misc/Config.h ../Misc/ConfBuild.h
-    ../Misc/SynthEngine.cpp  ../Misc/Bank.cpp  ../Misc/Microtonal.cpp
-    ../Misc/Part.cpp  ../Misc/XMLwrapper.cpp  ../Misc/WavFile.cpp
-    ../Misc/SynthEngine.h  ../Misc/Bank.h  ../Misc/Microtonal.h
-    ../Misc/Part.h  ../Misc/XMLwrapper.h  ../Misc/WavFile.h
-    ../Misc/Alloc.h ../Misc/BuildScheduler.cpp ../Misc/BuildScheduler.h
-    ../Misc/TestInvoker.h ../Misc/TestSequence.h
-    ../Misc/WaveShapeSamples.h)
+    ../Misc/InstanceManager.cpp ../Misc/InstanceManager.h
+    ../Misc/Microtonal.cpp ../Misc/Microtonal.h ../Misc/MirrorData.h
+    ../Misc/SynthEngine.cpp ../Misc/SynthEngine.h
+    ../Misc/Part.cpp ../Misc/Part.h../Misc/TestInvoker.h ../Misc/TestSequence.h
+    ../Misc/WavFile.cpp ../Misc/WavFile.h ../Misc/WaveShapeSamples.h
+    ../Misc/XMLwrapper.cpp ../Misc/XMLwrapper.h)
 file (GLOB yoshimi_interface_files
+    ../Interface/GuiDataExchange.cpp ../Interface/GuiDataExchange.h
+    ../Interface/InterfaceAnchor.h
     ../Interface/MidiDecode.cpp ../Interface/MidiDecode.h
+    ../Interface/Vectors.cpp ../Interface/Vectors.h
     ../Interface/InterChange.cpp ../Interface/InterChange.h
     ../Interface/Data2Text.cpp ../Interface/Data2text.h
     ../Interface/Text2Data.cpp ../Interface/Text2Data.h
@@ -73,6 +77,7 @@ file (GLOB yoshimi_synth_files
     ../Synth/SUBnote.h  ../Synth/Resonance.h  ../Synth/PADnote.h
     ../Synth/WaveInterpolator.h ../Synth/XFadeManager.h ../Synth/BodyDisposal.h)
 file (GLOB yoshimi_musicio_files
+    ../MusicIO/MusicClient.cpp ../MusicIO/MusicClient.h
     ../MusicIO/MusicIO.cpp ../MusicIO/MusicIO.h)
 file (GLOB yoshimi_manifest_ttl
     manifest.ttl)
