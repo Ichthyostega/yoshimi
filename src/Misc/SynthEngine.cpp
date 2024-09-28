@@ -27,12 +27,15 @@
 
 */
 
-#include <sys/time.h>
 #include <set>
 #include <iostream>
 #include <string>
 #include <algorithm>
 #include <iterator>
+#include <optional>
+#include <memory>
+#include <thread>
+#include <chrono>
 
 #ifdef GUI_FLTK
     #include "MasterUI.h"
@@ -52,6 +55,7 @@
 #include "Synth/OscilGen.h"
 #include "Params/ADnoteParameters.h"
 #include "Params/PADnoteParameters.h"
+#include "Interface/InterfaceAnchor.h"
 
 using file::isRegularFile;
 using file::setExtension;
@@ -65,18 +69,20 @@ using func::bitTest;
 using func::asString;
 using func::string2int;
 
+using std::this_thread::sleep_for;
+using std::chrono_literals::operator ""us;
+using std::chrono::steady_clock;
+using std::chrono::duration_cast;
+using std::chrono::time_point;
+
 using std::to_string;
 using std::ofstream;
 using std::ios_base;
+using std::string;
 using std::set;
-using std::cout;
-using std::endl;
 
 
-extern void mainRegisterAudioPort(SynthEngine *s, int portnum);
 
-map<SynthEngine *, MusicClient *> synthInstances;
-SynthEngine *firstSynth = NULL;
 
 namespace { // Global implementation internal history data
     static vector<string> InstrumentHistory;
@@ -94,73 +100,86 @@ namespace { // Global implementation internal history data
 }
 
 
-static unsigned int getRemoveSynthId(bool remove = false, unsigned int idx = 0)
-{
-    static set<unsigned int> idMap;
-    if (remove)
-    {
-        if (idMap.count(idx) > 0)
-            idMap.erase(idx);
-        return 0;
-    }
-    else if (idx > 0)
-    {
-        if (idMap.count(idx) == 0)
-        {
-            idMap.insert(idx);
-            return idx;
-        }
-    }
-    set<unsigned int>::const_iterator itEnd = idMap.end();
-    set<unsigned int>::const_iterator it;
-    unsigned int nextId = 0;
-    for (it = idMap.begin(); it != itEnd && nextId == *it; ++it, ++nextId)
-    {
-    }
-    idMap.insert(nextId);
-    return nextId;
-}
 
-
-SynthEngine::SynthEngine(std::list<string>& allArgs, LV2PluginType _lv2PluginType, unsigned int forceId) :
-    uniqueId(getRemoveSynthId(false, forceId)),
-    lv2PluginType(_lv2PluginType),
-    needsSaving(false),
-    bank(this),
-    interchange(this),
-    midilearn(this),
-    mididecode(this),
-    Runtime(this, allArgs, getIsLV2Plugin()),
-    textMsgBuffer(TextMsgBuffer::instance()),
-    fadeAll(0),
-    fadeStepShort(0),
-    fadeLevel(0),
-    samplerate(48000),
-    samplerate_f(samplerate),
-    halfsamplerate_f(samplerate / 2),
-    buffersize(512),
-    buffersize_f(buffersize),
-    bufferbytes(buffersize*sizeof(float)),
-    oscilsize(1024),
-    oscilsize_f(oscilsize),
-    halfoscilsize(oscilsize / 2),
-    halfoscilsize_f(halfoscilsize),
-    sent_buffersize(0),
-    sent_bufferbytes(0),
-    sent_buffersize_f(0),
-    ctl(NULL),
-    microtonal(this),
-    fft(),
-#ifdef GUI_FLTK
-    guiMaster(NULL),
-    guiClosedCallback(NULL),
-    guiCallbackArg(NULL),
-#endif
-    CHtimer(0),
-    LFOtime(0),
-    songBeat(0.0f),
-    monotonicBeat(0.0f),
-    windowTitle("Yoshimi" + asString(uniqueId))
+SynthEngine::SynthEngine(uint instanceID)
+    : uniqueId{instanceID}
+    , Runtime{*this}
+    , rootCon{interchange.guiDataExchange.createConnection<InterfaceAnchor>()}
+    , bank{this}
+    , interchange{*this}
+    , midilearn{*this}
+    , mididecode{this}
+    , vectorcontrol{this}
+    , audioOut{}
+    , partlock{}
+    , legatoPart{0}
+    , masterMono{false}
+    , fileCompatible{true}
+    , usingYoshiType{false}
+    // part[]
+    , fadeAll{0}
+    , fadeStep{0}
+    , fadeStepShort{0}
+    , fadeLevel{0}
+    , samplerate{48000}
+    , samplerate_f{float(samplerate)}
+    , halfsamplerate_f{float(samplerate / 2)}
+    , buffersize{512}
+    , buffersize_f{float(buffersize)}
+    , bufferbytes{int(buffersize*sizeof(float))}
+    , oscilsize{1024}
+    , oscilsize_f{float(oscilsize)}
+    , halfoscilsize{oscilsize / 2}
+    , halfoscilsize_f{float(halfoscilsize)}
+    , oscil_sample_step_f{1.0}
+    , oscil_norm_factor_pm{1.0}
+    , oscil_norm_factor_fm{1.0}
+    , sent_buffersize{0}
+    , sent_bufferbytes{0}
+    , sent_buffersize_f{0}
+    , fixed_sample_step_f{0}
+    , TransVolume{0}
+    , Pvolume{0}
+    , ControlStep{0}
+    , Paudiodest{0}
+    , Pkeyshift{0}
+    , PbpmFallback{0}
+    // Psysefxvol[][]
+    // Psysefxsend[][]
+    , syseffnum{0}
+    // syseffEnable[]
+    , inseffnum{0}
+    // sysefx[]
+    // insefx[]
+    // Pinsparts[]
+    , sysEffectUiCon{interchange.guiDataExchange.createConnection<EffectDTO>()}
+    , insEffectUiCon{interchange.guiDataExchange.createConnection<EffectDTO>()}
+    , partEffectUiCon{interchange.guiDataExchange.createConnection<EffectDTO>()}
+    , sysEqGraphUiCon{interchange.guiDataExchange.createConnection<EqGraphDTO>()}
+    , insEqGraphUiCon{interchange.guiDataExchange.createConnection<EqGraphDTO>()}
+    , partEqGraphUiCon{interchange.guiDataExchange.createConnection<EqGraphDTO>()}
+    , ctl{NULL}
+    , microtonal{this}
+    , fft{}
+    , textMsgBuffer{TextMsgBuffer::instance()}
+    , VUpeak{}
+    , VUcopy{}
+    , VUdata{}
+    , VUcount{0}
+    , VUready{false}
+    , volume{0.0}
+    // sysefxvol[][]
+    // sysefxsend[][]
+    , keyshift{0}
+    , callbackGuiClosed{}
+    , windowTitle{"Yoshimi" + asString(uniqueId)}
+    , needsSaving{false}
+    , channelTimer{0}
+    , LFOtime{0}
+    , songBeat{0.0}
+    , monotonicBeat{0.0}
+    , bpm{90}
+    , bpmAccurate{false}
 {
     union {
         uint32_t u32 = 0x11223344;
@@ -189,7 +208,7 @@ SynthEngine::SynthEngine(std::list<string>& allArgs, LV2PluginType _lv2PluginTyp
 SynthEngine::~SynthEngine()
 {
 #ifdef GUI_FLTK
-    closeGui();
+    shutdownGui();
 #endif
 
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
@@ -207,24 +226,24 @@ SynthEngine::~SynthEngine()
     sem_destroy(&partlock);
     if (ctl)
         delete ctl;
-    getRemoveSynthId(true, uniqueId);
 }
 
 
-bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
+bool SynthEngine::Init(uint audiosrate, int audiobufsize)
 {
+    Runtime.init();
     audioOutStore(_SYS_::mute::Active);
     samplerate_f = samplerate = audiosrate;
     halfsamplerate_f = samplerate_f / 2;
 
-    buffersize = Runtime.Buffersize;
+    buffersize = Runtime.buffersize;
     if (buffersize > audiobufsize)
         buffersize = audiobufsize;
     buffersize_f = buffersize;
     fixed_sample_step_f = buffersize_f / samplerate_f;
     bufferbytes = buffersize * sizeof(float);
 
-    oscilsize_f = oscilsize = Runtime.Oscilsize;
+    oscilsize_f = oscilsize = Runtime.oscilsize;
     if (oscilsize < (buffersize / 2))
     {
         Runtime.Log("Enforcing oscilsize to half buffersize, "
@@ -264,7 +283,7 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
 
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
     {
-        part[npart] = new Part(npart, &microtonal, *fft, this);
+        part[npart] = new Part(npart, &microtonal, *fft, *this);
         if (!part[npart])
         {
             Runtime.Log("Failed to allocate new Part");
@@ -275,7 +294,7 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
     // Insertion Effects init
     for (int nefx = 0; nefx < NUM_INS_EFX; ++nefx)
     {
-        if (!(insefx[nefx] = new EffectMgr(1, this)))
+        if (!(insefx[nefx] = new EffectMgr(1, *this)))
         {
             Runtime.Log("Failed to allocate new Insertion EffectMgr");
             goto bail_out;
@@ -285,7 +304,7 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
     // System Effects init
     for (int nefx = 0; nefx < NUM_SYS_EFX; ++nefx)
     {
-        if (!(sysefx[nefx] = new EffectMgr(0, this)))
+        if (!(sysefx[nefx] = new EffectMgr(0, *this)))
         {
             Runtime.Log("Failed to allocate new System Effects EffectMgr");
             goto bail_out;
@@ -310,44 +329,44 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
     ClearNRPNs();
 
     if (Runtime.sessionStage == _SYS_::type::Default || Runtime.sessionStage == _SYS_::type::StartupSecond || Runtime.sessionStage == _SYS_::type::JackSecond)
-        Runtime.restoreSessionData(Runtime.StateFile);
+        Runtime.restoreSessionData(Runtime.stateFile);
     if (Runtime.paramsLoad.size())
     {
-        string file = setExtension(Runtime.paramsLoad, EXTEN::patchset);
+        string filename = setExtension(Runtime.paramsLoad, EXTEN::patchset);
         ShutUp();
-        if (!loadXML(file))
+        if (!loadXML(filename))
         {
-            Runtime.Log("Failed to load parameters " + file);
+            Runtime.Log("Failed to load parameters " + filename);
             Runtime.paramsLoad = "";
         }
     }
     if (Runtime.instrumentLoad.size())
     {
-        string feli = Runtime.instrumentLoad;
-        if (part[Runtime.load2part]->loadXMLinstrument(feli))
+        string filename = Runtime.instrumentLoad;
+        if (part[Runtime.load2part]->loadXMLinstrument(filename))
         {
             part[Runtime.load2part]->Penabled = 1;
-            Runtime.Log("Instrument file " + feli + " loaded");
+            Runtime.Log("Instrument file " + filename + " loaded");
         }
         else
         {
-            Runtime.Log("Failed to load instrument file " + feli);
+            Runtime.Log("Failed to load instrument file " + filename);
             Runtime.instrumentLoad = "";
         }
     }
     if (Runtime.midiLearnLoad.size())
     {
-        string feml = Runtime.midiLearnLoad;
-        if (midilearn.loadList(feml))
+        string filename = Runtime.midiLearnLoad;
+        if (midilearn.loadList(filename))
         {
 #ifdef GUI_FLTK
             midilearn.updateGui(); // does nothing if --no-gui
 #endif
-            Runtime.Log("midiLearn file " + feml + " loaded");
+            Runtime.Log("midiLearn file " + filename + " loaded");
         }
         else
         {
-            Runtime.Log("Failed to load midiLearn file " + feml);
+            Runtime.Log("Failed to load midiLearn file " + filename);
             Runtime.midiLearnLoad = "";
         }
     }
@@ -359,6 +378,13 @@ bool SynthEngine::Init(unsigned int audiosrate, int audiobufsize)
         Runtime.LogError("interChange init failed");
         goto bail_out;
     }
+
+#ifdef GUI_FLTK
+    // Init the Gui-Data-Exchange
+    if (Runtime.showGui)
+        publishGuiAnchor();
+#endif
+
 
     // we seem to need this here only for first time startup :(
     bank.setCurrentBankID(Runtime.tempBank, false);
@@ -392,14 +418,77 @@ bail_out:
 }
 
 
-string SynthEngine::manualname(void)
+/**
+ * Prepare and wire a communication anchor, allowing the GUI to establish
+ * data connections with this SynthEngine. This InstanceAnchor record is
+ * pushed through the GuiDataExchange (maintained within InterChange),
+ * and the corresponding notification is placed into the toGUI ringbuffer,
+ * where it typically is the very first message, since this function is
+ * invoked from SynthEngine::Init().
+ */
+void SynthEngine::publishGuiAnchor()
+{
+    InterfaceAnchor anchorRecord;
+    anchorRecord.synth = this;
+    anchorRecord.synthID = uniqueId;
+
+    ///////////////////TODO 1/2024 : connect all routing-Tags used by embedded sub-components of the Synth
+    anchorRecord.sysEffectParam  = sysEffectUiCon;
+    anchorRecord.sysEffectEQ     = sysEqGraphUiCon;
+    anchorRecord.insEffectParam  = insEffectUiCon;
+    anchorRecord.insEffectEQ     = insEqGraphUiCon;
+    anchorRecord.partEffectParam = partEffectUiCon;
+    anchorRecord.partEffectEQ    = partEqGraphUiCon;
+
+    // bootstrap message picked up when event-thread creates MasterUI
+    rootCon.publish(anchorRecord);
+}
+
+
+/**
+ * This callback is triggered whenever a new SynthEngine instance becomes fully operational.
+ * If running with GUI, the GuiMaster has been created and communication via GuiDataExchange
+ * has been primed. The LV2-plugin calls this later when the GUI is opened, with `isFirstInit==false`
+ */
+void SynthEngine::postBootHook(bool isFirstInit)
+{
+    if (isFirstInit)
+    { /* nothing special for first init to do currently */ }
+    maybePublishEffectsToGui();
+    // more initial push-updates will be added here...
+    //
+}// note InterChange::commandMain() will also push into GUI: (control=control::dataExchange, part=section::main)
+
+
+#ifdef GUI_FLTK
+MasterUI* SynthEngine::getGuiMaster()
+{
+    return interchange.guiMaster.get();
+}
+
+void SynthEngine::shutdownGui()
+{
+    interchange.shutdownGui();
+}
+#endif /*GUI_FLTK*/
+
+void SynthEngine::signalGuiWindowClosed()
+{
+    if (not Runtime.isLV2)
+        Runtime.runSynth.store(false, std::memory_order_release);
+    if (callbackGuiClosed)
+        callbackGuiClosed(); // if defined, invoke it
+}
+
+
+string SynthEngine::manualname()
 {
     string manfile = "yoshimi-user-manual-";
     manfile += YOSHIMI_VERSION;
     manfile = manfile.substr(0, manfile.find(" ")); // remove M or rc suffix
     int pos = 0;
     int count = 0;
-    for (unsigned i = 0; i < manfile.length(); ++i)
+    for (uint i = 0; i < manfile.length(); ++i)
     {
         if (manfile.at(i) == '.')
         {
@@ -413,7 +502,7 @@ string SynthEngine::manualname(void)
 }
 
 
-void SynthEngine::defaults(void)
+void SynthEngine::defaults()
 {
     for (int i = 0; i <NUM_MIDI_PARTS; ++i)
         partonoffLock(i, 0); // ensure parts are disabled
@@ -458,6 +547,10 @@ void SynthEngine::defaults(void)
         for (int nefxto = 0; nefxto < NUM_SYS_EFX; ++nefxto)
             setPsysefxsend(nefx, nefxto, 0);
     }
+    // avoid direct GUI push-update from here, since it's already covered in
+    // getfromXML() and resetAll() -- which happens to cover all relevant cases
+    // see SynthEngine::maybePublishEffectsToGui()
+
     microtonal.defaults();
     setAllPartMaps();
     VUcount = 0;
@@ -468,7 +561,7 @@ void SynthEngine::defaults(void)
     Runtime.channelSwitchCC = 128;
     Runtime.channelSwitchValue = 0;
     //CmdInterface.defaults(); // **** need to work out how to call this
-    Runtime.NumAvailableParts = NUM_MIDI_CHANNELS;
+    Runtime.numAvailableParts = NUM_MIDI_CHANNELS;
     Runtime.panLaw = MAIN::panningType::normal;
     ShutUp();
     Runtime.lastfileseen.clear();
@@ -495,7 +588,7 @@ void SynthEngine::setPartMap(int npart)
 }
 
 
-void SynthEngine::setAllPartMaps(void)
+void SynthEngine::setAllPartMaps()
 {
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++ npart)
         setPartMap(npart);
@@ -585,7 +678,7 @@ void SynthEngine::swapTestPADtable()
 
 
 // Note On Messages
-void SynthEngine::NoteOn(unsigned char chan, unsigned char note, unsigned char velocity)
+void SynthEngine::NoteOn(uchar chan, uchar note, uchar velocity)
 {
 #ifdef REPORT_NOTES_ON_OFF
     ++Runtime.noteOnSeen; // note test
@@ -593,11 +686,11 @@ void SynthEngine::NoteOn(unsigned char chan, unsigned char note, unsigned char v
         Runtime.Log("Note on diff " + to_string(Runtime.noteOnSent - Runtime.noteOnSeen));
 #endif
 
-#ifdef REPORT_NOTEON
-    struct timeval tv1, tv2;
-    gettimeofday(&tv1, NULL);
+#ifdef REPORT_NOTE_ON_TIME
+    steady_clock::time_point noteTime;
+    noteTime = steady_clock::now();
 #endif
-    for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
+    for (uint npart = 0; npart < Runtime.numAvailableParts; ++npart)
     {
         if (chan == part[npart]->Prcvchn)
         {
@@ -605,24 +698,19 @@ void SynthEngine::NoteOn(unsigned char chan, unsigned char note, unsigned char v
                 part[npart]->NoteOn(note, velocity);
         }
     }
-#ifdef REPORT_NOTEON
+#ifdef REPORT_NOTE_ON_TIME
     if (Runtime.showTimes)
     {
-        gettimeofday(&tv2, NULL);
-        if (tv1.tv_usec > tv2.tv_usec)
-        {
-            tv2.tv_sec--;
-            tv2.tv_usec += 1000000;
-            }
-        int actual = (tv2.tv_sec - tv1.tv_sec) *1000000 + (tv2.tv_usec - tv1.tv_usec);
-        Runtime.Log("Note time " + to_string(actual) + "uS");
+        using Microsec = std::chrono::duration<int, std::micro>;
+        auto duration = duration_cast<Microsec>(steady_clock::now() - noteTime);
+        Runtime.Log("Note start time " + to_string(duration.count()) + "us");
     }
 #endif
 }
 
 
 // Note Off Messages
-void SynthEngine::NoteOff(unsigned char chan, unsigned char note)
+void SynthEngine::NoteOff(uchar chan, uchar note)
 {
 #ifdef REPORT_NOTES_ON_OFF
     ++Runtime.noteOffSeen; // note test
@@ -630,7 +718,7 @@ void SynthEngine::NoteOff(unsigned char chan, unsigned char note)
         Runtime.Log("Note off diff " + to_string(Runtime.noteOffSent - Runtime.noteOffSeen));
 #endif
 
-    for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
+    for (uint npart = 0; npart < Runtime.numAvailableParts; ++npart)
     {
         // mask values 16 - 31 to still allow a note off
         if (chan == (part[npart]->Prcvchn & 0xef) && partonoffRead(npart))
@@ -639,7 +727,7 @@ void SynthEngine::NoteOff(unsigned char chan, unsigned char note)
 }
 
 
-int SynthEngine::RunChannelSwitch(unsigned char chan, int value)
+int SynthEngine::RunChannelSwitch(uchar chan, int value)
 {
     int switchtype = Runtime.channelSwitchType;
     if (switchtype > MIDI::SoloType::Channel)
@@ -658,8 +746,8 @@ int SynthEngine::RunChannelSwitch(unsigned char chan, int value)
             timespec now_struct;
             clock_gettime(CLOCK_MONOTONIC, &now_struct);
             int64_t now_ms = int64_t(now_struct.tv_sec) * 1000 + int64_t(now_struct.tv_nsec) / 1000000;
-            if ((now_ms - CHtimer) > 60)
-                CHtimer = now_ms;
+            if ((now_ms - channelTimer) > 60)
+                channelTimer = now_ms;
             else
                 return 0; // de-bounced
         }
@@ -759,7 +847,7 @@ int SynthEngine::RunChannelSwitch(unsigned char chan, int value)
 
 
 // Controllers
-void SynthEngine::SetController(unsigned char chan, int CCtype, short int par)
+void SynthEngine::SetController(uchar chan, int CCtype, short int par)
 {
     if (CCtype == Runtime.midi_bank_C)
     {
@@ -785,13 +873,13 @@ void SynthEngine::SetController(unsigned char chan, int CCtype, short int par)
     if (chan < NUM_MIDI_CHANNELS)
     {
         minPart = 0;
-        maxPart = Runtime.NumAvailableParts;
+        maxPart = Runtime.numAvailableParts;
     }
     else
     {
         bool vector = (chan >= 0x80);
         chan &= 0x3f;
-        if (chan >= Runtime.NumAvailableParts)
+        if (chan >= Runtime.numAvailableParts)
             return; // shouldn't be possible
         minPart = chan;
         maxPart = chan + 1;
@@ -802,8 +890,6 @@ void SynthEngine::SetController(unsigned char chan, int CCtype, short int par)
 
     for (int npart = minPart; npart < maxPart; ++ npart)
     {   // Send the controller to all part assigned to the channel
-
-        //std::cout << "  min " << minPart<< "  max " << maxPart << "  Rec " << int(part[npart]->Prcvchn) << "  Chan " << int(chan) <<std::endl;
         if (part[npart]->Prcvchn == chan)
         {
             if (CCtype == part[npart]->PbreathControl) // breath
@@ -821,7 +907,6 @@ void SynthEngine::SetController(unsigned char chan, int CCtype, short int par)
             }
             else
             {
-                //std::cout << "CCtype " << int(CCtype) << "  par " << int(par) << std::endl;
                 part[npart]->SetController(CCtype, par);
             }
         }
@@ -842,14 +927,12 @@ void SynthEngine::SetZynControls(bool in_place)
      * Data LSB param value
      */
 
-    unsigned char group = Runtime.nrpnH | 0x20;
-    unsigned char effnum = Runtime.nrpnL;
-    unsigned char parnum = Runtime.dataH;
-    unsigned char value = Runtime.dataL;
-    unsigned char efftype = (parnum & 0x60);
+    uchar group = Runtime.nrpnH | 0x20;
+    uchar effnum = Runtime.nrpnL;
+    uchar parnum = Runtime.dataH;
+    uchar value = Runtime.dataL;
+    uchar efftype = (parnum & 0x60);
     Runtime.dataL = 0xff; // use once then clear it out
-
-    //std::cout << "isSys " << int(group == 36) << "  num " << int(effnum) << "  par " << int(parnum) << "  val " << int(value) << std::endl;
 
     CommandBlock putData;
     memset(&putData, 0xff, sizeof(putData));
@@ -878,7 +961,6 @@ void SynthEngine::SetZynControls(bool in_place)
     else // ins
     {
         putData.data.part = TOPLEVEL::section::insertEffects;
-        //std::cout << "efftype " << int(efftype) << std::endl;
         if (efftype == 0x40)
             putData.data.control = 1;
         else if (efftype == 0x60)
@@ -891,13 +973,10 @@ void SynthEngine::SetZynControls(bool in_place)
     }
     putData.data.engine = effnum;
 
-    //if ((npart < NUM_MIDI_PARTS && control == PART::control::effectType) || (npart > TOPLEVEL::section::main && kititem == UNUSED && control == 1))
-        //control = EFFECT::sysIns::effectType;
-
     if (in_place)
-        interchange.commandEffects(&putData);
+        interchange.commandEffects(putData);
     else // TODO next line is a hack!
-        midilearn.writeMidi(&putData, false);
+        midilearn.writeMidi(putData, false);
 }
 
 
@@ -981,17 +1060,18 @@ int SynthEngine::setRootBank(int root, int banknum, bool notinplace)
 }
 
 
-int SynthEngine::setProgramByName(CommandBlock *getData)
+int SynthEngine::setProgramByName(CommandBlock& cmd)
 {
-    struct timeval tv1, tv2;
+    steady_clock::time_point startTime;
     if (Runtime.showTimes)
-        gettimeofday(&tv1, NULL);
+        startTime = steady_clock::now();
+
     int msgID = NO_MSG;
     bool ok = true;
-    int npart = int(getData->data.kit);
-    string fname = textMsgBuffer.fetch(getData->data.miscmsg);
+    int npart = int(cmd.data.kit);
+    string fname{textMsgBuffer.fetch(cmd.data.miscmsg)};
     fname = setExtension(fname, EXTEN::yoshInst);
-    if (!isRegularFile(fname))
+    if (not isRegularFile(fname))
         fname = setExtension(fname, EXTEN::zynInst);
     string name = findLeafName(fname);
     if (name < "!")
@@ -999,7 +1079,7 @@ int SynthEngine::setProgramByName(CommandBlock *getData)
         name = "Invalid instrument name " + name;
         ok = false;
     }
-    if (ok && !isRegularFile(fname))
+    if (ok and not isRegularFile(fname))
     {
         name = "Can't find " + fname;
         ok = false;
@@ -1007,26 +1087,19 @@ int SynthEngine::setProgramByName(CommandBlock *getData)
     if (ok)
     {
         ok = setProgram(fname, npart);
-        //if (ok && part[npart]->Poriginal == UNTITLED)
-            //part[npart]->Poriginal = "";
-        if (!ok)
+        if (not ok)
             name = "File " + name + "unrecognised or corrupted";
     }
 
-    if (ok && Runtime.showTimes)
+    if (ok and Runtime.showTimes)
     {
-        gettimeofday(&tv2, NULL);
-        if (tv1.tv_usec > tv2.tv_usec)
-        {
-            tv2.tv_sec--;
-            tv2.tv_usec += 1000000;
-        }
-        int actual = ((tv2.tv_sec - tv1.tv_sec) *1000 + (tv2.tv_usec - tv1.tv_usec)/ 1000.0f) + 0.5f;
-        name += ("  Time " + to_string(actual) + "mS");
+        using Millisec = std::chrono::duration<int, std::milli>;
+        auto duration = duration_cast<Millisec>(steady_clock::now() - startTime);
+        name += ("  Time " + to_string(duration.count()) + "ms");
     }
 
     msgID = textMsgBuffer.push(name);
-    if (!ok)
+    if (not ok)
     {
         msgID |= 0xFF0000;
         partonoffLock(npart, 2); // as it was
@@ -1041,18 +1114,18 @@ int SynthEngine::setProgramByName(CommandBlock *getData)
 }
 
 
-int SynthEngine::setProgramFromBank(CommandBlock *getData, bool notinplace)
+int SynthEngine::setProgramFromBank(CommandBlock& cmd, bool notinplace)
 {
-    struct timeval tv1, tv2;
-    if (notinplace && Runtime.showTimes)
-        gettimeofday(&tv1, NULL);
+    steady_clock::time_point startTime;
+    if (notinplace and Runtime.showTimes)
+        startTime = steady_clock::now();
 
-    int instrument = int(getData->data.value);
-    int banknum = getData->data.engine;
+    int instrument = int(cmd.data.value);
+    int banknum = cmd.data.engine;
     if (banknum == UNUSED)
         banknum = Runtime.currentBank;
-    int npart = getData->data.kit;
-    int root = getData->data.insert;
+    int npart = cmd.data.kit;
+    int root  = cmd.data.insert;
     if (root == UNUSED)
         root = Runtime.currentRoot;
 
@@ -1069,11 +1142,9 @@ int SynthEngine::setProgramFromBank(CommandBlock *getData, bool notinplace)
     else
     {
         ok = setProgram(fname, npart);
-        //if (ok && part[npart]->Poriginal == UNTITLED)
-            //part[npart]->Poriginal = "";
         if (notinplace)
         {
-            if (!ok)
+            if (not ok)
                 name = "Instrument " + name + " missing or corrupted";
         }
     }
@@ -1081,20 +1152,15 @@ int SynthEngine::setProgramFromBank(CommandBlock *getData, bool notinplace)
     int msgID = NO_MSG;
     if (notinplace)
     {
-        if (ok && Runtime.showTimes)
+        if (ok and Runtime.showTimes)
         {
-            gettimeofday(&tv2, NULL);
-            if (tv1.tv_usec > tv2.tv_usec)
-            {
-                tv2.tv_sec--;
-                tv2.tv_usec += 1000000;
-            }
-            int actual = ((tv2.tv_sec - tv1.tv_sec) *1000 + (tv2.tv_usec - tv1.tv_usec)/ 1000.0f) + 0.5f;
-            name += ("  Time " + to_string(actual) + "mS");
+            using Millisec = std::chrono::duration<int, std::milli>;
+            auto duration = duration_cast<Millisec>(steady_clock::now() - startTime);
+            name += ("  Time " + to_string(duration.count()) + "ms");
         }
         msgID = textMsgBuffer.push(name);
     }
-    if (!ok)
+    if (not ok)
     {
         msgID |= 0xFF0000;
         partonoffLock(npart, 2); // as it was
@@ -1105,8 +1171,10 @@ int SynthEngine::setProgramFromBank(CommandBlock *getData, bool notinplace)
 }
 
 
-bool SynthEngine::setProgram(const string& fname, int npart)
+bool SynthEngine::setProgram(string const& fname, int npart)
 {
+    // switch active part (UI will do the same on returns_update)
+    getRuntime().currentPart = npart;
     interchange.undoRedoClear();
     bool ok = true;
     if (!part[npart]->loadXMLinstrument(fname))
@@ -1115,22 +1183,22 @@ bool SynthEngine::setProgram(const string& fname, int npart)
 }
 
 
-int SynthEngine::ReadBankRoot(void)
+int SynthEngine::ReadBankRoot()
 {
     return Runtime.currentRoot;
 }
 
 
-int SynthEngine::ReadBank(void)
+int SynthEngine::ReadBank()
 {
     return Runtime.currentBank;
 }
 
 
 // Set part's channel number
-void SynthEngine::SetPartChan(unsigned char npart, unsigned char nchan)
+void SynthEngine::SetPartChan(uchar npart, uchar nchan)
 {
-    if (npart < Runtime.NumAvailableParts)
+    if (npart < Runtime.numAvailableParts)
     {
         /* We allow direct controls to set out of range channel numbers.
          * This gives us a way to disable all channel messages to a part.
@@ -1174,7 +1242,7 @@ int SynthEngine::ReadPartKeyMode(int npart)
  * We also have to fake long pages when calling via NRPNs as there
  * is no readline entry to set the page length.
  */
-void SynthEngine::cliOutput(list<string>& msg_buf, unsigned int lines)
+void SynthEngine::cliOutput(list<string>& msg_buf, uint lines)
 {
     list<string>::iterator it;
 
@@ -1183,7 +1251,7 @@ void SynthEngine::cliOutput(list<string>& msg_buf, unsigned int lines)
         for (it = msg_buf.begin(); it != msg_buf.end(); ++it)
             Runtime.Log(*it);
             // we need this in case someone is working headless
-        cout << "\nReports sent to console window\n\n";
+        std::cout << "\nReports sent to console window\n\n";
     }
     else if (msg_buf.size() < lines) // Output will fit the screen
     {
@@ -1201,7 +1269,7 @@ void SynthEngine::cliOutput(list<string>& msg_buf, unsigned int lines)
         string page_filename = "/tmp/yoshimi-pager-" + asString(getpid()) + ".log";
         ofstream fout(page_filename,(ios_base::out | ios_base::trunc));
         for (it = msg_buf.begin(); it != msg_buf.end(); ++it)
-            fout << *it << endl;
+            fout << *it << std::endl;
         fout.close();
         string cmd = "less -X -i -M -PM\"q=quit /=search PgUp/PgDown=scroll (line %lt of %L)\" " + page_filename;
         system(cmd.c_str());
@@ -1215,10 +1283,9 @@ void SynthEngine::ListPaths(list<string>& msg_buf)
 {
     string label;
     string prefix;
-    unsigned int idx;
     msg_buf.push_back("Root Paths");
 
-    for (idx = 0; idx < MAX_BANK_ROOT_DIRS; ++ idx)
+    for (uint idx = 0; idx < MAX_BANK_ROOT_DIRS; ++ idx)
     {
         if (bank.roots.count(idx) > 0 && !bank.roots [idx].path.empty())
         {
@@ -1249,7 +1316,7 @@ void SynthEngine::ListBanks(int rootNum, list<string>& msg_buf)
             label = label.substr(0, label.size() - 1);
         msg_buf.push_back("Banks in Root ID " + asString(rootNum));
         msg_buf.push_back("    " + label);
-        for (unsigned int idx = 0; idx < MAX_BANKS_IN_ROOT; ++ idx)
+        for (uint idx = 0; idx < MAX_BANKS_IN_ROOT; ++ idx)
         {
             if (bank.roots [rootNum].banks.count(idx))
             {
@@ -1351,7 +1418,7 @@ bool SynthEngine::SingleVector(list<string>& msg_buf, int chan)
     msg_buf.push_back("  L = " + part[chan]->Pname + ",  R = " + part[chan + 16]->Pname);
 
     if (Runtime.vectordata.Yaxis[chan] > 0x7f
-        || Runtime.NumAvailableParts < NUM_MIDI_CHANNELS * 4)
+        || Runtime.numAvailableParts < NUM_MIDI_CHANNELS * 4)
         msg_buf.push_back("  Y axis disabled");
     else
     {
@@ -1402,7 +1469,7 @@ void SynthEngine::ListSettings(list<string>& msg_buf)
         msg_buf.push_back("  No paths set");
 
     msg_buf.push_back("  Number of available parts "
-                    + asString(Runtime.NumAvailableParts));
+                    + asString(Runtime.numAvailableParts));
 
     msg_buf.push_back("  Current part " + asString(Runtime.currentPart + 1));
 
@@ -1418,7 +1485,7 @@ void SynthEngine::ListSettings(list<string>& msg_buf)
     else
         msg_buf.push_back("  MIDI Bank CC " + asString(Runtime.midi_bank_C));
 
-    if (Runtime.EnableProgChange)
+    if (Runtime.enableProgChange)
         msg_buf.push_back("  MIDI Program Change on");
     else
         msg_buf.push_back("  MIDI program change off");
@@ -1502,8 +1569,7 @@ void SynthEngine::ListSettings(list<string>& msg_buf)
 
 
 /*
- * Provides a way of setting dynamic system variables
- * via NRPNs
+ * Provides a way of setting dynamic system variables via NRPNs
  */
 int SynthEngine::SetSystemValue(int type, int value)
 {
@@ -1511,10 +1577,10 @@ int SynthEngine::SetSystemValue(int type, int value)
     string label;
     label = "";
     bool to_send = false;
-    unsigned char  action = 0;
-    unsigned char  cmd = UNUSED;
-    unsigned char  setpart;
-    unsigned char  parameter = UNUSED;
+    uchar  action = 0;
+    uchar  cmd = UNUSED;
+    uchar  setpart;
+    uchar  parameter = UNUSED;
 
     switch (type)
     {
@@ -1566,7 +1632,7 @@ int SynthEngine::SetSystemValue(int type, int value)
                 putData.data.source = TOPLEVEL::action::fromCLI | TOPLEVEL::action::lowPrio;
                 putData.data.control = PART::control::keyShift;
 
-                for (int i = 0; i < Runtime.NumAvailableParts; ++ i)
+                for (uint i = 0; i < Runtime.numAvailableParts; ++ i)
                 {
                     if (partonoffRead(i) && part[i]->Prcvchn == (type - 64))
                     {
@@ -1578,7 +1644,7 @@ int SynthEngine::SetSystemValue(int type, int value)
                             ++ tries;
                             ok = interchange.fromMIDI.write(putData.bytes);
                             if (!ok)
-                                usleep(1);
+                                sleep_for(1us);
                         // we can afford a short delay for buffer to clear
                         }
                         while (!ok && tries < 3);
@@ -1696,7 +1762,7 @@ int SynthEngine::SetSystemValue(int type, int value)
         ++ tries;
         ok = interchange.fromMIDI.write(putData.bytes);
         if (!ok)
-            usleep(1);
+            sleep_for(1us);
     // we can afford a short delay for buffer to clear
     }
     while (!ok && tries < 3);
@@ -1709,18 +1775,17 @@ int SynthEngine::SetSystemValue(int type, int value)
 }
 
 
-int SynthEngine::LoadNumbered(unsigned char group, unsigned char entry)
+int SynthEngine::LoadNumbered(uchar group, uchar entry)
 {
-    string filename;
-    vector<string> &listType = *getHistory(group);
+    vector<string> const& listType{getHistory(group)};
     if (size_t(entry) >= listType.size())
         return (textMsgBuffer.push(" FAILED: List entry " + to_string(int(entry)) + " out of range") | 0xFF0000);
-    filename = listType.at(entry);
+    string const& filename{listType.at(entry)};
     return textMsgBuffer.push(filename);
 }
 
 
-bool SynthEngine::vectorInit(int dHigh, unsigned char chan, int par)
+bool SynthEngine::vectorInit(int dHigh, uchar chan, int par)
 {
     string name = "";
 
@@ -1733,9 +1798,9 @@ bool SynthEngine::vectorInit(int dHigh, unsigned char chan, int par)
             Runtime.Log(name);
             return true;
         }
-        int parts = 2* NUM_MIDI_CHANNELS * (dHigh + 1);
-        if (parts > Runtime.NumAvailableParts)
-            Runtime.NumAvailableParts = parts;
+        uint parts = 2* NUM_MIDI_CHANNELS * (dHigh + 1);
+        if (parts > Runtime.numAvailableParts)
+            Runtime.numAvailableParts = parts;
         if (dHigh == 0)
         {
             partonoffLock(chan, 1);
@@ -1759,7 +1824,7 @@ bool SynthEngine::vectorInit(int dHigh, unsigned char chan, int par)
 }
 
 
-void SynthEngine::vectorSet(int dHigh, unsigned char chan, int par)
+void SynthEngine::vectorSet(int dHigh, uchar chan, int par)
 {
     string featureList = "";
 
@@ -1792,7 +1857,7 @@ void SynthEngine::vectorSet(int dHigh, unsigned char chan, int par)
         }
     }
 
-    unsigned char part = 0;
+    uchar part = 0;
     switch (dHigh)
     {
         case 0:
@@ -1830,7 +1895,7 @@ void SynthEngine::vectorSet(int dHigh, unsigned char chan, int par)
             break;
 
         case 3:
-            if (Runtime.NumAvailableParts > NUM_MIDI_CHANNELS * 2)
+            if (Runtime.numAvailableParts > NUM_MIDI_CHANNELS * 2)
             {
                 Runtime.vectordata.Yfeatures[chan] = par;
                 Runtime.Log("Set Y features " + featureList);
@@ -1902,12 +1967,12 @@ void SynthEngine::vectorSet(int dHigh, unsigned char chan, int par)
         putData.data.control = 8;
         putData.data.part = TOPLEVEL::section::midiIn;
         putData.data.kit = part;
-        midilearn.writeMidi(&putData, true);
+        midilearn.writeMidi(putData, true);
     }
 }
 
 
-void SynthEngine::ClearNRPNs(void)
+void SynthEngine::ClearNRPNs()
 {
     Runtime.nrpnL = 127;
     Runtime.nrpnH = 127;
@@ -1939,8 +2004,8 @@ void SynthEngine::resetAll(bool andML)
         string filename = Runtime.defaultStateName + ("-" + to_string(this->getUniqueId()));
         if (isRegularFile(filename + ".state"))
         {
-            Runtime.StateFile = filename;
-            Runtime.restoreSessionData(Runtime.StateFile);
+            Runtime.stateFile = filename;
+            Runtime.restoreSessionData(Runtime.stateFile);
         }
     }
     if (andML)
@@ -1951,14 +2016,16 @@ void SynthEngine::resetAll(bool andML)
         putData.data.type = 0;
         putData.data.control = MIDILEARN::control::clearAll;
         putData.data.part = TOPLEVEL::section::midiLearn;
-        midilearn.generalOperations(&putData);
+        midilearn.generalOperations(putData);
         textMsgBuffer.clear();
     }
+    // possibly push changed effect state to GUI
+    maybePublishEffectsToGui();
 }
 
 
 // Enable/Disable a part
-void SynthEngine::partonoffLock(int npart, int what)
+void SynthEngine::partonoffLock(uint npart, int what)
 {
     sem_wait(&partlock);
     partonoffWrite(npart, what);
@@ -1969,14 +2036,14 @@ void SynthEngine::partonoffLock(int npart, int what)
  * Intelligent switch for unknown part status that always
  * switches off and later returns original unknown state
  */
-void SynthEngine::partonoffWrite(int npart, int what)
+void SynthEngine::partonoffWrite(uint npart, int what)
 {
-    if (npart >= Runtime.NumAvailableParts)
+    if (npart >= uint(Runtime.numAvailableParts))
         return;
-    unsigned char original = part[npart]->Penabled;
+    uchar original = part[npart]->Penabled;
     if (original > 1)
         original = 1;
-    unsigned char tmp = original;
+    uchar tmp = original;
     switch (what)
     {
         case 0: // always off
@@ -2007,7 +2074,7 @@ void SynthEngine::partonoffWrite(int npart, int what)
         part[npart]->cleanup();
         for (int nefx = 0; nefx < NUM_INS_EFX; ++nefx)
         {
-            if (Pinsparts[nefx] == npart)
+            if (Pinsparts[nefx] == int(npart))
                 insefx[nefx]->cleanup();
         }
         VUpeak.values.parts[npart] = -1.0f;
@@ -2016,7 +2083,7 @@ void SynthEngine::partonoffWrite(int npart, int what)
 }
 
 
-char SynthEngine::partonoffRead(int npart)
+char SynthEngine::partonoffRead(uint npart)
 {
     return (part[npart]->Penabled == 1);
 }
@@ -2025,9 +2092,7 @@ char SynthEngine::partonoffRead(int npart)
 // Master audio out (the final sound)
 int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_MIDI_PARTS + 1], int to_process)
 {
-    //if (to_process < 64)
-        //Runtime.Log("Process " + to_string(to_process));
-    static unsigned int VUperiod = samplerate / 20;
+    static uint VUperiod = samplerate / 20;
     /*
      * The above line gives a VU refresh of at least 50mS
      * but it may be longer depending on the buffer size
@@ -2051,7 +2116,7 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
     memset(mainL, 0, sent_bufferbytes);
     memset(mainR, 0, sent_bufferbytes);
 
-    unsigned char sound = audioOut.load();
+    uchar sound = audioOut.load();
     switch (sound)
     {
         case _SYS_::mute::Pending:
@@ -2059,7 +2124,6 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
             fadeLevel = 1.0f;
             audioOutStore(_SYS_::mute::Fading);
             sound = _SYS_::mute::Fading;
-            //std::cout << "here fading" << std:: endl;
             break;
         case _SYS_::mute::Fading:
             if (fadeLevel < 0.001f)
@@ -2075,13 +2139,11 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
         case _SYS_::mute::Complete:
             // set by resolver and paste
             audioOutStore(_SYS_::mute::Idle);
-            //std::cout << "here complete" << std:: endl;
             break;
         case _SYS_::mute::Request:
             // set by paste routine
             audioOutStore(_SYS_::mute::Immediate);
             sound = _SYS_::mute::Active;
-            //std::cout << "here requesting" << std:: endl;
             break;
         case _SYS_::mute::Immediate:
             // cleared by paste routine
@@ -2099,12 +2161,12 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
      * prio thread completes and re-enables the part, it will not
      * actually be seen until the start of the next period.
      */
-    for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
+    for (uint npart = 0; npart < Runtime.numAvailableParts; ++npart)
             partLocal[npart] = partonoffRead(npart);
 
     if (sound == _SYS_::mute::Active)
     {
-        for (int npart = 0; npart < (Runtime.NumAvailableParts); ++npart)
+        for (uint npart = 0; npart < (Runtime.numAvailableParts); ++npart)
         {
             if (partLocal[npart])
             {
@@ -2121,7 +2183,7 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
     else
     {
         // Compute part samples and store them ->partoutl,partoutr
-        for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
+        for (uint npart = 0; npart < Runtime.numAvailableParts; ++npart)
         {
             if (partLocal[npart])
             {
@@ -2143,8 +2205,8 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
         }
 
         // Apply the part volumes and pannings (after insertion effects)
-        unsigned char panLaw = Runtime.panLaw;
-        for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
+        uchar panLaw = Runtime.panLaw;
+        for (uint npart = 0; npart < Runtime.numAvailableParts; ++npart)
         {
             if (!partLocal[npart])
                 continue;
@@ -2178,7 +2240,7 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
                 continue; // is off
 
             // Mix the channels according to the part settings about System Effect
-            for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
+            for (uint npart = 0; npart < Runtime.numAvailableParts; ++npart)
             {
                 if (partLocal[npart]               // it's enabled
                  && Psysefxvol[nefx][npart]        // it's sending an output
@@ -2220,7 +2282,7 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
             }
         }
 
-        for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
+        for (uint npart = 0; npart < Runtime.numAvailableParts; ++npart)
         {
             if (part[npart]->Paudiodest & 2){    // Copy separate parts
 
@@ -2265,7 +2327,7 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
             mainR[idx] *= volume;
             if (sound == _SYS_::mute::Fading) // fadeLevel must also have been set
             {
-                for (int npart = 0; npart < (Runtime.NumAvailableParts); ++npart)
+                for (uint npart = 0; npart < (Runtime.numAvailableParts); ++npart)
                 {
                     if (part[npart]->Paudiodest & 2)
                     {
@@ -2296,7 +2358,7 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
         }
 
         // Peak computation for part vu meters
-        for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
+        for (uint npart = 0; npart < Runtime.numAvailableParts; ++npart)
         {
             if (partLocal[npart])
             {
@@ -2327,7 +2389,7 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
             VUpeak.values.vuOutPeakR = 1e-12f;
             VUpeak.values.vuRmsPeakL = 1e-12f;
             VUpeak.values.vuRmsPeakR = 1e-12f;
-            for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
+            for (uint npart = 0; npart < Runtime.numAvailableParts; ++npart)
             {
                 if (partLocal[npart])
                 {
@@ -2377,7 +2439,7 @@ void SynthEngine::fetchMeterData()
     else
         VUdata.values.vuOutPeakR = fade;
 
-    for (int npart = 0; npart < Runtime.NumAvailableParts; ++npart)
+    for (uint npart = 0; npart < Runtime.numAvailableParts; ++npart)
     {
         if (VUpeak.values.parts[npart] < 0.0)
             VUdata.values.parts[npart] = -1.0f;
@@ -2418,6 +2480,12 @@ void SynthEngine::setPkeyshift(int Pkeyshift_)
 }
 
 
+void SynthEngine::setPaudiodest(int value)
+{
+    Paudiodest = value;
+}
+
+
 void SynthEngine::setPsysefxvol(int Ppart, int Pefx, char Pvol)
 {
     Psysefxvol[Pefx][Ppart] = Pvol;
@@ -2431,14 +2499,93 @@ void SynthEngine::setPsysefxsend(int Pefxfrom, int Pefxto, char Pvol)
     sysefxsend[Pefxfrom][Pefxto]  = decibel<-40>(1.0f - Pvol / 96.0f);
 }
 
-void SynthEngine::setPaudiodest(int value)
+/**
+ * Triggered by Param change or general init;
+ * Collect current state of complex effect data and push an update towards GUI.
+ * The GuiDataExchange system (located in InterChange) is used to publish the
+ * Data Transfer Objects into the GUI, activated by sending a notification through
+ * the toGUI ringbuffer. When receiving such a push, the GUI invokes EffUI::refresh().
+ */
+void SynthEngine::pushEffectUpdate(uchar partNum)
 {
-    Paudiodest = value;
+    bool isPart{partNum < NUM_MIDI_PARTS};
+    bool isInsert{partNum != TOPLEVEL::section::systemEffects};
+
+    assert(isPart
+        || partNum == TOPLEVEL::section::systemEffects
+        || partNum == TOPLEVEL::section::insertEffects);
+    assert(part[getRuntime().currentPart]);
+    Part& currPart{*part[getRuntime().currentPart]};
+    // the "current" effect as selected / exposed in the GUI
+    uchar effnum = isPart? currPart.Peffnum
+                 : isInsert? inseffnum : syseffnum;
+    assert(effnum < (isPart? NUM_PART_EFX : isInsert? NUM_INS_EFX : NUM_SYS_EFX));
+
+    EffectMgr** effInstance = isPart? currPart.partefx
+                            : isInsert? insefx : sysefx;
+
+    EffectDTO dto;
+    dto.effNum = effnum;
+    dto.effType = effInstance[effnum]->geteffect();
+    dto.isInsert = isInsert;
+    dto.enabled  = (0 != dto.effType && ((isPart && !currPart.Pefxbypass[effnum])
+                                        ||(isInsert && Pinsparts[effnum] != -1)
+                                        ||(!isInsert && syseffEnable[effnum])));
+    dto.changed = effInstance[effnum]->geteffectpar(-1);
+    dto.currPreset = effInstance[effnum]->getpreset();
+    dto.insertFxRouting = isPart || !isInsert? -1 : Pinsparts[effnum];
+    dto.partFxRouting = !isPart?    +1 : currPart.Pefxroute[effnum];
+    dto.partFxBypass  = !isPart? false : currPart.Pefxbypass[effnum];
+    effInstance[effnum]->getAllPar(dto.param);
+    //////////////////////////////////////////////////TODO 2/24 as partial workaround until all further direct core accesses are addressed
+    dto.eff_in_core_TODO_deprecated = effInstance[effnum];
+
+    if (isPart)
+        partEffectUiCon.publish(dto);
+    else if (isInsert)
+        insEffectUiCon.publish(dto);
+    else
+        sysEffectUiCon.publish(dto);
+
+    if (dto.effType == (EFFECT::type::eq - EFFECT::type::none))
+    {// cascading update for the embedded EQ graph
+        EqGraphDTO graphDto;
+        effInstance[effnum]->renderEQresponse(graphDto.response);
+        if (isPart)
+            partEqGraphUiCon.publish(graphDto);
+        else if (isInsert)
+            insEqGraphUiCon.publish(graphDto);
+        else
+            sysEqGraphUiCon.publish(graphDto);
+    }
+}
+
+
+/**
+ * Push a complete update of Effect state, in case the GUI is active.
+ * There are three distinct EffUI modules, each receiving the state of "the current"
+ * selected effect. Calling this function is only required when effect state changes
+ * are _not_ propagated via InterChange::commandSysIns(), commandEffects() or commandPart().
+ * Especially it must be invoked after loading or pasting state, and this is covered by getfromXML().
+ * Init() and defaults() do not call this function; either it is covered otherwise
+ * or because the default constructed GUI widgets do not need an initial push
+ * Thus, the only other situation to cover is a call to SynthEngine::resetAll().
+ */
+void SynthEngine::maybePublishEffectsToGui()
+{
+#ifdef GUI_FLTK
+    if (not interchange.guiMaster)
+        return; // publish only while GUI is active
+
+    pushEffectUpdate(TOPLEVEL::section::systemEffects);
+    pushEffectUpdate(TOPLEVEL::section::insertEffects);
+    pushEffectUpdate(getRuntime().currentPart);
+#endif
 }
 
 
 // Panic! (Clean up all parts and effects)
-void SynthEngine::ShutUp(void)
+void SynthEngine::ShutUp()
 {
     VUpeak.values.vuOutPeakL = 1e-12f;
     VUpeak.values.vuOutPeakR = 1e-12f;
@@ -2456,20 +2603,19 @@ void SynthEngine::ShutUp(void)
 }
 
 
-bool SynthEngine::loadStateAndUpdate(const string& filename)
+bool SynthEngine::loadStateAndUpdate(string const& filename)
 {
     interchange.undoRedoClear();
-    defaults();
-    //std::cout << "file " << filename << std::endl;
     Runtime.sessionStage = _SYS_::type::InProgram;
     Runtime.stateChanged = true;
-    bool result = Runtime.restoreSessionData(filename);
-    ShutUp();
-    return result;
+    bool success = Runtime.restoreSessionData(filename);
+    if (!success)
+        defaults();
+    return success;
 }
 
 
-bool SynthEngine::saveState(const string& filename)
+bool SynthEngine::saveState(string const& filename)
 {
     return Runtime.saveSessionData(filename);
 }
@@ -2491,25 +2637,18 @@ bool SynthEngine::installBanks()
 {
     string name = file::configDir() + '/' + YOSHIMI;
     string bankname = name + ".banks";
-    bool banksGood = false;
     bool newBanks = false;
     if (isRegularFile(bankname))
     {
-        XMLwrapper *xml = new XMLwrapper(this);
-        if (xml)
-        {
-            banksGood = true;
-            xml->loadXMLfile(bankname);
-            newBanks = bank.parseBanksFile(xml);
-            delete xml;
-        }
+        newBanks = bank.establishBanks(bankname);
     }
-    if (!banksGood){
-       newBanks = bank.parseBanksFile(NULL);
+    else
+    {
+       newBanks = bank.establishBanks(std::nullopt);
        Runtime.currentRoot = 5;
     }
-
     Runtime.Log("\nFound " + asString(bank.InstrumentsInBanks) + " instruments in " + asString(bank.BanksInRoots) + " banks");
+
     if (newBanks)
         Runtime.Log(textMsgBuffer.fetch(setRootBank(5, 5) & 0xff));
     else
@@ -2524,20 +2663,13 @@ bool SynthEngine::saveBanks()
     string bankname = name + ".banks";
     Runtime.xmlType = TOPLEVEL::XML::Bank;
 
-    XMLwrapper *xml = new XMLwrapper(this, true);
-    if (!xml)
-    {
-        Runtime.Log("saveBanks failed xml allocation");
-        return false;
-    }
+    auto xml{std::make_unique<XMLwrapper>(*this, true)};
     xml->beginbranch("BANKLIST");
-    bank.saveToConfigFile(xml);
+    bank.saveToConfigFile(*xml);
     xml->endbranch();
 
     if (!xml->saveXMLfile(bankname))
         Runtime.Log("Failed to save config to " + bankname);
-
-    delete xml;
 
     return true;
 }
@@ -2549,17 +2681,14 @@ void SynthEngine::newHistory(string name, int group)
         return;
     if (group == TOPLEVEL::XML::Instrument && (name.rfind(EXTEN::yoshInst) != string::npos))
         name = setExtension(name, EXTEN::zynInst);
-    vector<string> &listType = *getHistory(group);
-    listType.push_back(name);
+    getHistory(group).push_back(name);
 }
 
 
-void SynthEngine::addHistory(const string& name, int group)
+void SynthEngine::addHistory(string const& name, int group)
 {
-    //std::cout << "history name " << name << "  group " << group << std::endl;
     if (findLeafName(name) < "!")
     {
-        //std::cout << "failed leafname" << std::endl;
         return;
     }
     if (group > TOPLEVEL::XML::ScalaMap)
@@ -2569,60 +2698,58 @@ void SynthEngine::addHistory(const string& name, int group)
 
     if (Runtime.historyLock[group])
     {
-        //std::cout << "history locked" << std::endl;
         return;
     }
 
-    vector<string> &listType = *getHistory(group);
-    vector<string>::iterator itn = listType.begin();
-    listType.erase(std::remove(itn, listType.end(), name), listType.end()); // remove all matches
+    vector<string>& listType{getHistory(group)};
+    auto it = listType.begin();
+    listType.erase(std::remove(it, listType.end(), name), listType.end()); // remove all matches
     listType.insert(listType.begin(), name);
     while(listType.size() > MAX_HISTORY)
         listType.pop_back();
 }
 
 
-vector<string> * SynthEngine::getHistory(int group)
+vector<string>& SynthEngine::getHistory(int group)
 {
-    //std::cout << "group " << group << std::endl;
     switch(group)
     {
         case TOPLEVEL::XML::Instrument: // 0
-            return &InstrumentHistory;
+            return InstrumentHistory;
             break;
         case TOPLEVEL::XML::Patch: // 1
-            return &ParamsHistory;
+            return ParamsHistory;
             break;
         case TOPLEVEL::XML::Scale: // 2
-            return &ScaleHistory;
+            return ScaleHistory;
             break;
         case TOPLEVEL::XML::State: // 3
-            return &StateHistory;
+            return StateHistory;
             break;
         case TOPLEVEL::XML::Vector: // 4
-            return &VectorHistory;
+            return VectorHistory;
             break;
         case TOPLEVEL::XML::MLearn: // 5
-            return &MidiLearnHistory;
+            return MidiLearnHistory;
             break;
         case TOPLEVEL::XML::Presets: // 6
-            return &PresetHistory;
+            return PresetHistory;
             break;
 
         case TOPLEVEL::XML::PadSample: // 7
-            return &PadHistory;
+            return PadHistory;
             break;
         case TOPLEVEL::XML::ScalaTune: // 8
-            return &TuningHistory;
+            return TuningHistory;
             break;
         case TOPLEVEL::XML::ScalaMap: // 9
-            return &KeymapHistory;
+            return KeymapHistory;
             break;
         default:
             // can't identify what is calling this.
             // It's connected with opening the filer on presets
             Runtime.Log("Unrecognised group " + to_string(group) + "\nUsing patchset history");
-            return &ParamsHistory;
+            return ParamsHistory;
     }
 }
 
@@ -2662,17 +2789,11 @@ bool SynthEngine::loadHistory()
             return false;
         }
     }
-    XMLwrapper *xml = new XMLwrapper(this, true);
-    if (!xml)
-    {
-        Runtime.Log("loadHistory failed XMLwrapper allocation");
-        return false;
-    }
+    auto xml{std::make_unique<XMLwrapper>(*this, true)};
     xml->loadXMLfile(historyname);
     if (!xml->enterbranch("HISTORY"))
     {
         Runtime. Log("extractHistoryData, no HISTORY branch");
-        delete xml;
         return false;
     }
     int hist_size;
@@ -2750,7 +2871,6 @@ bool SynthEngine::loadHistory()
                 }
 
                 string tryRecent = xml->getparstr("most_recent");
-                //std::cout << "new >" << tryRecent << "<" << std::endl;
                 if (!tryRecent.empty())
                     historyLastSeen.at(count) = tryRecent;
             }
@@ -2758,7 +2878,6 @@ bool SynthEngine::loadHistory()
         }
     }
     xml->exitbranch();
-    delete xml;
     return true;
 }
 
@@ -2768,12 +2887,7 @@ bool SynthEngine::saveHistory()
     string historyname = file::localDir()  + "/recent";
     Runtime.xmlType = TOPLEVEL::XML::History;
 
-    XMLwrapper *xml = new XMLwrapper(this, true);
-    if (!xml)
-    {
-        Runtime.Log("saveHistory failed xml allocation");
-        return false;
-    }
+    auto xml{std::make_unique<XMLwrapper>(*this, true)};
     xml->beginbranch("HISTORY");
     {
         int count;
@@ -2825,17 +2939,17 @@ bool SynthEngine::saveHistory()
                     extension = "kbm_file";
                     break;
             }
-            vector<string> listType = *getHistory(count);
+            vector<string> const& listType{getHistory(count)};
             if (listType.size())
             {
                 int x = 0;
                 xml->beginbranch(type);
                     xml->addparbool("lock_status", Runtime.historyLock[count]);
                     xml->addpar("history_size", listType.size());
-                    for (vector<string>::iterator it = listType.begin(); it != listType.end(); ++it)
+                    for (auto const& historyEntry : listType)
                     {
                         xml->beginbranch("XMZ_FILE", x);
-                            xml->addparstr(extension, *it);
+                            xml->addparstr(extension, historyEntry);
                         xml->endbranch();
                         ++x;
                     }
@@ -2847,334 +2961,94 @@ bool SynthEngine::saveHistory()
     xml->endbranch();
     if (!xml->saveXMLfile(historyname))
         Runtime.Log("Failed to save data to " + historyname);
-    delete xml;
     return true;
 }
 
 
-unsigned char SynthEngine::loadVectorAndUpdate(unsigned char baseChan, const string& name)
+void SynthEngine::add2XML(XMLwrapper& xml)
 {
-    unsigned char result = loadVector(baseChan, name, true);
-    ShutUp();
-    return result;
-}
+    xml.beginbranch("MASTER");
+    xml.addpar("current_midi_parts", Runtime.numAvailableParts);
+    xml.addpar("panning_law", Runtime.panLaw);
+    xml.addparcombi("volume", Pvolume);
+    xml.addpar("key_shift", Pkeyshift);
+    xml.addparreal("bpm_fallback", PbpmFallback);
+    xml.addpar("channel_switch_type", Runtime.channelSwitchType);
+    xml.addpar("channel_switch_CC", Runtime.channelSwitchCC);
 
-
-unsigned char SynthEngine::loadVector(unsigned char baseChan, const string& name, bool full)
-{
-    bool a = full; full = a; // suppress warning
-    unsigned char actualBase = NO_MSG; // error!
-    if (name.empty())
-    {
-        Runtime.Log("No filename", _SYS_::LogNotSerious);
-        return actualBase;
-    }
-    string file = setExtension(name, EXTEN::vector);
-    if (!isRegularFile(file))
-    {
-        Runtime.Log("Can't find " + file, _SYS_::LogNotSerious);
-        return actualBase;
-    }
-    XMLwrapper *xml = new XMLwrapper(this, true);
-    if (!xml)
-    {
-        Runtime.Log("Load Vector failed XMLwrapper allocation", _SYS_::LogNotSerious);
-        return actualBase;
-    }
-    xml->loadXMLfile(file);
-    if (!xml->enterbranch("VECTOR"))
-    {
-            Runtime. Log("Extract Data, no VECTOR branch", _SYS_::LogNotSerious);
-    }
-    else
-    {
-        actualBase = extractVectorData(baseChan, xml, findLeafName(name));
-        int lastPart = NUM_MIDI_PARTS;
-        if (Runtime.vectordata.Yaxis[actualBase] >= 0x7f)
-            lastPart = NUM_MIDI_CHANNELS * 2;
-        for (int npart = 0; npart < lastPart; npart += NUM_MIDI_CHANNELS)
-        {
-            if (xml->enterbranch("PART", npart))
-            {
-                part[npart + actualBase]->getfromXML(xml);
-                part[npart + actualBase]->Prcvchn = actualBase;
-                xml->exitbranch();
-                setPartMap(npart + actualBase);
-
-                partonoffWrite(npart + baseChan, 1);
-                if (part[npart + actualBase]->Paudiodest & 2)
-                    mainRegisterAudioPort(this, npart + actualBase);
-            }
-        }
-        xml->endbranch(); // VECTOR
-    }
-    delete xml;
-    return actualBase;
-}
-
-
-unsigned char SynthEngine::extractVectorData(unsigned char baseChan, XMLwrapper *xml, const string& name)
-{
-    int lastPart = NUM_MIDI_PARTS;
-    unsigned char tmp;
-    string newname = xml->getparstr("name");
-
-    if (baseChan >= NUM_MIDI_CHANNELS)
-        baseChan = xml->getpar255("Source_channel", 0);
-
-    if (newname > "!" && newname.find("No Name") != 1)
-        Runtime.vectordata.Name[baseChan] = newname;
-    else if (!name.empty())
-        Runtime.vectordata.Name[baseChan] = name;
-    else
-        Runtime.vectordata.Name[baseChan] = "No Name " + to_string(baseChan);
-
-    tmp = xml->getpar255("X_sweep_CC", 0xff);
-    if (tmp >= 0x0e && tmp  < 0x7f)
-    {
-        Runtime.vectordata.Xaxis[baseChan] = tmp;
-        Runtime.vectordata.Enabled[baseChan] = true;
-    }
-    else
-    {
-        Runtime.vectordata.Xaxis[baseChan] = 0x7f;
-        Runtime.vectordata.Enabled[baseChan] = false;
-    }
-
-    // should exit here if not enabled
-
-    tmp = xml->getpar255("Y_sweep_CC", 0xff);
-    if (tmp >= 0x0e && tmp  < 0x7f)
-        Runtime.vectordata.Yaxis[baseChan] = tmp;
-    else
-    {
-        lastPart = NUM_MIDI_CHANNELS * 2;
-        Runtime.vectordata.Yaxis[baseChan] = 0x7f;
-        partonoffWrite(baseChan + NUM_MIDI_CHANNELS * 2, 0);
-        partonoffWrite(baseChan + NUM_MIDI_CHANNELS * 3, 0);
-        // disable these - not in current vector definition
-    }
-
-    int x_feat = 0;
-    int y_feat = 0;
-    if (xml->getparbool("X_feature_1", false))
-        x_feat |= 1;
-    if (xml->getparbool("X_feature_2", false))
-        x_feat |= 2;
-    if (xml->getparbool("X_feature_2_R", false))
-        x_feat |= 0x10;
-    if (xml->getparbool("X_feature_4", false))
-        x_feat |= 4;
-    if (xml->getparbool("X_feature_4_R", false))
-        x_feat |= 0x20;
-    if (xml->getparbool("X_feature_8", false))
-        x_feat |= 8;
-    if (xml->getparbool("X_feature_8_R", false))
-        x_feat |= 0x40;
-    Runtime.vectordata.Xcc2[baseChan] = xml->getpar255("X_CCout_2", 10);
-    Runtime.vectordata.Xcc4[baseChan] = xml->getpar255("X_CCout_4", 74);
-    Runtime.vectordata.Xcc8[baseChan] = xml->getpar255("X_CCout_8", 1);
-    if (lastPart == NUM_MIDI_PARTS)
-    {
-        if (xml->getparbool("Y_feature_1", false))
-            y_feat |= 1;
-        if (xml->getparbool("Y_feature_2", false))
-            y_feat |= 2;
-        if (xml->getparbool("Y_feature_2_R", false))
-            y_feat |= 0x10;
-        if (xml->getparbool("Y_feature_4", false))
-            y_feat |= 4;
-        if (xml->getparbool("Y_feature_4_R", false))
-            y_feat |= 0x20;
-        if (xml->getparbool("Y_feature_8", false))
-            y_feat |= 8;
-        if (xml->getparbool("Y_feature_8_R", false))
-            y_feat |= 0x40;
-        Runtime.vectordata.Ycc2[baseChan] = xml->getpar255("Y_CCout_2", 10);
-        Runtime.vectordata.Ycc4[baseChan] = xml->getpar255("Y_CCout_4", 74);
-        Runtime.vectordata.Ycc8[baseChan] = xml->getpar255("Y_CCout_8", 1);
-    }
-    Runtime.vectordata.Xfeatures[baseChan] = x_feat;
-    Runtime.vectordata.Yfeatures[baseChan] = y_feat;
-    if (Runtime.NumAvailableParts < lastPart)
-        Runtime.NumAvailableParts = xml->getpar255("current_midi_parts", Runtime.NumAvailableParts);
-    return baseChan;
-}
-
-
-unsigned char SynthEngine::saveVector(unsigned char baseChan, const string& name, bool full)
-{
-    bool a = full; full = a; // suppress warning
-    unsigned char result = NO_MSG; // ok
-
-    if (baseChan >= NUM_MIDI_CHANNELS)
-        return textMsgBuffer.push("Invalid channel number");
-    if (name.empty())
-        return textMsgBuffer.push("No filename");
-    if (Runtime.vectordata.Enabled[baseChan] == false)
-        return textMsgBuffer.push("No vector data on this channel");
-
-    string file = setExtension(name, EXTEN::vector);
-
-    Runtime.xmlType = TOPLEVEL::XML::Vector;
-    XMLwrapper *xml = new XMLwrapper(this, true);
-    if (!xml)
-    {
-        Runtime.Log("Save Vector failed xml allocation", 2);
-        return textMsgBuffer.push("FAIL");
-    }
-    xml->beginbranch("VECTOR");
-        insertVectorData(baseChan, true, xml, findLeafName(file));
-    xml->endbranch();
-
-    if (!xml->saveXMLfile(file))
-    {
-        Runtime.Log("Failed to save data to " + file, _SYS_::LogNotSerious);
-        result = textMsgBuffer.push("FAIL");
-    }
-    delete xml;
-    return result;
-}
-
-
-bool SynthEngine::insertVectorData(unsigned char baseChan, bool full, XMLwrapper *xml, const string& name)
-{
-    int lastPart = NUM_MIDI_PARTS;
-    int x_feat = Runtime.vectordata.Xfeatures[baseChan];
-    int y_feat = Runtime.vectordata.Yfeatures[baseChan];
-
-    if (Runtime.vectordata.Name[baseChan].find("No Name") != 1)
-        xml->addparstr("name", Runtime.vectordata.Name[baseChan]);
-    else
-        xml->addparstr("name", name);
-
-    xml->addpar("Source_channel", baseChan);
-    xml->addpar("X_sweep_CC", Runtime.vectordata.Xaxis[baseChan]);
-    xml->addpar("Y_sweep_CC", Runtime.vectordata.Yaxis[baseChan]);
-    xml->addparbool("X_feature_1", (x_feat & 1) > 0);
-    xml->addparbool("X_feature_2", (x_feat & 2) > 0);
-    xml->addparbool("X_feature_2_R", (x_feat & 0x10) > 0);
-    xml->addparbool("X_feature_4", (x_feat & 4) > 0);
-    xml->addparbool("X_feature_4_R", (x_feat & 0x20) > 0);
-    xml->addparbool("X_feature_8", (x_feat & 8) > 0);
-    xml->addparbool("X_feature_8_R", (x_feat & 0x40) > 0);
-    xml->addpar("X_CCout_2",Runtime.vectordata.Xcc2[baseChan]);
-    xml->addpar("X_CCout_4",Runtime.vectordata.Xcc4[baseChan]);
-    xml->addpar("X_CCout_8",Runtime.vectordata.Xcc8[baseChan]);
-    if (Runtime.vectordata.Yaxis[baseChan] > 0x7f)
-    {
-        lastPart /= 2;
-    }
-    else
-    {
-        xml->addparbool("Y_feature_1", (y_feat & 1) > 0);
-        xml->addparbool("Y_feature_2", (y_feat & 2) > 0);
-        xml->addparbool("Y_feature_2_R", (y_feat & 0x10) > 0);
-        xml->addparbool("Y_feature_4", (y_feat & 4) > 0);
-        xml->addparbool("Y_feature_4_R", (y_feat & 0x20) > 0);
-        xml->addparbool("Y_feature_8", (y_feat & 8) > 0);
-        xml->addparbool("Y_feature_8_R", (y_feat & 0x40) > 0);
-        xml->addpar("Y_CCout_2",Runtime.vectordata.Ycc2[baseChan]);
-        xml->addpar("Y_CCout_4",Runtime.vectordata.Ycc4[baseChan]);
-        xml->addpar("Y_CCout_8",Runtime.vectordata.Ycc8[baseChan]);
-    }
-    if (full)
-    {
-        xml->addpar("current_midi_parts", lastPart);
-        for (int npart = 0; npart < lastPart; npart += NUM_MIDI_CHANNELS)
-        {
-            xml->beginbranch("PART",npart);
-            part[npart + baseChan]->add2XML(xml);
-            xml->endbranch();
-        }
-    }
-    return true;
-}
-
-
-void SynthEngine::add2XML(XMLwrapper *xml)
-{
-    xml->beginbranch("MASTER");
-    xml->addpar("current_midi_parts", Runtime.NumAvailableParts);
-    xml->addpar("panning_law", Runtime.panLaw);
-    xml->addparcombi("volume", Pvolume);
-    xml->addpar("key_shift", Pkeyshift);
-    xml->addparreal("bpm_fallback", PbpmFallback);
-    xml->addpar("channel_switch_type", Runtime.channelSwitchType);
-    xml->addpar("channel_switch_CC", Runtime.channelSwitchCC);
-
-    xml->beginbranch("MICROTONAL");
+    xml.beginbranch("MICROTONAL");
     microtonal.add2XML(xml);
-    xml->endbranch();
+    xml.endbranch();
 
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
     {
-        xml->beginbranch("PART",npart);
+        xml.beginbranch("PART",npart);
         part[npart]->add2XML(xml);
-        xml->endbranch();
+        xml.endbranch();
     }
 
-    xml->beginbranch("SYSTEM_EFFECTS");
+    xml.beginbranch("SYSTEM_EFFECTS");
     for (int nefx = 0; nefx < NUM_SYS_EFX; ++nefx)
     {
-        xml->beginbranch("SYSTEM_EFFECT", nefx);
-        xml->beginbranch("EFFECT");
+        xml.beginbranch("SYSTEM_EFFECT", nefx);
+        xml.beginbranch("EFFECT");
         sysefx[nefx]->add2XML(xml);
-        xml->endbranch();
+        xml.endbranch();
 
         for (int pefx = 0; pefx < NUM_MIDI_PARTS; ++pefx)
         {
-            xml->beginbranch("VOLUME", pefx);
-            xml->addpar("vol", Psysefxvol[nefx][pefx]);
-            xml->endbranch();
+            xml.beginbranch("VOLUME", pefx);
+            xml.addpar("vol", Psysefxvol[nefx][pefx]);
+            xml.endbranch();
         }
 
         for (int tonefx = nefx + 1; tonefx < NUM_SYS_EFX; ++tonefx)
         {
-            xml->beginbranch("SENDTO", tonefx);
-            xml->addpar("send_vol", Psysefxsend[nefx][tonefx]);
-            xml->endbranch();
+            xml.beginbranch("SENDTO", tonefx);
+            xml.addpar("send_vol", Psysefxsend[nefx][tonefx]);
+            xml.endbranch();
         }
-        xml->endbranch();
+        xml.endbranch();
     }
-    xml->endbranch();
+    xml.endbranch();
 
-    xml->beginbranch("INSERTION_EFFECTS");
+    xml.beginbranch("INSERTION_EFFECTS");
     for (int nefx = 0; nefx < NUM_INS_EFX; ++nefx)
     {
-        xml->beginbranch("INSERTION_EFFECT", nefx);
-        xml->addpar("part", Pinsparts[nefx]);
+        xml.beginbranch("INSERTION_EFFECT", nefx);
+        xml.addpar("part", Pinsparts[nefx]);
 
-        xml->beginbranch("EFFECT");
+        xml.beginbranch("EFFECT");
         insefx[nefx]->add2XML(xml);
-        xml->endbranch();
-        xml->endbranch();
+        xml.endbranch();
+        xml.endbranch();
     }
-    xml->endbranch(); // INSERTION_EFFECTS
+    xml.endbranch(); // INSERTION_EFFECTS
     for (int i = 0; i < NUM_MIDI_CHANNELS; ++i)
     {
         if (Runtime.vectordata.Xaxis[i] < 127)
         {
-            xml->beginbranch("VECTOR", i);
-            insertVectorData(i, false, xml, "");
-            xml->endbranch(); // VECTOR
+            xml.beginbranch("VECTOR", i);
+            vectorcontrol.insertVectorData(i, false, xml, "");
+            xml.endbranch(); // VECTOR
         }
     }
-    xml->endbranch(); // MASTER
+    xml.endbranch(); // MASTER
 }
 
+/*
+ * the following two functions are only used by LV2
+ */
 
 int SynthEngine::getalldata(char **data) // to state from instance
 {
-    std::cout << "getstart" << std::endl;
     bool oldFormat = usingYoshiType;
     usingYoshiType = true; // make sure everything is saved
     getRuntime().xmlType = TOPLEVEL::XML::State;
-    XMLwrapper *xml = new XMLwrapper(this, true);
-    add2XML(xml);
-    midilearn.insertMidiListData(xml);
+    auto xml{std::make_unique<XMLwrapper>(*this, true)};
+    add2XML(*xml);
+    midilearn.insertMidiListData(*xml);
     *data = xml->getXMLdata();
-    delete xml;
     usingYoshiType = oldFormat;
     return strlen(*data) + 1;
 }
@@ -3182,23 +3056,19 @@ int SynthEngine::getalldata(char **data) // to state from instance
 
 void SynthEngine::putalldata(const char *data, int size) // to instance from state
 {
-//std::cout << "putstart" << std::endl;
     while (isspace(*data))
         ++data;
     int a = size; size = a; // suppress warning (may be used later)
-    XMLwrapper *xml = new XMLwrapper(this, true);
+    auto xml{std::make_unique<XMLwrapper>(*this, true)};
     if (!xml->putXMLdata(data))
     {
         Runtime.Log("SynthEngine: putXMLdata failed");
-        delete xml;
         return;
     }
     defaults();
-    getfromXML(xml);
-    midilearn.extractMidiListData(false, xml);
-    setAllPartMaps();
-    delete xml;
-//std::cout << "putend" << std::endl;
+    getfromXML(*xml);
+    midilearn.extractMidiListData(false, *xml);
+    setAllPartMaps(); // TODO this seems to be a duplicate - already done in defaults()
 }
 
 
@@ -3208,174 +3078,124 @@ bool SynthEngine::savePatchesXML(string filename)
     usingYoshiType = true; // make sure everything is saved
     filename = setExtension(filename, EXTEN::patchset);
     Runtime.xmlType = TOPLEVEL::XML::Patch;
-    XMLwrapper *xml = new XMLwrapper(this, true);
-    add2XML(xml);
-    bool result = xml->saveXMLfile(filename);
-    delete xml;
+    auto xml{std::make_unique<XMLwrapper>(*this, true)};
+    add2XML(*xml);
+    bool succes = xml->saveXMLfile(filename);
     usingYoshiType = oldFormat;
-    return result;
+    return succes;
 }
 
 
-bool SynthEngine::loadXML(const string& filename)
+bool SynthEngine::loadXML(string const& filename)
 {
-    XMLwrapper *xml = new XMLwrapper(this, true);
-    if (NULL == xml)
-    {
-        Runtime.Log("Failed to init xml tree", _SYS_::LogNotSerious);
-        return false;
-    }
+    auto xml{std::make_unique<XMLwrapper>(*this, true)};
     if (!xml->loadXMLfile(filename))
     {
-        delete xml;
         return false;
     }
     defaults();
-    bool isok = getfromXML(xml);
-    delete xml;
+    bool success = getfromXML(*xml);
     setAllPartMaps();
-    return isok;
+    return success;
 }
 
 
-bool SynthEngine::getfromXML(XMLwrapper *xml)
+bool SynthEngine::getfromXML(XMLwrapper& xml)
 {
-    if (!xml->enterbranch("MASTER"))
+    if (!xml.enterbranch("MASTER"))
     {
         Runtime.Log("SynthEngine getfromXML, no MASTER branch");
         return false;
     }
-    Runtime.NumAvailableParts = xml->getpar("current_midi_parts", NUM_MIDI_CHANNELS, NUM_MIDI_CHANNELS, NUM_MIDI_PARTS);
-    Runtime.panLaw = xml->getpar("panning_law", Runtime.panLaw, MAIN::panningType::cut, MAIN::panningType::boost);
-    setPvolume(xml->getparcombi("volume", Pvolume, 0, 127));
-    setPkeyshift(xml->getpar("key_shift", Pkeyshift, MIN_KEY_SHIFT + 64, MAX_KEY_SHIFT + 64));
-    PbpmFallback = xml->getparreal("bpm_fallback", PbpmFallback, BPM_FALLBACK_MIN, BPM_FALLBACK_MAX);
-    Runtime.channelSwitchType = xml->getpar("channel_switch_type", Runtime.channelSwitchType, 0, 5);
-    Runtime.channelSwitchCC = xml->getpar("channel_switch_CC", Runtime.channelSwitchCC, 0, 128);
+    Runtime.numAvailableParts = xml.getpar("current_midi_parts", NUM_MIDI_CHANNELS, NUM_MIDI_CHANNELS, NUM_MIDI_PARTS);
+    Runtime.panLaw = xml.getpar("panning_law", Runtime.panLaw, MAIN::panningType::cut, MAIN::panningType::boost);
+    setPvolume(xml.getparcombi("volume", Pvolume, 0, 127));
+    setPkeyshift(xml.getpar("key_shift", Pkeyshift, MIN_KEY_SHIFT + 64, MAX_KEY_SHIFT + 64));
+    PbpmFallback = xml.getparreal("bpm_fallback", PbpmFallback, BPM_FALLBACK_MIN, BPM_FALLBACK_MAX);
+    Runtime.channelSwitchType = xml.getpar("channel_switch_type", Runtime.channelSwitchType, 0, 5);
+    Runtime.channelSwitchCC = xml.getpar("channel_switch_CC", Runtime.channelSwitchCC, 0, 128);
     Runtime.channelSwitchValue = 0;
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
     {
-        if (!xml->enterbranch("PART", npart))
+        if (!xml.enterbranch("PART", npart))
             continue;
         part[npart]->getfromXML(xml);
-        xml->exitbranch();
+        xml.exitbranch();
         if (partonoffRead(npart) && (part[npart]->Paudiodest & 2))
-            mainRegisterAudioPort(this, npart);
+            Config::instances().registerAudioPort(getUniqueId(), npart);
     }
 
-    if (xml->enterbranch("MICROTONAL"))
+    if (xml.enterbranch("MICROTONAL"))
     {
         microtonal.getfromXML(xml);
-        xml->exitbranch();
+        xml.exitbranch();
     }
 
-    sysefx[0]->changeeffect(0);
-    if (xml->enterbranch("SYSTEM_EFFECTS"))
+    sysefx[0]->defaults();
+    if (xml.enterbranch("SYSTEM_EFFECTS"))
     {
         for (int nefx = 0; nefx < NUM_SYS_EFX; ++nefx)
         {
-            if (!xml->enterbranch("SYSTEM_EFFECT", nefx))
+            if (!xml.enterbranch("SYSTEM_EFFECT", nefx))
                 continue;
-            if (xml->enterbranch("EFFECT"))
+            if (xml.enterbranch("EFFECT"))
             {
                 sysefx[nefx]->getfromXML(xml);
-                xml->exitbranch();
+                xml.exitbranch();
             }
 
             for (int partefx = 0; partefx < NUM_MIDI_PARTS; ++partefx)
             {
-                if (!xml->enterbranch("VOLUME", partefx))
+                if (!xml.enterbranch("VOLUME", partefx))
                     continue;
-                setPsysefxvol(partefx, nefx,xml->getpar127("vol", Psysefxvol[partefx][nefx]));
-                xml->exitbranch();
+                setPsysefxvol(partefx, nefx,xml.getpar127("vol", Psysefxvol[partefx][nefx]));
+                xml.exitbranch();
             }
 
             for (int tonefx = nefx + 1; tonefx < NUM_SYS_EFX; ++tonefx)
             {
-                if (!xml->enterbranch("SENDTO", tonefx))
+                if (!xml.enterbranch("SENDTO", tonefx))
                     continue;
-                setPsysefxsend(nefx, tonefx, xml->getpar127("send_vol", Psysefxsend[nefx][tonefx]));
-                xml->exitbranch();
+                setPsysefxsend(nefx, tonefx, xml.getpar127("send_vol", Psysefxsend[nefx][tonefx]));
+                xml.exitbranch();
             }
-            xml->exitbranch();
+            xml.exitbranch();
         }
-        xml->exitbranch();
+        xml.exitbranch();
     }
 
-    if (xml->enterbranch("INSERTION_EFFECTS"))
+    if (xml.enterbranch("INSERTION_EFFECTS"))
     {
         for (int nefx = 0; nefx < NUM_INS_EFX; ++nefx)
         {
-            if (!xml->enterbranch("INSERTION_EFFECT", nefx))
+            if (!xml.enterbranch("INSERTION_EFFECT", nefx))
                 continue;
-            Pinsparts[nefx] = xml->getpar("part", Pinsparts[nefx], -2, NUM_MIDI_PARTS);
-            if (xml->enterbranch("EFFECT"))
+            Pinsparts[nefx] = xml.getpar("part", Pinsparts[nefx], -2, NUM_MIDI_PARTS);
+            if (xml.enterbranch("EFFECT"))
             {
                 insefx[nefx]->getfromXML(xml);
-                xml->exitbranch();
+                xml.exitbranch();
             }
-            xml->exitbranch();
+            xml.exitbranch();
         }
-        xml->exitbranch();
+        xml.exitbranch();
     }
-    for (unsigned char i = 0; i < NUM_MIDI_CHANNELS; ++i)
+    for (uchar i = 0; i < NUM_MIDI_CHANNELS; ++i)
     {
-        if (xml->enterbranch("VECTOR", i))
+        if (xml.enterbranch("VECTOR", i))
         {
-            extractVectorData(i, xml, "");
-            xml->endbranch();
+            vectorcontrol.extractVectorData(i, xml, "");
+            xml.endbranch();
         }
     }
-    xml->endbranch(); // MASTER
+    xml.endbranch(); // MASTER
+    // possibly push changed effect state to GUI
+    maybePublishEffectsToGui();
     return true;
 }
 
 
-SynthEngine *SynthEngine::getSynthFromId(unsigned int uniqueId)
-{
-    map<SynthEngine *, MusicClient *>::iterator itSynth;
-    SynthEngine *synth;
-    for (itSynth = synthInstances.begin(); itSynth != synthInstances.end(); ++ itSynth)
-    {
-        synth = itSynth->first;
-        if (synth->getUniqueId() == uniqueId)
-            return synth;
-    }
-    synth = synthInstances.begin()->first;
-    return synth;
-}
-#ifdef GUI_FLTK
-MasterUI *SynthEngine::getGuiMaster(bool createGui)
-{
-    if (guiMaster == NULL && createGui)
-        guiMaster = new MasterUI(this);
-    return guiMaster;
-}
-#endif
-
-void SynthEngine::guiClosed(bool stopSynth)
-{
-    if (stopSynth && !getIsLV2Plugin())
-        Runtime.runSynth = false;
-#ifdef GUI_FLTK
-    if (guiClosedCallback != NULL)
-        guiClosedCallback(guiCallbackArg);
-#endif
-}
-
-#ifdef GUI_FLTK
-void SynthEngine::closeGui()
-{
-    if (guiMaster != NULL)
-    {
-        delete guiMaster;
-        guiMaster = NULL;
-    }
-}
-#endif
-
-
-string SynthEngine::makeUniqueName(const string& name)
+string SynthEngine::makeUniqueName(string const& name)
 {
     string result = "Yoshimi";
     if (uniqueId > 0)
@@ -3385,26 +3205,20 @@ string SynthEngine::makeUniqueName(const string& name)
 }
 
 
-void SynthEngine::setWindowTitle(const string& _windowTitle)
-{
-    if (!_windowTitle.empty())
-        windowTitle = _windowTitle;
-}
-
 float SynthEngine::getLimits(CommandBlock *getData)
 {
     float value = getData->data.value;
     int request = int(getData->data.type & TOPLEVEL::type::Default);
     int control = getData->data.control;
 
-    unsigned char type = 0;
+    uchar type = 0;
 
     // defaults
     int min = 0;
     float def = 64;
     int max = 127;
     type |= TOPLEVEL::type::Integer;
-    unsigned char learnable = TOPLEVEL::type::Learnable;
+    uchar learnable = TOPLEVEL::type::Learnable;
 
     switch (control)
     {
@@ -3414,9 +3228,16 @@ float SynthEngine::getLimits(CommandBlock *getData)
             type |= learnable;
             break;
 
+        case MAIN::control::startInstance:
+        case MAIN::control::stopInstance:
+            min = 0;
+            def = 1;
+            max = 31;
+            break;
+
         case MAIN::control::partNumber:
             def = 0;
-            max = Runtime.NumAvailableParts -1;
+            max = Runtime.numAvailableParts -1;
             break;
 
         case MAIN::control::availableParts:
@@ -3424,6 +3245,7 @@ float SynthEngine::getLimits(CommandBlock *getData)
             def = 16;
             max = 64;
             break;
+
         case MAIN::control::panLawType:
             min = MAIN::panningType::cut;
             def = MAIN::panningType::normal;
@@ -3431,6 +3253,7 @@ float SynthEngine::getLimits(CommandBlock *getData)
             break;
 
         case MAIN::control::detune:
+            type &= ~TOPLEVEL::type::Integer;
             break;
 
         case MAIN::control::keyShift:
@@ -3465,7 +3288,7 @@ float SynthEngine::getLimits(CommandBlock *getData)
         case MAIN::control::defaultPart:
         case MAIN::control::defaultInstrument:
             def = 0;
-            max = Runtime.NumAvailableParts -1;
+            max = Runtime.numAvailableParts -1;
             break;
         case MAIN::control::masterReset:
         case MAIN::control::masterResetAndMlearn:
@@ -3509,283 +3332,19 @@ float SynthEngine::getLimits(CommandBlock *getData)
 }
 
 
-float SynthEngine::getVectorLimits(CommandBlock *getData)
-{
-    float value = getData->data.value;
-    unsigned char request = int(getData->data.type & TOPLEVEL::type::Default);
-    int control = getData->data.control;
-
-    unsigned char type = 0;
-
-    // vector defaults
-    type |= TOPLEVEL::type::Integer;
-    int min = 0;
-    float def = 0;
-    int max = 1;
-
-    switch (control)
-    {
-        case VECTOR::control::undefined:
-            break;
-        case VECTOR::control::name:
-            break;
-        case VECTOR::control::Xcontroller:
-            max = 119;
-            break;
-        case VECTOR::control::XleftInstrument:
-            max = 159;
-            break;
-        case VECTOR::control::XrightInstrument:
-            max = 159;
-            break;
-        case VECTOR::control::Xfeature0:
-            break;
-        case VECTOR::control::Xfeature1:
-            max = 2;
-            break;
-        case VECTOR::control::Xfeature2:
-            max = 2;
-            break;
-        case VECTOR::control::Xfeature3:
-            max = 2;
-            break;
-        case VECTOR::control::Ycontroller:
-            max = 119;
-            break;
-        case VECTOR::control::YupInstrument:
-            max = 159;
-            break;
-        case VECTOR::control::YdownInstrument:
-            max = 159;
-            break;
-        case VECTOR::control::Yfeature0:
-            break;
-        case VECTOR::control::Yfeature1:
-            max = 2;
-            break;
-        case VECTOR::control::Yfeature2:
-            max = 2;
-            break;
-        case VECTOR::control::Yfeature3:
-            max = 2;
-            break;
-        case VECTOR::control::erase:
-            break;
-
-        default: // TODO
-            type |= TOPLEVEL::type::Error;
-            break;
-    }
-    getData->data.type = type;
-    if (type & TOPLEVEL::type::Error)
-        return 1;
-
-    switch (request)
-    {
-        case TOPLEVEL::type::Adjust:
-            if (value < min)
-                value = min;
-            else if (value > max)
-                value = max;
-        break;
-        case TOPLEVEL::type::Minimum:
-            value = min;
-            break;
-        case TOPLEVEL::type::Maximum:
-            value = max;
-            break;
-        case TOPLEVEL::type::Default:
-            value = def;
-            break;
-    }
-    return value;
-}
-
-
-float SynthEngine::getConfigLimits(CommandBlock *getData)
-{
-    float value = getData->data.value;
-    int request = int(getData->data.type & TOPLEVEL::type::Default);
-    int control = getData->data.control;
-
-    unsigned char type = 0;
-
-    // config defaults
-    int min = 0;
-    float def = 0;
-    int max = 1;
-    type |= TOPLEVEL::type::Integer;
-
-    switch (control)
-    {
-        case CONFIG::control::oscillatorSize:
-            min = MIN_OSCIL_SIZE;
-            def = 1024;
-            max = MAX_OSCIL_SIZE;
-            break;
-        case CONFIG::control::bufferSize:
-            min = MIN_BUFFER_SIZE;
-            def = 512;
-            max = MAX_BUFFER_SIZE;
-           break;
-        case CONFIG::control::padSynthInterpolation:
-            break;
-        case CONFIG::control::handlePadSynthBuild:
-            max = 2;
-            break;
-        case CONFIG::control::virtualKeyboardLayout:
-            max = 3;
-            break;
-        case CONFIG::control::XMLcompressionLevel:
-            def = 3;
-            max = 9;
-            break;
-        case CONFIG::control::reportsDestination:
-            break;
-        case CONFIG::control::logTextSize:
-            def = 12;
-            min = 11;
-            max = 100;
-            break;
-        case CONFIG::control::savedInstrumentFormat:
-            max = 3;
-            break;
-        case CONFIG::control::defaultStateStart:
-            break;
-        case CONFIG::control::hideNonFatalErrors:
-            break;
-        case CONFIG::control::showSplash:
-            def = 1;
-            break;
-        case CONFIG::control::logInstrumentLoadTimes:
-            break;
-        case CONFIG::control::logXMLheaders:
-            break;
-        case CONFIG::control::saveAllXMLdata:
-            break;
-        case CONFIG::control::enableGUI:
-            def = 1;
-            break;
-        case CONFIG::control::enableCLI:
-            def = 1;
-            break;
-        case CONFIG::control::enableAutoInstance:
-            def = 1;
-            break;
-        case CONFIG::control::exposeStatus:
-            def = 1;
-            max = 2;
-            break;
-        case CONFIG::control::enableHighlight:
-            break;
-
-        case CONFIG::control::jackMidiSource:
-            min = 3; // anything greater than max
-            def = textMsgBuffer.push("default");
-            break;
-        case CONFIG::control::jackPreferredMidi:
-            def = 1;
-            break;
-        case CONFIG::control::jackServer:
-            min = 3;
-            def = textMsgBuffer.push("default");
-            break;
-        case CONFIG::control::jackPreferredAudio:
-            def = 1;
-            break;
-        case CONFIG::control::jackAutoConnectAudio:
-            def = 1;
-            break;
-
-        case CONFIG::control::alsaMidiSource:
-            min = 3;
-            def = textMsgBuffer.push("default");
-            break;
-        case CONFIG::control::alsaPreferredMidi:
-            def = 1;
-            break;
-        case CONFIG::control::alsaAudioDevice:
-            min = 3;
-            def = textMsgBuffer.push("default");
-            break;
-        case CONFIG::control::alsaPreferredAudio:
-            break;
-        case CONFIG::control::alsaSampleRate:
-            def = 2;
-            max = 3;
-            break;
-
-        case CONFIG::control::bankRootCC: // runtime midi checked elsewhere
-            def = 0;
-            max = 119;
-            break;
-        case CONFIG::control::bankCC: // runtime midi checked elsewhere
-            def = 32;
-            max = 119;
-            break;
-        case CONFIG::control::enableProgramChange:
-            break;
-        case CONFIG::control::extendedProgramChangeCC: // runtime midi checked elsewhere
-            def = 110;
-            max = 119;
-            break;
-        case CONFIG::control::ignoreResetAllCCs:
-            break;
-        case CONFIG::control::logIncomingCCs:
-            break;
-        case CONFIG::control::showLearnEditor:
-            def = 1;
-            break;
-        case CONFIG::control::enableNRPNs:
-            def = 1;
-            break;
-
-        case CONFIG::control::saveCurrentConfig:
-            break;
-
-        default:
-            type |= TOPLEVEL::type::Error;
-            break;
-    }
-    getData->data.type = type;
-    if (type & TOPLEVEL::type::Error)
-        return 1;
-
-    switch (request)
-    {
-        case TOPLEVEL::type::Adjust:
-            if (value < min)
-                value = min;
-            else if (value > max)
-                value = max;
-        break;
-        case TOPLEVEL::type::Minimum:
-            value = min;
-            break;
-        case TOPLEVEL::type::Maximum:
-            value = max;
-            break;
-        case TOPLEVEL::type::Default:
-            value = def;
-            break;
-    }
-    return value;
-}
-
-
 void SynthEngine::CBtest(CommandBlock *candidate, bool miscmsg) // default - don't read message
 {
-    std::cout << "\n value " << candidate->data.value
-            << "\n type " << int(candidate->data.type)
-            << "\n source " << int(candidate->data.source)
-            << "\n cont " << int(candidate->data.control)
-            << "\n part " << int(candidate->data.part)
-            << "\n kit " << int(candidate->data.kit)
-            << "\n engine " << int(candidate->data.engine)
-            << "\n insert " << int(candidate->data.insert)
-            << "\n parameter " << int(candidate->data.parameter)
-            << "\n offset " << int(candidate->data.offset)
-            << std::endl;
+    std::cout << "\n value "     << candidate->data.value
+              << "\n type "      << int(candidate->data.type)
+              << "\n source "    << int(candidate->data.source)
+              << "\n cont "      << int(candidate->data.control)
+              << "\n part "      << int(candidate->data.part)
+              << "\n kit "       << int(candidate->data.kit)
+              << "\n engine "    << int(candidate->data.engine)
+              << "\n insert "    << int(candidate->data.insert)
+              << "\n parameter " << int(candidate->data.parameter)
+              << "\n offset "    << int(candidate->data.offset)
+              << std::endl;
     if (miscmsg) // read this *without* deleting it
         std::cout << ">" << textMsgBuffer.fetch(candidate->data.miscmsg, false) << "<" << std::endl;
     else

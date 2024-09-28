@@ -34,19 +34,19 @@ using func::asDecibel;
 using func::power;
 
 
-FilterParams::FilterParams(unsigned char Ptype_, float Pfreq_, float Pq_, unsigned char Pfreqtrackoffset_, SynthEngine *_synth) :
-    ParamBase(_synth),
-    changed(false),
-    Dtype(Ptype_),
-    Dfreq(Pfreq_),
-    Dq(Pq_),
-    Dfreqtrackoffset(Pfreqtrackoffset_)
+FilterParams::FilterParams(uchar Ptype_, float Pfreq_, float Pq_, uchar Pfreqtrackoffset_, SynthEngine& _synth)
+    : ParamBase{_synth}
+    , changed{false}
+    , Dtype{Ptype_}
+    , Dfreq{Pfreq_}
+    , Dq{Pq_}
+    , Dfreqtrackoffset{Pfreqtrackoffset_}
 {
     defaults();
 }
 
 
-void FilterParams::defaults(void)
+void FilterParams::defaults()
 {
     Ptype = Dtype;
     Pfreq = Dfreq;
@@ -80,7 +80,7 @@ void FilterParams::defaults(int n)
     int j = n;
     for (int i = 0; i < FF_MAX_FORMANTS; ++i)
     {
-        Pvowels[j].formants[i].freq = synth->randomINT() >> 24; // some random freqs
+        Pvowels[j].formants[i].freq = synth.randomINT() >> 24; // some random freqs
         Pvowels[j].formants[i].firstF = Pvowels[j].formants[i].freq; // the only time we set this
         Pvowels[j].formants[i].q = FILTDEF::formQ.def;
         Pvowels[j].formants[i].amp = FILTDEF::formAmp.def;
@@ -129,13 +129,13 @@ void FilterParams::getfromFilterParams(FilterParams *pars)
 
 
 // Parameter control
-float FilterParams::getfreq(void)
+float FilterParams::getfreq()
 {
     return (Pfreq / 64.0f - 1.0f) * 5.0f;
 }
 
 
-float FilterParams::getq(void)
+float FilterParams::getq()
 {
     return expf(powf(Pq / 127.0f, 2.0f) * logf(1000.0f)) - 0.9f;
 }
@@ -159,21 +159,21 @@ float FilterParams::getfreqtracking(float notefreq)
 }
 
 
-float FilterParams::getgain(void)
+float FilterParams::getgain()
 {
     return (Pgain / 64.0f - 1.0f) * 30.0f; // -30..30dB
 }
 
 
 // Get the center frequency of the formant's graph
-float FilterParams::getcenterfreq(void)
+float FilterParams::getcenterfreq()
 {
     return 10000.0f * power<10>(-(1.0f - Pcenterfreq / FILTDEF::formCentre.max) * 2.0f);
 }
 
 
 // Get the number of octave that the formant functions applies to
-float FilterParams::getoctavesfreq(void)
+float FilterParams::getoctavesfreq()
 {
     return 0.25f + 10.0f * Poctavesfreq / FILTDEF::formOctave.max;
 }
@@ -219,9 +219,9 @@ void FilterParams::formantfilterH(int nvowel, int nfreqs, float *freqs)
 
         filter_amp = getformantamp(Pvowels[nvowel].formants[nformant].amp);
 
-        if (filter_freq <= (synth->halfsamplerate_f - 100.0f))
+        if (filter_freq <= (synth.halfsamplerate_f - 100.0f))
         {
-            omega = TWOPI * filter_freq / synth->samplerate_f;
+            omega = TWOPI * filter_freq / synth.samplerate_f;
             sn = sinf(omega);
             cs = cosf(omega);
             alpha = sn / (2 * filter_q);
@@ -238,13 +238,13 @@ void FilterParams::formantfilterH(int nvowel, int nfreqs, float *freqs)
         for (int i = 0; i < nfreqs; ++i)
         {
             float freq = getfreqx(i / (float)nfreqs);
-            if (freq > synth->halfsamplerate_f)
+            if (freq > synth.halfsamplerate_f)
             {
                 for (int tmp = i; tmp < nfreqs; ++tmp)
                     freqs[tmp] = 0.0f;
                 break;
             }
-            float fr = freq / synth->samplerate_f * TWOPI;
+            float fr = freq / synth.samplerate_f * TWOPI;
             float x = c[0], y = 0.0f;
             for (int n = 1; n < 3; ++n)
             {
@@ -274,123 +274,123 @@ void FilterParams::formantfilterH(int nvowel, int nfreqs, float *freqs)
 }
 
 
-void FilterParams::add2XMLsection(XMLwrapper *xml,int n)
+void FilterParams::add2XMLsection(XMLwrapper& xml, int n)
 {
     int nvowel = n;
     for (int nformant = 0; nformant < FF_MAX_FORMANTS; ++nformant)
     {
-        xml->beginbranch("FORMANT",nformant);
-        xml->addparcombi("freq",Pvowels[nvowel].formants[nformant].freq);
-        xml->addparcombi("amp",Pvowels[nvowel].formants[nformant].amp);
-        xml->addparcombi("q",Pvowels[nvowel].formants[nformant].q);
-        xml->endbranch();
+        xml.beginbranch("FORMANT",nformant);
+        xml.addparcombi("freq",Pvowels[nvowel].formants[nformant].freq);
+        xml.addparcombi("amp",Pvowels[nvowel].formants[nformant].amp);
+        xml.addparcombi("q",Pvowels[nvowel].formants[nformant].q);
+        xml.endbranch();
     }
 }
 
 
-void FilterParams::add2XML(XMLwrapper *xml)
+void FilterParams::add2XML(XMLwrapper& xml)
 {
     //filter parameters
-    xml->addpar("category",Pcategory);
-    xml->addpar("type",Ptype);
-    xml->addparcombi("freq",Pfreq);
-    xml->addparcombi("q",Pq);
-    xml->addpar("stages",Pstages);
-    xml->addparcombi("freq_track",Pfreqtrack);
-    xml->addparbool("freqtrackoffset",Pfreqtrackoffset);
-    xml->addparcombi("gain",Pgain);
+    xml.addpar("category",Pcategory);
+    xml.addpar("type",Ptype);
+    xml.addparcombi("freq",Pfreq);
+    xml.addparcombi("q",Pq);
+    xml.addpar("stages",Pstages);
+    xml.addparcombi("freq_track",Pfreqtrack);
+    xml.addparbool("freqtrackoffset",Pfreqtrackoffset);
+    xml.addparcombi("gain",Pgain);
 
     //formant filter parameters
-    if ((Pcategory==1)||(!xml->minimal))
+    if ((Pcategory==1)||(!xml.minimal))
     {
-        xml->beginbranch("FORMANT_FILTER");
-        xml->addpar("num_formants",Pnumformants);
-        xml->addparcombi("formant_slowness",Pformantslowness);
-        xml->addparcombi("vowel_clearness",Pvowelclearness);
-        xml->addpar("center_freq",Pcenterfreq);
-        xml->addpar("octaves_freq",Poctavesfreq);
+        xml.beginbranch("FORMANT_FILTER");
+        xml.addpar("num_formants",Pnumformants);
+        xml.addparcombi("formant_slowness",Pformantslowness);
+        xml.addparcombi("vowel_clearness",Pvowelclearness);
+        xml.addpar("center_freq",Pcenterfreq);
+        xml.addpar("octaves_freq",Poctavesfreq);
         for (int nvowel=0;nvowel<FF_MAX_VOWELS;nvowel++)
         {
-            xml->beginbranch("VOWEL",nvowel);
+            xml.beginbranch("VOWEL",nvowel);
             add2XMLsection(xml,nvowel);
-            xml->endbranch();
+            xml.endbranch();
         }
-        xml->addpar("sequence_size",Psequencesize);
-        xml->addparcombi("sequence_stretch",Psequencestretch);
-        xml->addparbool("sequence_reversed",Psequencereversed);
+        xml.addpar("sequence_size",Psequencesize);
+        xml.addparcombi("sequence_stretch",Psequencestretch);
+        xml.addparbool("sequence_reversed",Psequencereversed);
         for (int nseq=0;nseq<FF_MAX_SEQUENCE;nseq++)
         {
-            xml->beginbranch("SEQUENCE_POS",nseq);
-            xml->addpar("vowel_id",Psequence[nseq].nvowel);
-            xml->endbranch();
+            xml.beginbranch("SEQUENCE_POS",nseq);
+            xml.addpar("vowel_id",Psequence[nseq].nvowel);
+            xml.endbranch();
         }
-        xml->endbranch();
+        xml.endbranch();
     }
 }
 
 
-void FilterParams::getfromXMLsection(XMLwrapper *xml,int n)
+void FilterParams::getfromXMLsection(XMLwrapper& xml, int n)
 {
     int nvowel=n;
     for (int nformant = 0; nformant < FF_MAX_FORMANTS; nformant++)
     {
-        if (xml->enterbranch("FORMANT",nformant) == 0)
+        if (xml.enterbranch("FORMANT",nformant) == 0)
             continue;
         Pvowels[nvowel].formants[nformant].freq =
-            xml->getparcombi("freq",Pvowels[nvowel].formants[nformant].freq,FILTDEF::formFreq.min,FILTDEF::formFreq.max);
+            xml.getparcombi("freq",Pvowels[nvowel].formants[nformant].freq,FILTDEF::formFreq.min,FILTDEF::formFreq.max);
         Pvowels[nvowel].formants[nformant].firstF =Pvowels[nvowel].formants[nformant].freq;
         // the saved setting becomes the new pseudo default value.
 
         Pvowels[nvowel].formants[nformant].amp =
-            xml->getparcombi("amp",Pvowels[nvowel].formants[nformant].amp,FILTDEF::formAmp.min,FILTDEF::formAmp.max);
+            xml.getparcombi("amp",Pvowels[nvowel].formants[nformant].amp,FILTDEF::formAmp.min,FILTDEF::formAmp.max);
         Pvowels[nvowel].formants[nformant].q =
-            xml->getparcombi("q",Pvowels[nvowel].formants[nformant].q,FILTDEF::formQ.min,FILTDEF::formQ.max);
-        xml->exitbranch();
+            xml.getparcombi("q",Pvowels[nvowel].formants[nformant].q,FILTDEF::formQ.min,FILTDEF::formQ.max);
+        xml.exitbranch();
     }
 }
 
 
-void FilterParams::getfromXML(XMLwrapper *xml)
+void FilterParams::getfromXML(XMLwrapper& xml)
 {
     // filter parameters
-    Pcategory = xml->getpar127("category",Pcategory);
-    Ptype = xml->getpar127("type",Ptype);
-    Pfreq = xml->getparcombi("freq",Pfreq,FILTDEF::addFreq.min,FILTDEF::addFreq.max);
-    Pq = xml->getparcombi("q",Pq,FILTDEF::qVal.min,FILTDEF::qVal.max);
-    Pstages = xml->getpar127("stages",Pstages);
-    Pfreqtrack = xml->getparcombi("freq_track",Pfreqtrack,FILTDEF::freqTrack.min,FILTDEF::freqTrack.max);
-    Pfreqtrackoffset = xml->getparbool("freqtrackoffset", Pfreqtrackoffset);
-    Pgain = xml->getparcombi("gain",Pgain,FILTDEF::gain.min,FILTDEF::gain.max);
+    Pcategory = xml.getpar127("category",Pcategory);
+    Ptype = xml.getpar127("type",Ptype);
+    Pfreq = xml.getparcombi("freq",Pfreq,FILTDEF::addFreq.min,FILTDEF::addFreq.max);
+    Pq = xml.getparcombi("q",Pq,FILTDEF::qVal.min,FILTDEF::qVal.max);
+    Pstages = xml.getpar127("stages",Pstages);
+    Pfreqtrack = xml.getparcombi("freq_track",Pfreqtrack,FILTDEF::freqTrack.min,FILTDEF::freqTrack.max);
+    Pfreqtrackoffset = xml.getparbool("freqtrackoffset", Pfreqtrackoffset);
+    Pgain = xml.getparcombi("gain",Pgain,FILTDEF::gain.min,FILTDEF::gain.max);
 
     // formant filter parameters
-    if (xml->enterbranch("FORMANT_FILTER"))
+    if (xml.enterbranch("FORMANT_FILTER"))
     {
-        Pnumformants = xml->getpar127("num_formants",Pnumformants);
-        Pformantslowness = xml->getparcombi("formant_slowness",Pformantslowness,FILTDEF::formSpeed.min,FILTDEF::formSpeed.max);
-        Pvowelclearness = xml->getparcombi("vowel_clearness",Pvowelclearness,FILTDEF::formClear.min,FILTDEF::formClear.max);
-        Pcenterfreq = xml->getpar127("center_freq",Pcenterfreq);
-        Poctavesfreq = xml->getpar127("octaves_freq",Poctavesfreq);
+        Pnumformants = xml.getpar127("num_formants",Pnumformants);
+        Pformantslowness = xml.getparcombi("formant_slowness",Pformantslowness,FILTDEF::formSpeed.min,FILTDEF::formSpeed.max);
+        Pvowelclearness = xml.getparcombi("vowel_clearness",Pvowelclearness,FILTDEF::formClear.min,FILTDEF::formClear.max);
+        Pcenterfreq = xml.getpar127("center_freq",Pcenterfreq);
+        Poctavesfreq = xml.getpar127("octaves_freq",Poctavesfreq);
 
         for (int nvowel = 0; nvowel < FF_MAX_VOWELS;nvowel++)
         {
-            if (xml->enterbranch("VOWEL",nvowel) == 0)
+            if (xml.enterbranch("VOWEL",nvowel) == 0)
                 continue;
             getfromXMLsection(xml,nvowel);
-            xml->exitbranch();
+            xml.exitbranch();
         }
-        Psequencesize = xml->getpar127("sequence_size",Psequencesize);
-        Psequencestretch = xml->getparcombi("sequence_stretch",Psequencestretch,FILTDEF::formStretch.min,FILTDEF::formStretch.max);
-        Psequencereversed = xml->getparbool("sequence_reversed",Psequencereversed);
+        Psequencesize = xml.getpar127("sequence_size",Psequencesize);
+        Psequencestretch = xml.getparcombi("sequence_stretch",Psequencestretch,FILTDEF::formStretch.min,FILTDEF::formStretch.max);
+        Psequencereversed = xml.getparbool("sequence_reversed",Psequencereversed);
         for (int nseq = 0; nseq < FF_MAX_SEQUENCE;nseq++)
         {
-            if (xml->enterbranch("SEQUENCE_POS",nseq) == 0)
+            if (xml.enterbranch("SEQUENCE_POS",nseq) == 0)
                 continue;
-            Psequence[nseq].nvowel = xml->getpar("vowel_id",
-                                          Psequence[nseq].nvowel, 0,
-                                          FF_MAX_VOWELS-1);
-            xml->exitbranch();
+            Psequence[nseq].nvowel = xml.getpar("vowel_id",
+                                                Psequence[nseq].nvowel, 0,
+                                                FF_MAX_VOWELS-1);
+            xml.exitbranch();
         }
-        xml->exitbranch();
+        xml.exitbranch();
     }
 }
 

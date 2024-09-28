@@ -8,7 +8,7 @@ comment {MidiLearnUI.h} {not_in_source in_header
 comment {MidiLearnUI.cc} {in_source not_in_header
 }
 
-comment {Copyright (C) 2016-2023, Will Godfrey
+comment {Copyright (C) 2016-2024, Will Godfrey
 
 This file is part of yoshimi, which is free software: you can redistribute
 it and/or modify it under the terms of the GNU General Public
@@ -403,7 +403,7 @@ Note: Adding/deleting entries or changing CC/Chan will renumber the lines.} xywh
         xywh {263 0 40 15} labelfont 1 labelsize 11 labelcolor 64 align 18
       }
       Fl_Button close {
-        label Close
+        label &Close
         callback {//
     saveWin(synth, midilearnwindow->w(), midilearnwindow->h(), midilearnwindow->x(), midilearnwindow->y(), false, "Midi-learn");
     midilearnwindow->hide();
@@ -447,8 +447,7 @@ Note: Adding/deleting entries or changing CC/Chan will renumber the lines.} xywh
         synth->getGuiMaster()->paramsui->Recent->position(midilearnwindow->x() + recent->x() - 80, midilearnwindow->y() + recent->y() - 187);
         synth->getGuiMaster()->paramsui->Show(TOPLEVEL::XML::MLearn);}
         tooltip {Load from recently seen list} xywh {230 264 70 18} box GTK_THIN_UP_BOX down_box DOWN_BOX color 198 labelfont 1 labelsize 12 labelcolor 64
-        code0 {vector<string> &listType = *synth->getHistory(TOPLEVEL::XML::MLearn);}
-        code1 {if (listType.size() == 0) o->deactivate(); else o->activate();}
+        code0 {if (synth->getHistory(TOPLEVEL::XML::MLearn).empty()) o->deactivate(); else o->activate();}
       }
     }
   }
@@ -678,7 +677,7 @@ Note: Adding/deleting entries or changing CC/Chan will renumber the lines.} xywh
   }
   decl {int learnDH;} {private local
   }
-  decl {int learnW;} {private local
+  decl {int learnW;} {public local
   }
   decl {bool learnSeen;} {private local
   }
