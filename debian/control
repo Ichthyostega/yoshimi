@@ -10,6 +10,7 @@ Uploaders:
 Build-Depends:
  cmake,
  debhelper (>= 10~),
+ g++-9,
  dssi-dev,
  fluid,
  libasound2-dev,

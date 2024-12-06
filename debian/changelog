@@ -1,10 +1,12 @@
-yoshimi (2.3.3.2-1ppa1~noble) noble; urgency=medium
+yoshimi (2.3.3.2-1ppa1~bionic) bionic; urgency=low
 
   * New upstream bugfix release 2.3.3.2
-  * Rebuild/Backport for Ubuntu/Noble(24.04 LTS).
-  * unofficial DEB package by Ichthyostega
+  * publish unofficial DEB package by Ichthyostega
+  * Rebuild/Backport for Ubuntu/Bionic(18.04 LTS).
+  * As of 12/2024, this is the latest (bugfix) Yoshimi release
+  * use GCC-9 from ppa:ubuntu-toolchain-r/test
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Fri, 06 Dec 2024 01:55:24 +0100
+ -- Hermann Vosseler <deb@ichthyostega.de>  Fri, 06 Dec 2024 02:55:23 +0100
 
 yoshimi (2.3.3-1~buster) Lumiera-buster-tool; urgency=low
 
@@ -12,7 +14,7 @@ yoshimi (2.3.3-1~buster) Lumiera-buster-tool; urgency=low
   * Rebuild/Backport for Debian/Buster(oldoldstable).
   * unofficial DEB package by Ichthyostega
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 24 Sep 2024 01:24:55 +0200
+ -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 24 Sep 2024 01:42:55 +0200
 
 yoshimi (2.3.2-1~buster) Lumiera-buster-tool; urgency=low
 
