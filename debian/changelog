@@ -1,7 +1,7 @@
-yoshimi (2.3.3.2-1~buster) Lumiera-buster-tool; urgency=low
+yoshimi (2.3.3.2-1ppa1~noble) noble; urgency=medium
 
   * New upstream bugfix release 2.3.3.2
-  * Rebuild/Backport for Debian/Buster(oldoldstable).
+  * Rebuild/Backport for Ubuntu/Noble(24.04 LTS).
   * unofficial DEB package by Ichthyostega
 
  -- Hermann Vosseler <deb@ichthyostega.de>  Fri, 06 Dec 2024 01:55:24 +0100
