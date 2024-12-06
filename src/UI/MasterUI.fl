@@ -188,8 +188,8 @@ class FilerLine {: {public Fl_Group}
         xywh {25 0 415 21} box NO_BOX color 7 labelsize 12 labelcolor 64 align 20
       }
       Fl_Button nametop {
-        callback {//std::cout << "pressed " << n << std::endl;
-lineitem = n;}
+        callback {//
+            lineitem = n;}
         xywh {0 1 420 18} box NO_BOX labelcolor 64
       }
     }
@@ -308,8 +308,8 @@ class KeyHandle {: {public Fl_Box}
 
 class MasterUI {: {public GuiUpdates}
 } {
-  Function {MasterUI(InterChange& _interChange, size_t slotIDX)
-	 : GuiUpdates{_interChange, slotIDX}} {} {
+  Function {MasterUI(InterChange& _interChange, InterfaceAnchor connectionData)
+	 : GuiUpdates{_interChange, std::move(connectionData)}} {} {
     code {//
       synth = nullptr;
       presetsui = nullptr;
@@ -325,7 +325,6 @@ class MasterUI {: {public GuiUpdates}
       paramsui = nullptr;
       syseffectui = nullptr;
       inseffectui = nullptr;
-      activePart = 0;
       yoshiLog = nullptr;
       queryDW = 0;
 
@@ -408,14 +407,14 @@ class MasterUI {: {public GuiUpdates}
   }
   Function {Init()} {} {
     code {//
-      current_ID = anchor.get().synthID;
-      synth = anchor.get().synth;
+      current_ID = anchor.synthID;
+      synth = anchor.synth;
       assert(synth);
       file::createDir(file::configDir() + "/windows");
       panelType = 5;
       msgSeen = false;
       syseffSeen = false;
-      partmax = synth->getRuntime().numAvailableParts;
+      partmax = collect_readData(synth, 0, MAIN::control::availableParts, TOPLEVEL::main);
       microtonalui = new MicrotonalUI(&synth->microtonal, synth);
       bankui = new BankUI(synth);
       virkeyboard = new VirKeyboard(synth);
@@ -434,7 +433,6 @@ class MasterUI {: {public GuiUpdates}
       bool foundWindows = Showmaster();
       if (current_ID > 0)
           foundWindows = true; //  not relevant for later windows
-      //std::cout << "Found windows " << int(foundWindows) << std::endl;
       loadWindowData();
       string starterror = "";
       if (synth->getRuntime().isLV2)
@@ -467,10 +465,14 @@ class MasterUI {: {public GuiUpdates}
           msg = "Existing config older than V " + to_string(MIN_CONFIG_MAJOR) + "." + to_string(MIN_CONFIG_MINOR) + " \\nCheck settings.";
           setmessage(UNUSED, true, msg, "Close");
       }
-      else if (current_ID == 0 && synth->getRuntime().banksChecked == false)
+      else
       {
-          string msg = "Default banks have been copied to {user}.local/share/yoshimi/found \\nAdd these to the bank roots window?";
-          setmessage(TOPLEVEL::msgResponse::refreshBankDefaults, true, msg, "Ask Later", "No", "Yes");} {}} {}
+          if (current_ID == 0 && fetchData(0, BANK::control::refreshDefaults, TOPLEVEL::section::bank) == false)
+          {
+              string msg = "Default banks have been copied to {user}.local/share/yoshimi/found \\nAdd these to the bank roots window?";
+              setmessage(TOPLEVEL::msgResponse::refreshBankDefaults, true, msg, "Ask Later", "No", "Yes");
+          ;}
+      ;} {}} {}
   }
   Function {Showmaster()} {return_type bool
   } {
@@ -603,20 +605,20 @@ class MasterUI {: {public GuiUpdates}
             * to offer the INTERNAL name first rather than a possibly
             * confusing external filename.
             */
-            string newname = synth->part[activePart]->Pname;
+            string newname = synth->part[npart]->Pname;
             if (newname == DEFAULT_NAME)
             {
                 query("", "", "", "Nothing to save!");
                 return;
             }
-            if (synth->part[activePart]->info.Ptype == 0)
+            if (synth->part[npart]->info.Ptype == 0)
             {
                 if (choice(synth, "", "Save", "Cancel", "Please set instrument type before saving.\\nCopyright info also recommended.") != 2)
                     return;
             }
             string filename = setfiler("", newname, true, TOPLEVEL::XML::Instrument);
             if (!filename.empty())
-                send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate, MAIN::control::saveNamedInstrument, activePart, TOPLEVEL::type::Integer, TOPLEVEL::section::main, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(string(filename)));
+                send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate, MAIN::control::saveNamedInstrument, npart, TOPLEVEL::type::Integer, TOPLEVEL::section::main, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(string(filename)));
             }
             break;
         case 12: // recent
@@ -629,7 +631,7 @@ class MasterUI {: {public GuiUpdates}
             }
             break;
         case 13: // clear
-        if (!fetchData(0, PART::control::enable, activePart))
+        if (!fetchData(0, PART::control::enable, npart))
             {
                 alert(synth, "Active part disabled");
                 return;
@@ -637,7 +639,7 @@ class MasterUI {: {public GuiUpdates}
             partui->instrumentReset->do_callback();
             break;
         case 14: // search
-        if (!fetchData(0, PART::control::enable, activePart))
+        if (!fetchData(0, PART::control::enable, npart))
             {
                 alert(synth, "Active part disabled");
                 return;
@@ -874,7 +876,7 @@ class MasterUI {: {public GuiUpdates}
           tooltip {Message Log} xywh {83 90 106 24} box GTK_THIN_UP_BOX color 198 labelsize 11 labelcolor 64
         }
         Fl_Button vectors {
-          label &Vectors
+          label {&Vectors}
           callback {//
           vectorui->Show(synth);}
           tooltip {Vector Setup Window} xywh {197 30 68 24} box GTK_THIN_UP_BOX color 198 labelsize 11 labelcolor 64
@@ -1025,7 +1027,7 @@ class MasterUI {: {public GuiUpdates}
       } {
         Fl_Group syseffectui {
           xywh {3 188 379 95} labeltype NO_LABEL labelcolor 64
-          code0 {o->init(synth, anchor.get().sysEffectParam, anchor.get().sysEffectEQ, TOPLEVEL::section::systemEffects);
+          code0 {o->init(synth, anchor.sysEffectParam, anchor.sysEffectEQ, TOPLEVEL::section::systemEffects);
                  o->activate();
                  o->show();}
           class EffUI
@@ -1037,7 +1039,7 @@ class MasterUI {: {public GuiUpdates}
       } {
         Fl_Group inseffectui {
           xywh {3 188 379 95} color 52 labelcolor 64
-          code0 {o->init(synth, anchor.get().insEffectParam, anchor.get().insEffectEQ, TOPLEVEL::section::insertEffects);
+          code0 {o->init(synth, anchor.insEffectParam, anchor.insEffectEQ, TOPLEVEL::section::insertEffects);
                  o->hide();}
           code1 {o->deactivate(); // initially deactivated}
           class EffUI
@@ -1125,18 +1127,17 @@ class MasterUI {: {public GuiUpdates}
           int event = Fl::event_button();
           if (event == FL_LEFT_MOUSE)
           {
-              synth->getGuiMaster()->activePart = npart;
               bankui->Show();
           }
           else if (event == FL_RIGHT_MOUSE)
           {
-              string name = input_text(synth, "Instrument name:", synth->part[activePart]->Pname);
+              string name = input_text(synth, "Instrument name:", synth->part[npart]->Pname);
               if (name == DEFAULT_NAME)
                   alert(synth, "Can't use name of default sound");
-              else if (name != synth->part[activePart]->Pname)
+              else if (name != synth->part[npart]->Pname)
               {
                   unsigned char id = textMsgBuffer.push(name);
-                  send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate, PART::control::instrumentName, 0, TOPLEVEL::type::Integer, activePart, UNUSED, UNUSED, UNUSED, id);
+                  send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate, PART::control::instrumentName, 0, TOPLEVEL::type::Integer, npart, UNUSED, UNUSED, UNUSED, id);
               }
           }}
               tooltip {Left mouse button: choose/save/.. from/to bank, Right button: instrument name} xywh {136 291 195 25} box NO_BOX selection_color 64 labeltype NO_LABEL labelsize 12 labelcolor 64 align 16
@@ -1489,25 +1490,13 @@ class MasterUI {: {public GuiUpdates}
         code2 {setBpmFallbackValue(synth->PbpmFallback);}
         class WidgetSpinner
       }
-      Fl_Spinner npartcounter {
-        label Part
-        callback {//
-        int nval = o->value() - 1;
-        activePart = nval;
-        send_data(TOPLEVEL::action::forceUpdate, MAIN::control::partNumber, nval, TOPLEVEL::type::Integer, TOPLEVEL::section::main);}
-        xywh {36 292 40 20} labelsize 11 labelcolor 64 when 6 minimum 0 maximum 127 textsize 11 textcolor 64
-        code0 {o->range(1.0, partmax);}
-        code1 {o->value(synth->getRuntime().currentPart + 1);}
-        code2 {bankui->init(o);}
-        class WidgetSpinner
-      }
       Fl_Spinner maxparts {
         label of
         callback {//
         int tmp = o->value();
-        if (tmp == 48)
+        if (tmp == 48) // must be 16,32,64
         {
-            if (partmax == 32)
+            if (partmax == 32) // rolling upwards
                 tmp = 64;
             else
                 tmp = 32;
@@ -1515,6 +1504,16 @@ class MasterUI {: {public GuiUpdates}
         send_data(TOPLEVEL::action::forceUpdate, MAIN::control::availableParts, tmp, TOPLEVEL::type::Integer, TOPLEVEL::section::main);}
         tooltip {Set the number of available parts} xywh {93 292 40 20} labelsize 11 labelcolor 64 minimum 16 maximum 64 step 16 value 16 textsize 11 textcolor 64
         code0 {o->value(partmax);}
+        class WidgetSpinner
+      }
+      Fl_Spinner npartcounter {
+        label Part
+        callback {//
+        npart = o->value() - 1;
+        send_data(TOPLEVEL::action::forceUpdate, MAIN::control::partNumber, npart, TOPLEVEL::type::Integer, TOPLEVEL::section::main);}
+        xywh {36 292 40 20} labelsize 11 labelcolor 64 when 6 minimum 0 maximum 64 textsize 11 textcolor 64
+        code0 {o->value(collect_readData(synth, 0, MAIN::control::partNumber, TOPLEVEL::main) + 1);}
+        code1 {bankui->init(o);}
         class WidgetSpinner
       }
       Fl_Choice panning_law {
@@ -1824,8 +1823,7 @@ Alan Calvert started the project}
       Fl_Choice Panelgroups {
         label {Part Group}
         callback {//
-        int result = o->value();
-        panelgroup = result * NUM_MIDI_CHANNELS;
+        panelgroup = o->value() * NUM_MIDI_CHANNELS;
         for (int i = 0; i < NUM_MIDI_CHANNELS; ++i)
             panellistitem[i]->refresh();}
         xywh {5 300 86 18} down_box BORDER_BOX labelsize 12 labelcolor 64 align 1 textsize 12 textcolor 64
@@ -1840,21 +1838,21 @@ Alan Calvert started the project}
             panellistitem[i]->refresh();}
         xywh {5 300 86 18} down_box BORDER_BOX labelsize 12 labelcolor 64 align 1 textsize 12
         code0 {o->add("1 to 16");o->add("17 to 32");}
-        code1 {if (panelgroup ==  NUM_MIDI_CHANNELS) o->value(1); else o->value(0);}
+        code1 {o->value(panelgroup / NUM_MIDI_CHANNELS);}
       } {}
       Fl_Spinner CSspinner {
         label CC
         callback {//
         CSpend->show();}
         xywh {209 300 50 18} labelsize 12 labelcolor 64 align 1 minimum 0 maximum 127 value 115 textsize 12 textcolor 64
-        code0 {CS_CC = synth->getRuntime().channelSwitchCC;}
+        code0 {CS_CC = collect_readData(synth, 0, MAIN::control::soloCC, TOPLEVEL::section::main);}
         code1 {if (CS_CC < 128) o->value(CS_CC); else o->value(115);}
         class WidgetSpinner
       }
       Fl_Button CSpend {
         label Pending
         callback {//
-        CS_CC = synth->getRuntime().channelSwitchCC;
+        CS_CC = collect_readData(synth, 0, MAIN::control::soloType, TOPLEVEL::section::main);
         int candidate = CSspinner->value();
         if (candidate == CS_CC)
         {
@@ -1862,7 +1860,7 @@ Alan Calvert started the project}
             return;
         }
 
-        string name = synth->getRuntime().masterCCtest(candidate);
+        string name = textMsgBuffer.fetch(collect_readData(synth, candidate, MAIN::knownCCtest, TOPLEVEL::main));
         if (!name.empty())
         {
             query("", "", "", "In use for " + name);
@@ -1885,12 +1883,12 @@ Alan Calvert started the project}
                 send_data(TOPLEVEL::action::forceUpdate, MAIN::control::soloType, o->value(), TOPLEVEL::type::Integer, TOPLEVEL::section::main);}
         tooltip {Assign groups of parts to Ch 1, singly enabled by MIDI} xywh {114 300 74 18} down_box BORDER_BOX labelsize 12 labelcolor 64 align 1 textsize 12 textcolor 64
         code0 {o->add("Off");o->add("Row");o->add("Column");o->add("Loop");o->add("TwoWay");o->add("Channel");}
-        code1 {o->value(synth->getRuntime().channelSwitchType);}
+        code1 {o->value(collect_readData(synth, 0, MAIN::control::soloType, TOPLEVEL::section::main));}
         code2 {if (o->value() == 0) CSspinner->hide(); else CSspinner->show();}
         code3 {CS_CC = o->value();}
       } {}
       Fl_Button Panelclose {
-        label &Close
+        label {&Close}
         callback {//
     panelType |= 4;
     saveWin(synth, panelwindow->w(), panelwindow->h(), panelwindow->x(), panelwindow->y(), panelType, "Mixer");
@@ -1944,14 +1942,14 @@ Alan Calvert started the project}
       code1 {o->size_range(queryDW, queryDH, 0, 0, 0, 0, 1);} modal
     } {
       Fl_Button yesQ {
-        label {Yes}
+        label Yes
         callback {//
     querywindow->hide();}
         xywh {205 80 60 20} box PLASTIC_THIN_UP_BOX color 228 labelcolor 64
         code0 {o->value(0);}
       }
       Fl_Button noQ {
-        label {No}
+        label No
         callback {//
     querywindow->hide();}
         xywh {276 80 60 20} box PLASTIC_THIN_UP_BOX color 228 labelcolor 64
@@ -2513,7 +2511,8 @@ Alan Calvert started the project}
         filerscroll->end();
         filerscroll->scroll_to(-10,-10);
         filerRtext();
-        //std::cout << "list end " << lineno << std::endl;} {}
+        //std::cout << "list end " << lineno << std::endl;
+        ;} {}
   }
   Function {filerselect(int item)} {} {
     code {//
@@ -2718,20 +2717,19 @@ Alan Calvert started the project}
     code {//
         float value = getData->data.value;
         unsigned char control = getData->data.control;
-        unsigned char newpart = getData->data.part;
+        unsigned char npart = getData->data.part;
         int value_int = lrint(value);
         bool value_bool = _SYS_::F2B(value);
         int panelpart = 0;
-        bool panelVisible = ((newpart / NUM_MIDI_CHANNELS) == (panelgroup / NUM_MIDI_CHANNELS));
+        bool panelVisible = ((npart / NUM_MIDI_CHANNELS) == (panelgroup / NUM_MIDI_CHANNELS));
         if (panelVisible)
-            panelpart = newpart % NUM_MIDI_CHANNELS;
+            panelpart = npart % NUM_MIDI_CHANNELS;
 
         bool seen = false;;
         switch (control)
         {
             case PART::control::enable:
             {
-                if (npart == newpart)
                 {
                     partEnable->value(value);
                     if (value)
@@ -2821,7 +2819,7 @@ Alan Calvert started the project}
 
             case PART::control::instrumentName:
                 partui->checkEngines();
-                synth->getGuiMaster()->instrumentlabel->copy_label(synth->part[newpart]->Pname.c_str());
+                synth->getGuiMaster()->instrumentlabel->copy_label(synth->part[npart]->Pname.c_str());
                 seen = true;
                 break;
 
@@ -2947,10 +2945,11 @@ Alan Calvert started the project}
             case MIDI::control::noteOff:
                 break;
             case MIDI::control::controller:
-                if (engine <= 119 && engine == synth->getRuntime().channelSwitchCC)
+                if (engine <= 119 && fetchData(0, MAIN::control::soloCC, TOPLEVEL::section::main))
                 { // it's a valid channel switch
                     int newch = partMidiCh->value() - 1;
-                    switch (synth->getRuntime().channelSwitchType)
+                    int switchType = collect_readData(synth, 0, MAIN::control::soloType, TOPLEVEL::section::main);
+                    switch (switchType)
                     {
                         case MIDI::SoloType::Row:
                             if (npart < NUM_MIDI_CHANNELS)
@@ -2973,7 +2972,7 @@ Alan Calvert started the project}
                         case MIDI::SoloType::TwoWay:
                             if (npart < NUM_MIDI_CHANNELS)
                             {
-                                if (npart == synth->getRuntime().channelSwitchValue)
+                                if (npart == collect_readData(synth, 0, MAIN::control::soloType, TOPLEVEL::section::main))
                                     newch = 0;
                                 else if (value_int > 0)
                                     newch = NUM_MIDI_CHANNELS;
@@ -3173,16 +3172,12 @@ Alan Calvert started the project}
             break;
 
         case MAIN::control::partNumber:
-            if ((getData->data.source & TOPLEVEL::action::noAction) != TOPLEVEL::action::fromGUI)
-                activePart = value_int;
-
-            partSwitch(activePart);
+            partSwitch(value_int);
             updatepanel();
             break;
 
         case MAIN::control::availableParts:
             partmax = value_int;
-            npartcounter->range(1, partmax);
             updatepart();
             updatepanel();
             setinspartlist();
@@ -3399,7 +3394,7 @@ Alan Calvert started the project}
             break;
         case MAIN::control::defaultPart:
         case MAIN::control::defaultInstrument:
-            partSwitch(activePart);
+            partSwitch(npart);
             updatepanel();
             break;
         case MAIN::control::masterReset:
@@ -3591,18 +3586,18 @@ Alan Calvert started the project}
 
     textwindow->size(W, H);
     textwindow->show();
-    string result;
+    string text;
     string oldline = textLine->value();
     size_t pos = 1;
     while (textwindow->shown())
     {
         textwindow->show(); // keep it on top
         textinRtext();
-        result = string(textLine->value());
+        text = string(textLine->value());
         Fl::wait();
-        pos = result.find_last_not_of(' ');
+        pos = text.find_last_not_of(' ');
         if (pos != string::npos)
-            pos -= result.find_first_not_of(' ');
+            pos -= text.find_first_not_of(' ');
         if (Fl::event_key() == FL_Enter)
         {
             if (pos == 0 || pos > 1)
@@ -3615,7 +3610,7 @@ Alan Calvert started the project}
     if (pos == 0 || pos == string::npos)
         return oldline;
 
-    return result;} {}
+    return text;} {}
   }
   Function {updatesendwindow()} {} {
     code {//
@@ -3674,7 +3669,6 @@ Alan Calvert started the project}
         defW = (PANEL_DUAL_X * 4) / 5;
         defH = (PANEL_DUAL_Y * 4) / 5;
     }
-    //std::cout << "W " << fetchW << " def " << defW << "  H " << fetchH << " def " << defH << std::endl;
     if (fetchW < defW || fetchH < defH)
     {
         fetchW = defW; // it's messed up so force default
@@ -3698,37 +3692,45 @@ Alan Calvert started the project}
   }
   Function {updatepanel(bool full = false)} {} {
     code {//
-    for (int part = 0; part < partmax; ++part)
-    {
-        if (part < NUM_MIDI_CHANNELS) // will be orred with panel group
-            panellistitem[part]->refresh();
-        vectorui->setInstrumentLabel(part);
-    }
 
     if (partmax == (NUM_MIDI_CHANNELS * 4))
     {
-        Panelgroups->value(npart / NUM_MIDI_CHANNELS);
         Panelgroups->show();
+        Panelgroups->value(panelgroup / NUM_MIDI_CHANNELS);
     }
     else
         Panelgroups->hide();
 
     if (partmax == (NUM_MIDI_CHANNELS * 2))
     {
-        Panelsmallgroups->value(npart / NUM_MIDI_CHANNELS);
         Panelsmallgroups->show();
+        Panelsmallgroups->value(panelgroup / NUM_MIDI_CHANNELS);
     }
     else
         Panelsmallgroups->hide();
 
+    for (int part = 0; part < NUM_MIDI_CHANNELS; ++part)
+    {
+        panellistitem[part]->refresh();
+    }
+
+    if (vectorui->vectorwindow->visible()) // should this really be here?
+    {
+        for (int part = 0; part < partmax; ++part)
+        {
+            vectorui->setInstrumentLabel(part);
+        }
+    }
+
     int oldswitch = channelswitch->value();
-    channelswitch->value(synth->getRuntime().channelSwitchType);
+    int nextValue = collect_readData(synth, 0, MAIN::control::soloType, TOPLEVEL::section::main);
+    channelswitch->value(nextValue);
     if (full)
     {
         oldswitch = channelswitch->value(); // disables 'pending'
-        CS_CC = synth->getRuntime().channelSwitchCC;
+        CS_CC = nextValue;
     }
-    if (synth->getRuntime().channelSwitchType > MIDI::SoloType::Disabled)
+    if (nextValue > MIDI::SoloType::Disabled)
     {
         if (oldswitch == MIDI::SoloType::Disabled)
         {
@@ -3737,14 +3739,15 @@ Alan Calvert started the project}
         }
         else
         {
-            CSspinner->value(synth->getRuntime().channelSwitchCC);
+            CSspinner->value(fetchData(0, MAIN::control::soloCC, TOPLEVEL::section::main));
             CSpend->hide();
         }
         CSspinner->show();
     }
     else
     {
-        synth->getRuntime().channelSwitchCC = 128;
+        synth->getRuntime().channelSwitchCC = 128; // TODO why does the following fail?
+        //send_data(TOPLEVEL::action::forceUpdate, MAIN::control::soloCC, 128, TOPLEVEL::type::Integer, TOPLEVEL::section::main);
         CSspinner->hide();
         CSpend->hide();
     }
@@ -3761,7 +3764,6 @@ Alan Calvert started the project}
         npart = next;
     }
     updatelistitem(next); // select and/or modify
-    activePart = npart;
     partui->rebuild(npart);
 
     partEnable->value(synth->part[npart]->Penabled == 1);
@@ -3822,11 +3824,9 @@ Alan Calvert started the project}
     }
 
     partEnable->value(synth->partonoffRead(npart));
-
     maxparts->value(partmax);
     maxparts->redraw();
     npartcounter->value(npart + 1);
-    activePart = npart;
     npartcounter->redraw();
     refreshControls(npart);} {}
   }
@@ -3900,9 +3900,9 @@ Alan Calvert started the project}
   Function {do_load_instrument(string fname)} {} {
     code {//
     int npart = partui->npart;
-    if ((npart /  NUM_MIDI_CHANNELS) == (panelgroup  /  NUM_MIDI_CHANNELS))
+    if ((npart & 0x30) == (panelgroup & 0x30))
     {
-        int displaypart = npart % NUM_MIDI_CHANNELS;
+        int displaypart = npart & 0x0f;
         panellistitem[displaypart]->partenabled->value(0);
         panellistitem[displaypart]->panellistitemgroup->deactivate();
     }
@@ -3930,13 +3930,14 @@ Alan Calvert started the project}
     code {//
     if (microtonalui) // not taking chances!
         delete microtonalui;
-    partmax = synth->getRuntime().numAvailableParts;
+    partmax = collect_readData(synth, 0, MAIN::control::availableParts, TOPLEVEL::main);
     maxparts->value(partmax);
+    maxparts->redraw();
     checkmaxparts();
     panning_law->value(fetchData(0, MAIN::control::panLawType, TOPLEVEL::section::main));
 
-    npartcounter->value((synth->getRuntime().currentPart) + 1);
-    int next = synth->getRuntime().currentPart;
+    int next = collect_readData(synth, 0, MAIN::control::partNumber, TOPLEVEL::main); // make sure it's the right one!
+    npartcounter->value(next + 1);
     partSwitch(next);
 
     // resync to effect data from last push-update
@@ -3996,11 +3997,10 @@ Alan Calvert started the project}
         Panelsmallgroups->value(0);
         changed = true;
     }
-    npartcounter->range(1, partmax);
-    if (npart >= partmax)
+    npartcounter->range(1, maxparts->value());
+    if (npart >= maxparts->value())
     {
         npartcounter->value(1);
-        activePart = 0;
         changed = true;
     }
     return changed;} {}
@@ -4061,14 +4061,13 @@ Alan Calvert started the project}
     inseffpart->clear();
     inseffpart->add("Master Out"); // 0
     inseffpart->add("Off");        // 1
-    int size = synth->getRuntime().numAvailableParts;
-    for (int i = 0; i < size; ++i)
+    for (int i = 0; i < partmax; ++i)
     {
         string num = string("00") + asString(i + 1);
         inseffpart->add((string("Part ") + asString(i + 1)).c_str());
     }
     int current = inseffectui? inseffectui->getInsertFxRouting() : 2;
-    assert(current < size);
+    assert(current < partmax);
     inseffpart->value(current + 2);} {}
   }
   Function {getPresetsUi()} {return_type {PresetsUI *}
@@ -4305,7 +4304,8 @@ bpmfallback->format(format);} {}
             if ((y + h) > Fl::h())
                 y = Fl::h() - h;
             masterwindow->resize(x, y, w, h);
-            //std::cout << "Screen ratio " << ratio << std::endl;} {}
+            //std::cout << "Screen ratio " << ratio << std::endl;
+            ;} {}
   }
   Function {wincheck()} {} {
     code {//
@@ -4819,8 +4819,6 @@ bpmfallback->format(format);} {}
   decl {bool themeTrigger;} {public local
   }
   decl {int npart;} {public local
-  }
-  decl {int activePart;} {public local
   }
   decl {int partmax;} {
     comment {This is only public for vector control} public local

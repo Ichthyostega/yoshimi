@@ -104,7 +104,11 @@ InterChange::InterChange(SynthEngine& synthInstance)
     fromMIDI(),
     returnsBuffer(),
     muteQueue(),
+#ifdef GUI_FLTK
     guiDataExchange{[this](CommandBlock const& block){ toGUI.write(block.bytes); }},
+#else
+    guiDataExchange{[](CommandBlock const&){ /* no communication GUI */ }},
+#endif
     syncWrite(false),
     lowPrioWrite(false),
     sortResultsThreadHandle(0),
@@ -153,24 +157,11 @@ bool InterChange::Init()
 }
 
 #ifdef GUI_FLTK
-MasterUI& InterChange::createGuiMaster()
+void InterChange::createGuiMaster()
 {
-    CommandBlock bootstrapMsg;
-    while (toGUI.read(bootstrapMsg.bytes))
-        if (guiDataExchange.isValidPushMsg(bootstrapMsg))
-        {
-            size_t slotIDX = bootstrapMsg.data.offset;
-            guiMaster.reset(new MasterUI(*this, slotIDX));
-            assert(guiMaster);
-            return *guiMaster;
-        }
-    throw std::logic_error("Instance Lifecycle broken: expect bootstrap message.");
-    // Explanation: after a suitable MusicIO backend has been established, the SynthEngine::Init()
-    //              will initialise the InterChange for this Synth and then prime the toGUI ringbuffer
-    //              with a key for the GuiDataExchange to pass an InterfaceAnchor record up into the GUI.
-    //              See SynthEngine::publishGuiAnchor() and InstanceManager::SynthGroom::dutyCycle();
-    //              this bootstrap record provides connection IDs used by various UI components to
-    //              receive push-updates from the Core and is thus embedded directly into MasterUI.
+    // provide InterfaceAnchor record with all connection IDs
+    guiMaster.reset(new MasterUI(*this, synth.buildGuiAnchor()));
+    guiMaster->Init();
 }
 
 void InterChange::shutdownGui()
@@ -425,7 +416,7 @@ void InterChange::indirectTransfers(CommandBlock& cmd, bool noForward)
 
      // CLI message text has to be set here.
     if (!synth.fileCompatible)
-        text += "\nIncompatible file from ZynAddSubFX 3.x";
+        text += "\nPossibly incompatible file from ZynAddSubFX 3.x";
 
     if (newMsg)
         value = textMsgBuffer.push(text);
@@ -1288,11 +1279,14 @@ int InterChange::indirectBank(CommandBlock& cmd, uchar& newMsg, bool& guiTo, str
             break;
 
         case BANK::control::refreshDefaults:
-            if (value)
-                synth.bank.checkLocalBanks();
-            synth.getRuntime().banksChecked = true;
-            synth.getRuntime().updateConfig(CONFIG::control::banksChecked, 1);
-        break;
+            if (write)
+            {
+                if (value)
+                    synth.bank.checkLocalBanks();
+                synth.getRuntime().banksChecked = true;
+                synth.getRuntime().updateConfig(CONFIG::control::banksChecked, 1);
+            }
+            break;
     }
     cmd.data.source &= ~TOPLEVEL::action::lowPrio;
     return value;
@@ -1496,6 +1490,7 @@ int InterChange::indirectPart(CommandBlock& cmd, uchar& newMsg, bool& guiTo, str
                 cmd.data.source &= ~TOPLEVEL::action::lowPrio;
             }
             break;
+
         case PART::control::instrumentCopyright:
             if (write)
             {
@@ -2566,22 +2561,30 @@ void InterChange::commandVector(CommandBlock& cmd)
         case VECTOR::control::Xcontroller: // also enable vector
             if (write)
             {
-                if (value >= 14)
+                if (value > 0)
                 {
                     if (!synth.vectorInit(0, chan, value))
+                    {
                         synth.vectorSet(0, chan, value);
+                        if (synth.getRuntime().numAvailableParts < (NUM_MIDI_CHANNELS * 2))
+                            synth.getRuntime().numAvailableParts = NUM_MIDI_CHANNELS * 2;
+                    }
                     else
                         cmd.data.value = 0;
                 }
             }
             else
             {
-                ;
+                cmd.data.value = synth.getRuntime().vectordata.Xaxis[chan];
             }
             break;
         case VECTOR::control::XleftInstrument:
             if (write)
                 synth.vectorSet(4, chan, value);
+            else
+            {
+                ;
+            }
             break;
         case VECTOR::control::XrightInstrument:
             if (write)
@@ -2594,6 +2597,15 @@ void InterChange::commandVector(CommandBlock& cmd)
                     bitClear(features, 0);
                 else
                     bitSet(features, 0);
+            }
+            else // read all features for X or Y
+            {
+                if (control == VECTOR::control::Xfeature0)
+                {
+                    cmd.data.value = synth.getRuntime().vectordata.Xfeatures[chan];
+                }
+                else if (control == VECTOR::control::Yfeature0)
+                    cmd.data.value = synth.getRuntime().vectordata.Yfeatures[chan];
             }
             break;
         case VECTOR::control::Xfeature1:
@@ -2654,17 +2666,21 @@ void InterChange::commandVector(CommandBlock& cmd)
         case VECTOR::control::Ycontroller: // also enable Y
             if (write)
             {
-                if (value >= 14)
+                if (value > 0)
                 {
                     if (!synth.vectorInit(1, chan, value))
+                    {
                         synth.vectorSet(1, chan, value);
+                        if (synth.getRuntime().numAvailableParts < (NUM_MIDI_CHANNELS * 4))
+                            synth.getRuntime().numAvailableParts = NUM_MIDI_CHANNELS * 4;
+                    }
                     else
                         cmd.data.value = 0;
                 }
             }
             else
             {
-                ;
+                cmd.data.value = synth.getRuntime().vectordata.Yaxis[chan];
             }
             break;
         case VECTOR::control::YupInstrument:
@@ -3474,6 +3490,7 @@ void InterChange::commandMain(CommandBlock& cmd)
                 value = synth.getRuntime().channelSwitchType;
             }
             break;
+
         case MAIN::control::soloCC:
             if (write && synth.getRuntime().channelSwitchType > 0)
                 synth.getRuntime().channelSwitchCC = value_int;
@@ -3481,6 +3498,13 @@ void InterChange::commandMain(CommandBlock& cmd)
             {
                 write = false; // for an invalid write attempt
                 value = synth.getRuntime().channelSwitchCC;
+            }
+            break;
+
+        case MAIN::control::knownCCtest: // read only
+            {
+                string text = synth.getRuntime().masterCCtest(value_int);
+                value = textMsgBuffer.push(text);
             }
             break;
 
@@ -3703,6 +3727,14 @@ void InterChange::commandBank(CommandBlock& cmd)
         case BANK::control::selectRoot:
             value_int = synth.getRuntime().currentRoot; // currently read only
             break;
+
+        case BANK::control::refreshDefaults:
+            if (!write)
+            {
+                value_int = synth.getRuntime().banksChecked;
+            }
+            break;
+
         default:
             cmd.data.source = TOPLEVEL::action::noAction;
             break;
@@ -4231,6 +4263,28 @@ void InterChange::commandPart(CommandBlock& cmd)
             }
             else
                 value = part.Paudiodest;
+            break;
+
+        case PART::control::instrumentEngines: // read only
+            {
+                int engineCount = 0;
+                for (int i = 0; i < NUM_KIT_ITEMS; ++i)
+                {
+                    if (synth.part[npart]->kit[i].Penabled)
+                    { // nested so we don't access non existent kit items
+                        if (synth.part[npart]->kit[i].Pmuted == 0)
+                        {
+                            if (synth.part[npart]->kit[i].Padenabled)
+                                engineCount |= 1;
+                            if (synth.part[npart]->kit[i].Psubenabled)
+                                engineCount |= 2;
+                            if (synth.part[npart]->kit[i].Ppadenabled)
+                                engineCount |= 4;
+                        }
+                    }
+                }
+                value = engineCount;
+            }
             break;
 
         case PART::control::resetAllControllers:

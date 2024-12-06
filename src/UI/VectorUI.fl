@@ -70,7 +70,7 @@ class VectorUI {} {
     Fl_Window vectorwindow {
       label {Yoshimi : Vectors}
       callback {//
-      Closevector->do_callback();}
+      Closevector->do_callback();} open
       xywh {382 256 375 295} type Double labelfont 13 labelsize 12 align 0 hide resizable
       code0 {vecDW = o->w();vecDH = o->h();}
       code1 {o->size_range(vecDW, vecDH, 0, 0, 0, 0, 1);}
@@ -85,7 +85,7 @@ class VectorUI {} {
         class WidgetSpinner
       }
       Fl_Menu_Button options {
-        label &Options
+        label {&Options}
         callback {int res = o->value();
 switch (res)
 {
@@ -99,7 +99,7 @@ switch (res)
           int size;
           string name;
 
-          if (Xcc < 14)
+          if (Xcc == 0)
           {
               alert(synth, "Nothing to save!");
               ok = false;
@@ -107,13 +107,14 @@ switch (res)
           else
           {
               count = 0;
-              if (Ycc >= 14)
+              if (Ycc > 0)
                   size = NUM_MIDI_CHANNELS * 4;
               else
                   size = NUM_MIDI_CHANNELS * 2;
               for (int i = 0; i < size; i += NUM_MIDI_CHANNELS)
               {
-                  if (synth->part[BaseChan + i]->Pname != DEFAULT_NAME)
+                  string partName = "";
+                  if (textMsgBuffer.fetch(collect_readData(synth, 0, PART::instrumentName, BaseChan + i)) != DEFAULT_NAME)
                       count += NUM_MIDI_CHANNELS;
               }
               if (count != size)
@@ -166,7 +167,7 @@ switch (res)
         Fl_Button XL {
           callback {//
           (void) o; // suppress warning
-          synth->getGuiMaster()->activePart = BaseChan;
+          synth->getGuiMaster()->partSwitch(BaseChan);
           bankui->Show();}
           tooltip {Part corresponding to joystick 'left' position} xywh {20 53 160 20} box ENGRAVED_FRAME color 51 labelsize 12 align 64
         }
@@ -185,7 +186,7 @@ switch (res)
         Fl_Button XR {
           callback {//
           (void) o; // suppress warning
-          synth->getGuiMaster()->activePart = BaseChan + NUM_MIDI_CHANNELS;
+          synth->getGuiMaster()->partSwitch(BaseChan + NUM_MIDI_CHANNELS);
           bankui->Show();}
           tooltip {Part corresponding to joystick 'right' position} xywh {20 115 160 20} box ENGRAVED_FRAME color 51 labelsize 12 labelcolor 64 align 64
         }
@@ -254,32 +255,58 @@ switch (res)
         label Controller
         callback {//
         int tmp = o->value();
-        if (Xcc < 14 && tmp < 14)
-            tmp = 14;
 
-        if (tmp < 14)
+        if (tmp == 0)
         {
             Xcc = 0;
+            Xgroup->deactivate();
+            Ycc = 0;
+            Ycontrol->value(0);
+            Ycontrol->deactivate();
+            Ygroup->deactivate();
             send_data(TOPLEVEL::action::forceUpdate, VECTOR::control::erase, 0, TOPLEVEL::type::Integer, TOPLEVEL::section::vector, UNUSED, UNUSED, UNUSED, BaseChan);
             return;
         }
 
-        string name = synth->getRuntime().masterCCtest(tmp);
+        if (tmp > 119)
+        {
+            o->value(0);
+            Xcc = 0;
+            Xgroup->deactivate();
+            Ycc = 0;
+            Ycontrol->value(0);
+            Ycontrol->deactivate();
+            Ygroup->deactivate();
+            errorlabel("CC must be less than 120");
+            return;
+
+        }
+
+        string name = textMsgBuffer.fetch(collect_readData(synth, tmp, MAIN::knownCCtest, TOPLEVEL::main));
         if (name != "")
         {
             errorlabel("CC " + to_string(tmp) +" in use for " + name);
+            Xcc = 0;
+            o->value(0);
+            Xgroup->deactivate();
+            Ycc = 0;
+            Ycontrol->value(0);
+            Ycontrol->deactivate();
+            Ygroup->deactivate();
             return;
         }
 
+        Ycontrol->activate();
         Xcc =  tmp;
+        Xgroup->activate();
         send_data(TOPLEVEL::action::forceUpdate, VECTOR::control::Xcontroller, tmp, TOPLEVEL::type::Integer);}
-        tooltip {The MIDI CC this axis reponds to} xywh {110 85 50 20} labelfont 1 labelsize 12 labelcolor 64 minimum 0 maximum 119 value 0 textsize 12 textcolor 64
+        tooltip {The MIDI CC this axis reponds to} xywh {110 85 50 20} labelfont 1 labelsize 12 labelcolor 64 minimum 0 maximum 127 value 0 textsize 12 textcolor 64
         code0 {//
         o->value(Xcc);}
         class WidgetSpinner
       }
       Fl_Button Closevector {
-        label &Close
+        label {&Close}
         callback {//
             saveWin(synth, vectorwindow->w(), vectorwindow->h(), vectorwindow->x(), vectorwindow->y(), false, "Vector");
         vectorwindow->hide();
@@ -306,7 +333,7 @@ switch (res)
         Fl_Button YU {
           callback {//
           (void) o; // suppress warning
-          synth->getGuiMaster()->activePart = BaseChan + NUM_MIDI_CHANNELS * 2;
+          synth->getGuiMaster()->partSwitch(BaseChan + (NUM_MIDI_CHANNELS * 2));
           bankui->Show();}
           tooltip {Part corresponding to joystick 'up' position} xywh {20 163 160 20} box ENGRAVED_FRAME color 51 labelsize 12 labelcolor 64 align 64
         }
@@ -325,7 +352,7 @@ switch (res)
         Fl_Button YD {
           callback {//
           (void) o; // suppress warning
-          synth->getGuiMaster()->activePart = BaseChan + NUM_MIDI_CHANNELS * 3;
+          synth->getGuiMaster()->partSwitch(BaseChan + (NUM_MIDI_CHANNELS * 3));
           bankui->Show();}
           tooltip {Part corresponding to joystick 'down'position} xywh {20 225 160 20} box ENGRAVED_FRAME color 51 labelsize 12 labelcolor 64 align 64
         }
@@ -394,26 +421,39 @@ switch (res)
         label Controller
         callback {//
         int tmp = o->value();
-        if (Ycc < 14 && tmp < 14)
-            tmp = 14;
 
-        if (tmp < 14)
+        if (tmp < 1)
         {
             Ycc = 0;
+            Ygroup->deactivate();
             send_data(0, VECTOR::control::Ycontroller, 0xff, TOPLEVEL::type::Integer);
             return;
         }
+        if (tmp > 119)
+        {
+                Ygroup->deactivate();
+                errorlabel("CC must be less than 120");
+                Ycc = 0;
+                o->value(0);
+                return;
 
-        string name = synth->getRuntime().masterCCtest(tmp);
+        }
+
+
+        string name = textMsgBuffer.fetch(collect_readData(synth, tmp, MAIN::knownCCtest, TOPLEVEL::main));
         if (name != "")
         {
             errorlabel("CC " + to_string(tmp) +" in use for " + name);
+            Ycc = 0;
+            Ygroup->deactivate();
+            o->value(0);
             return;
         }
 
+
         Ycc =  tmp;
         send_data(TOPLEVEL::action::forceUpdate, VECTOR::control::Ycontroller, tmp, TOPLEVEL::type::Integer);}
-        tooltip {The MIDI CC this axis reponds to} xywh {110 195 50 20} labelfont 1 labelsize 12 labelcolor 64 minimum 0 maximum 119 value 0 textsize 12 textcolor 64 deactivate
+        tooltip {The MIDI CC this axis reponds to} xywh {110 195 50 20} labelfont 1 labelsize 12 labelcolor 64 minimum 0 maximum 127 value 0 textsize 12 textcolor 64 deactivate
         code0 {o->value(Ycc);}
         class WidgetSpinner
       }
@@ -430,7 +470,7 @@ switch (res)
   }
   Function {send_data(int action, int control, float value, int type, int part = TOPLEVEL::section::vector, int kit = UNUSED, int engine = UNUSED, int insert = UNUSED, int parameter = UNUSED, int miscmsg = UNUSED)} {} {
     code {//
-        if (control != 84 && control != 85 && control != VECTOR::control::erase)
+        if (control != MAIN::control::partNumber && control != MAIN::loadNamedVector && control != MAIN::saveNamedVector && control != VECTOR::control::erase)
         {
             parameter = BaseChan;
         }
@@ -455,13 +495,7 @@ switch (res)
             break;
 
         case VECTOR::control::Xcontroller:
-            if (synth->getGuiMaster()->partmax < NUM_MIDI_CHANNELS * 2)
-            {
-                synth->getGuiMaster()->maxparts->value(NUM_MIDI_CHANNELS * 2);
-                synth->getGuiMaster()->partmax = NUM_MIDI_CHANNELS * 2;
-                synth->getGuiMaster()->Panelsmallgroups->show();
-            }
-            if (value_int < 14 || value_int > 119)
+            if (value_int > 119)
             {
                 Xcc = 0;
                 Ycc = 0;
@@ -470,12 +504,20 @@ switch (res)
                 Ycontrol->value(0);
                 Ygroup->deactivate();
                 Ycontrol->deactivate();
+                errorlabel("CC must be less than 120");
             }
             else
             {
                 Xgroup->activate();
                 Xcontrol->value(value_int);
                 Ycontrol->activate();
+
+                if (synth->getGuiMaster()->partmax < NUM_MIDI_CHANNELS * 2)
+                {
+                    synth->getGuiMaster()->maxparts->value(NUM_MIDI_CHANNELS * 2);
+                    synth->getGuiMaster()->maxparts->do_callback();
+                    synth->getGuiMaster()->Panelsmallgroups->show();
+                }
             }
             break;
 
@@ -493,23 +535,26 @@ switch (res)
             break;
 
         case VECTOR::control::Ycontroller:
-            if (synth->getGuiMaster()->partmax < NUM_MIDI_CHANNELS * 4)
-            {
-                synth->getGuiMaster()->maxparts->value(NUM_MIDI_CHANNELS * 4);
-                synth->getGuiMaster()->partmax = NUM_MIDI_CHANNELS * 4;
-                synth->getGuiMaster()->Panelsmallgroups->hide();
-                synth->getGuiMaster()->Panelgroups->show();
-            }
-            if (value_int < 14 || value_int > 119)
+            if (value_int > 119)
             {
                 Ygroup->deactivate();
                 Ycontrol->value(0);
                 Ycc = 0;
+                Ygroup->deactivate();
+                errorlabel("CC must be less than 120");
             }
             else
             {
                 Ygroup->activate();
                 Ycontrol->value(value_int);
+
+                if (synth->getGuiMaster()->partmax < NUM_MIDI_CHANNELS * 4)
+                {
+                    synth->getGuiMaster()->maxparts->value(NUM_MIDI_CHANNELS * 4);
+                    synth->getGuiMaster()->maxparts->do_callback();
+                    synth->getGuiMaster()->Panelsmallgroups->hide();
+                    synth->getGuiMaster()->Panelgroups->show();
+                }
             }
             break;
 
@@ -538,9 +583,7 @@ switch (res)
                 clearVector(parameter);
             break;
     };
-    vectorwindow->redraw();
-
-} {}
+    vectorwindow->redraw();} {}
   }
   Function {setRecent(bool active)} {} {
     code {//
@@ -590,7 +633,7 @@ switch (res)
 
     Loaded->copy_label(loadlabel[BaseChan].c_str());
     setbuttons();
-    if (Xcontrol->value() >= 14)
+    if (Xcontrol->value() > 0)
         Ycontrol->activate();
     else
         Ycontrol->deactivate();} {}
@@ -605,15 +648,14 @@ switch (res)
         setInstrumentLabel(BaseChan + NUM_MIDI_CHANNELS * 2);
         setInstrumentLabel(BaseChan + NUM_MIDI_CHANNELS * 3);
         setbuttons();
-        loadlabel[BaseChan] = synth->getRuntime().vectordata.Name[BaseChan];
     }
     Loaded->copy_label(loadlabel[0].c_str());
     setbasechan->value(1);} {}
   }
   Function {setbuttons()} {} {
     code {//
-    Xcc = synth->getRuntime().vectordata.Xaxis[BaseChan];
-    if (Xcc > 119)
+    Xcc = collect_readData(synth, 0, VECTOR::control::Xcontroller, TOPLEVEL::section::vector, UNUSED, UNUSED, UNUSED, BaseChan);
+    if (Xcc == 0 || Xcc > 119)
     {
         Xcc = 0;
         Xf = 0;
@@ -624,9 +666,10 @@ switch (res)
     }
     else
     {
-        Xf = synth->getRuntime().vectordata.Xfeatures[BaseChan];
+        Xf = collect_readData(synth, 0, VECTOR::control::Xfeature0, TOPLEVEL::section::vector, UNUSED, UNUSED, UNUSED, BaseChan);
         Xgroup->activate();
-        Ycc = synth->getRuntime().vectordata.Yaxis[BaseChan];
+
+        Ycc = collect_readData(synth, 0, VECTOR::control::Ycontroller, TOPLEVEL::section::vector, UNUSED, UNUSED, UNUSED, BaseChan);
         if (Ycc > 119)
         {
             Ycc = 0;
@@ -634,7 +677,7 @@ switch (res)
         }
         else
         {
-            Yf = synth->getRuntime().vectordata.Yfeatures[BaseChan];
+            Yf = collect_readData(synth, 0, VECTOR::control::Yfeature0, TOPLEVEL::section::vector, UNUSED, UNUSED, UNUSED, BaseChan);
             Ygroup->activate();
         }
     }
@@ -768,42 +811,42 @@ switch (res)
 
     vectorwindow->redraw();} {}
   }
-  Function {setInstrumentLabel(int npart)} {} {
+  Function {setInstrumentLabel(int vecPart)} {} {
     code {//
-    if ((npart & 0xf) != BaseChan)
+    if ((vecPart & 0xf) != BaseChan)
         return;
-    int engines = findengines(npart);
+    int engines = findengines(vecPart);
     int addcol = setcolors(engines & 1);
     int subcol = setcolors(engines & 2);
     int padcol = setcolors(engines & 4);
 
-    if (npart == BaseChan)
+    if (vecPart == BaseChan)
     {
         AddBackL->color(addcol);
         SubBackL->color(subcol);
         PadBackL->color(padcol);
-        XinstL->copy_label(synth->part[npart]->Pname.c_str());
+        XinstL->copy_label(findnames(vecPart).c_str());
     }
-    else if (npart == BaseChan + NUM_MIDI_CHANNELS)
+    else if (vecPart == BaseChan + NUM_MIDI_CHANNELS)
     {
         AddBackR->color(addcol);
         SubBackR->color(subcol);
         PadBackR->color(padcol);
-        XinstR->copy_label(synth->part[npart]->Pname.c_str());
+        XinstR->copy_label(findnames(vecPart).c_str());
     }
-    else if (npart == BaseChan + NUM_MIDI_CHANNELS * 2)
+    else if (vecPart == BaseChan + NUM_MIDI_CHANNELS * 2)
     {
         AddBackU->color(addcol);
         SubBackU->color(subcol);
         PadBackU->color(padcol);
-        YinstU->copy_label(synth->part[npart]->Pname.c_str());
+        YinstU->copy_label(findnames(vecPart).c_str());
     }
-    else if (npart == BaseChan + NUM_MIDI_CHANNELS * 3)
+    else if (vecPart == BaseChan + NUM_MIDI_CHANNELS * 3)
     {
         AddBackD->color(addcol);
         SubBackD->color(subcol);
         PadBackD->color(padcol);
-        YinstD->copy_label(synth->part[npart]->Pname.c_str());
+        YinstD->copy_label(findnames(vecPart).c_str());
     }
     vectorwindow->redraw();
     Loaded->copy_label(loadlabel[BaseChan].c_str());} {}
@@ -815,21 +858,17 @@ switch (res)
     setbasechan->value(BaseChan + 1);
     updateAll(false);} {}
   }
-  Function {findengines(int npart)} {return_type {unsigned int}
+  Function {findnames(int vecPart)} {return_type string
   } {
     code {//
-    unsigned int engine = 0;
-
-    for (int i = 0; i < NUM_KIT_ITEMS; ++i)
-    {
-        if (synth->part[npart]->kit[i].Padenabled)
-            engine |= 1;
-        if (synth->part[npart]->kit[i].Psubenabled)
-            engine |= 2;
-        if (synth->part[npart]->kit[i].Ppadenabled)
-            engine |= 4;
-    }
-    return engine;} {}
+        return textMsgBuffer.fetch(collect_readData(synth, 0, PART::control::instrumentName, vecPart, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, TOPLEVEL::action::lowPrio));
+        ;} {}
+  }
+  Function {findengines(int vecPart)} {return_type {unsigned int}
+  } {
+    code {//
+        return collect_readData(synth, 0, PART::control::instrumentEngines, vecPart);
+        ;} {}
   }
   Function {setcolors(int engine)} {return_type int
   } {
