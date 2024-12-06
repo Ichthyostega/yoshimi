@@ -28,11 +28,13 @@ Build-Depends:
  libxext-dev,
  lv2-dev,
  pkg-config,
+ libjpeg-dev,
+ libxinerama-dev,
+ libxft-dev,
  sharutils,
  zlib1g-dev,
-Standards-Version: 4.6.2
-Rules-Requires-Root: no
-Vcs-Git: https://github.com/Ichthyostega/yoshimi.git -b deb
+Standards-Version: 4.3.0
+Vcs-Git: https://github.com/Ichthyostega/yoshimi.git
 Homepage: https://yoshimi.github.io
 
 Package: yoshimi
