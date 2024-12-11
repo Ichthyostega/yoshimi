@@ -103,6 +103,9 @@ using ushort = unsigned short;
 
 // these were previously (pointlessly) user configurable
 #define NUM_VOICES 8
+// Maximum in the UI is 50, but 64 unison size can happen for PWM
+// modulation. See ADnote.cpp for details.
+#define MAX_UNISON 64
 #define POLYPHONY 60 // per part!
 #define PART_DEFAULT_LIMIT 20
 #define NUM_SYS_EFX 4
@@ -492,7 +495,7 @@ namespace MIDI // usage MIDI::control::noteOn
         pitchWheelAdjusted = 128,
         channelPressureAdjusted,
         keyPressureAdjusted,
-        soloType,
+        soloType, // also in MAIN section
         soloCC,
 
         // the following are generated internally for MIDI-learn and
@@ -572,7 +575,8 @@ namespace MAIN // usage MAIN::control::volume
         bpmFallback,
         reseed = 40,
         soloType = 48,
-        soloCC,
+        soloCC, // also in CC section
+        knownCCtest, // not just one number!
 
         exportBank = 60, // some of these should be in 'bank'
         importBank,
@@ -696,8 +700,8 @@ namespace PART // usage PART::control::volume
         midiResonanceCenter,
         midiResonanceBandwidth,
     // end of midi controls
-
-        instrumentCopyright = 220,
+        instrumentEngines = 219,
+        instrumentCopyright,
         instrumentComments,
         instrumentName,
         instrumentType,

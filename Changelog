@@ -1,4 +1,81 @@
-yoshimi 2.3.3.1
+yoshimi 2.3.3.2
+
+2024-12-03 Will
+bn 2372
+Merged in further improvements from Hermamm.
+Set bugfix release version 2.3.3.2
+
+2024-12-02 Will
+bn 2371
+BugFix: Startup fails on pristine installs.
+
+2024-11-30 Will
+bn 2370
+BugFix: Not clearing 'old' config status unless change made.
+Minor corrections to HTML User Guide.
+
+
+2024-11-20 Will
+bn 2369
+BugFix: Loading a preset via the CLI not checking file
+exists so might crash.
+Minor adjustment to TextLists.cpp
+
+2024-11-15 Will
+bn 2368
+Resolved further MasterUI/VectorUI inconsistencies.
+Resolved more direct calls in MasterUI and MiscMasterUI.
+Updated HTML Control Data.
+
+2024-11-13 Will
+bn 2367
+Further work on interaction between MasterUI and VectorUI.
+    Still a few anomalies regarding number of parts :(
+
+2024-11-12 Will
+bn 2366
+Added formal method of testing CCs against known ones.
+Enabled reading vector X & Y features as groups.
+Resolved 2 overlooked direct calls in VectorUI.
+Updated HTML Control Data.
+
+2024-11-10 Will
+bn 2365
+Implimented new part control to discover active engines.
+    Used by VectorUI, PartUI, Master()
+VectorUI no longer makes direct calls into the synth.
+Updated HTML Control Data
+
+Established full sync between Main window and Vectors.
+
+2024-11-8 Will
+bn 2364
+BugFix: Main and Panel windows getting out of sync.
+Removed GUI 'active part' and instead kept npart in sync.
+    Mostly in sync now, but Vector control not correct.
+
+2024-11-6 Will
+bn 2363
+Minor doc updates.
+
+2024-11-2 Will
+bn 2363
+Parts only respond to MIDI CC input if enabled.
+    However the MIDI GUI may still respond as it is set at
+    channel level before part selection.
+Ensure manual search gets most recent version.
+Doc Updates
+
+
+2024-10-1 Will
+bn 2362
+Created 'non-install_README' and 'copydocs.sh' to give
+self-builders wanting to run without installing the means
+to get docs and banks in a place Yoshimi can find them.
+
+2024-10-10 Will
+bn 2361
+Commented out manual search in 'home' directory.
 
 2024-9-25 Will + Hermann
 bn 2360

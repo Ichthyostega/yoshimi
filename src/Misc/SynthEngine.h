@@ -72,8 +72,6 @@ class SynthEngine
         const uint uniqueId;
         Config Runtime;
 
-        GuiDataExchange::Connection<InterfaceAnchor> rootCon;
-
     public:
         Bank bank;
         InterChange interchange;
@@ -81,10 +79,10 @@ class SynthEngine
         MidiDecode mididecode;
         Vectors vectorcontrol;
 
+    public:
         Config& getRuntime()     {return Runtime;}
         uint getUniqueId() const {return uniqueId;}
 
-    public:
         SynthEngine(uint instanceID);
        ~SynthEngine();
         // shall not be copied nor moved
@@ -94,7 +92,7 @@ class SynthEngine
         SynthEngine& operator=(SynthEngine const&) = delete;
 
         bool Init(uint audiosrate, int audiobufsize);
-        void publishGuiAnchor();
+        InterfaceAnchor buildGuiAnchor();
         void postBootHook(bool);
 
         bool savePatchesXML(string filename);
