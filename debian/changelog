@@ -1,3 +1,14 @@
+yoshimi (2.3.3.2-1) UNRELEASED; urgency=medium
+
+  * New upstream version 2.3.3.2
+  * Update copyright information
+    + Update d/copyright
+    + exclude another binary file from licensecheck
+    + Re-generate d/copyright_hints
+  * Apply 'wrap-and-sort -ast'
+
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Wed, 11 Dec 2024 22:04:42 +0100
+
 yoshimi (2.3.3.1-1) unstable; urgency=medium
 
   * New upstream version 2.3.3.1
