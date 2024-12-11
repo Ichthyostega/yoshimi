@@ -78,7 +78,7 @@ License: LGPL-2+
 Files: src/UI/ParametersUI.fl
        src/UI/VectorUI.fl
 Copyright: 2011, Alan Calvert
-           2014-2023, Will Godfrey
+           2014-2024, Will Godfrey
 License: GPL-3+
 
 Files: banks/Drums/0004-Natural?Drum?Kit.xiz
@@ -96,11 +96,11 @@ Copyright: Nasca Octavian Paul
 License: GPL-2+
 
 Files: doc/The?Short?Yoshimi?Guide.odt
-Copyright: 2017-2023, Will J Godfrey
+Copyright: 2017-2024, Will J Godfrey
 License: CC-BY-SA-4.0
 
 Files: doc/yoshimi_user_guide/*
-Copyright: 2021-2023, Kristian Amlie, Will Godfrey, Art Horan, John Murphy, Lorenzo Sutton, Hermann Voßeler.
+Copyright: 2021-2024, Kristian Amlie, Will Godfrey, Art Horan, John Murphy, Lorenzo Sutton, Hermann Voßeler.
 License: CC-BY-SA-4.0
 
 Files: src/Misc/Config.cpp
@@ -114,6 +114,32 @@ Copyright: 2009-2011, Alan Calvert
            2013, Nikita Zlobin
            2014-2024, Will Godfrey & others
 License: GPL-2+ or LGPL-2+
+
+Files: dev_notes/GuiDataExchangeTest.cpp
+       src/Interface/GuiDataExchange.cpp
+       src/Interface/GuiDataExchange.h
+       src/Interface/InterfaceAnchor.h
+       src/Misc/Alloc.h
+       src/Misc/BuildScheduler.h
+       src/Misc/DataBlockBuff.h
+       src/Misc/Hash.h
+       src/Misc/MirrorData.h
+       src/Misc/TestInvoker.h
+       src/Misc/TestSequence.h
+       src/Misc/Util.h
+       src/Params/PADStatus.h
+       src/Params/RandomWalk.h
+       src/Synth/XFadeManager.h
+Copyright: 2021-2024, Ichthyostega
+License: GPL-2+
+
+Files: src/Misc/InstanceManager.cpp
+ src/Misc/InstanceManager.h
+ src/main.cpp
+Copyright: 2009-2011, Alan Calvert
+  2014-2024, Will Godfrey & others
+  2024, Ichthyostega
+License: GPL-2+
 
 Files: Util/YoshimiSplash.svg
 Copyright: 2006, Arun Kulshreshtha
@@ -132,7 +158,7 @@ Files: debian/*
 Copyright: 2010-2011, Alessio Treglia <alessio@debian.org>
            2010-2017, Jaromír Mikeš <mira.mikes@seznam.cz>
            2019, Olivier Humbert <trebmuh@tuxfamily.org>
-           2018-2023, IOhannes m zmölnig <umlaeute@debian.org>
+           2018-2024, IOhannes m zmölnig <umlaeute@debian.org>
            2020-2024, Dennis Braun <snd@debian.org>
 License: GPL-2+
 
