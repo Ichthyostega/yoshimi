@@ -267,8 +267,10 @@ class PartKitItem {: {public Fl_Group}
   }
   Function {send_data(int action, int control, float value, int type, int kititem = UNUSED, int engine = UNUSED, int insert = UNUSED, int parameter = UNUSED, int miscmsg = UNUSED)} {} {
     code {//
+        int partToUse = collect_readData(synth, 0, MAIN::control::partNumber, TOPLEVEL::main, kititem); // make sure it's the right one!
         type |= TOPLEVEL::type::Write;
-        collect_writeData(synth, value, action, type, control, synth->getRuntime().currentPart, kititem, engine, insert, parameter, UNUSED, miscmsg);} {}
+        collect_writeData(synth, value, action, type, control, partToUse, kititem, engine, insert, parameter, UNUSED, miscmsg);
+        ;} {}
   }
   Function {PartKitItem(int x,int y, int w, int h, const char *label=0):Fl_Group(x,y,w,h,label)} {} {
     code {//
@@ -716,7 +718,7 @@ class PartUI {: {public Fl_Group, PartUI_}
       } {
         Fl_Group inseffectui {
           xywh {5 38 379 95}
-          code0 {InterfaceAnchor& anchor = synth->getGuiMaster()->anchor.get();
+          code0 {InterfaceAnchor& anchor = synth->getGuiMaster()->anchor;
                  o->init(synth, anchor.partEffectParam, anchor.partEffectEQ, npart);}
           class EffUI
         } {}
@@ -2236,23 +2238,11 @@ class PartUI {: {public Fl_Group, PartUI_}
         padeditbutton->deactivate();
         padbox->color(FL_BACKGROUND_COLOR);
     }
-    for (int i = 1; i < NUM_KIT_ITEMS; ++i)
-    {
-        if (part->kit[i].Penabled)
-        { // nested so we don't access non existent
-            if (part->kit[i].Pmuted == 0)
-            {
-                engine |= part->kit[i].Padenabled;
-                engine |= (part->kit[i].Psubenabled << 1);
-                engine |= (part->kit[i].Ppadenabled << 2);
-            }
-        }
-    }
+    engine = collect_readData(synth, 0, PART::control::instrumentEngines, npart);
     synth->getGuiMaster()->updateEngines(engine, instrumentName);} {}
   }
   Function {showparameters(int kititem, int engine)} {} {
     code {//
-    string tname;
     kitname = part->kit[kititem].Pname;
     if (engine == -1)
     {   // this is used if I want to clear the engine from the part

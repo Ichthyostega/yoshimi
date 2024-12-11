@@ -104,7 +104,6 @@ namespace { // Global implementation internal history data
 SynthEngine::SynthEngine(uint instanceID)
     : uniqueId{instanceID}
     , Runtime{*this}
-    , rootCon{interchange.guiDataExchange.createConnection<InterfaceAnchor>()}
     , bank{this}
     , interchange{*this}
     , midilearn{*this}
@@ -379,13 +378,6 @@ bool SynthEngine::Init(uint audiosrate, int audiobufsize)
         goto bail_out;
     }
 
-#ifdef GUI_FLTK
-    // Init the Gui-Data-Exchange
-    if (Runtime.showGui)
-        publishGuiAnchor();
-#endif
-
-
     // we seem to need this here only for first time startup :(
     bank.setCurrentBankID(Runtime.tempBank, false);
     return true;
@@ -426,7 +418,7 @@ bail_out:
  * where it typically is the very first message, since this function is
  * invoked from SynthEngine::Init().
  */
-void SynthEngine::publishGuiAnchor()
+InterfaceAnchor SynthEngine::buildGuiAnchor()
 {
     InterfaceAnchor anchorRecord;
     anchorRecord.synth = this;
@@ -440,8 +432,7 @@ void SynthEngine::publishGuiAnchor()
     anchorRecord.partEffectParam = partEffectUiCon;
     anchorRecord.partEffectEQ    = partEqGraphUiCon;
 
-    // bootstrap message picked up when event-thread creates MasterUI
-    rootCon.publish(anchorRecord);
+    return anchorRecord;
 }
 
 
@@ -889,8 +880,8 @@ void SynthEngine::SetController(uchar chan, int CCtype, short int par)
 
 
     for (int npart = minPart; npart < maxPart; ++ npart)
-    {   // Send the controller to all part assigned to the channel
-        if (part[npart]->Prcvchn == chan)
+    {   // Send the controller to all enabled parts assigned to the channel
+        if (part[npart]->Prcvchn == chan && part[npart]->Penabled == 1)
         {
             if (CCtype == part[npart]->PbreathControl) // breath
             {
@@ -921,8 +912,8 @@ void SynthEngine::SetZynControls(bool in_place)
      * NRPN LSB effect number
      * Data MSB param to change
      * if | 64 LSB sets eff type
-     * for insert effect only | 96 LSB sets destination
-     * for system only &3 sets destination LSB value
+     * for insert effect only, | 96 LSB sets destination
+     * for system only, &3 sets destination LSB value
      *
      * Data LSB param value
      */
@@ -1403,7 +1394,7 @@ bool SynthEngine::SingleVector(list<string>& msg_buf, int chan)
     if (Xfeatures == 0)
         Xtext = "No Features :(";
     else
-    {
+    { // build a text list of the enabled 'X' features
         if (Xfeatures & 1)
             Xtext += " 1";
         if (Xfeatures & 2)
@@ -1427,7 +1418,7 @@ bool SynthEngine::SingleVector(list<string>& msg_buf, int chan)
         if (Yfeatures == 0)
             Ytext = "No Features :(";
         else
-        {
+        { // build a text list of the enabled 'Y' features
             if (Yfeatures & 1)
                 Ytext += " 1";
             if (Yfeatures & 2)
