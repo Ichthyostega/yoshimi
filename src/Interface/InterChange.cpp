@@ -3,8 +3,8 @@
 
     Copyright 2016-2019, Will Godfrey & others
     Copyright 2020-2020, Kristian Amlie, Will Godfrey, & others
-    Copyright 2021, Will Godfrey, Rainer Hans Liffers, & others
-    Copyright 2023 - 2024, Will Godfrey, Ichthyostega & others
+    Copyright 2021 Will Godfrey, Rainer Hans Liffers, & others
+    Copyright 2023-2025, Will Godfrey, Ichthyostega & others
 
     This file is part of yoshimi, which is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
@@ -861,10 +861,8 @@ int InterChange::indirectMain(CommandBlock& cmd, uchar &newMsg, bool &guiTo, str
             if (synth.loadStateAndUpdate(text))
             {
                 text = setExtension(text, EXTEN::state);
-                string name = file::configDir() + string(YOSHIMI);
-                name += ("-" + to_string(synth.getUniqueId()));
-                name += ".state";
-                if ((text != name)) // never include default state
+                string defaultName = synth.getRuntime().defaultSession;
+                if ((text != defaultName)) // never include default state
                     synth.addHistory(text, TOPLEVEL::XML::State);
                 text = "ed " + text;
             }
@@ -878,10 +876,8 @@ int InterChange::indirectMain(CommandBlock& cmd, uchar &newMsg, bool &guiTo, str
             string filename = setExtension(text, EXTEN::state);
             if (synth.saveState(filename))
             {
-                string name = file::configDir() + string(YOSHIMI);
-                name += ("-" + to_string(synth.getUniqueId()));
-                name += ".state";
-                if ((text != name)) // never include default state
+                string defaultName = synth.getRuntime().defaultSession;
+                if ((text != defaultName)) // never include default state
                     synth.addHistory(filename, TOPLEVEL::XML::State);
                 text = "d " + text;
             }
@@ -1840,7 +1836,10 @@ void InterChange::resolveReplies(CommandBlock& cmd)
     }
 
     if (source != TOPLEVEL::action::fromMIDI && !setUndo)
+    {
+        //synth.getRuntime().Log(resolveAll(synth, cmd, _SYS_::LogNotSerious) + ": Ctl " + to_string(int(cmd.data.control)));
         synth.getRuntime().Log(resolveAll(synth, cmd, _SYS_::LogNotSerious));
+    }
 
     if (source == TOPLEVEL::action::fromCLI)
         synth.getRuntime().finishedCLI = true;
@@ -1853,6 +1852,8 @@ void InterChange::generateSpecialInstrument(int npart, string name)
     assert(npart < NUM_MIDI_PARTS);
     Part& part{*synth.part[npart]};
     part.Pname = name;
+    part.info.Ptype = 17; // Warm Pad
+    part.info.Pauthor = "Yoshimi Team\nGPL V2 or later";
     part.partefx[0]->changeeffect(1);
     part.kit[0].Padenabled = false;
     part.kit[0].Psubenabled = true;
@@ -1862,8 +1863,6 @@ void InterChange::generateSpecialInstrument(int npart, string name)
     pars.Phmag[2] = 40;
     pars.Pbandwidth = 60;
 }
-
-
 
 /**********************************************************************************//**
  * Core operation : retrieve, evaluate and forward command messages.
@@ -1994,6 +1993,19 @@ void InterChange::returns(CommandBlock& cmd)
     if ((cmd.data.source & TOPLEVEL::action::noAction) == TOPLEVEL::action::noAction)
         return; // no further action
 
+#ifndef YOSHIMI_LV2_PLUGIN
+    uchar npart = cmd.data.part;
+    if (npart == TOPLEVEL::section::display)
+    {
+        /*
+         * This will write directly into toGUI where the value in 'offset' will be
+         * used as the section number in place of 'display' so the correct section
+         * is identified for opening, closing, resizing etc.
+         */
+        manageDisplay(cmd);
+        return;
+    }
+#endif
     if (cmd.data.source < TOPLEVEL::action::lowPrio)
     { // currently only used by gui. this may change!
 #ifdef GUI_FLTK
@@ -2044,13 +2056,16 @@ void InterChange::doClearPartInstrument(int npart)
 
 bool InterChange::commandSend(CommandBlock& cmd)
 {
+    uchar npart = cmd.data.part;
+    if (npart == TOPLEVEL::section::display)
+        return true; // no data change, just GUI display issues
+
     bool isChanged = commandSendReal(cmd);
     bool isWrite = (cmd.data.type & TOPLEVEL::type::Write) > 0;
     if (isWrite && isChanged) // write command
     {
         synth.setNeedsSaving(true);
         uchar control = cmd.data.control;
-        uchar npart   = cmd.data.part;
         uchar insert  = cmd.data.insert;
         if (npart < NUM_MIDI_PARTS && (insert != UNUSED || (control != PART::control::enable && control != PART::control::instrumentName)))
         {
@@ -3633,7 +3648,18 @@ void InterChange::commandMain(CommandBlock& cmd)
                     value = synth.VUdata.values.vuRmsPeakL;
             }
             break;
-
+        case MAIN::control::setTestInstrument:
+            if (write)
+            {
+                generateSpecialInstrument(value_int, "test subsynth");
+                synth.getRuntime().currentPart = value;
+                 // make sure it's on
+                synth.partonoffWrite(value_int,1);
+                // fake a part number change to update GUI and CLI
+                cmd.data.control = MAIN::control::partNumber;
+                synth.pushEffectUpdate(value_int);
+            }
+            break;
         case TOPLEVEL::control::textMessage:
             cmd.data.source = TOPLEVEL::action::noAction;
             break;
@@ -7517,6 +7543,34 @@ void InterChange::undoLast(CommandBlock& candidate)
         setRedo = false;
         source->pop_back();
     }
+}
+
+
+void InterChange::manageDisplay(CommandBlock& cmd)
+{
+    if (!synth.getRuntime().showGui)
+    {
+        synth.getRuntime().Log("Graphic display not enabled");
+        return;
+    }
+    int section = cmd.data.offset;
+    synth.CBtest(&cmd);
+    synth.getRuntime().Log("Found display control (in progress)");
+    if (section <= TOPLEVEL::section::part64)
+    {
+        if (!synth.partonoffRead(section))
+            synth.getRuntime().Log("Current part disabled");
+        else
+        {
+            synth.getRuntime().Log("Seen part "+to_string(section));
+        }
+
+    }
+    else
+    {
+        synth.getRuntime().Log("Unrecognised section");
+    }
+    return;
 }
 
 
