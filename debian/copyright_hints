@@ -25,9 +25,15 @@ Files: CHECK_ON_RELEASE
  banks/Choir_and_Voice/.bankdir
  banks/Cormi_Sound/.bankdir
  banks/Drums/.bankdir
+ banks/Drums/0022-Big_Drum.xiy
  banks/Drums/0023-synTaiko.xiy
+ banks/Drums/0054-Tambourine-01.xiy
  banks/Drums/0069-rimshot lite.xiy
+ banks/Drums/0086-tambourine tap.xiy
+ banks/Drums/0087-tambourine shake.xiy
+ banks/Drums/0088-tambourine shakes.xiy
  banks/Drums/0100-Tom Toms.xiy
+ banks/Drums/0111-pipe_hit.xiy
  banks/Drums/0123-Hugh's Kit.xiy
  banks/Dual/.bankdir
  banks/Fantasy/.bankdir
@@ -40,12 +46,18 @@ Files: CHECK_ON_RELEASE
  banks/Noises/.bankdir
  banks/Organ/.bankdir
  banks/Pads/.bankdir
+ banks/Pads/0075-fm_sweep_01.xiy
  banks/Plucked/.bankdir
  banks/Reed_and_Wind/.bankdir
  banks/Reed_and_Wind/0071-Dooo Flute.xiy
  banks/Rhodes/.bankdir
  banks/Splited/.bankdir
  banks/Strings/.bankdir
+ banks/Strings/0085-Vintage_Strings_01.xiy
+ banks/Strings/0086-Vintage_Strings_low_01.xiy
+ banks/Strings/0087-Vintage_Strings_02.xiy
+ banks/Strings/0088-Vintage_Strings_03.xiy
+ banks/Strings/0089-Vintage_Strings_04.xiy
  banks/Strings/0097-Smooth Strings.xiy
  banks/Strings/0098-Antique Strings.xiy
  banks/Synth/.bankdir
@@ -70,6 +82,7 @@ Files: CHECK_ON_RELEASE
  dev_notes/1st_ReadMe.txt
  dev_notes/Automated_Testing_Support.txt
  dev_notes/CLI_zread
+ dev_notes/CLI_zset
  dev_notes/ControlModel.pdf
  dev_notes/Control_Block_Test.txt
  dev_notes/Default_Maths.txt
@@ -108,6 +121,7 @@ Files: CHECK_ON_RELEASE
  dev_notes/Yoshimi Control Data/Sections/addvoice.html
  dev_notes/Yoshimi Control Data/Sections/bank.html
  dev_notes/Yoshimi Control Data/Sections/config.html
+ dev_notes/Yoshimi Control Data/Sections/display.html
  dev_notes/Yoshimi Control Data/Sections/effect.html
  dev_notes/Yoshimi Control Data/Sections/envelopeinsert.html
  dev_notes/Yoshimi Control Data/Sections/filterinsert.html
@@ -642,7 +656,7 @@ License: GPL-2+
 
 Files: src/Interface/TextLists.cpp
 Copyright: 2019-2023, Will Godfrey
-  2024, Kristian Amlie, Will Godfrey
+  2024-2025, Kristian Amlie, Will Godfrey
   <s>", "sets the instrument copyright message",
   as default",
 License: GPL-2+
@@ -963,7 +977,7 @@ Files: src/Interface/InterChange.cpp
 Copyright: 2016-2019, Will Godfrey & others
   2020, Kristian Amlie, Will Godfrey, & others
   2021, Will Godfrey, Rainer Hans Liffers, & others
-  2023-2024, Will Godfrey, Ichthyostega & others
+  2023-2025, Will Godfrey, Ichthyostega & others
   done elsewhere
   if (write)
   string name = file::configDir() + "/copyright.txt";
@@ -998,7 +1012,7 @@ License: GPL-2+
 Files: src/Interface/InterChange.h
 Copyright: 2016-2020, Will Godfrey
   2021, Will Godfrey, Rainer Hans Liffers
-  2022, Will Godfrey & others
+  2022-2025, Will Godfrey & others
 License: GPL-2+
  FIXME
 
@@ -1053,6 +1067,11 @@ License: UNKNOWN
 Files: desktop/metainfo/yoshimi.metainfo.xml
 Copyright: 2002-2009, Nasca Octavian Paul), development of Yoshimi has continued for quite a while now in its own direction. Originally these included major optimizations for audio and MIDI performance. More recently there has been progressive development of user-level access to all controls, including command line access. Since V1.5.0 there is full Midi Learn capability.
   2016-2024, Yoshimi project <willgodfrey@musically.me.uk> -->
+License: UNKNOWN
+ FIXME
+
+Files: doc/examples/themes/photon.clr
+Copyright: 2025, Tillman Jex (www.tjex.net)
 License: UNKNOWN
  FIXME
 
