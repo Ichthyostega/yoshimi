@@ -117,17 +117,14 @@ class SynthEngine
 
         bool getfromXML(XMLwrapper& xml);
 
-        int getalldata(char **data);
-        void putalldata(const char *data, int size);
-
         void NoteOn(uchar chan, uchar note, uchar velocity);
         void NoteOff(uchar chan, uchar note);
         int RunChannelSwitch(uchar chan, int value);
         void SetController(uchar chan, int CCtype, short int par);
         void SetZynControls(bool in_place);
-        int setRootBank(int root, int bank, bool notinplace = true);
+        int setRootBank(int root, int bank, bool inplace = false);
         int setProgramByName(CommandBlock&);
-        int setProgramFromBank(CommandBlock&, bool notinplace = true);
+        int setProgramFromBank(CommandBlock&, bool inplace = false);
         bool setProgram(string const& fname, int npart);
         int ReadBankRoot();
         int ReadBank();
@@ -164,7 +161,6 @@ class SynthEngine
 
         bool masterMono;
         bool fileCompatible;
-        bool usingYoshiType;
 
         float getLimits(CommandBlock *getData);
         float getVectorLimits(CommandBlock *getData);

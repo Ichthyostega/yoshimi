@@ -1,0 +1,198 @@
+<!DOCTYPE html><html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <title>Window Display</title>
+  <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+
+<body>
+  <table>
+    <thead>
+      <tr>
+        <th>DISPLAY::control:: +</th>
+        <th>value</th>
+        <th>control</th>
+        <th>part /<br>section</th>
+        <th>kit</th>
+        <th>engine</th>
+        <th>insert</th>
+        <th>parameter<br>base ch</th>
+        <th>offset</th>
+        <th>miscmsg</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>hide</td>
+        <td>~ ~</td>
+        <td>0</td>
+        <td>all</td>
+        <td>0~15</td>
+        <td>all</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>msg No.</td>
+        <td>Hide window</td>
+      </tr>
+      <tr>
+        <td>show</td>
+        <td>~ ~</td>
+        <td>1</td>
+        <td>all</td>
+        <td>0~15</td>
+        <td>all</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Show window</td>
+      </tr>
+      <tr>
+        <td>xposition</td>
+        <td>0~max</td>
+        <td>2</td>
+        <td>all</td>
+        <td>0~15</td>
+        <td>all</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Window horizontal position<br> 0 to max width - window width</td>
+      </tr>
+      <tr>
+        <td>yposition</td>
+        <td>0~max</td>
+        <td>3</td>
+        <td>all</td>
+        <td>0~15</td>
+        <td>all</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Window vertical position<br>0 to max height - window height</td>
+      </tr>
+      <tr>
+        <td>width</td>
+        <td>~ ~</td>
+        <td>4</td>
+        <td>all</td>
+        <td>0~15</td>
+        <td>all</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Window width (will rescale height)<br>max width - xposition - min window width<br>max height - yposition - min window height</td>
+      </tr>
+      <tr>
+        <td>height</td>
+        <td>~ ~</td>
+        <td>5</td>
+        <td>all</td>
+        <td>0~15</td>
+        <td>all</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Window height (will rescale width)<br>max width - xposition - min window width<br>max height - yposition - min window height</td>
+      </tr>
+      <tr>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>select</td>
+        <td>~ ~</td>
+        <td>6</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td>Make list selection the current theme</td>
+      </tr>
+      <tr>
+        <td>copy</td>
+        <td>~ ~</td>
+        <td>7</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td>Copy the selected them to one with a different name</td>
+      </tr>
+      <tr>
+        <td>rename</td>
+        <td>~ ~</td>
+        <td>8</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td>Rename the selected theme</td>
+      </tr>
+      <tr>
+        <td>delete</td>
+        <td>~ ~</td>
+        <td>9</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td>remove the selected theme from the list</td>
+      </tr>
+      <tr>
+        <td>import</td>
+        <td>~ ~</td>
+        <td>10</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td>Import an external them file</td>
+      </tr>
+      <tr>
+        <td>export</td>
+        <td>~ ~</td>
+        <td>11</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td>Export the selected theme to an external file</td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>

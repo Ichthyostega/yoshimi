@@ -1,4 +1,71 @@
-yoshimi 2.3.3.2
+yoshimi 2.3.3.3
+
+2025-2-26 Will
+bn 2382
+Added tooltip to main window menu bar.
+Set bugfix release to 2.3.3.3
+Added canaries (currently disabled)
+    YoshimiLV2Pligin.cpp
+        lines 293 - 298, 634
+    Interchange.cpp
+        line 1840
+
+2025-2-7 Will
+bn 2381
+BugFix: Cmake failing on Suse building.
+
+2025-2-3 Will
+bn 2380
+Merged in LV2 updates from Kristian
+BugFix: Reports destination changes not being saved.
+
+2025-2-2 Will
+bn 2379
+Display labels defined in TextLists, global.h and
+    described in Control Data
+
+2025-1-23 Will
+bn 2378
+Further work on new Display controls
+    Currently only stand-alone and accessible from zread.
+    Now checks for GUI enabled, and valid part level.
+
+2025-1-21 Will
+bn 2377
+Renamed new Geometry section to Display.
+Added theme control placeholder values.
+Implemented mininum controls to report skeleton use
+    in interchange.cpp
+Partially updated Control Data entries.
+
+2025-1-14 Will
+bn 2376
+Installed placeholder for new Window Geometry code.
+Added new bank entries to Drums and Pads.
+Further adjustments to textlists.cpp
+
+2025-1-3 Will
+bn 2375
+Cleanups and consistency adjustments to textlists.cpp.
+
+2025-1-3 Will
+bn 2374
+Bugfix: formant filter graph - wrong response to R mouse click.
+Bugfix: formant filter graph - wrong response to mouse wheel.
+
+2024-12-30 Will
+Minor code cleanups - removal of redundant code
+dev_notes updates and corrections.
+
+2024-12-27 Will
+bn 2373
+Changed Main window instrument display format to Bold.
+Saving a Bank Root can now create a new directory on the fly.
+New CLI test entry 'zset' creates a SubSynth instrument.
+CLI test entry'zread' formalised.
+Updated min. cmake to 2.12
+Updated dev_notes.
+Updated HTML Control Data.
 
 2024-12-03 Will
 bn 2372

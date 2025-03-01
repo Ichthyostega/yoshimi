@@ -2,7 +2,7 @@
     TextLists.h
 
     Copyright 2019-2023, Will Godfrey
-    Copyright 2024, Kristian Amlie, Will Godfrey
+    Copyright 2024-2025, Kristian Amlie, Will Godfrey
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -59,13 +59,13 @@ std::string toplist [] = {
     "REMove",                   "remove paths, files and entries",
     "  Root <n>",               "de-list root path ID",
     "  Bank <n1> [s <n2>]",     "delete bank ID n1 (and all instruments) from current root (or 'Root' n2)",
-    "  INstrument <n>",         "delete instrument from slot (n) in current bank",
+    "  INstrument <n>",         "delete instrument from slot n in current bank",
     "  YOshimi <n>",            "close instance ID",
     "  MLearn <s> [n]",         "delete midi learned 'ALL' whole list, or '@'(n) line",
     "Set/Read/MLearn",          "manage all main parameters",
     "MINimum/MAXimum/DEFault",  "find ranges",
-    "  Part ...",               "enter context level",
-    "  VEctor ...",             "enter context level",
+    "  Part [n] ...",           "enter context level at part n",
+    "  VEctor [n] ...",         "enter context level at vector n",
     "  SCale ...",              "enter context level",
     "  MLearn ...",             "enter editor context level",
     "  Bank ...",               "enter context level",
@@ -73,13 +73,13 @@ std::string toplist [] = {
     "  TESt ...",               "launch test calculations (for developers)",
     "  YOshimi <n>",            "read current instance or change to n",
     "  MONo <s>",               "main output mono/stereo (ON = mono, {other})",
-    "  SYStem effects [n]",     "enter effects context level",
+    "  SYStem effects [n]",     "enter effects context level Optionally to n.",
     "    <ON/OFF>",             "non-destructively enables/disables the effect",
     "    SEnd <n1> <n2>",       "send system effect to effect n1 at volume n2",
     "    (effect) <s>",         "the effect type",
     "    PREset <n>",           "set numbered effect preset to n",
     "    -- ",                  "effect dependent controls",
-    "  INSert effects [n1]",    "enter effects context level",
+    "  INSert effects [n1]",    "enter effects context level Optionally to n.",
     "    SEnd <s>/<n>",         "set where (Master, OFF or part number)",
     "    (effect) <s>",         "the effect type",
     "    PREset <n>",           "set numbered effect preset to n",
@@ -90,9 +90,21 @@ std::string toplist [] = {
     "  SHift <n>",              "master key shift semitones (0 no shift)",
     "  BPM <n>",                "default BPM if none from MIDI",
     "  DEtune <n>",             "master fine detune",
-    "  SOlo [s]",               "channel 'solo' switch type (ROw, COlumn, LOop, TWoway, CHannel {other} off)",
+    "  SOlo <s>",               "channel 'solo' switch type (ROw, COlumn, LOop, TWoway, CHannel {other} off)",
     "  SOlo CC <n>",            "incoming 'solo' CC number (type must be set first)",
     "  CLear <n>",              "restore instrument on part n to default settings",
+    "DISplay",                  "manage graphic display (if enabled)",
+    "  Hide",                   "current window",
+    "  View",                   "window (if enabled)",
+    "  Xposition",              "window (if visible)",
+    "  Yposition",              "window (if visible)",
+    "  SIze",                   "of window (if visible)",
+    "  SElect",                 "from theme list",
+    "  Copy",                   "selected theme",
+    "  Rename",                 "selected theme",
+    "  Delete",                 "selected theme",
+    "  Import",                 "external theme",
+    "  Export",                 "selected theme",
     "UNDo",                     "Revert last control change",
     "REDo",                     "Re-apply last control change",
     "@end","@end"
@@ -158,6 +170,22 @@ std::string banklist [] = {
     "@end","@end"
 };
 
+std::string displaylist [] = {
+    "Hide",         "",
+    "Show",         "",
+    "Xposition",    "horizintal position in pixels",
+    "Yposition",    "vertical position in pixels",
+    "Width",        "width in pixels",
+    "HEight",       "height in pixels",
+    "SElect",       "set the selection as the theme", // theme entries
+    "Copy",         "copy the selection to one with a new name",
+    "Rename",       "change the name of the selection",
+    "Delete",       "remove the selection from the list",
+    "Import",       "import an external theme file",
+    "Export",       "export the selection to an external theme file",
+    "@end","@end"
+};
+
 std::string partlist [] = {
     "<n>",                 "select part number",
     "<ON/OFF>",            "enables/disables the part",
@@ -184,22 +212,25 @@ std::string partlist [] = {
     "TYPe <s>",            "sets the instrument type",
     "COPyright <s>",       "sets the instrument copyright message",
     "INFo <s>",            "fills the comments info entry",
-    "Humanise Pitch [n]",  "adds a small random pitch change at note_on",
-    "Humanise Velocity [n]",  "adds a small random velocity change at note_on",
+    "Humanise Pitch <n>",  "adds a small random pitch change at note_on",
+    "Humanise Velocity <n>",  "adds a small random velocity change at note_on",
     "CLear [s]",           "sets current instrument level parameters to default.",
     "",                    "ALL, resets the entire part, including controllers etc.",
     "CHannel <n>",         "MIDI channel (> 32 disables, > 16 note off only)",
     "AFtertouch Chan <s1> [s2]", "Off, Filter (Down) + Peak (Down) + Bend (Down) + Modulation + Volume",
     "AFtertouch Key <s1> [s2]",  "Off, Filter (Down) + Peak (Down) + Bend (Down) + Modulation",
     "Destination <s>",     "jack audio destination (Main, Part, Both)",
+    "MUlti",               "set and enter kit mode. Allow item overlaps",
+    "SIngle",              "set and enter kit mode. Lowest numbered item in key range",
+    "CRoss",               "set and enter kit mode. Cross fade pairs",
     "kit mode entries","",
-    "KIT",                 "access controls but don't change type",
+    "KIT",                 "access controls (if already enabled)",
+    "   MUlti",            "change to allow item overlaps",
+    "   SIngle",           "change to lowest numbered item in key range",
+    "   CRoss",            "change to cross fade pairs",
+    "   QUiet <s>",        "silence this item (OFF, {other})",
     "   <n>",              "select kit item number (1-16)",
     "   <ON/OFF>",         "enables/disables the kit item",
-    "   MUlti",            "allow item overlaps",
-    "   SIngle",           "lowest numbered item in key range",
-    "   CRoss",            "cross fade pairs",
-    "   QUiet <s>",        "silence this item (OFF, {other})",
     "   MIn <[s][n]>",     "minimum MIDI note value for this item (Last seen or 0-127)",
     "   MAx <[s][n]>",     "maximum MIDI note value for this item (Last seen or 0-127)",
     "   FUll",             "reset to full key range",
@@ -236,7 +267,7 @@ std::string mcontrollist [] = {
     "PForm <s>",                "whether portamento is from or to (Start / End)",
     "PTime <n>",                "portamento sweep time",
     "PDownup <n>",              "portamento time stretch - down/up ratio",
-    "PProportional <s",         "enables/disables proportional portamento (ON {other})",
+    "PProportional <s>",         "enables/disables proportional portamento (ON {other})",
     "PExtent <n>",              "distance to double change",
     "PRange <n>",               "difference from non proportional",
     "CLear",                    "set all controllers to defaults",
@@ -244,8 +275,8 @@ std::string mcontrollist [] = {
     "E Modulation <n>",         "emulate modulation controller",
     "E Expression <n>",         "emulate expression controller",
     "E BReath <n>",             "emulate breath controller",
-    "E Cutoff <n>",             "emulate filter cutoff controller",
     "E Q <n>",                  "emulate filter Q controller",
+    "E Cutoff <n>",             "emulate filter cutoff controller",
     "E BAndwidth <n>",          "emulate bandwidth controller",
     "@end","@end"
 };
@@ -385,7 +416,7 @@ std::string subsynthlist [] = {
 };
 
 std::string padsynthlist [] = {
-    "<ON/OFF>",                 "enables/disables the part",
+    "<ON/OFF>",                 "enables/disables the SubSynth engine",
     "Apply",                    "use on 1st entry & harmonic changes",
     "Volume <n>",               "volume",
     "Pan <n>",                  "panning position",
@@ -425,7 +456,7 @@ std::string padsynthlist [] = {
 
     "CEnter <n>",               "changes the central harmonic component width",
     "RELative <n>",             "changes central component relative amplitude",
-    "AUto <s>",                 "(ON {other})",
+    "AUto <s>",                 "autoscaling (ON {other})",
 
     "BASe <s>",                 "base profile distribution (C2, G2, C3, G3, C4, G4, C5, G5, G6)",
     "SAmples <n>",              "samples/octave (0.5, 1, 2, 3, 4, 6, 12)",
@@ -465,7 +496,7 @@ std::string  resonancelist [] = {
     "Smooth",              "reduce range and sharpness of peaks",
     "CLear",               "set all points to mid level",
     "POints [<n1> [n2]]",  "show all or set/read n1 to n2",
-    "APply",               "puts latest changes into the wavetable",
+    "APply",               "fix settings (only for PadSynth)",
     "@end","@end"
 };
 
@@ -487,6 +518,8 @@ std::string waveformlist [] = {
     "SPIke","",
     "CIRcle","",
     "HYPersec","",
+    "","",
+    "<s>",                      "set basic waveform by above list",
     "Harmonic <n1> Amp <n2>",   "harmonic n1 to n2 intensity",
     "Harmonic <n1> Phase <n2>", "harmonic n1 to n2 phase",
     "Harmonic Shift <n>",       "amount harmonics are moved",
@@ -635,8 +668,8 @@ std::string envelopelist [] = {
 };
 
 std::string reverblist [] = {
-    "LEVel <n>",        "intensity",
-    "PANning <n>",      "L/R panning",
+    "LEVel <n>",        "amount applied",
+    "PANning <n>",      "left-right panning",
     "TIMe <n>",         "reverb time",
     "DELay <n>",        "initial delay",
     "FEEdback <n>",     "delay feedback",
@@ -665,8 +698,8 @@ int reverblistmap[] = {
 };
 
 std::string echolist [] = {
-    "LEVel <n>",        "intensity",
-    "PANning <n>",      "L/R panning",
+    "LEVel <n>",        "amount applied",
+    "PANning <n>",      "left-right panning",
     "DELay <n>",        "initial delay, left delay only if separate",
     "LRDelay <n>",      "left-right delay, right delay if separate",
     "CROssover <n>",    "left-right crossover",
@@ -691,16 +724,16 @@ int echolistmap[] = {
 };
 
 std::string choruslist [] = {
-    "LEVel <n>",        "intensity",
-    "PANning <n>",      "L/R panning",
+    "LEVel <n>",        "amount applied",
+    "PANning <n>",      "left-right panning",
     "FREquency <n>",    "LFO frequency",
     "RANdom <n>",       "LFO randomness",
     "WAVe <s>",         "LFO waveshape (sine, triangle)",
-    "SHIft <n>",        "L/R phase shift",
+    "SHIft <n>",        "left-right phase shift",
     "DEPth <n>",        "LFO depth",
     "DELay <n>",        "LFO delay",
     "FEEdback <n>",     "chorus feedback",
-    "CROssover <n>",    "L/R routing",
+    "CROssover <n>",    "left-right routing",
     "SUBtract <s>",     "invert output (ON {other})",
     "BPM <s>",          "LFO BPM sync (ON {other})",
     "STArt <n>",        "LFO BPM phase start",
@@ -726,16 +759,16 @@ int choruslistmap[] = {
 };
 
 std::string phaserlist [] = {
-    "LEVel <n>",        "intensity",
-    "PANning <n>",      "L/R panning",
+    "LEVel <n>",        "amount applied",
+    "PANning <n>",      "left-right panning",
     "FREquency <n>",    "LFO frequency",
     "RANdom <n>",       "LFO randomness",
     "WAVe <s>",         "LFO waveshape (sine, triangle)",
-    "SHIft <n>",        "L/R phase shift",
+    "SHIft <n>",        "left-right phase shift",
     "DEPth <n>",        "LFO depth",
     "FEEdback <n>",     "phaser feedback",
-    "STAges <n>",       "filter stages",
-    "CROssover <n>",    "L/R routing",
+    "STAges <n>",       "number of filter stages",
+    "CROssover <n>",    "left-right routing",
     "SUBtract <s>",     "invert output (ON {other})",
     "RELative <n>",     "relative phase",
     "HYPer <s>",        "hyper sine (ON {other})",
@@ -768,16 +801,16 @@ int phaserlistmap[] = {
 };
 
 std::string alienwahlist [] = {
-    "LEVel <n>",        "intensity",
-    "PANning <n>",      "L/R panning",
+    "LEVel <n>",        "amount applied",
+    "PANning <n>",      "left-right panning",
     "FREquency <n>",    "LFO frequency",
     "RANdom",           "LFO randomness",
     "WAVe <s>",         "LFO waveshape (sine, triangle)",
-    "SHIft <n>",        "L/R phase shift",
+    "SHIft <n>",        "left-right phase shift",
     "DEPth <n>",        "LFO depth",
     "FEEdback <n>",     "filter feedback",
     "DELay <n>",        "LFO delay",
-    "CROssover <n>",    "L/R routing",
+    "CROssover <n>",    "left-right routing",
     "RELative <n>",     "relative phase",
     "BPM <s>",          "LFO BPM sync (ON {other})",
     "STArt <n>",        "LFO BPM phase start",
@@ -802,14 +835,14 @@ int alienwahlistmap[] = {
 };
 
 std::string distortionlist [] = {
-    "LEVel <n>",        "intensity",
-    "PANning <n>",      "L/R panning",
-    "MIX <n>",          "L/R mix",
+    "LEVel <n>",        "amount applied",
+    "PANning <n>",      "left-right panning",
+    "MIX <n>",          "left-right mix",
     "DRIve <n>",        "input level",
     "OUTput <n>",       "output balance",
     "WAVe <s>",         "function waveshape",
     "-","(ATAn, ASYm1, POWer, SINe, QNTs, ZIGzag, LMT, ULMt, LLMt, ILMt, CLIp, AS2, PO2, SGM)",
-    "INVert <s>",       "subtracts from the main signal instead of adding  (ON {other})",
+    "INVert <s>",       "subtracts from the main signal, otherwise adds (ON {other})",
     "LOW <n>",          "low pass filter",
     "HIGh <n>",         "high pass filter",
     "STEreo <s>",       "stereo (ON {other})",
@@ -834,14 +867,14 @@ int distortionlistmap[] = {
 };
 
 std::string eqlist [] = {
-    "LEVel <n>",        "intensity",
+    "LEVel <n>",        "amount applied",
     "EQBand <n>",       "EQ band number for following controls",
     "FILter <s>",       "filter type",
     "-","(LP1, HP1, LP2, HP2, NOT, PEA, LOW, HIG)",
     "FREquency <n>",    "cutoff/band frequency",
     "GAIn <n>",         "makeup gain",
     "Q <n>",            "filter Q",
-    "STAges <n>",       "extra filter stages",
+    "STAges <n>",       "number of extra filter stages",
     "@end","@end"
 };
 
@@ -858,12 +891,12 @@ int eqlistmap[] = {
 };
 
 std::string dynfilterlist [] = {
-    "LEVel <n>",        "intensity",
-    "PANning <n>",      "L/R panning",
+    "LEVel <n>",        "amount applied",
+    "PANning <n>",      "left-right panning",
     "FREquency <n>",    "LFO frequency",
     "RANdom <n>",       "LFO randomness",
     "WAVe <s>",         "LFO waveshape (sine, triangle)",
-    "SHIft <n>",        "L/R phase shift",
+    "SHIft <n>",        "left-right phase shift",
     "DEPth <n>",        "LFO depth",
     "SENsitivity <n>",  "amount amplitude changes filter",
     "INVert <s>",       "reverse effect of sensitivity (ON {other})",
