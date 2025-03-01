@@ -157,6 +157,7 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         part64 = 63, // between these two
 
         undoMark = 68, // 44
+        display = 100, // visibility and themes
         vector = 192, // CO
         midiLearn = 216, // D8
         midiIn,
@@ -397,6 +398,7 @@ namespace BANK // usage BANK::control::
         changeRootId, // change ID of current root
         addNamedRoot, // link or create if not already there
         deselectRoot, // remove reference, but don't touch contents
+        isOccupiedRoot,
         installBanks,
         refreshDefaults
     };
@@ -583,6 +585,7 @@ namespace MAIN // usage MAIN::control::volume
         deleteBank,
 
         loadInstrumentFromBank = 76,
+        refreshInstrumentUI,
         loadInstrumentByName,
         saveNamedInstrument,
         loadNamedPatchset,
@@ -608,7 +611,8 @@ namespace MAIN // usage MAIN::control::volume
         stopSound = 128,
         readPartPeak = 200, // now does L/R
         readMainLRpeak,
-        readMainLRrms
+        readMainLRrms,
+        setTestInstrument
     };
 
     enum panningType : uchar {
@@ -1133,6 +1137,24 @@ namespace EFFECT // usage EFFECT::control::level
         dynFilter,
         // any new effects should go here
         count, // this must be the last type!
+    };
+}
+
+namespace DISPLAY  // usage DISPLAY::control::hide
+{
+    enum control : char {
+        hide = 0, // current window
+        show,
+        xposition,
+        yposition,
+        width, // if either of these two are set,
+        height, // the other will be scaled accordingly
+        Select, // theme controls from here on
+        Copy,
+        Rename,
+        Delete,
+        Import,
+        Export
     };
 }
 

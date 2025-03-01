@@ -290,6 +290,13 @@ void YoshimiLV2Plugin::process(uint32_t sample_count)
 
 void YoshimiLV2Plugin::processMidiMessage(const uint8_t * msg)
 {
+    /*if ((msg[0] & 0xf0) == 0xC0)
+    {
+        int chan = (msg[0] & 15);
+        int prog = msg[1];
+        std::cout << "ProgMsg " << int(prog) << "  Chan " << int(chan) << std::endl;
+    }*/
+
     bool in_place = isFreeWheel();
     handleMidi(msg[0], msg[1], msg[2], in_place);
 }
@@ -542,7 +549,7 @@ LV2_State_Status YoshimiLV2Plugin::stateSave(LV2_State_Store_Function store, LV2
     // suppress warnings - may use later
 
     char *data = NULL;
-    int sz = synth.getalldata(&data);
+    int sz = runtime().saveSessionData(&data);
 
     store(handle, _yoshimi_state_id, data, sz, _atom_string_id, LV2_STATE_IS_POD | LV2_STATE_IS_PORTABLE);
     free(data);
@@ -564,7 +571,7 @@ LV2_State_Status YoshimiLV2Plugin::stateRestore(LV2_State_Retrieve_Function retr
     const char *data = (const char *)retrieve(handle, _yoshimi_state_id, &sz, &type, &new_flags);
 
     if (sz > 0)
-        synth.putalldata(data, sz);
+        runtime().restoreSessionData(data, sz);
     return LV2_STATE_SUCCESS;
 }
 
@@ -573,19 +580,28 @@ LV2_Program_Descriptor const * YoshimiLV2Plugin::getProgram(uint32_t index)
 {
     if (flatbankprgs.empty())
     {
-        BankEntryMap const& banks{synth.bank.getBanks(runtime().currentRoot)};
-        for (auto& [bankID,bank] : banks)
-            if (not bank.dirname.empty())
+        for (auto& [rootID, root] : synth.bank.getRoots())
+        {
+            BankEntryMap const& banks{synth.bank.getBanks(rootID)};
+            for (auto& [bankID,bank] : banks)
+            {
+                if (bankID >= 128 or bank.dirname.empty())
+                    continue;
+
                 for (auto& [instrumentID,instrument] : bank.instruments)
-                    if (not instrument.name.empty())
-                    {
-                        LV2Bank entry;
-                        entry.bank    = bankID;
-                        entry.program = instrumentID;
-                        entry.display = bank.dirname + " -> " + instrument.name;
-                        entry.name    = entry.display.c_str();
-                        flatbankprgs.push_back(entry);
-                    }
+                {
+                    if (instrument.name.empty())
+                        continue;
+
+                    LV2Bank entry;
+                    entry.bank    = (rootID << 7) | bankID;
+                    entry.program = instrumentID;
+                    entry.display = bank.dirname + " -> " + instrument.name;
+                    entry.name    = entry.display.c_str();
+                    flatbankprgs.push_back(std::move(entry));
+                }
+            }
+        }
     }
     return index < flatbankprgs.size()? &flatbankprgs [index]
                                       : nullptr;
@@ -594,11 +610,30 @@ LV2_Program_Descriptor const * YoshimiLV2Plugin::getProgram(uint32_t index)
 
 void YoshimiLV2Plugin::selectProgramNew(unsigned char channel, uint32_t bank, uint32_t program)
 {
-    if (runtime().midi_bank_C != 128)
+    auto rootnum = bank >> 7;
+    auto banknum = bank & 127;
+
+    if (runtime().midi_bank_root != 128)
+        synth.mididecode.setMidiBankOrRootDir(rootnum, true, true);
+    else
     {
-        synth.mididecode.setMidiBankOrRootDir((short)bank, isFreeWheel());
+        if (runtime().currentRoot != rootnum)
+            return;
     }
-    synth.mididecode.setMidiProgram(channel, program, isFreeWheel());
+
+    if (runtime().midi_bank_C != 128)
+        synth.mididecode.setMidiBankOrRootDir(banknum, true, false);
+    else
+    {
+        if (runtime().currentBank != banknum)
+            return;
+    }
+
+    if (runtime().enableProgChange)
+    {
+        //std::cout << "Prog " << int(program) << "  Chan " << int(channel) << std::endl;
+        synth.mididecode.setMidiProgram(channel, program, true);
+    }
 }
 
 
@@ -668,7 +703,7 @@ YoshimiLV2PluginUI::~YoshimiLV2PluginUI()
 
 bool YoshimiLV2PluginUI::init()
 {
-    if (not (corePlugin and notify_on_GUI_close))
+    if (not corePlugin)
         return false;
 
     // LV2 hosts may load plugins concurrently, which in some corner cases
@@ -679,7 +714,8 @@ bool YoshimiLV2PluginUI::init()
     engine().installGuiClosedCallback([this]
                                         {// invoked by SynthEngine when FLTK GUI is closed explicitly...
                                             engine().shutdownGui();
-                                            notify_on_GUI_close();
+                                            if (notify_on_GUI_close)
+                                                notify_on_GUI_close();
                                         });
     return true;
 }
@@ -708,6 +744,27 @@ void YoshimiLV2PluginUI::cleanup(LV2UI_Handle ui)
     delete uiinst;
 }
 
+LV2UI_Show_Interface yoshimi_lv2ui_show_interface_desc =
+{
+    YoshimiLV2PluginUI::callback_ShowInterface,
+    YoshimiLV2PluginUI::callback_HideInterface,
+};
+
+LV2UI_Idle_Interface yoshimi_lv2ui_idle_interface_desc =
+{
+    YoshimiLV2PluginUI::callback_IdleInterface,
+};
+
+const void *YoshimiLV2PluginUI::extension_data(const char *uri)
+{
+    if (strcmp(uri, LV2_UI__showInterface) == 0) {
+        return &yoshimi_lv2ui_show_interface_desc;
+    } else if (strcmp(uri, LV2_UI__idleInterface) == 0) {
+        return &yoshimi_lv2ui_idle_interface_desc;
+    }
+    return nullptr;
+}
+
 /** recurring GUI event handling cycle*/
 void YoshimiLV2PluginUI::run()
 {
@@ -716,7 +773,7 @@ void YoshimiLV2PluginUI::run()
         masterUI().checkBuffer();
         Fl::check();
     }
-    else
+    else if (notify_on_GUI_close)
         notify_on_GUI_close();
 }
 
@@ -786,7 +843,7 @@ LV2UI_Descriptor yoshimi_lv2ui_desc =
     YoshimiLV2PluginUI::instantiate,
     YoshimiLV2PluginUI::cleanup,
     NULL,
-    NULL
+    YoshimiLV2PluginUI::extension_data
 };
 
 

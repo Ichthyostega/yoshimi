@@ -87,6 +87,17 @@ private:
     };
 
     struct LV2Bank : LV2_Program_Descriptor{
+        LV2Bank() = default;
+        LV2Bank(LV2Bank &&orig)
+            : LV2_Program_Descriptor(std::move(orig)) {
+            display = std::move(orig.display);
+            name = display.c_str();
+        }
+        LV2Bank(const LV2Bank &orig)
+            : LV2_Program_Descriptor(orig) {
+            display = orig.display;
+            name = display.c_str();
+        }
         string display;
     };
     std::vector<LV2Bank> flatbankprgs;
@@ -122,36 +133,36 @@ public:
     string midiClientName()  const override { return "LV2 plugin"; }
     int midiClientId()       const override { return 0; }
 
-   //static LV2 callback functions
-   static LV2_Handle instantiate (const LV2_Descriptor*, double sample_rate, const char* bundle_path, LV2_Feature const* const* features);
-   static void connect_port(LV2_Handle instance, uint32_t port, void *data_location);
-   static void activate(LV2_Handle instance);
-   static void deactivate(LV2_Handle instance);
-   static void run(LV2_Handle instance, uint32_t sample_count);
-   static void cleanup(LV2_Handle instance);
-   static const void * extension_data(const char * uri);
+    //static LV2 callback functions
+    static LV2_Handle instantiate (const LV2_Descriptor*, double sample_rate, const char* bundle_path, LV2_Feature const* const* features);
+    static void connect_port(LV2_Handle instance, uint32_t port, void *data_location);
+    static void activate(LV2_Handle instance);
+    static void deactivate(LV2_Handle instance);
+    static void run(LV2_Handle instance, uint32_t sample_count);
+    static void cleanup(LV2_Handle instance);
+    static const void * extension_data(const char * uri);
 
 
-   static LV2_State_Status callback_stateSave(LV2_Handle instance, LV2_State_Store_Function store, LV2_State_Handle handle, uint32_t flags, LV2_Feature const* const* features);
-   static LV2_State_Status callback_stateRestore(LV2_Handle instance, LV2_State_Retrieve_Function retrieve, LV2_State_Handle handle, uint32_t flags, LV2_Feature const* const* features);
+    static LV2_State_Status callback_stateSave(LV2_Handle instance, LV2_State_Store_Function store, LV2_State_Handle handle, uint32_t flags, LV2_Feature const* const* features);
+    static LV2_State_Status callback_stateRestore(LV2_Handle instance, LV2_State_Retrieve_Function retrieve, LV2_State_Handle handle, uint32_t flags, LV2_Feature const* const* features);
 
-   static const LV2_Program_Descriptor * callback_getProgram(LV2_Handle handle, uint32_t index);
-   static void callback_selectProgramNew(LV2_Handle handle, unsigned char channel, uint32_t bank, uint32_t program);
-   static void callback_selectProgram(LV2_Handle handle, uint32_t bank, uint32_t program)
-   {
-       callback_selectProgramNew(handle, 0, bank, program);
-   }
+    static const LV2_Program_Descriptor * callback_getProgram(LV2_Handle handle, uint32_t index);
+    static void callback_selectProgramNew(LV2_Handle handle, unsigned char channel, uint32_t bank, uint32_t program);
+    static void callback_selectProgram(LV2_Handle handle, uint32_t bank, uint32_t program)
+    {
+        callback_selectProgramNew(handle, 0, bank, program);
+    }
 
 private:
-   void process(uint32_t sample_count);
-   void processMidiMessage(const uint8_t* msg);
-   LV2_State_Status stateSave(LV2_State_Store_Function store, LV2_State_Handle handle, uint32_t flags, LV2_Feature const* const* features);
-   LV2_State_Status stateRestore(LV2_State_Retrieve_Function retrieve, LV2_State_Handle handle, uint32_t flags, LV2_Feature const* const* features);
+    void process(uint32_t sample_count);
+    void processMidiMessage(const uint8_t* msg);
+    LV2_State_Status stateSave(LV2_State_Store_Function store, LV2_State_Handle handle, uint32_t flags, LV2_Feature const* const* features);
+    LV2_State_Status stateRestore(LV2_State_Retrieve_Function retrieve, LV2_State_Handle handle, uint32_t flags, LV2_Feature const* const* features);
 
-   LV2_Program_Descriptor const* getProgram(uint32_t index);
-   void selectProgramNew(uchar channel, uint32_t bank, uint32_t program);
+    LV2_Program_Descriptor const* getProgram(uint32_t index);
+    void selectProgramNew(uchar channel, uint32_t bank, uint32_t program);
 
-   friend class YoshimiLV2PluginUI;
+    friend class YoshimiLV2PluginUI;
 };
 
 
@@ -170,12 +181,16 @@ public:
     bool init();
     static LV2UI_Handle	instantiate(const LV2UI_Descriptor *descriptor, const char *plugin_uri, const char *bundle_path, LV2UI_Write_Function write_function, LV2UI_Controller controller, LV2UI_Widget *widget, const LV2_Feature *const *features);
     static void cleanup(LV2UI_Handle ui);
+    static const void *extension_data(const char *uri);
     void run();
     void show();
     void hide();
     static void callback_Run (LV2_External_UI_Widget* ui){ self(ui).run();  }
     static void callback_Show(LV2_External_UI_Widget* ui){ self(ui).show(); }
     static void callback_Hide(LV2_External_UI_Widget* ui){ self(ui).hide(); }
+    static int callback_IdleInterface(LV2_Handle ui){ self(ui).run(); return 0; }
+    static int callback_ShowInterface(LV2_Handle ui){ self(ui).show(); return 0; }
+    static int callback_HideInterface(LV2_Handle ui){ self(ui).hide(); return 0; }
 
 private:
     SynthEngine& engine() { return corePlugin->synth; } // use friend access
