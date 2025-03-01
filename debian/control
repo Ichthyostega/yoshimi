@@ -7,8 +7,8 @@ Uploaders:
  Jaromír Mikeš <mira.mikes@seznam.cz>,
  IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>,
 Build-Depends:
- cmake,
  debhelper-compat (= 13),
+ cmake,
  dssi-dev,
  fluid,
  libasound2-dev,
