@@ -1,11 +1,13 @@
-yoshimi (2.3.3.3-1) UNRELEASED; urgency=medium
+yoshimi (2.3.3.3-1) unstable; urgency=medium
 
   * New upstream version 2.3.3.3
   * Update copyright information
     + Update d/copyright
     + Re-generate d/copyright_hints
+  * Apply 'wrap-and-sort -ast'
+  * Bump standards version to 4.7.2
 
- -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Sat, 01 Mar 2025 18:19:28 +0100
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Sun, 02 Mar 2025 23:15:41 +0100
 
 yoshimi (2.3.3.2-1) unstable; urgency=medium
 
