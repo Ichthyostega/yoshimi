@@ -62,7 +62,11 @@ decl {\#include "Effects/EffectMgr.h"} {public local
 
 decl {\#include "Misc/MirrorData.h"} {public local
 }
-
+decl {// ///////////////////////////////////////////////////TODO Debug
+\#include "Misc/ddump.h"
+///////////////////////////////////////////////////////////TODO Debug
+} {public local
+}
 decl {\#include "PresetsUI.h"} {public local
 }
 
@@ -2291,6 +2295,11 @@ If Sep is enabled: Right Delay} xywh {172 45 30 30} box ROUND_UP_BOX labelsize 1
     code {//
     synth = synth_;
     effect.activate(GuiDataExchange::Connection<EffectDTO>{synth->interchange.guiDataExchange, conEffect});
+{//////////////////////////////////////////////////////////////////////////////TODO Debug
+effect.onUpdate([conEffect,npart_](EffectDTO dto){
+    dDump << "|GUI| EffUI-getPush. Part="<< npart_ <<" ConnID:"<< conEffect.identity << " effNr="<<uint(dto.effNum)<<" enabled:"<<dto.enabled<< endl;
+});
+}//////////////////////////////////////////////////////////////////////////////TODO Debug
     npart = npart_;
 
     make_null_window();
@@ -2322,6 +2331,7 @@ If Sep is enabled: Right Delay} xywh {172 45 30 30} box ROUND_UP_BOX labelsize 1
   }
   Function {refresh(int npart_)} {} {
     code {//
+dDump << "    ‖◆ refresh(npart="<<npart_<<")  prev="<<npart<<endl;
     npart = npart_;
     this->hide();
     effnullwindow->hide();

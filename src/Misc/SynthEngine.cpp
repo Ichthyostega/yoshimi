@@ -58,6 +58,9 @@
 #include "Params/ADnoteParameters.h"
 #include "Params/PADnoteParameters.h"
 #include "Interface/InterfaceAnchor.h"
+///////////////////////////////////////////////////////////TODO Debug
+#include "Misc/ddump.h"
+///////////////////////////////////////////////////////////TODO Debug
 
 using file::isRegularFile;
 using file::setExtension;
@@ -432,6 +435,9 @@ InterfaceAnchor SynthEngine::buildGuiAnchor()
     anchorRecord.partEffectParam = partEffectUiCon;
     anchorRecord.partEffectEQ    = partEqGraphUiCon;
 
+///////////////////////////////////////////////////////////////////////////////TODO Debug
+dDump << "|SYN| initial GUI-Anchor for Synth=" << uniqueId<< endl;
+///////////////////////////////////////////////////////////////////////////////TODO Debug
     return anchorRecord;
 }
 
@@ -2549,16 +2555,28 @@ void SynthEngine::pushEffectUpdate(uchar partNum)
     dto.eff_in_core_TODO_deprecated = effInstance[effnum];
 
     if (isPart)
+{//////////////////////////////////////////////////////////////////////////////TODO Debug
+dDump << "|SYN| publish -> Part-"<< uint(partNum)<<" (currPart="<<getRuntime().currentPart<<") effNr="<<uint(currPart.Peffnum)<<" type="<<effInstance[effnum]->geteffect() << endl;
         partEffectUiCon.publish(dto);
+}//////////////////////////////////////////////////////////////////////////////TODO Debug
     else if (isInsert)
+{//////////////////////////////////////////////////////////////////////////////TODO Debug
+dDump << "|SYN| publish -> INS-Effects" << endl;
         insEffectUiCon.publish(dto);
+}//////////////////////////////////////////////////////////////////////////////TODO Debug
     else
+{//////////////////////////////////////////////////////////////////////////////TODO Debug
+dDump << "|SYN| publish -> SYS-Effects" << endl;
         sysEffectUiCon.publish(dto);
+}//////////////////////////////////////////////////////////////////////////////TODO Debug
 
     if (dto.effType == (EFFECT::type::eq - EFFECT::type::none))
     {// cascading update for the embedded EQ graph
         EqGraphDTO graphDto;
         effInstance[effnum]->renderEQresponse(graphDto.response);
+///////////////////////////////////////////////////////////////////////////////TODO Debug
+dDump << "|SYN| publish -> EQ-Graph" << endl;
+///////////////////////////////////////////////////////////////////////////////TODO Debug
         if (isPart)
             partEqGraphUiCon.publish(graphDto);
         else if (isInsert)
