@@ -8,8 +8,8 @@ Uploaders:
  IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>,
  Hermann Vosseler <deb@ichthyostega.de>
 Build-Depends:
- debhelper-compat (= 13),
  cmake,
+ debhelper (>= 12~),
  dssi-dev,
  fluid,
  libasound2-dev,
