@@ -1,6 +1,6 @@
-yoshimi (2.3.3.3-1) unstable; urgency=medium
+yoshimi (2.3.3.3-1~trixie) Lumiera-trixie-tool; urgency=low
 
-  * New upstream version 2.3.3.3
+  * New upstream minor version 2.3.3.3
   * Change B-D from pkg-config to pkgconf
   * Prefer libjack-dev over libjack-jackd2-dev
   * drop several old alternate dependency names
@@ -9,10 +9,11 @@ yoshimi (2.3.3.3-1) unstable; urgency=medium
     + Bump d/copyright years
     + exclude another binary file from licensecheck
     + Re-generate d/copyright_hints
-  * Apply 'wrap-and-sort -ast'
   * Bump standards version to 4.7.2
+  * Rebuild for Debian/Trixie(testing).
+  * unofficial DEB package by Ichthyostega
 
- -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Sun, 02 Mar 2025 23:15:41 +0100
+ -- Hermann Vosseler <deb@ichthyostega.de>  Wed, 09 Apr 2025 03:15:35 +0200
 
 yoshimi (2.3.3.2-1~buster) Lumiera-buster-tool; urgency=low
 
