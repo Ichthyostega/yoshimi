@@ -8,7 +8,7 @@ export LV2_PATH = /usr/lib/lv2
 	dh $@ --sourcedirectory=src
 
 DEB_COPYRIGHT_CHECK_IGNORE_REGEX = \
-        debian/.*|doc/yoshimi_user_guide/(.*/)*images/.*\.png|doc/examples/Original Zyn Patchsets/.*|doc/examples/.*\.x..|doc/examples/(Out_There|Arram_Koth_Finale)\.mid|banks/.*\.xiz|dev_notes/Yoshimi Control Numbers\.ods|doc/The Short Yoshimi Guide\.odt|doc/Histories/Yoshimi CCs and NRPNs\.pdf
+        debian/.*|doc/yoshimi_user_guide/(.*/)*images/.*\.png|doc/examples/Original Zyn Patchsets/.*|doc/examples/.*\.x..|doc/examples/(Out_There|Arram_Koth_Finale)\.mid|banks/.*\.xiz|banks/Drums/0068-rimshot\.xiy|dev_notes/Yoshimi Control Numbers\.ods|doc/The Short Yoshimi Guide\.odt|doc/Histories/Yoshimi CCs and NRPNs\.pdf
 
 # licensecheck v1
 .PHONY: licensecheck

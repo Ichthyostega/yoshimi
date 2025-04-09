@@ -12,7 +12,8 @@ Copyright: 2002-2009, Nasca Octavian Paul and others
            2016, Rob Couto
            2017, Jesper Lloyd
            2014, Andrew Deryabin <andrewderyabin@gmail.com>
-           2014-2024, Will Godfrey & others
+           2021-2025, Ichthyostega
+           2014-2025, Will Godfrey & others
 License: GPL-2+
 
 Files: banks/Drums/0004-Natural?Drum?Kit.xiz
@@ -30,11 +31,11 @@ Copyright: Nasca Octavian Paul
 License: GPL-2+
 
 Files: doc/The?Short?Yoshimi?Guide.odt
-Copyright: 2017-2023, Will J Godfrey
+Copyright: 2017-2025, Will J Godfrey
 License: CC-BY-SA-4.0
 
 Files: doc/yoshimi_user_guide/*
-Copyright: 2021-2024, Will Godfrey, Art Horan, Kristian Amlie, John Murphy, Lorenzo Sutton, Hermann Voßeler.
+Copyright: 2021-2025, Will Godfrey, Art Horan, Kristian Amlie, John Murphy, Lorenzo Sutton, Hermann Voßeler.
 License: CC-BY-SA-4.0
 
 Files: Util/YoshimiSplash.svg
@@ -50,11 +51,15 @@ Files: desktop/metainfo/*
 Copyright: 2016-2019, Yoshimi project <willgodfrey@musically.me.uk>
 License: CC-BY-4.0
 
+Files: doc/examples/themes/photon.clr
+Copyright: 2025, Tillman Jex (www.tjex.net)
+License: GPL-2+
+
 Files: debian/*
 Copyright: 2010-2011, Alessio Treglia <alessio@debian.org>
            2010-2017, Jaromír Mikeš <mira.mikes@seznam.cz>
            2019, Olivier Humbert <trebmuh@tuxfamily.org>
-           2018-2024, IOhannes m zmölnig <umlaeute@debian.org>
+           2018-2025, IOhannes m zmölnig <umlaeute@debian.org>
            2020-2024, Dennis Braun <snd@debian.org>
            2018-2024, Hermann Vosseler <deb@ichthyostega.de>
 License: GPL-2+
