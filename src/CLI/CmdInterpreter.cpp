@@ -51,6 +51,9 @@
 #include "Misc/FormatFuncs.h"
 #include "Misc/CliFuncs.h"
 #include "Misc/Util.h"
+///////////////////////////////////////////////////////////TODO Debug
+#include "Misc/ddump.h"
+///////////////////////////////////////////////////////////TODO Debug
 
 
 // used to hold back shutdown when running sound generation for test
@@ -6449,6 +6452,47 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
         return Reply::DONE;
     }
 #endif
+///////////////////////////////////////////////////////////TODO Debug
+    if (input.matchnMove(2, "dump"))
+    {
+        int enable = input.toggle();
+        if (enable == 1)
+        {
+            dDump.enabled = true;
+        }
+        else
+        if (enable == 0)
+        {
+            dDump.enabled = false;
+        }
+        else
+        if (input.matchnMove(1, "file"))
+        {
+            if (not dDump.log2file(input))
+                return Reply::what("logfile problem");
+        }
+        else
+        if (input.matchnMove(4, "stdout")
+           or input.matchnMove(1, "out")
+           )
+            dDump.log2std(false);
+        else
+        if (input.matchnMove(4, "stderr")
+           or input.matchnMove(1, "err")
+           )
+            dDump.log2std(true);
+        else
+        if (!input.isAtEnd())
+            return REPLY::op_msg; //"Which Operation?"
+
+        // show current dump-logging status
+        if (dDump.enabled)
+            cout << "DebugDump ▷ " << dDump.showTarget() << endl;
+        else
+            cout << "DebugDump OFF" <<endl;
+        return Reply::DONE;
+    }
+///////////////////////////////////////////////////////////TODO Debug
     if (input.matchnMove(5, "filer"))
     {
         string result;
