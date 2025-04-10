@@ -1,0 +1,77 @@
+From: Ichthyostega <prg@ichthyostega.de>
+Date: Thu, 10 Apr 2025 04:53:25 +0200
+Subject: Revert use of newer LV2 API functions
+
+this is a partial revert of
+24bd180
+
+The Interface descriptor `LV2UI_Show_Interface` can not be supported on Ubuntu Trusty(14.04)
+Thus reverting the new handler setup, which was added to be able to use
+the Yoshimi LV2 plugin e.g. in the stand-alone host jalv
+---
+ src/LV2_Plugin/YoshimiLV2Plugin.cpp | 23 +----------------------
+ src/LV2_Plugin/YoshimiLV2Plugin.h   |  4 ----
+ 2 files changed, 1 insertion(+), 26 deletions(-)
+
+diff --git a/src/LV2_Plugin/YoshimiLV2Plugin.cpp b/src/LV2_Plugin/YoshimiLV2Plugin.cpp
+index 13cf8c4..266ebfb 100644
+--- a/src/LV2_Plugin/YoshimiLV2Plugin.cpp
++++ b/src/LV2_Plugin/YoshimiLV2Plugin.cpp
+@@ -744,27 +744,6 @@ void YoshimiLV2PluginUI::cleanup(LV2UI_Handle ui)
+     delete uiinst;
+ }
+ 
+-LV2UI_Show_Interface yoshimi_lv2ui_show_interface_desc =
+-{
+-    YoshimiLV2PluginUI::callback_ShowInterface,
+-    YoshimiLV2PluginUI::callback_HideInterface,
+-};
+-
+-LV2UI_Idle_Interface yoshimi_lv2ui_idle_interface_desc =
+-{
+-    YoshimiLV2PluginUI::callback_IdleInterface,
+-};
+-
+-const void *YoshimiLV2PluginUI::extension_data(const char *uri)
+-{
+-    if (strcmp(uri, LV2_UI__showInterface) == 0) {
+-        return &yoshimi_lv2ui_show_interface_desc;
+-    } else if (strcmp(uri, LV2_UI__idleInterface) == 0) {
+-        return &yoshimi_lv2ui_idle_interface_desc;
+-    }
+-    return nullptr;
+-}
+-
+ /** recurring GUI event handling cycle*/
+ void YoshimiLV2PluginUI::run()
+ {
+@@ -843,7 +822,7 @@ LV2UI_Descriptor yoshimi_lv2ui_desc =
+     YoshimiLV2PluginUI::instantiate,
+     YoshimiLV2PluginUI::cleanup,
+     NULL,
+-    YoshimiLV2PluginUI::extension_data
++    NULL
+ };
+ 
+ 
+diff --git a/src/LV2_Plugin/YoshimiLV2Plugin.h b/src/LV2_Plugin/YoshimiLV2Plugin.h
+index 7d29012..e939e34 100644
+--- a/src/LV2_Plugin/YoshimiLV2Plugin.h
++++ b/src/LV2_Plugin/YoshimiLV2Plugin.h
+@@ -181,16 +181,12 @@ public:
+     bool init();
+     static LV2UI_Handle	instantiate(const LV2UI_Descriptor *descriptor, const char *plugin_uri, const char *bundle_path, LV2UI_Write_Function write_function, LV2UI_Controller controller, LV2UI_Widget *widget, const LV2_Feature *const *features);
+     static void cleanup(LV2UI_Handle ui);
+-    static const void *extension_data(const char *uri);
+     void run();
+     void show();
+     void hide();
+     static void callback_Run (LV2_External_UI_Widget* ui){ self(ui).run();  }
+     static void callback_Show(LV2_External_UI_Widget* ui){ self(ui).show(); }
+     static void callback_Hide(LV2_External_UI_Widget* ui){ self(ui).hide(); }
+-    static int callback_IdleInterface(LV2_Handle ui){ self(ui).run(); return 0; }
+-    static int callback_ShowInterface(LV2_Handle ui){ self(ui).show(); return 0; }
+-    static int callback_HideInterface(LV2_Handle ui){ self(ui).hide(); return 0; }
+ 
+ private:
+     SynthEngine& engine() { return corePlugin->synth; } // use friend access

@@ -1,2 +1,4 @@
 0001-lower-CMake-minimum-requirement.patch
 0002-sneak-C-17-past-old-CMake.patch
+9000-compile-fix-old-fltk.patch
+9001-Revert-use-of-newer-LV2-API-functions.patch
