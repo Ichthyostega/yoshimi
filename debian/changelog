@@ -1,10 +1,12 @@
-yoshimi (2.3.4.1-1ppa2~focal) focal; urgency=low
+yoshimi (2.3.4.1-1~ppa2~bionic) bionic; urgency=low
 
-  * Rebuild latest minor version 2.3.4.1 for Ubuntu/Focal(20.04 LTS)
-  * retain debhelper(12) dependency for packaging on Ubuntu
-  * revert a newer FLTK header for compatibility
-  * debian standards version is 4.7.2
+  * Rebuild latest minor version 2.3.4.1 for Ubuntu/Bionic(18.04 LTS)
   * unofficial DEB package by Ichthyostega
+  * debian standards version is 4.7.2
+  * lower debhelper version to 10
+  * use GCC-9 from ppa:ubuntu-toolchain-r/test
+  * revert a newer FLTK header for compatibility
+  * As of 06/2025, this is the latest (minor) Yoshimi release
 
  -- Hermann Vosseler <deb@ichthyostega.de>  Wed, 11 Jun 2025 03:05:55 +0200
 
@@ -39,7 +41,7 @@ yoshimi (2.3.3.2-1~buster) Lumiera-buster-tool; urgency=low
   * Rebuild/Backport for Debian/Buster(oldoldstable).
   * unofficial DEB package by Ichthyostega
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Fri, 06 Dec 2024 01:55:24 +0100
+ -- Hermann Vosseler <deb@ichthyostega.de>  Fri, 06 Dec 2024 02:55:23 +0100
 
 yoshimi (2.3.3-1~buster) Lumiera-buster-tool; urgency=low
 
@@ -47,7 +49,7 @@ yoshimi (2.3.3-1~buster) Lumiera-buster-tool; urgency=low
   * Rebuild/Backport for Debian/Buster(oldoldstable).
   * unofficial DEB package by Ichthyostega
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 24 Sep 2024 01:24:55 +0200
+ -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 24 Sep 2024 01:42:55 +0200
 
 yoshimi (2.3.2-1~buster) Lumiera-buster-tool; urgency=low
 
