@@ -1,0 +1,40 @@
+From: Ichthyostega <prg@ichthyostega.de>
+Date: Wed, 11 Jun 2025 04:47:43 +0200
+Subject: revert-newer-FLTK-header
+
+for recent FLTK versions, the header include <FL/x.H>
+had to be replaced by <FL/platform.H>
+
+However, older FLTK versions up to 2020 (Ubuntu/Focal)
+do not provide that newer header; thus reverting this change
+---
+ src/UI/MiscGui.cpp     | 1 -
+ src/UI/WidgetPDial.cpp | 3 +--
+ 2 files changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/src/UI/MiscGui.cpp b/src/UI/MiscGui.cpp
+index 8785d0e..10df075 100644
+--- a/src/UI/MiscGui.cpp
++++ b/src/UI/MiscGui.cpp
+@@ -29,7 +29,6 @@
+ #include <FL/Fl.H>
+ #include <FL/fl_draw.H>
+ 
+-#include <FL/platform.H>
+ #include <cairo.h>
+ #include <cairo-xlib.h>
+ 
+diff --git a/src/UI/WidgetPDial.cpp b/src/UI/WidgetPDial.cpp
+index 9551bab..9269c75 100644
+--- a/src/UI/WidgetPDial.cpp
++++ b/src/UI/WidgetPDial.cpp
+@@ -32,8 +32,7 @@
+ #include <FL/fl_draw.H>
+ #include <FL/Fl_Tooltip.H>
+ #include <FL/Fl_Group.H>
+-
+-#include <FL/platform.H>
++#include <FL/x.H>
+ #include <cairo.h>
+ #include <cairo-xlib.h>
+ 

@@ -1,7 +1,8 @@
-yoshimi (2.3.4.1-1~noble) Lumiera-noble-tool; urgency=low
+yoshimi (2.3.4.1-1ppa2~focal) focal; urgency=low
 
-  * Rebuild latest minor version 2.3.4.1 for Ubuntu/Noble(24.04 LTS)
+  * Rebuild latest minor version 2.3.4.1 for Ubuntu/Focal(20.04 LTS)
   * retain debhelper(12) dependency for packaging on Ubuntu
+  * revert a newer FLTK header for compatibility
   * debian standards version is 4.7.2
   * unofficial DEB package by Ichthyostega
 
