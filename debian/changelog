@@ -1,11 +1,13 @@
-yoshimi (2.3.4.1-1~ppa2~bionic) bionic; urgency=low
+yoshimi (2.3.4.1-1~ppa2~xenial) xenial; urgency=low
 
-  * Rebuild latest minor version 2.3.4.1 for Ubuntu/Bionic(18.04 LTS)
+  * Rebuild latest minor version 2.3.4.1 for Ubuntu/Xenial(16.04 LTS)
   * unofficial DEB package by Ichthyostega
   * debian standards version is 4.7.2
-  * lower debhelper version to 10
   * use GCC-9 from ppa:ubuntu-toolchain-r/test
-  * revert a newer FLTK header for compatibility
+  * tweaks to allow build on this somewhat old platform
+    * force build with -fPIC
+    * lower debhelper and compliance level
+    * revert a newer FLTK header for compatibility
   * As of 06/2025, this is the latest (minor) Yoshimi release
 
  -- Hermann Vosseler <deb@ichthyostega.de>  Wed, 11 Jun 2025 03:05:55 +0200
@@ -49,7 +51,7 @@ yoshimi (2.3.3-1~buster) Lumiera-buster-tool; urgency=low
   * Rebuild/Backport for Debian/Buster(oldoldstable).
   * unofficial DEB package by Ichthyostega
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 24 Sep 2024 01:42:55 +0200
+ -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 24 Sep 2024 02:42:55 +0200
 
 yoshimi (2.3.2-1~buster) Lumiera-buster-tool; urgency=low
 
@@ -59,7 +61,7 @@ yoshimi (2.3.2-1~buster) Lumiera-buster-tool; urgency=low
   * Rebuild/Backport for Debian/Buster(oldoldstable).
   * unofficial DEB package by Ichthyostega
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Mon, 19 Feb 2024 23:44:55 +0100
+ -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 20 Feb 2024 01:42:55 +0100
 
 yoshimi (2.3.1.3-1) unstable; urgency=medium
 
@@ -116,7 +118,7 @@ yoshimi (2.2.3-1~buster) Lumiera-buster-tool; urgency=low
   * Rebuild/Backport for Debian/Buster(oldstable).
   * unofficial DEB package by Ichthyostega
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Wed, 15 Feb 2023 01:16:20 +0100
+ -- Hermann Vosseler <deb@ichthyostega.de>  Wed, 15 Feb 2023 01:16:23 +0100
 
 yoshimi (2.2.2.1-2~buster) Lumiera-buster-tool; urgency=low
 
@@ -183,7 +185,7 @@ yoshimi (2.1.0-1~buster) Lumiera-buster-tool; urgency=low
   * Rebuild/Backport for Debian/Buster(stable).
   * unofficial DEB package by Ichthyostega
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Mon, 23 Aug 2021 12:44:02 +0200
+ -- Hermann Vosseler <deb@ichthyostega.de>  Mon, 23 Aug 2021 12:44:55 +0200
 
 yoshimi (2.0.2-1~buster) Lumiera-buster-tool; urgency=low
 
@@ -202,7 +204,7 @@ yoshimi (2.0.1-1~buster) Lumiera-buster-tool; urgency=low
   [ Mattia Rizzolo ]
   * Remove unused build-dependency on liboost-dev.
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 27 Apr 2021 00:31:05 +0200
+ -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 27 Apr 2021 00:42:55 +0200
 
 yoshimi (2.0-1~buster) Lumiera-buster-tool; urgency=low
 
@@ -219,7 +221,7 @@ yoshimi (2.0-1~buster) Lumiera-buster-tool; urgency=low
     + Change license for desktop/metainfo/* and Util/YoshimiSplash.svg to CC-BY-4.0
   * Fix license name of yoshimi.appdata.xml to make lintian happy
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Fri, 05 Mar 2021 01:12:42 +0100
+ -- Hermann Vosseler <deb@ichthyostega.de>  Fri, 05 Mar 2021 01:23:42 +0100
 
 yoshimi (1.7.1-1~buster) Lumiera-buster-tool; urgency=low
 
