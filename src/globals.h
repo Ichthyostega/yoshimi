@@ -297,7 +297,6 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         // only file types from here onwards
         Config,
         MasterConfig,
-        MasterUpdate,
         Bank,
         History,
         PresetDirs,
@@ -316,6 +315,7 @@ namespace CONFIG // usage CONFIG::control::oscillatorSize
         enableAutoInstance,
         handlePadSynthBuild,   // how to build PADSynth wavetable;
         // 0=legacy/muted, 1=background thread, 2=autoApply
+        enablePartReports,
         banksChecked,
         XMLcompressionLevel,   // this must be the last entry for base config.
 
@@ -360,6 +360,7 @@ namespace CONFIG // usage CONFIG::control::oscillatorSize
         ignoreResetAllCCs,
         logIncomingCCs,
         showLearnEditor,
+        enableOmni,
         enableNRPNs,
         saveCurrentConfig,
         changeRoot, // dummy command - always save current root
@@ -493,6 +494,8 @@ namespace MIDI // usage MIDI::control::noteOn
         allSoundOff = 120,
         resetAllControllers,
         allNotesOff = 123,
+        omniOff = 124,
+        omniOn = 125,
 
         pitchWheelAdjusted = 128,
         channelPressureAdjusted,
@@ -571,6 +574,7 @@ namespace MAIN // usage MAIN::control::volume
         volume,
         partNumber = 14,
         availableParts,
+        partsChanged,
         panLawType,
         detune = 32,
         keyShift = 35,
@@ -631,11 +635,12 @@ namespace PART // usage PART::control::volume
         enableSub,
         enablePad,
         enableKitLine,
-        volume,
+        volume = 5,
         velocitySense,
         panning,
         velocityOffset,
         midiChannel,
+        omni,
         keyMode,
         channelATset,
         keyATset,

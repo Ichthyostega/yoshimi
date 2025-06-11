@@ -192,6 +192,11 @@ void MidiDecode::setMidiController(uchar ch, int ctrl, int param, bool in_place,
 */
     }
 
+    if ((ctrl == MIDI::CC::omniOn or ctrl == MIDI::CC::omniOff) and not synth->getRuntime().enableOmni)
+    {
+        return;
+    }
+
     /*
     * This is done here instead of in 'setMidi' so MidiLearn
     * handles all 14 bit values the same.
@@ -696,7 +701,7 @@ void MidiDecode::setMidiBankOrRootDir(uint bank_or_root_num, bool in_place, bool
 
 void MidiDecode::setMidiProgram(uchar ch, int prg, bool in_place)
 {
-    if (!synth->getRuntime().enableProgChange)
+    if (not synth->getRuntime().enableProgChange)
         return;
     uint maxparts = synth->getRuntime().numAvailableParts;
     if (ch >= maxparts)
@@ -732,7 +737,7 @@ void MidiDecode::setMidiProgram(uchar ch, int prg, bool in_place)
     {
         for (uint npart = 0; npart < maxparts; ++ npart)
         {
-            if (ch == synth->part[npart]->Prcvchn)
+            if (ch == synth->part[npart]->Prcvchn or synth->part[npart]->isOmni())
             {
                 putData.data.kit = npart;
                 if (in_place)

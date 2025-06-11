@@ -609,6 +609,9 @@ string DataText::resolveConfig(SynthEngine& synth, CommandBlock& cmd, bool addVa
         case CONFIG::control::XMLcompressionLevel:
             contstr = "XML compression";
             break;
+        case CONFIG::control::enablePartReports:
+            contstr = "part_changed_reports";
+            break;
         case CONFIG::control::reportsDestination:
             contstr = "Reports to ";
             if (addValue)
@@ -939,6 +942,11 @@ string DataText::resolveConfig(SynthEngine& synth, CommandBlock& cmd, bool addVa
             break;
         case CONFIG::control::showLearnEditor:
             contstr += "Auto-open GUI MIDI-learn editor";
+            yesno = true;
+            break;
+
+        case CONFIG::control::enableOmni:
+            contstr += "Enable Omni Mode Change";
             yesno = true;
             break;
 
@@ -1494,6 +1502,10 @@ string DataText::resolvePart(CommandBlock& cmd, bool addValue)
                 else if (value_int >= NUM_MIDI_CHANNELS)
                     contstr = contstr + " Note off only from CH " + to_string(value_int + 1 - NUM_MIDI_CHANNELS);
             }
+            break;
+        case PART::control::omni:
+            contstr = "Omni Mode";
+            yesno = true;
             break;
         case PART::control::keyMode:
             showValue = false;
