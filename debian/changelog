@@ -1,10 +1,10 @@
-yoshimi (2.3.4.1-1~trixie) Lumiera-trixie-tool; urgency=low
+yoshimi (2.3.4.1-1~bookworm) Lumiera-bookworm-tool; urgency=low
 
   * New upstream minor version 2.3.4.1
-  * Rebuild for Debian/Trixie(testing).
+  * Rebuild for Debian/Bookworm(stable).
   * unofficial DEB package by Ichthyostega
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Wed, 11 Jun 2025 02:55:16 +0200
+ -- Hermann Vosseler <deb@ichthyostega.de>  Wed, 11 Jun 2025 04:05:55 +0200
 
 yoshimi (2.3.3.3-1~trixie) Lumiera-trixie-tool; urgency=low
 
