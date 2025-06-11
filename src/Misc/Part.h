@@ -45,9 +45,9 @@ class ADnote;
 class SUBnote;
 class PADnote;
 class Controller;
-class XMLwrapper;
 class Microtonal;
 class EffectMgr;
+class XMLtree;
 
 class SynthEngine;
 
@@ -55,6 +55,13 @@ class Part
 {
     public:
         enum NoteStatus { KEY_OFF, KEY_PLAYING, KEY_RELEASED_AND_SUSTAINED, KEY_RELEASED };
+
+        enum class Omni
+        {
+            NotSet,
+            Enabled,
+            Disabled,
+        };
 
        ~Part();
         Part(uchar id, Microtonal*, fft::Calc&, SynthEngine&);
@@ -83,13 +90,17 @@ class Part
         void ReleaseSustainedKeys();
         void ReleaseAllKeys();
         void ComputePartSmps();
+        void resetOmniCC() { omniByCC = Omni::NotSet; }
+        bool isOmni()
+        {
+            return omniByCC == Omni::Enabled or (omniByCC == Omni::NotSet and Pomni);
+        }
 
         bool saveXML(string filename, bool yoshiFormat); // result true for load ok, otherwise false
-        int  loadXMLinstrument(string filename);
-        void add2XML(XMLwrapper& xml, bool subset = false);
-        void add2XMLinstrument(XMLwrapper& xml);
-        void getfromXML(XMLwrapper& xml);
-        void getfromXMLinstrument(XMLwrapper& xml);
+        int  loadXML(string filename);
+        void add2XML_YoshimiPartSetup(XMLtree&);
+        void add2XML_YoshimiInstrument(XMLtree&);
+        void getfromXML(XMLtree&);
         float getLimits(CommandBlock* getData);
 
         std::unique_ptr<Controller> ctl;
@@ -131,6 +142,7 @@ class Part
         uchar  Pmaxkey;
         uchar  Pkeyshift;
         uchar  Prcvchn;
+        bool   Pomni;
         uchar  Pvelsns;        // velocity sensing (amplitude velocity scale)
         uchar  Pveloffs;       // velocity offset
         uchar  Pkitmode;       // Part uses kit mode: 0 == off, 1 == on, 2 == "Single": only first applicable kit item can play
@@ -175,9 +187,13 @@ class Part
         bool  busy;
 
         int getLastNote()  const { return this->prevNote; }
-        SynthEngine* getSynthEngine() const {return synth;}
+        SynthEngine& getSynthEngine() const {return synth;}
 
     private:
+        void getfromXML_InstrumentData(XMLtree&);
+        void add2XML_InstrumentData(XMLtree&);
+        void add2XML_synthUsage(XMLtree&);
+
         void setPan(float value);
         void KillNotePos(int pos);
         void ReleaseNotePos(int pos);
@@ -238,7 +254,9 @@ class Part
                            // (the list only store note values). For example:
                            // 'monoNote[note].velocity' would be the velocity value of the note 'note'.
 
-        SynthEngine* synth;
+        Omni omniByCC;
+
+        SynthEngine& synth;
 };
 
 #endif /*PART_H*/
