@@ -53,6 +53,7 @@ Files: CHECK_ON_RELEASE
  banks/Rhodes/.bankdir
  banks/Splited/.bankdir
  banks/Strings/.bankdir
+ banks/Strings/0055-Fiddle Kit.xiy
  banks/Strings/0085-Vintage_Strings_01.xiy
  banks/Strings/0086-Vintage_Strings_low_01.xiy
  banks/Strings/0087-Vintage_Strings_02.xiy
@@ -68,6 +69,8 @@ Files: CHECK_ON_RELEASE
  banks/The_Mysterious_Bank/.bankdir
  banks/Will_Godfrey_Collection/.bankdir
  banks/Will_Godfrey_Companion/.bankdir
+ banks/Will_Godfrey_Companion/0031-Hollow Pulse.xiy
+ banks/Will_Godfrey_Companion/0094-Yet Another Flute.xiy
  banks/chip/.bankdir
  copydocs.sh
  desktop/128/yoshimi.png
@@ -115,6 +118,7 @@ Files: CHECK_ON_RELEASE
  dev_notes/Startup_Synth_instances.txt
  dev_notes/System_Values.txt
  dev_notes/ToDo.txt
+ dev_notes/XML-Storage.txt
  dev_notes/Yoshimi Control Data/Design Notes
  dev_notes/Yoshimi Control Data/Sections/LFOinsert.html
  dev_notes/Yoshimi Control Data/Sections/addsynth.html
@@ -213,13 +217,14 @@ Files: CHECK_ON_RELEASE
  doc/Histories/Yoshimi_2.3.1.2_features.txt
  doc/Histories/Yoshimi_2.3.1_features.txt
  doc/Histories/Yoshimi_2.3.2_features.txt
+ doc/Histories/Yoshimi_2.3.3_features.txt
  doc/Histories/Yoshimi_Early_History.txt
  doc/Histories/Yoshimi_License_History.txt
  doc/Histories/Yoshimi_Only_NRPNs.txt
  doc/Histories/Zyn_ChangeLog
  doc/Histories/Zyn_HISTORY.txt
  doc/Note_Envelopes.txt
- doc/Yoshimi_2.3.3_features.txt
+ doc/Yoshimi_2.3.4_features.txt
  doc/Yoshimi_License_History.txt
  doc/Yoshimi_Quote.txt
  doc/examples/Arram_Koth_Finale.txt
@@ -317,8 +322,6 @@ Files: src/DSP/AnalogFilter.cpp
  src/Effects/Reverb.h
  src/Misc/Microtonal.cpp
  src/Misc/Part.h
- src/Misc/XMLwrapper.cpp
- src/Misc/XMLwrapper.h
  src/Params/Controller.cpp
  src/Params/Controller.h
  src/Params/EnvelopeParams.cpp
@@ -345,6 +348,7 @@ Copyright: 2002-2005, Nasca Octavian Paul
   2014-2024, Will Godfrey
   2015-2023, Will Godfrey
   2016-2024, Will Godfrey
+  2016-2025, Will Godfrey
   2017-2018, Will Godfrey
   2017-2023, Will Godfrey
   2018, 2023, Will Godfrey
@@ -359,6 +363,7 @@ License: GPL-2+
  FIXME
 
 Files: dev_notes/GuiDataExchangeTest.cpp
+ dev_notes/XMLStoreTest.cpp
  src/Interface/GuiDataExchange.cpp
  src/Interface/GuiDataExchange.h
  src/Interface/InterfaceAnchor.h
@@ -366,6 +371,7 @@ Files: dev_notes/GuiDataExchangeTest.cpp
  src/Misc/BuildScheduler.h
  src/Misc/DataBlockBuff.h
  src/Misc/Hash.h
+ src/Misc/Log.h
  src/Misc/MirrorData.h
  src/Misc/TestInvoker.h
  src/Misc/TestSequence.h
@@ -376,24 +382,7 @@ Files: dev_notes/GuiDataExchangeTest.cpp
 Copyright: 2021, Ichthyostega
   2022, Ichthyostega
   2024, Ichthyostega
-License: GPL-2+
- FIXME
-
-Files: src/Interface/MidiDecode.h
- src/Interface/MidiLearn.h
- src/Interface/Vectors.cpp
- src/Interface/Vectors.h
- src/Params/UnifiedPresets.cpp
- src/Params/UnifiedPresets.h
- src/UI/MidiLearnUI.fl
- src/UI/YoshiWin.cpp
-Copyright: 2016-2020, Will Godfrey
-  2016-2024, Will Godfrey
-  2017-2020, Will Godfrey
-  2018, 2023, Will Godfrey
-  2018-2024, Will Godfrey
-  2020, Will Godfrey
-  2024, Will Godfrey
+  2025, Ichthyostega
 License: GPL-2+
  FIXME
 
@@ -410,9 +399,25 @@ Copyright: 2002-2005, Nasca Octavian Paul
   2009-2011, Alan Calvert
   2014-2021, Will Godfrey & others
   2014-2023, Will Godfrey & others
-  2014-2024, Will Godfrey & others
+  2014-2025, Will Godfrey & others
   2015-2024, Will Godfrey & others
   2017-2023, Will Godfrey & others
+License: GPL-2+
+ FIXME
+
+Files: src/Interface/MidiDecode.h
+ src/Interface/MidiLearn.h
+ src/Interface/Vectors.cpp
+ src/Interface/Vectors.h
+ src/Params/UnifiedPresets.cpp
+ src/Params/UnifiedPresets.h
+ src/UI/MidiLearnUI.fl
+Copyright: 2016-2020, Will Godfrey
+  2016-2024, Will Godfrey
+  2017-2020, Will Godfrey
+  2018, 2023, Will Godfrey
+  2018-2024, Will Godfrey
+  2024, Will Godfrey
 License: GPL-2+
  FIXME
 
@@ -451,7 +456,8 @@ Copyright: 2009-2010, Alan Calvert
   2009-2011, Alan Calvert
   2014-2019, Will Godfrey & others
   2014-2020, Will Godfrey & others
-  2014-2021, Will Godfrey & others
+  2014-2025, Will Godfrey & others
+  2025, Will Godfrey & others
 License: GPL-2+
  FIXME
 
@@ -532,6 +538,15 @@ Copyright: 2016-2023, Will Godfrey & others
 License: GPL-2+
  FIXME
 
+Files: src/Misc/XMLStore.cpp
+ src/Misc/XMLStore.h
+Copyright: 2002-2005, Nasca Octavian Paul
+  2009-2011, Alan Calvert
+  2014-2025, Will Godfrey
+  2025, Ichthyostega
+License: GPL-2+
+ FIXME
+
 Files: src/UI/WidgetPDial.cpp
  src/UI/WidgetPDial.h
 Copyright: 2002-2005, Nasca Octavian Paul
@@ -539,7 +554,7 @@ Copyright: 2002-2005, Nasca Octavian Paul
   2016, Will Godfrey
   2017, Jesper Lloyd
   2018, Will Godfrey & others
-  2020-2024, Will Godfrey & others
+  2020-2025, Will Godfrey & others
 License: GPL-2+
  FIXME
 
@@ -587,6 +602,14 @@ Files: src/UI/Splash.cpp
  src/UI/Splash.h
 Copyright: 2015-2023, Andrew Deryabin, Jesper Lloyd, Will Godfrey & others
   2024, Ichthyostega
+License: GPL-2+
+ FIXME
+
+Files: src/Misc/VerInfo.h
+ src/Synth/WaveInterpolator.h
+Copyright: 2002-2005, Nasca Octavian Paul
+  2022, Ichthyostega
+  2025, Ichthyostega
 License: GPL-2+
  FIXME
 
@@ -638,18 +661,13 @@ Copyright: 1989, 1991, Free Software Foundation, Inc.,
 License: GPL-2 and/or GPL-3
  FIXME
 
-Files: src/UI/YoshiWin.h
-Copyright: NONE
-License: GPL-2+
- FIXME
-
 Files: src/UI/PartUI.fl
 Copyright: 0, TOPLEVEL::type::Integer, npart, UNUSED, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(string(o->value())));}
   0, TOPLEVEL::type::Integer, npart, UNUSED, UNUSED, UNUSED, param);}
   2002-2005, Nasca Octavian Paul
   2009-2011, Alan Calvert
   2014-2023, Will Godfrey
-  2024, Kristian Amlie, Will Godfrey
+  2024-2025, Kristian Amlie, Will Godfrey
   if (parameter == 0)
 License: GPL-2+
  FIXME
@@ -674,8 +692,8 @@ Copyright: 2002-2005, Nasca Octavian Paul
   2009-2011, Alan Calvert
   2012-2013, Jeremy Jongepier and others
   2014, Andrew Deryabin
-  2014-2024, Will Godfrey & others
   2014-2024, Will Godfrey and others
+  2014-2025, Will Godfrey & others
   2017, Jesper Lloyd}
 License: GPL-2+
  FIXME
@@ -780,6 +798,7 @@ Copyright: 2002-2005, Nasca Octavian Paul
   2009-2011, Alan Calvert
   2014-2020, Will Godfrey & others
   2022-2023, Will Godfrey, Rainer Hans Liffers
+  2024-2025, Will Godfrey, Ichthyostega, Kristian Amlie & others
 License: GPL-2+
  FIXME
 
@@ -902,7 +921,7 @@ License: GPL-2+
 Files: src/UI/EffUI.fl
 Copyright: 2002-2005, Nasca Octavian Paul
   2009-2010, Alan Calvert
-  2016-2024, Will Godfrey, Kristian Amlie & others
+  2016-2025, Will Godfrey, Kristian Amlie & others
 License: GPL-2+
  FIXME
 
@@ -932,12 +951,6 @@ Files: src/LV2_Plugin/CMakeLists.txt
 Copyright: 2014, Andrew Deryabin <andrewderyabin@gmail.com>
   2018-2023, Will Godfrey & others
   2024, Kristian Amlie
-License: GPL-2+
- FIXME
-
-Files: src/Synth/WaveInterpolator.h
-Copyright: 2002-2005, Nasca Octavian Paul
-  2022, Ichthyostega
 License: GPL-2+
  FIXME
 
@@ -1002,7 +1015,7 @@ License: GPL-2+
  FIXME
 
 Files: src/CLI/CmdInterpreter.cpp
-Copyright: 2019-2024, Will Godfrey and others.
+Copyright: 2019-2025, Will Godfrey and others.
   TOPLEVEL::section::part1 + npart, UNUSED, UNUSED, UNUSED, 0);
   TOPLEVEL::section::part1 + npart, UNUSED, UNUSED, UNUSED, 1);
   npart, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, miscmsg);
@@ -1072,6 +1085,11 @@ License: UNKNOWN
 
 Files: doc/examples/themes/photon.clr
 Copyright: 2025, Tillman Jex (www.tjex.net)
+License: UNKNOWN
+ FIXME
+
+Files: doc/examples/themes/high_contrast.clr
+Copyright: 2024, Will J Godfrey
 License: UNKNOWN
  FIXME
 
