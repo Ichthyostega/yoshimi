@@ -86,6 +86,7 @@ class CmdInterpreter
         void defaults();
         void resetInstance(unsigned int newInstance);
         bool query(string text);
+        bool testPartsChanged(string message, int partNum = UNUSED);
         void helpLoop(list<string>& msg, string *commands, int indent, bool single = false);
         char helpList(Parser& input, unsigned int local);
         void copypasteList(string name);
@@ -118,6 +119,7 @@ class CmdInterpreter
         int commandPart(Parser& input, unsigned char controlType);
         int commandTest(Parser& input, unsigned char controlType);
         int commandReadnSet(Parser& input, unsigned char controlType);
+        bool checkOnePart(SynthEngine *synth, uchar npart);
         void presetsControl(float value, unsigned char type, unsigned char section, unsigned char kitNumber, unsigned char engine, unsigned char insert, unsigned char parameter, unsigned char offset = UNUSED,unsigned char miscmsg = UNUSED);
         Reply processSrcriptFile(const string& filename, bool toplevel = true);
 
