@@ -297,7 +297,6 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         // only file types from here onwards
         Config,
         MasterConfig,
-        MasterUpdate,
         Bank,
         History,
         PresetDirs,
@@ -316,6 +315,7 @@ namespace CONFIG // usage CONFIG::control::oscillatorSize
         enableAutoInstance,
         handlePadSynthBuild,   // how to build PADSynth wavetable;
         // 0=legacy/muted, 1=background thread, 2=autoApply
+        enablePartReports,
         banksChecked,
         XMLcompressionLevel,   // this must be the last entry for base config.
 
@@ -360,6 +360,7 @@ namespace CONFIG // usage CONFIG::control::oscillatorSize
         ignoreResetAllCCs,
         logIncomingCCs,
         showLearnEditor,
+        enableOmni,
         enableNRPNs,
         saveCurrentConfig,
         changeRoot, // dummy command - always save current root
@@ -493,6 +494,8 @@ namespace MIDI // usage MIDI::control::noteOn
         allSoundOff = 120,
         resetAllControllers,
         allNotesOff = 123,
+        omniOff = 124,
+        omniOn = 125,
 
         pitchWheelAdjusted = 128,
         channelPressureAdjusted,
@@ -571,6 +574,7 @@ namespace MAIN // usage MAIN::control::volume
         volume,
         partNumber = 14,
         availableParts,
+        partsChanged,
         panLawType,
         detune = 32,
         keyShift = 35,
@@ -631,37 +635,38 @@ namespace PART // usage PART::control::volume
         enableSub,
         enablePad,
         enableKitLine,
-        volume,
-        velocitySense,
-        panning,
-        velocityOffset,
-        midiChannel,
-        keyMode,
-        channelATset,
-        keyATset,
-        portamento,
         kitItemMute,
-        minNote,
-        maxNote,
-        minToLastKey,
-        maxToLastKey,
-        resetMinMaxKey,
-        kitEffectNum = 24,
-        maxNotes = 33,
-        keyShift = 35,
-        partToSystemEffect1 = 40,
-        partToSystemEffect2,
-        partToSystemEffect3,
-        partToSystemEffect4,
-        humanise = 48,
+        volume = 10,         // . |
+        velocitySense,       // . |
+        panning,             // . |
+        velocityOffset,      // . |
+        midiChannel,         // . |
+        omni,                // . |
+        keyMode,             // . |
+        channelATset,        // . |
+        keyATset,            // . |
+        minNote,             // . |
+        maxNote,             // .  > 20 not stored in instruments.
+        minToLastKey,        // . |
+        maxToLastKey,        // . |
+        resetMinMaxKey,      // . |
+        maxNotes,            // . |
+        keyShift,            // . |
+        partToSystemEffect1, // . |
+        partToSystemEffect2, // . |
+        partToSystemEffect3, // . |
+        partToSystemEffect4, // . |
+        effectNumber = 40,      //
+        portamento,
+        humanise = 50,
         humanvelocity,
         drumMode = 57,
         kitMode,
-        effectNumber = 64,
+        kitEffectNum = 64,
         effectType,
         effectDestination,
         effectBypass,
-        audioDestination = 120,
+        audioDestination = 120, //
 
     // start of controllers
         volumeRange = 128, // start marker (must be first)
@@ -704,6 +709,7 @@ namespace PART // usage PART::control::volume
         midiResonanceCenter,
         midiResonanceBandwidth,
     // end of midi controls
+
         instrumentEngines = 219,
         instrumentCopyright,
         instrumentComments,

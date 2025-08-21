@@ -117,7 +117,8 @@ InterChange::InterChange(SynthEngine& synthInstance)
     swapInstrument1(UNUSED),
     searchInst(0),
     searchBank(0),
-    searchRoot(0)
+    searchRoot(0),
+    partsChanged{}
 {
     noteSeen = false;
     undoLoopBack = false;
@@ -415,7 +416,8 @@ void InterChange::indirectTransfers(CommandBlock& cmd, bool noForward)
     }
 
      // CLI message text has to be set here.
-    if (!synth.fileCompatible)
+    //  But flag will be cleared further down...
+    if (synth.getRuntime().incompatibleZynFile)
         text += "\nPossibly incompatible file from ZynAddSubFX 3.x";
 
     if (newMsg)
@@ -466,10 +468,9 @@ void InterChange::indirectTransfers(CommandBlock& cmd, bool noForward)
         if (not ok)
             synth.getRuntime().Log("Unable to  write to returnsBuffer buffer");
 
-        // cancelling and GUI report must be set after action completed.
-        if (not synth.fileCompatible)
+        // GUI report must be set after action completed...
+        if (synth.getRuntime().incompatibleZynFile)
         {
-            synth.fileCompatible = true;
 #ifdef GUI_FLTK
             if (synth.getRuntime().showGui and
                (cmd.data.source & TOPLEVEL::action::noAction) == TOPLEVEL::action::fromGUI)
@@ -481,10 +482,8 @@ void InterChange::indirectTransfers(CommandBlock& cmd, bool noForward)
 #endif
         }
     }
-    else // don't leave this hanging
-    {
-        synth.fileCompatible = true;
-    }
+    // in any case clear out the warning flag.
+    synth.getRuntime().incompatibleZynFile = false;
 }
 
 
@@ -656,7 +655,7 @@ int InterChange::indirectScales(CommandBlock& cmd, uchar& newMsg, bool& guiTo, s
 
 int InterChange::indirectMain(CommandBlock& cmd, uchar &newMsg, bool &guiTo, string &text, float &valuef)
 {
-    bool write = (cmd.data.type & TOPLEVEL::type::Write);
+    bool write  = (cmd.data.type & TOPLEVEL::type::Write);
     int value   = cmd.data.value;
     int control = cmd.data.control;
     int kititem = cmd.data.kit;
@@ -716,6 +715,7 @@ int InterChange::indirectMain(CommandBlock& cmd, uchar &newMsg, bool &guiTo, str
             text = textMsgBuffer.fetch(result & NO_MSG);
             if (result < 0x1000)
             {
+                partsChanged.reset(kititem);
                 if (synth.getRuntime().bankHighlight)
                     synth.getRuntime().lastBankPart = (value << 15) | (synth.getRuntime().currentBank << 8) | synth.getRuntime().currentRoot;
                 else
@@ -735,7 +735,10 @@ int InterChange::indirectMain(CommandBlock& cmd, uchar &newMsg, bool &guiTo, str
             text = textMsgBuffer.fetch(result & NO_MSG);
             synth.getRuntime().lastBankPart = UNUSED;
             if (result < 0x1000)
+            {
+                partsChanged.reset(kititem);
                 text = "ed " + text;
+            }
             else
                 text = " FAILED " + text;
             newMsg = true;
@@ -755,6 +758,7 @@ int InterChange::indirectMain(CommandBlock& cmd, uchar &newMsg, bool &guiTo, str
 
             if (ok)
             {
+                partsChanged.reset(value);
                 synth.getRuntime().sessionSeen[TOPLEVEL::XML::Instrument] = true;
                 synth.addHistory(setExtension(text, EXTEN::zynInst), TOPLEVEL::XML::Instrument);
                 synth.part[value]->PyoshiType = (saveType & 2);
@@ -769,6 +773,7 @@ int InterChange::indirectMain(CommandBlock& cmd, uchar &newMsg, bool &guiTo, str
             vectorClear(NUM_MIDI_CHANNELS);
             if (synth.loadPatchSetAndUpdate(text))
             {
+                partsChanged = 0;
                 synth.addHistory(setExtension(text, EXTEN::patchset), TOPLEVEL::XML::Patch);
                 text = "ed " + text;
             }
@@ -780,6 +785,7 @@ int InterChange::indirectMain(CommandBlock& cmd, uchar &newMsg, bool &guiTo, str
         case MAIN::control::saveNamedPatchset:
             if (synth.savePatchesXML(text))
             {
+                partsChanged = 0;
                 synth.addHistory(setExtension(text, EXTEN::patchset), TOPLEVEL::XML::Patch);
                 text = "d " + text;
             }
@@ -795,6 +801,11 @@ int InterChange::indirectMain(CommandBlock& cmd, uchar &newMsg, bool &guiTo, str
                 cmd.data.insert = tmp;
                 synth.addHistory(setExtension(text, EXTEN::vector), TOPLEVEL::XML::Vector);
                 text = "ed " + text + " to chan " + to_string(int(tmp + 1));
+                for (int i = 0; i < NUM_MIDI_PARTS; i+= NUM_MIDI_CHANNELS)
+                {
+                    partsChanged.reset(tmp + i);
+                }
+            synth.CBtest(&cmd);
             }
             else
                 text = " FAILED " + text;
@@ -813,6 +824,10 @@ int InterChange::indirectMain(CommandBlock& cmd, uchar &newMsg, bool &guiTo, str
             {
                 synth.addHistory(setExtension(text, EXTEN::vector), TOPLEVEL::XML::Vector);
                 text = "d " + text;
+                for (int i = 0; i < NUM_MIDI_PARTS; i+= NUM_MIDI_CHANNELS)
+                {
+                    partsChanged.reset(insert + i);
+                }
             }
             else
             {
@@ -864,6 +879,7 @@ int InterChange::indirectMain(CommandBlock& cmd, uchar &newMsg, bool &guiTo, str
                 string defaultName = synth.getRuntime().defaultSession;
                 if ((text != defaultName)) // never include default state
                     synth.addHistory(text, TOPLEVEL::XML::State);
+                partsChanged = 0;
                 text = "ed " + text;
             }
             else
@@ -876,6 +892,7 @@ int InterChange::indirectMain(CommandBlock& cmd, uchar &newMsg, bool &guiTo, str
             string filename = setExtension(text, EXTEN::state);
             if (synth.saveState(filename))
             {
+                partsChanged = 0;
                 string defaultName = synth.getRuntime().defaultSession;
                 if ((text != defaultName)) // never include default state
                     synth.addHistory(filename, TOPLEVEL::XML::State);
@@ -898,6 +915,7 @@ int InterChange::indirectMain(CommandBlock& cmd, uchar &newMsg, bool &guiTo, str
                 synth.part[value]->reset(value);
                 synth.getRuntime().sessionSeen[TOPLEVEL::XML::Instrument] = false;
                 cmd.data.source &= ~TOPLEVEL::action::lowPrio;
+                partsChanged.reset(value);
             }
             break;
 
@@ -908,6 +926,7 @@ int InterChange::indirectMain(CommandBlock& cmd, uchar &newMsg, bool &guiTo, str
                 doClearPartInstrument(value);
                 synth.getRuntime().sessionSeen[TOPLEVEL::XML::Instrument] = false;
                 cmd.data.source &= ~TOPLEVEL::action::lowPrio;
+                partsChanged.reset(value);
             }
             break;
 
@@ -927,9 +946,11 @@ int InterChange::indirectMain(CommandBlock& cmd, uchar &newMsg, bool &guiTo, str
         }
         case MAIN::control::masterReset:
             synth.resetAll(0);
+            partsChanged = 0;
             break;
         case MAIN::control::masterResetAndMlearn:
             synth.resetAll(1);
+            partsChanged = 0;
             break;
         case MAIN::control::openManual: // display user guide
         {
@@ -1051,6 +1072,7 @@ int InterChange::indirectBank(CommandBlock& cmd, uchar& newMsg, bool& guiTo, str
                 text = "FAILED Could not save " + text + " to " + to_string(insert + 1);
             else
             { // 0x80 on engine indicates it is a save not a load
+                partsChanged.reset(parameter);
                 if (synth.getRuntime().bankHighlight)
                     synth.getRuntime().lastBankPart = (insert << 15) | (kititem << 8) | engine | 0x80;
                 text = "" + to_string(insert + 1) +". " + text;
@@ -1694,7 +1716,7 @@ float InterChange::readAllData(CommandBlock& cmd)
     if (npart < NUM_MIDI_PARTS && synth.part[npart]->busy)
     {
         cmd.data.control = TOPLEVEL::control::partBusy; // part busy message
-        cmd.data.kit = UNUSED;
+        cmd.data.kit    = UNUSED;
         cmd.data.engine = UNUSED;
         cmd.data.insert = UNUSED;
     }
@@ -2115,6 +2137,26 @@ bool InterChange::commandSendReal(CommandBlock& cmd)
 
     uchar type    = cmd.data.type;
     uchar control = cmd.data.control;
+    uchar engine = cmd.data.engine;
+    if(npart < NUM_MIDI_PARTS && (type & TOPLEVEL::type::Write))
+    {
+        if (synth.getRuntime().enablePartReports)
+            partsChanged.set(npart);
+/*
+        std::cout<< std::endl;
+        for (int i = 0; i < 64; ++i) // easier to read this way!
+        {
+            if (partsChanged.test(i))
+                std::cout << "1";
+            else
+                    std::cout << "0";
+            if ((i & 15) == 15)
+                std::cout<< std::endl;
+        }
+        std::cout << "latest part " << int(npart + 1) << " write" << std::endl;
+        */
+    }
+
     if ((cmd.data.source & TOPLEVEL::action::muteAndLoop) == TOPLEVEL::action::lowPrio)
     {
         return true; // indirect transfer
@@ -2122,7 +2164,6 @@ bool InterChange::commandSendReal(CommandBlock& cmd)
 
     uchar kititem = cmd.data.kit;
     uchar effSend = cmd.data.kit;
-    uchar engine  = cmd.data.engine;
     uchar insert  = cmd.data.insert;
 
     bool isGui = ((cmd.data.source & TOPLEVEL::action::noAction) == TOPLEVEL::action::fromGUI);
@@ -3065,7 +3106,16 @@ void InterChange::commandConfig(CommandBlock& cmd)
             }
             else
                 value = synth.getRuntime().gzipCompression;
-            break;
+        break;
+        case CONFIG::control::enablePartReports:
+            if (write)
+            {
+                synth.getRuntime().enablePartReports = value_bool;
+                synth.getRuntime().updateConfig(control, value);
+                if (not value_bool)
+                    partsChanged = 0;
+            }
+        break;
 
         case CONFIG::control::defaultStateStart:
             if (write)
@@ -3358,6 +3408,15 @@ void InterChange::commandConfig(CommandBlock& cmd)
             else
                 value = synth.getRuntime().showLearnedCC;
             break;
+        case CONFIG::control::enableOmni:
+            if (write)
+            {
+                synth.getRuntime().enableOmni = value_bool;
+                synth.getRuntime().updateConfig(control, value_int);
+            }
+            else
+                value = synth.getRuntime().enableOmni;
+            break;
         case CONFIG::control::enableNRPNs:
             if (write)
             {
@@ -3426,6 +3485,9 @@ void InterChange::commandMain(CommandBlock& cmd)
             }
             else
                 value = synth.getRuntime().numAvailableParts;
+            break;
+        case MAIN::control::partsChanged: // read only
+            value = partsChanged.test(kititem);
             break;
         case MAIN::control::panLawType:
             if (write)
@@ -3951,6 +4013,16 @@ void InterChange::commandPart(CommandBlock& cmd)
                 part.Prcvchn = value_int;
             else
                 value = part.Prcvchn;
+            break;
+        case PART::control::omni:
+            if (write)
+            {
+                part.Pomni = static_cast<bool>(value_int);
+                // Reset state set by MIDI CC when receiving explicit toggle.
+                part.resetOmniCC();
+            }
+            else
+                value = static_cast<float>(part.Pomni);
             break;
         case PART::control::keyMode:
             if (write)

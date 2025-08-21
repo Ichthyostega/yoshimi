@@ -1,7 +1,7 @@
 /*
     CmdInterpreter.cpp
 
-    Copyright 2019 - 2024, Will Godfrey and others.
+    Copyright 2019 - 2025, Will Godfrey and others.
 
     This file is part of yoshimi, which is free software: you can
     redistribute it and/or modify it under the terms of the GNU General
@@ -585,6 +585,45 @@ bool CmdInterpreter::query(string text)
         }
     }
     return result;
+}
+
+
+bool CmdInterpreter::testPartsChanged(string message, int partNum)
+{
+    string replyMsg = "";
+    //bool found = false;
+    int count = 0;
+    if (partNum >= NUM_MIDI_PARTS)
+    {
+        for (int i = 0; i < NUM_MIDI_PARTS; ++ i)
+        {
+            if (readControl(synth, 0, MAIN::control::partsChanged, TOPLEVEL::section::main, i))
+            {
+                replyMsg = (replyMsg + " " + to_string(i + 1));
+                //found = true;
+                ++ count;
+            }
+        }
+    }
+    else if (readControl(synth, 0, MAIN::control::partsChanged, TOPLEVEL::section::main, partNum))
+    {
+        replyMsg =  " " + to_string(partNum + 1);
+        //found = true;
+        ++ count;
+    }
+    if (count == 0)
+        return true;
+
+    if (count > 1)
+        replyMsg = "Instruments in parts " + replyMsg + " have been edited. ";
+    else
+        replyMsg = "Instrument in part " + replyMsg + " has been edited. ";
+    replyMsg += message;
+    if (synth->getRuntime().toConsole)
+        cout << replyMsg << "? (y / {other})" << endl;
+    //found = query(replyMsg);
+
+    return query(replyMsg);
 }
 
 
@@ -2684,17 +2723,20 @@ void CmdInterpreter::listCurrentParts(Parser& input, list<string>& msg_buf)
                 name += " - " + text;
             else
             {
+                name += " to";
                 if (dest == 1)
                     name += " Main";
                 else if (dest == 2)
                     name += " Part";
                 else
                     name += " Both";
-                name += "  Chan ";
+                bool omni = bool(readControl(synth, 0, PART::control::omni, TOPLEVEL::section::part1 + partno));
+                name += omni ? " Omni " : " Chan";
                 int ch = int(readControl(synth, 0, PART::control::midiChannel, TOPLEVEL::section::part1 + partno) + 1);
                 if (ch < 10)
                     name += " ";
-                name += to_string(ch);
+                if (not omni)
+                    name += to_string(ch);
                 if (full)
                 {
                     name += "  key Min ";
@@ -3216,6 +3258,11 @@ int CmdInterpreter::commandConfig(Parser& input, unsigned char controlType)
         command = CONFIG::control::hideNonFatalErrors;
         value = (input.toggle() == 1);
     }
+    else if (input.matchnMove(1, "warn"))
+    {
+        command = CONFIG::control::enablePartReports;
+        value = (input.toggle() == 1);
+    }
     else if (input.matchnMove(1, "display"))
     {
         command = CONFIG::control::showSplash;
@@ -3466,6 +3513,11 @@ int CmdInterpreter::commandConfig(Parser& input, unsigned char controlType)
     else if (input.matchnMove(2, "show"))
     {
         command = CONFIG::control::showLearnEditor;
+        value = (input.toggle() == 1);
+    }
+    else if (input.matchnMove(2, "omni"))
+    {
+        command = CONFIG::control::enableOmni;
         value = (input.toggle() == 1);
     }
     else if (input.matchnMove(1, "nrpn"))
@@ -5457,6 +5509,8 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
     {
         if (controlType != TOPLEVEL::type::Write)
             return REPLY::writeOnly_msg;
+        if (not testPartsChanged("Still clear", npart))
+            return REPLY::done_msg;
         if (input.matchnMove(3, "all")) // clear entire part
             return sendNormal(synth, 0, npart, controlType, MAIN::control::defaultPart, TOPLEVEL::section::main);
         return sendNormal(synth, 0, npart, controlType, MAIN::control::defaultInstrument, TOPLEVEL::section::main);
@@ -5499,13 +5553,16 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
                 int root = string2int(line.substr(0, 3));
                 int bank = string2int(line.substr(5, 3));
                 int inst = (string2int(line.substr(10, 3))) - 1;
-
+                if (not testPartsChanged("Overwrite", npart))
+                    return REPLY::done_msg;
                 sendDirect(synth, 0, inst, controlType, MAIN::control::loadInstrumentFromBank, TOPLEVEL::section::main, npart, bank, root);
                 return REPLY::done_msg;
             }
             int tmp = string2int(input) - 1;
             if (tmp < 0 || tmp >= MAX_INSTRUMENTS_IN_BANK)
                 return REPLY::range_msg;
+            if (not testPartsChanged("Overwrite", npart))
+                return REPLY::done_msg;
             sendDirect(synth, 0, tmp, controlType, MAIN::control::loadInstrumentFromBank, TOPLEVEL::section::main, npart);
             return REPLY::done_msg;
         }
@@ -5717,6 +5774,10 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
             return REPLY::value_msg;
         tmp -= 1;
         return sendNormal(synth, 0, tmp, controlType, PART::control::midiChannel, npart);
+    }
+    if (input.matchnMove(2, "omni"))
+    {
+        return sendNormal(synth, 0, (input.toggle() == 1), controlType, PART::control::omni, npart);
     }
     if (input.matchnMove(2, "aftertouch"))
     {
@@ -6393,12 +6454,14 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
             Runtime.Log("Can only exit from instance 0", _SYS_::LogError);
             return Reply::DONE;
         }
-        string message = "All unsaved data will be lost. Still exit";;
+        string message = "All unsaved data will be lost. Still exit";
         if (echo)
             cout << message << "? (y / {other})" << endl;
 
         if (query(message))
         {
+            if (not testPartsChanged("Still exit"))
+                return Reply::DONE;
             Runtime.runSynth = false;
             return Reply{REPLY::exit_msg};
         }
@@ -6426,6 +6489,8 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
             control = MAIN::control::masterResetAndMlearn;
         if (query("Restore to basic settings"))
         {
+            if (not testPartsChanged("Still reset"))
+                return Reply::DONE;
             sendDirect(synth, TOPLEVEL::action::muteAndLoop, 0, TOPLEVEL::type::Write, control, TOPLEVEL::section::main);
             defaults();
         }
@@ -6777,7 +6842,6 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
         }
         if (input.matchnMove(2, "vector"))
         {
-            string loadChan;
             unsigned char ch;
             if (input.matchnMove(1, "channel"))
             {
@@ -6789,17 +6853,40 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
                 }
                 else
                     ch = chan;
-                loadChan = "channel " + asString(ch + 1);
             }
             else
             {
-                ch = UNUSED;
-                loadChan = "source channel";
+                ch = chan;
             }
-            if (ch != UNUSED && ch >= NUM_MIDI_CHANNELS)
+            if (ch >= NUM_MIDI_CHANNELS)
                 return Reply{REPLY::range_msg};
+
             if (input.isAtEnd())
                 return Reply{REPLY::name_msg};
+
+            int count = 0;
+            string replyMsg = "";
+            for (int i = ch; i < (ch + NUM_MIDI_PARTS); i += NUM_MIDI_CHANNELS)
+            {
+                if (readControl(synth, 0, MAIN::control::partsChanged, TOPLEVEL::section::main, i))
+                {
+                    replyMsg = (replyMsg + " " + to_string(i + 1));
+                    ++ count;
+                }
+            }
+            if (count)
+            {
+                if (count > 1)
+                    replyMsg = "Instruments in parts " + replyMsg + " have been edited";
+                else
+                    replyMsg = "Instrument in part " + replyMsg + " has been edited";
+                replyMsg += ". Overwrite";
+                if (synth->getRuntime().toConsole)
+                    cout << replyMsg << "? (y / {other})" << endl;
+                if (not query(replyMsg))
+                    return Reply::DONE;
+            }
+
             string name;
             if (input.nextChar('@'))
             {
@@ -6818,6 +6905,7 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
                 if (name == "")
                     return Reply{REPLY::name_msg};
             }
+
             sendDirect(synth, TOPLEVEL::action::muteAndLoop, 0, TOPLEVEL::type::Write, MAIN::control::loadNamedVector, TOPLEVEL::section::main, UNUSED, UNUSED, ch, UNUSED, UNUSED, textMsgBuffer.push(name));
             return Reply::DONE;
         }
@@ -6843,6 +6931,8 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
                 if (name == "")
                         return Reply{REPLY::name_msg};
             }
+            if (not testPartsChanged("Overwrite"))
+            return Reply::DONE;
             sendDirect(synth, TOPLEVEL::action::muteAndLoop, 0, TOPLEVEL::type::Write, MAIN::control::loadNamedState, TOPLEVEL::section::main, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(name));
             return Reply::DONE;
         }
@@ -6893,6 +6983,8 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
                 if (name == "")
                     return Reply{REPLY::name_msg};
             }
+            if (not testPartsChanged("Overwrite"))
+                return REPLY::done_msg;
             sendDirect(synth, TOPLEVEL::action::muteAndLoop, 0, TOPLEVEL::type::Write, MAIN::control::loadNamedPatchset, TOPLEVEL::section::main, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(name));
             return Reply::DONE;
         }
@@ -6918,7 +7010,8 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
                 if (name == "")
                     return Reply{REPLY::name_msg};
             }
-
+            if (not testPartsChanged("Overwrite", npart))
+                return REPLY::done_msg;
             sendDirect(synth, 0, 0, TOPLEVEL::type::Write, MAIN::control::loadInstrumentByName, TOPLEVEL::section::main, npart, UNUSED, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(name));
             return Reply::DONE;
         }
@@ -7147,6 +7240,27 @@ Reply CmdInterpreter::cmdIfaceProcessCommand(Parser& input)
     // legacyCLIaccess goes here
 
     return REPLY::unrecognised_msg;
+}
+
+
+bool  CmdInterpreter::checkOnePart(SynthEngine *synth, uchar npart)
+{
+    CommandBlock checkData;
+    checkData.data.value = 0;
+    checkData.data.type = 0;
+    checkData.data.control = MAIN::control::partsChanged;
+    checkData.data.part = TOPLEVEL::section::main;
+    checkData.data.kit = npart;
+    checkData.data.engine = UNUSED;
+    checkData.data.insert = UNUSED;
+    checkData.data.parameter = UNUSED;
+    checkData.data.insert = UNUSED;
+    bool changed = synth->interchange.readAllData(checkData);
+    if (changed)
+    {
+        changed = query("part has been editied. Overwrite");
+    }
+    return changed;
 }
 
 

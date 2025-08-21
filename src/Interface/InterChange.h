@@ -39,6 +39,7 @@
 #include <list>
 #include <memory>
 #include <string>
+#include <bitset>
 
 class DataText;
 class MasterUI;
@@ -48,7 +49,6 @@ class PADnoteParameters;
 // used by main.cpp and SynthEngine.cpp
 extern std::string singlePath;
 extern int startInstance;
-
 
 /* compile time function log2 as per
    https://hbfs.wordpress.com/2016/03/22/log2-with-c-metaprogramming          */
@@ -205,6 +205,7 @@ class InterChange : private DataText
         int searchInst;
         int searchBank;
         int searchRoot;
+        std::bitset<64> partsChanged;
 };
 
 #endif
