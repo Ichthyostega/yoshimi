@@ -14,7 +14,7 @@ Build-Depends:
  libasound2-dev,
  libcairo2-dev,
  libfftw3-dev,
- libfltk1.3-dev,
+ libfltk1.4-dev,
  libfontconfig-dev,
  libgl-dev,
  libglu1-mesa-dev | libglu-dev,
