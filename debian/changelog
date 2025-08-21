@@ -1,3 +1,12 @@
+yoshimi (2.3.4.1-1) UNRELEASED; urgency=medium
+
+  * New upstream version 2.3.4.1
+  * Update copyright information
+    + Update d/copyright
+    + Re-generate d/copyright_hints
+
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Thu, 21 Aug 2025 23:01:53 +0200
+
 yoshimi (2.3.3.3-1) unstable; urgency=medium
 
   * New upstream version 2.3.3.3
