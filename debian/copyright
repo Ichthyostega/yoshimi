@@ -141,6 +141,19 @@ Copyright: 2009-2011, Alan Calvert
   2024, Ichthyostega
 License: GPL-2+
 
+Files: src/Misc/XMLStore.*
+Copyright: 2002-2005, Nasca Octavian Paul
+  2009-2011, Alan Calvert
+  2014-2025, Will Godfrey
+  2025, Ichthyostega
+License: GPL-2+
+
+Files: src/Misc/VerInfo.h
+ src/Synth/WaveInterpolator.h
+Copyright: 2002-2005, Nasca Octavian Paul
+  2022-2025, Ichthyostega
+License: GPL-2+
+
 Files: Util/YoshimiSplash.svg
 Copyright: 2006, Arun Kulshreshtha
 License: CC-BY-4.0
