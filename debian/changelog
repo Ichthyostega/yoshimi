@@ -1,4 +1,4 @@
-yoshimi (2.3.4.1-1) UNRELEASED; urgency=medium
+yoshimi (2.3.4.1-1) unstable; urgency=medium
 
   * New upstream version 2.3.4.1
   * Add patch to improve appstream metainfo
@@ -9,7 +9,7 @@ yoshimi (2.3.4.1-1) UNRELEASED; urgency=medium
     + Re-generate d/copyright_hints
   * Update git repository layout to follow DEP-14
 
- -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Tue, 26 Aug 2025 12:18:34 +0200
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Tue, 26 Aug 2025 12:19:32 +0200
 
 yoshimi (2.3.3.3-1) unstable; urgency=medium
 
