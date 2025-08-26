@@ -1,11 +1,15 @@
 yoshimi (2.3.4.1-1) UNRELEASED; urgency=medium
 
   * New upstream version 2.3.4.1
+  * Add patch to improve appstream metainfo
+  * Drop obsolete lintian-overrides
   * Update copyright information
     + Update d/copyright
+    + Drop removed files from d/copyright
     + Re-generate d/copyright_hints
+  * Update git repository layout to follow DEP-14
 
- -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Thu, 21 Aug 2025 23:01:53 +0200
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Tue, 26 Aug 2025 12:18:34 +0200
 
 yoshimi (2.3.3.3-1) unstable; urgency=medium
 
