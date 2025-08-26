@@ -36,8 +36,6 @@ Files: src/DSP/*
        src/Misc/WavFile.cpp
        src/Misc/WavFile.h
        src/Misc/WaveShapeSamples.h
-       src/Misc/XMLwrapper.cpp
-       src/Misc/XMLwrapper.h
        src/Params/*
        src/Synth/*
        src/UI/ADnoteUI.fl
