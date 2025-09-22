@@ -1,3 +1,9 @@
+yoshimi (2.3.4.2-1) UNRELEASED; urgency=medium
+
+  * New upstream version 2.3.4.2
+
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Mon, 22 Sep 2025 16:50:51 +0200
+
 yoshimi (2.3.4.1-2) unstable; urgency=medium
 
   * Bump B-D on fltk to 1.4
