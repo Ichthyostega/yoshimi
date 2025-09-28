@@ -81,6 +81,7 @@ namespace { // Implementation details...
 
     TextMsgBuffer& textMsgBuffer = TextMsgBuffer::instance();
 
+
     static std::regex VERSION_SYNTAX{R"~((\d+)(?:\.(\d+))?(?:\.(\d+))?)~", std::regex::optimize};
 
     VerInfo parseVersion(string const& spec)
@@ -249,6 +250,17 @@ Config::Config(SynthEngine& synthInstance)
 
 void Config::init()
 {
+
+
+    /*string command = "fltk-config --api-version";
+    string result = "";
+    file::cmd2string(command, result);
+    //std::cout << result << std::endl;
+    if (stoi(result) >= 1.4)
+    {
+        set a constant here for WidgetPDial ?
+    }*/
+
     if (isLV2) return; //skip further setup, which is irrelevant for LV2 plugin instance.
 
     switch (audioEngine)
@@ -841,13 +853,11 @@ bool Config::extractBaseParameters(XMLStore& xml)
     storedGui  = basePars.getPar_bool("enable_gui", showGui);
     if (not guiChanged)
         showGui = storedGui;
-
     storedCli  = basePars.getPar_bool("enable_CLI", showCli);
     if (not cliChanged)
         showCli = storedCli;
 
     showSplash = basePars.getPar_bool("enable_splash", showSplash);
-
     showCLIcontext  = basePars.getPar_int("show_CLI_context", 1, 0, 2);
 
     singlePath   = basePars.getPar_bool("enable_single_master", singlePath);

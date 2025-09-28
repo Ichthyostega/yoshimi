@@ -69,6 +69,9 @@ decl {\#include "UI/WidgetCheckButton.h"} {public local
 decl {\#include "UI/WidgetSpinner.h"} {public local
 }
 
+decl {\#include "UI/ScaleTrackedWindow.h"} {public global
+}
+
 decl {\#include "ADnoteUI.h"} {public local
 }
 
@@ -537,9 +540,10 @@ class MasterUI {: {public GuiUpdates}
 
                 synth->signalGuiWindowClosed();
             }}
-      xywh {9 24 385 525} type Double labelfont 13 labelsize 12 hide resizable
+      xywh {411 233 385 525} type Double labelfont 13 labelsize 12 hide resizable
       code0 {mainDW = 385; mainDH = 470;}
       code1 {masterwindow->size_range(394, 500, 0, 0, 0, 0, 1);}
+      class ScaleTrackedWindow
     } {
       Fl_Box keyHandle {
         label keyhandler
@@ -547,8 +551,133 @@ class MasterUI {: {public GuiUpdates}
         code0 {o->init(synth);}
         class KeyHandle
       }
-      Fl_Box topcontrols1 {
-        xywh {267 35 114 136} box ENGRAVED_FRAME
+      Fl_Tabs sysinsgroup {
+        label {System/Insert}
+        callback {//
+            if (o->value() == SystemEffectsGrp)
+                showSysEfxUI();
+            else if (o->value() == InsertionEffectsGrp)
+                showInsEfxUI();
+            ;}
+        xywh {3 148 379 68} box PLASTIC_UP_BOX color 44 selection_color 223 labeltype NO_LABEL labelsize 12 labelcolor 64 align 5
+      } {
+        Fl_Group SystemEffectsGrp {
+          label { System Effects }
+          xywh {3 176 379 40} color 223 selection_color 31 labelfont 1 labelsize 12 labelcolor 64 align 4
+        } {
+          Fl_Spinner syseffnocounter {
+            label Effect
+            callback {//
+                int effNum = o->value() - 1;
+                send_data(TOPLEVEL::action::forceUpdate, EFFECT::sysIns::effectNumber, effNum, TOPLEVEL::type::Integer, TOPLEVEL::section::systemEffects, effNum);}
+            xywh {40 186 44 20} labeltype NO_LABEL labelsize 11 labelcolor 64 align 0 maximum 4 textfont 1 textsize 11 textcolor 64
+            code0 {o->range(1, NUM_SYS_EFX);}
+            code1 {o->value(1);}
+            class WidgetSpinner
+          }
+          Fl_Choice sysefftype {
+            label Type
+            callback {//
+                uchar effType = o->value();
+                uchar effNum = syseffectui->effNum();
+                send_data(TOPLEVEL::action::forceUpdate, EFFECT::sysIns::effectType, effType, TOPLEVEL::type::Integer, TOPLEVEL::section::systemEffects, effNum);
+                // update sys-effect enabled checkbox as immediate feedback
+                // the next push-update will then set it so to reflect the actual activation state in the core
+                SysEffOn->value(effType != 0);}
+            xywh {120 186 96 20} down_box BORDER_BOX labeltype NO_LABEL labelsize 11 labelcolor 64 align 16 textfont 1 textsize 11 textcolor 64
+            code0 {o->add("No Effect");o->add("Reverb");o->add("Echo");o->add("Chorus");o->add("Phaser");o->add("AlienWah");o->add("Distortion");o->add("EQ");o->add("DynFilter");}
+            code1 {o->value(0); // initially disabled -- enabled only when effect slot is occupied}
+          } {}
+          Fl_Check_Button SysEffOn {
+            label On
+            callback {//
+                /*if (o->value())
+                {
+                    sysCopy->activate();
+                    sysPaste->activate();
+                }
+                else
+                {
+                    // note: the effect-type select box remains enabled
+                    sysCopy->deactivate();
+                    sysPaste->deactivate();
+                }*/
+                uchar effNum = syseffectui->effNum();
+                send_data(0, EFFECT::sysIns::effectEnable, o->value(), TOPLEVEL::type::Integer, TOPLEVEL::section::systemEffects, effNum);}
+            xywh {247 186 20 20} down_box DOWN_BOX value 1 selection_color 64 labelfont 3 labelcolor 226 align 4
+            class Fl_Check_Button2
+          }
+          Fl_Button sysEffSend {
+            label {Send to}
+            callback {showSysEffSends();}
+            xywh {275 186 62 20} box GTK_THIN_UP_BOX color 221 labelfont 1 labelsize 11 labelcolor 64
+          }
+          Fl_Button sysCopy {
+            label C
+            callback {//
+                uchar effNum = syseffectui->effNum();
+                synth->getGuiMaster()->getPresetsUi()->Ucopy(TOPLEVEL::section::systemEffects, 16, effNum);}
+            xywh {350 182 25 14} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
+          }
+          Fl_Button sysPaste {
+            label P
+            callback {//
+                uchar effNum = syseffectui->effNum();
+                synth->getGuiMaster()->getPresetsUi()->Upaste(TOPLEVEL::section::systemEffects, 16, effNum);}
+            xywh {350 197 25 14} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
+          }
+        }
+        Fl_Group InsertionEffectsGrp {
+          label { Insertion Effects }
+          xywh {3 176 379 40} color 223 selection_color 31 labelfont 1 labelsize 12 labelcolor 64 align 4 hide
+        } {
+          Fl_Spinner inseffnocounter {
+            label Effect
+            callback {//
+                int effNum = o->value() - 1;
+                send_data(TOPLEVEL::action::forceUpdate, EFFECT::sysIns::effectNumber, effNum, TOPLEVEL::type::Integer, TOPLEVEL::section::insertEffects, effNum);}
+            xywh {40 186 36 20} labeltype NO_LABEL labelsize 11 labelcolor 64 align 20 maximum 8 textfont 1 textsize 11 textcolor 64
+            code0 {o->range(1, NUM_INS_EFX);}
+            code1 {o->value(1);}
+            class WidgetSpinner
+          }
+          Fl_Choice insefftype {
+            label Type
+            callback {//
+                uchar effType = o->value();
+                uchar effNum = inseffectui->effNum();
+                send_data(TOPLEVEL::action::forceUpdate, EFFECT::sysIns::effectType, effType, TOPLEVEL::type::Integer, TOPLEVEL::section::insertEffects, effNum);
+                // note: when processing this in InterChange, an insertion destination is automatically pre-selected}
+            xywh {120 186 96 20} down_box BORDER_BOX labeltype NO_LABEL labelsize 11 labelcolor 64 align 0 textfont 1 textsize 11 textcolor 64
+            code0 {o->add("No Effect");o->add("Reverb");o->add("Echo");o->add("Chorus");o->add("Phaser");o->add("AlienWah");o->add("Distortion");o->add("EQ");o->add("DynFilter");}
+            code1 {o->value(0);}
+            code2 {o->activate(); // not disabled; user may activate this slot by picking some effect type}
+          } {}
+          Fl_Choice inseffpart {
+            label {To }
+            callback {//
+                int routing = o->value() - 2;
+                uchar effNum = inseffectui->effNum();
+                send_data(TOPLEVEL::action::forceUpdate, EFFECT::sysIns::effectDestination, routing, TOPLEVEL::type::Integer, TOPLEVEL::section::insertEffects, effNum);}
+            xywh {242 186 96 20} down_box BORDER_BOX labelfont 1 labelsize 11 labelcolor 64 textfont 1 textsize 11 textcolor 64
+            code0 {setinspartlist();}
+            code3 {o->value(1); // initially deactivated}
+          } {}
+          Fl_Button insCopy {
+            label C
+            callback {//
+                uchar effNum = inseffectui->effNum();
+                synth->getGuiMaster()->getPresetsUi()->Ucopy(TOPLEVEL::section::insertEffects, 16, effNum);}
+            xywh {350 182 25 14} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
+          }
+          Fl_Button insPaste {
+            label P
+            callback {//
+                uchar effNum = inseffectui->effNum();
+                synth->getGuiMaster()->getPresetsUi()->Upaste(TOPLEVEL::section::insertEffects, 16, effNum);}
+            xywh {350 197 25 14} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
+          }
+        }
       }
       Fl_Menu_Bar mastermenu {
         callback {//
@@ -853,17 +982,6 @@ class MasterUI {: {public GuiUpdates}
         label {Master  }
         xywh {3 24 380 148} labeltype NO_LABEL labelsize 11 labelcolor 96 align 22
       } {
-        Fl_Dial globalfinedetune {
-          label Detune
-          callback {//
-          o->selection_color(setKnob(o->value(),64));
-          send_data(TOPLEVEL::action::lowPrio, MAIN::control::detune, o->value(), 0, TOPLEVEL::section::main);}
-          tooltip {Global Fine Detune} xywh {278 43 40 40} box ROUND_UP_BOX color 29 labelsize 10 labelcolor 64 maximum 127 value 64
-          code0 {o->setValueType(VC_GlobalFineDetune);}
-          code1 {o->value(synth->microtonal.Pglobalfinedetune);}
-          code2 {o->selection_color(setKnob(o->value(),64));}
-          class WidgetPDial
-        }
         Fl_Button mainreset {
           label Reset
           callback {//
@@ -885,17 +1003,6 @@ class MasterUI {: {public GuiUpdates}
           callback {//
                 send_data(TOPLEVEL::action::muteAndLoop, MAIN::control::stopSound, 0, TOPLEVEL::type::Integer, TOPLEVEL::section::main);}
           tooltip {Cease all sound immediately!} xywh {7 30 66 24} box PLASTIC_UP_BOX color 89 labelfont 1 labelsize 11 labelcolor 64 align 16
-        }
-        Fl_Dial mastervolumedial {
-          label Volume
-          callback {//
-                o->selection_color(setKnob(o->value(),90));
-                send_data(0, MAIN::control::volume, o->value(), 0, TOPLEVEL::section::main);}
-          tooltip {Master Volume} xywh {330 43 40 40} box ROUND_UP_BOX color 29 labelsize 10 labelcolor 64 maximum 127
-          code0 {o->setValueType(VC_MasterVolume);}
-          code1 {o->value(synth->Pvolume);}
-          code2 {o->selection_color(setKnob(o->value(),90));}
-          class WidgetPDial
         }
         Fl_Button mainvirtkeyb {
           label {Virtual Key&board}
@@ -938,133 +1045,49 @@ class MasterUI {: {public GuiUpdates}
                 send_data(0, MAIN::control::redo,  0, TOPLEVEL::type::Integer, TOPLEVEL::section::undoMark);}
           tooltip {Re-apply last change} xywh {195 91 66 24} box PLASTIC_UP_BOX color 228 labelsize 11 labelcolor 64
         }
-      }
-      Fl_Tabs sysinsgroup {
-        label {System/Insert}
-        callback {//
-            if (o->value() == SystemEffectsGrp)
-                showSysEfxUI();
-            else if (o->value() == InsertionEffectsGrp)
-                showInsEfxUI();
-            ;}
-        xywh {3 148 379 68} box PLASTIC_UP_BOX color 44 selection_color 223 labeltype NO_LABEL labelsize 12 labelcolor 64 align 5
-      } {
-        Fl_Group SystemEffectsGrp {
-          label { System Effects }
-          xywh {3 176 379 40} color 223 selection_color 31 labelfont 1 labelsize 12 labelcolor 64 align 4
-        } {
-          Fl_Spinner syseffnocounter {
-            label Effect
-            callback {//
-                int effNum = o->value() - 1;
-                send_data(TOPLEVEL::action::forceUpdate, EFFECT::sysIns::effectNumber, effNum, TOPLEVEL::type::Integer, TOPLEVEL::section::systemEffects, effNum);}
-            xywh {40 186 44 20} labeltype NO_LABEL labelsize 11 labelcolor 64 align 0 maximum 4 textfont 1 textsize 11 textcolor 64
-            code0 {o->range(1, NUM_SYS_EFX);}
-            code1 {o->value(1);}
-            class WidgetSpinner
-          }
-          Fl_Choice sysefftype {
-            label Type
-            callback {//
-                uchar effType = o->value();
-                uchar effNum = syseffectui->effNum();
-                send_data(TOPLEVEL::action::forceUpdate, EFFECT::sysIns::effectType, effType, TOPLEVEL::type::Integer, TOPLEVEL::section::systemEffects, effNum);
-                // update sys-effect enabled checkbox as immediate feedback
-                // the next push-update will then set it so to reflect the actual activation state in the core
-                SysEffOn->value(effType != 0);}
-            xywh {120 186 96 20} down_box BORDER_BOX labeltype NO_LABEL labelsize 11 labelcolor 64 align 16 textfont 1 textsize 11 textcolor 64
-            code0 {o->add("No Effect");o->add("Reverb");o->add("Echo");o->add("Chorus");o->add("Phaser");o->add("AlienWah");o->add("Distortion");o->add("EQ");o->add("DynFilter");}
-            code1 {o->value(0); // initially disabled -- enabled only when effect slot is occupied}
-          } {}
-          Fl_Check_Button SysEffOn {
-            label On
-            callback {//
-                /*if (o->value())
-                {
-                    sysCopy->activate();
-                    sysPaste->activate();
-                }
-                else
-                {
-                    // note: the effect-type select box remains enabled
-                    sysCopy->deactivate();
-                    sysPaste->deactivate();
-                }*/
-                uchar effNum = syseffectui->effNum();
-                send_data(0, EFFECT::sysIns::effectEnable, o->value(), TOPLEVEL::type::Integer, TOPLEVEL::section::systemEffects, effNum);}
-            xywh {247 186 20 20} down_box DOWN_BOX value 1 selection_color 64 labelfont 3 labelcolor 226 align 4
-            class Fl_Check_Button2
-          }
-          Fl_Button sysEffSend {
-            label {Send to}
-            callback {showSysEffSends();}
-            xywh {275 186 62 20} box GTK_THIN_UP_BOX color 221 labelfont 1 labelsize 11 labelcolor 64
-          }
-          Fl_Button sysCopy {
-            label C
-            callback {//
-                uchar effNum = syseffectui->effNum();
-                synth->getGuiMaster()->getPresetsUi()->Ucopy(TOPLEVEL::section::systemEffects, 16, effNum);}
-            xywh {350 182 25 14} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
-          }
-          Fl_Button sysPaste {
-            label P
-            callback {//
-                uchar effNum = syseffectui->effNum();
-                synth->getGuiMaster()->getPresetsUi()->Upaste(TOPLEVEL::section::systemEffects, 16, effNum);}
-            xywh {350 197 25 14} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
-          }
+        Fl_Box topcontrols1 {
+          xywh {267 30 114 142} box ENGRAVED_FRAME
         }
-        Fl_Group InsertionEffectsGrp {
-          label { Insertion Effects }
-          xywh {3 176 379 40} color 223 selection_color 31 labelfont 1 labelsize 12 labelcolor 64 align 4 hide
-        } {
-          Fl_Spinner inseffnocounter {
-            label Effect
-            callback {//
-                int effNum = o->value() - 1;
-                send_data(TOPLEVEL::action::forceUpdate, EFFECT::sysIns::effectNumber, effNum, TOPLEVEL::type::Integer, TOPLEVEL::section::insertEffects, effNum);}
-            xywh {40 186 36 20} labeltype NO_LABEL labelsize 11 labelcolor 64 align 20 maximum 8 textfont 1 textsize 11 textcolor 64
-            code0 {o->range(1, NUM_INS_EFX);}
-            code1 {o->value(1);}
-            class WidgetSpinner
-          }
-          Fl_Choice insefftype {
-            label Type
-            callback {//
-                uchar effType = o->value();
-                uchar effNum = inseffectui->effNum();
-                send_data(TOPLEVEL::action::forceUpdate, EFFECT::sysIns::effectType, effType, TOPLEVEL::type::Integer, TOPLEVEL::section::insertEffects, effNum);
-                // note: when processing this in InterChange, an insertion destination is automatically pre-selected}
-            xywh {120 186 96 20} down_box BORDER_BOX labeltype NO_LABEL labelsize 11 labelcolor 64 align 0 textfont 1 textsize 11 textcolor 64
-            code0 {o->add("No Effect");o->add("Reverb");o->add("Echo");o->add("Chorus");o->add("Phaser");o->add("AlienWah");o->add("Distortion");o->add("EQ");o->add("DynFilter");}
-            code1 {o->value(0);}
-            code2 {o->activate(); // not disabled; user may activate this slot by picking some effect type}
-          } {}
-          Fl_Choice inseffpart {
-            label {To }
-            callback {//
-                int routing = o->value() - 2;
-                uchar effNum = inseffectui->effNum();
-                send_data(TOPLEVEL::action::forceUpdate, EFFECT::sysIns::effectDestination, routing, TOPLEVEL::type::Integer, TOPLEVEL::section::insertEffects, effNum);}
-            xywh {242 186 96 20} down_box BORDER_BOX labelfont 1 labelsize 11 labelcolor 64 textfont 1 textsize 11 textcolor 64
-            code0 {setinspartlist();}
-            code3 {o->value(1); // initially deactivated}
-          } {}
-          Fl_Button insCopy {
-            label C
-            callback {//
-                uchar effNum = inseffectui->effNum();
-                synth->getGuiMaster()->getPresetsUi()->Ucopy(TOPLEVEL::section::insertEffects, 16, effNum);}
-            xywh {350 182 25 14} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
-          }
-          Fl_Button insPaste {
-            label P
-            callback {//
-                uchar effNum = inseffectui->effNum();
-                synth->getGuiMaster()->getPresetsUi()->Upaste(TOPLEVEL::section::insertEffects, 16, effNum);}
-            xywh {350 197 25 14} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
-          }
+        Fl_Dial globalfinedetune {
+          label Detune
+          callback {//
+          o->selection_color(setKnob(o->value(),64));
+          send_data(TOPLEVEL::action::lowPrio, MAIN::control::detune, o->value(), 0, TOPLEVEL::section::main);}
+          tooltip {Global Fine Detune} xywh {278 42 40 40} box ROUND_UP_BOX color 29 labelsize 10 labelcolor 64 maximum 127 value 64
+          code0 {o->setValueType(VC_GlobalFineDetune);}
+          code1 {o->value(synth->microtonal.Pglobalfinedetune);}
+          code2 {o->selection_color(setKnob(o->value(),64));}
+          class WidgetPDial
+        }
+        Fl_Dial mastervolumedial {
+          label Volume
+          callback {//
+                o->selection_color(setKnob(o->value(),90));
+                send_data(0, MAIN::control::volume, o->value(), 0, TOPLEVEL::section::main);}
+          tooltip {Master Volume} xywh {330 42 40 40} box ROUND_UP_BOX color 29 labelsize 10 labelcolor 64 maximum 127
+          code0 {o->setValueType(VC_MasterVolume);}
+          code1 {o->value(synth->Pvolume);}
+          code2 {o->selection_color(setKnob(o->value(),90));}
+          class WidgetPDial
+        }
+        Fl_Spinner masterkeyshift {
+          label {Key Shift}
+          callback {//
+        send_data(TOPLEVEL::action::lowPrio, MAIN::control::keyShift, o->value(), TOPLEVEL::type::Integer, TOPLEVEL::section::main);}
+          tooltip {Shift pitch +/- N semitones} xywh {328 108 44 20} labelsize 10 labelcolor 64 minimum -36 maximum 36 textfont 1 textsize 12 textcolor 64
+          code0 {o->range(MIN_KEY_SHIFT, MAX_KEY_SHIFT);o->step(1.0);}
+          code1 {o->value(synth->Pkeyshift - 64);}
+          class WidgetSpinner
+        }
+        Fl_Spinner bpmfallback {
+          label {F. BPM}
+          callback {//
+        send_data(TOPLEVEL::action::forceUpdate, MAIN::control::bpmFallback, o->value(), 0, TOPLEVEL::section::main);}
+          tooltip {Fallback BPM (Beats Per Minute). This is only used if the MIDI driver does not provide its own BPM information.} xywh {316 142 56 20} labelsize 10 labelcolor 64 minimum 0 maximum 0 value 120 textfont 1 textsize 12 textcolor 64
+          code0 {o->range(BPM_FALLBACK_MIN, BPM_FALLBACK_MAX);}
+          code1 {o->step(1.0); o->type(FL_FLOAT_INPUT);}
+          code2 {setBpmFallbackValue(synth->PbpmFallback);}
+          class WidgetSpinner
         }
       }
       Fl_Group syseffectuigroup {
@@ -1415,7 +1438,7 @@ class MasterUI {: {public GuiUpdates}
             code1 {o->value(fetchData(0, PART::control::maxNotes, npart));}
             class WidgetSpinner
           }
-          Fl_Group sysEffBox {open
+          Fl_Group sysEffBox {
             xywh {236 412 139 73} box ENGRAVED_FRAME labelcolor 64
           } {
             Fl_Text_Display sysEffName {
@@ -1526,25 +1549,6 @@ class MasterUI {: {public GuiUpdates}
         tooltip {Master Mono/Stereo switch} xywh {7 90 66 24} box PLASTIC_UP_BOX down_box PLASTIC_UP_BOX color 228 selection_color 89 labelfont 3 labelsize 11 labelcolor 226
         code0 {o->value(synth->masterMono);}
       }
-      Fl_Spinner masterkeyshift {
-        label {Key Shift}
-        callback {//
-        send_data(TOPLEVEL::action::lowPrio, MAIN::control::keyShift, o->value(), TOPLEVEL::type::Integer, TOPLEVEL::section::main);}
-        tooltip {Shift pitch +/- N semitones} xywh {330 108 44 20} labelsize 10 labelcolor 64 minimum -36 maximum 36 textfont 1 textsize 12 textcolor 64
-        code0 {o->range(MIN_KEY_SHIFT, MAX_KEY_SHIFT);o->step(1.0);}
-        code1 {o->value(synth->Pkeyshift - 64);}
-        class WidgetSpinner
-      }
-      Fl_Spinner bpmfallback {
-        label {F. BPM}
-        callback {//
-        send_data(TOPLEVEL::action::forceUpdate, MAIN::control::bpmFallback, o->value(), 0, TOPLEVEL::section::main);}
-        tooltip {Fallback BPM (Beats Per Minute). This is only used if the MIDI driver does not provide its own BPM information.} xywh {318 140 56 20} labelsize 10 labelcolor 64 minimum 0 maximum 0 value 120 textfont 1 textsize 12 textcolor 64
-        code0 {o->range(BPM_FALLBACK_MIN, BPM_FALLBACK_MAX);}
-        code1 {o->step(1.0); o->type(FL_FLOAT_INPUT);}
-        code2 {setBpmFallbackValue(synth->PbpmFallback);}
-        class WidgetSpinner
-      }
       Fl_Spinner maxparts {
         label of
         callback {//
@@ -1621,6 +1625,7 @@ Instance from 1 to 31}
       xywh {46 64 365 290} type Double color 7 labelfont 13 labelsize 13 labelcolor 64 when 0 hide resizable
       code0 {aboutDW = 365; aboutDH = 290;}
       code1 {o->size_range(aboutDW,aboutDH, 0, 0, 0, 0, 1);}
+      class ScaleTrackedWindow
     } {
       Fl_Group aboutFirst {
         xywh {0 0 365 290} color 7 labelcolor 64
@@ -1726,6 +1731,7 @@ Alan Calvert started the project}
       code0 {syseffDW = 120; syseffDH = 245;}
       code1 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Sends"), UNUSED, TOPLEVEL::windowTitle)).c_str());}
       code2 {o->size_range(syseffDW, syseffDH, 0, 0, 0, 0, 1);}
+      class ScaleTrackedWindow
     } {
       Fl_Button syseffClose {
         label Close
@@ -1853,6 +1859,7 @@ Alan Calvert started the project}
       callback {Panelclose->do_callback();}
       xywh {421 26 1040 320} type Double labelfont 13 labelsize 13 hide resizable
       code1 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Mixer Panel"), UNUSED, TOPLEVEL::windowTitle)).c_str());}
+      class ScaleTrackedWindow
     } {
       Fl_Group Panelframe {
         xywh {2 2 1036 286} box ENGRAVED_FRAME
@@ -1994,7 +2001,8 @@ Alan Calvert started the project}
       callback {cancelQ->do_callback();}
       xywh {5 207 420 105} type Double hide resizable
       code0 {queryDW = 420; queryDH = 105;}
-      code1 {o->size_range(queryDW, queryDH, 0, 0, 0, 0, 1);} modal
+      code1 {o->size_range(queryDW, queryDH, 0, 0, 0, 0, 1);}
+      class ScaleTrackedWindow modal
     } {
       Fl_Button yesQ {
         label Yes
@@ -2033,7 +2041,8 @@ Alan Calvert started the project}
       o->hide();}
       xywh {222 50 270 60} type Double labelcolor 64 hide resizable
       code0 {textinDW = o->w(); textinDH = o->h();}
-      code1 {o->size_range(textinDW, textinDH, 0, 0, 0, 0, 1);} modal
+      code1 {o->size_range(textinDW, textinDH, 0, 0, 0, 0, 1);}
+      class ScaleTrackedWindow modal
     } {
       Fl_Input textLine {
         label {input:}
@@ -2047,7 +2056,8 @@ Alan Calvert started the project}
       xywh {236 77 550 350} type Double hide resizable
       code0 {filerDW = o->w(); filerDH = o->h();}
       code1 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("File Manager"), UNUSED, TOPLEVEL::windowTitle)).c_str());}
-      code2 {o->size_range(filerDW, filerDH, 0, 0, 0, 0, 1);} modal
+      code2 {o->size_range(filerDW, filerDH, 0, 0, 0, 0, 1);}
+      class ScaleTrackedWindow modal
     } {
       Fl_Input fileroldpath {
         label {file paths}
@@ -3690,6 +3700,7 @@ Alan Calvert started the project}
     panelwindow->hide();
     if (type == 1)
     {
+        panelwindow->reset(PANEL_SINGLE_X, PANEL_SINGLE_Y);
         if (force)
             panelwindow->size(PANEL_SINGLE_X, PANEL_SINGLE_Y);
         panelwindow->size_range((PANEL_SINGLE_X * 9) / 10, (PANEL_SINGLE_Y * 9) / 10, 0, 0, 0, 0, 1);
@@ -3700,6 +3711,7 @@ Alan Calvert started the project}
     }
     else if (type == 2)
     {
+        panelwindow->reset(PANEL_DUAL_X, PANEL_DUAL_Y);
         if (force)
             panelwindow->size(PANEL_DUAL_X, PANEL_DUAL_Y);
         panelwindow->size_range((PANEL_DUAL_X * 4) / 5, (PANEL_DUAL_Y * 4) / 5, 0, 0, 0, 0, 1);
@@ -3730,6 +3742,7 @@ Alan Calvert started the project}
         defW = (PANEL_DUAL_X * 4) / 5;
         defH = (PANEL_DUAL_Y * 4) / 5;
     }
+    panelwindow->reset(defW, defH);
     if (fetchW < defW || fetchH < defH)
     {
         fetchW = defW; // it's messed up so force default
@@ -4371,7 +4384,8 @@ bpmfallback->format(format);} {}
             //std::cout << "Screen ratio " << ratio << std::endl;
             ;} {}
   }
-  Function {instrumentsWarning(string message)} {return_type bool} {
+  Function {instrumentsWarning(string message)} {return_type bool
+  } {
     code {//
     bool result = false;
     int count = 0;
@@ -4397,7 +4411,8 @@ bpmfallback->format(format);} {}
     return result;
     ;} {}
   }
-  Function {instrumentSingleWarning(int npart, string message)} {return_type bool} {
+  Function {instrumentSingleWarning(int npart, string message)} {return_type bool
+  } {
     code {//
     bool result = false;
     string changed = "";
