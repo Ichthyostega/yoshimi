@@ -981,16 +981,34 @@ void TextData::encodeSubSynth(string& source, CommandBlock& allData)
         encodeEnvelope(source, allData);
         return;
     }
+    else if (findAndStep(source, "Amp LFO"))
+    {
+        allData.data.parameter = TOPLEVEL::insertType::amplitude;
+        encodeLFO(source, allData);
+        return;
+    }
     else if (findAndStep(source, "Filt Env"))
     {
         allData.data.parameter = TOPLEVEL::insertType::filter;
         encodeEnvelope(source, allData);
         return;
     }
+    else if (findAndStep(source, "Filt LFO"))
+    {
+        allData.data.parameter = TOPLEVEL::insertType::filter;
+        encodeLFO(source, allData);
+        return;
+    }
     else if (findAndStep(source, "Freq Env"))
     {
         allData.data.parameter = TOPLEVEL::insertType::frequency;
         encodeEnvelope(source, allData);
+        return;
+    }
+    else if (findAndStep(source, "Freq LFO"))
+    {
+        allData.data.parameter = TOPLEVEL::insertType::frequency;
+        encodeLFO(source, allData);
         return;
     }
     else if (findAndStep(source, "Band Env"))
@@ -1062,6 +1080,12 @@ void TextData::encodeSubSynth(string& source, CommandBlock& allData)
         if (findAndStep(source, "Env Enab"))
         {
             ctl = SUBSYNTH::control::enableFrequencyEnvelope;
+            allData.data.control = ctl;
+            return;
+        }
+        else if (findAndStep(source, "LFO Enab"))
+        {
+            ctl = SUBSYNTH::control::enableFrequencyLFO;
             allData.data.control = ctl;
             return;
         }
@@ -1429,25 +1453,35 @@ void TextData::encodeLFO(string& source, CommandBlock& allData)
 void TextData::encodeEnvelope(string& source, CommandBlock& allData)
 {
     uchar ctl = UNUSED;
-    allData.data.insert = TOPLEVEL::insert::envelopeGroup;
-    // this might be changed for freemode points
 
-    if (findAndStep(source, "Attack Level") || findAndStep(source, "A val"))
-        ctl = ENVELOPEINSERT::control::attackLevel;
-    else if (findAndStep(source, "Attack Time") || findAndStep(source, "A dt"))
-        ctl = ENVELOPEINSERT::control::attackTime;
-    else if (findAndStep(source, "Decay Level") || findAndStep(source, "D val"))
-        ctl = ENVELOPEINSERT::control::decayLevel;
-    else if (findAndStep(source, "Decay Time") || findAndStep(source, "D dt"))
-        ctl = ENVELOPEINSERT::control::decayTime;
-    else if (findAndStep(source, "Sustain Level") || findAndStep(source, "S val"))
-        ctl = ENVELOPEINSERT::control::sustainLevel;
-    else if (findAndStep(source, "Release Level") || findAndStep(source, "R val"))
-        ctl = ENVELOPEINSERT::control::releaseLevel;
-    else if (findAndStep(source, "Release Time") || findAndStep(source, "R dt"))
-        ctl =ENVELOPEINSERT::control::releaseTime;
-    else if (findAndStep(source, "Stretch"))
-        ctl = ENVELOPEINSERT::control::stretch;
+    if (findAndStep(source, "Freemode Point")) {
+        if (findCharNum(source, ctl)) {
+            if (findAndStep(source, "X"))
+                allData.data.insert = TOPLEVEL::insert::envelopePointChangeDt;
+            else if (findAndStep(source, "Y"))
+                allData.data.insert = TOPLEVEL::insert::envelopePointChangeVal;
+            else
+                ctl = UNUSED;
+        }
+    } else {
+        allData.data.insert = TOPLEVEL::insert::envelopeGroup;
+        if (findAndStep(source, "Attack Level") || findAndStep(source, "A val"))
+            ctl = ENVELOPEINSERT::control::attackLevel;
+        else if (findAndStep(source, "Attack Time") || findAndStep(source, "A dt"))
+            ctl = ENVELOPEINSERT::control::attackTime;
+        else if (findAndStep(source, "Decay Level") || findAndStep(source, "D val"))
+            ctl = ENVELOPEINSERT::control::decayLevel;
+        else if (findAndStep(source, "Decay Time") || findAndStep(source, "D dt"))
+            ctl = ENVELOPEINSERT::control::decayTime;
+        else if (findAndStep(source, "Sustain Level") || findAndStep(source, "S val"))
+            ctl = ENVELOPEINSERT::control::sustainLevel;
+        else if (findAndStep(source, "Release Level") || findAndStep(source, "R val"))
+            ctl = ENVELOPEINSERT::control::releaseLevel;
+        else if (findAndStep(source, "Release Time") || findAndStep(source, "R dt"))
+            ctl =ENVELOPEINSERT::control::releaseTime;
+        else if (findAndStep(source, "Stretch"))
+            ctl = ENVELOPEINSERT::control::stretch;
+    }
 
     if (ctl < UNUSED)
     {

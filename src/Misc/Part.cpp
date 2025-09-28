@@ -299,7 +299,7 @@ void Part::setChannelAT(int type, int value)
         if (value > 0)
         {
             if (oldFilterQstate == -1)
-                oldFilterQstate = ctl->filtercutoff.data;
+                oldFilterQstate = ctl->filterq.data;
             float adjust = oldFilterQstate / 127.0f;
             if (type & PART::aftertouchType::filterQdown)
                 ctl->setfilterq(oldFilterQstate - (value * adjust));
@@ -1475,11 +1475,11 @@ int Part::loadXML(string filename)
         logg(filename + " is not an instrument file");
         return 0;
     }
+    defaultsinstrument();
     PyoshiType = not xml.meta.isZynCompat();
     if (PyoshiType != marked_as_Yoshi)
         logg("WARNING: file extension does not match Yoshimi format in file \""+filename+"\"");
 
-    defaultsinstrument();
     Pname = findLeafName(filename);
     int chk = findSplitPoint(Pname);
     if (chk > 0)
