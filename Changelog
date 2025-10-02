@@ -1,4 +1,14 @@
-yoshimi 2.3.5
+yoshimi 2.3.5.1
+
+2025-9-29 Will
+bn 2408
+BugFix: Banks not showing Yoshimi type instrument colour.
+BugFix: Off by 1 errors in CLI - envelope code.
+Set bugfix version 2.3.5.1
+
+2025-9-27 Will
+bn 2407
+Replaced rotary knob change with improved version from Jesper.
 
 2025-9-26 Will
 bn 2406
@@ -7,7 +17,7 @@ Set release version 2.3.5
 
 2025-9-25 Will
 bn 2405
-Corrected rotatary knob scaling for fltk 1.4
+Corrected rotary knob scaling for fltk 1.4
 Bugfix: not showing correct colour for yoshimi instruments.
 set version as 2.3.5 rc3
 
