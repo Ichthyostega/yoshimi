@@ -1,14 +1,16 @@
-yoshimi (2.3.5.1-1) UNRELEASED; urgency=low
+yoshimi (2.3.5.1-1~trixie) Lumiera-trixie-tool; urgency=low
 
-  * New upstream version 2.3.4.2
+  * New upstream version 2.3.5.1
   * allow build-depend on fltk 1.4 or 1.3
-  * Drop obsolete lintian-overrides
-  * Update copyright information
-    + Update d/copyright
-    + Drop removed files from d/copyright
-    + Re-generate d/copyright_hints
+  * drop obsolete lintian-overrides
+  * update copyright information
+    + update d/copyright
+    + drop removed files from d/copyright
+    + re-generated d/copyright_hints from Debian
+  * Rebuild for Debian/Trixie(stable).
+  * unofficial DEB package by Ichthyostega
 
- -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Mon, 22 Sep 2025 16:50:51 +0200
+ -- Hermann Vosseler <deb@ichthyostega.de>  Fri, 03 Oct 2025 00:05:55 +0200
 
 yoshimi (2.3.4.1-1~trixie) Lumiera-trixie-tool; urgency=low
 
