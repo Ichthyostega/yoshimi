@@ -16,6 +16,12 @@ Copyright: 2002-2009, Nasca Octavian Paul and others
            2014-2025, Will Godfrey & others
 License: GPL-2+
 
+Files: src/UI/ParametersUI.fl
+       src/UI/VectorUI.fl
+Copyright: 2011, Alan Calvert
+           2014-2024, Will Godfrey
+License: GPL-3+
+
 Files: banks/Drums/0004-Natural?Drum?Kit.xiz
        banks/Drums/0005-Natural?Snare?-?variable?deca.xiz
        banks/Drums/0006-HiHat?closed?-?variable?decay.xiz
@@ -37,6 +43,45 @@ License: CC-BY-SA-4.0
 Files: doc/yoshimi_user_guide/*
 Copyright: 2021-2025, Will Godfrey, Art Horan, Kristian Amlie, John Murphy, Lorenzo Sutton, Hermann Voßeler.
 License: CC-BY-SA-4.0
+
+Files: dev_notes/GuiDataExchangeTest.cpp
+       src/Interface/GuiDataExchange.cpp
+       src/Interface/GuiDataExchange.h
+       src/Interface/InterfaceAnchor.h
+       src/Misc/Alloc.h
+       src/Misc/BuildScheduler.h
+       src/Misc/DataBlockBuff.h
+       src/Misc/Hash.h
+       src/Misc/MirrorData.h
+       src/Misc/TestInvoker.h
+       src/Misc/TestSequence.h
+       src/Misc/Util.h
+       src/Params/PADStatus.h
+       src/Params/RandomWalk.h
+       src/Synth/XFadeManager.h
+Copyright: 2021-2024, Ichthyostega
+License: GPL-2+
+
+Files: src/Misc/InstanceManager.cpp
+ src/Misc/InstanceManager.h
+ src/main.cpp
+Copyright: 2009-2011, Alan Calvert
+  2014-2024, Will Godfrey & others
+  2024, Ichthyostega
+License: GPL-2+
+
+Files: src/Misc/XMLStore.*
+Copyright: 2002-2005, Nasca Octavian Paul
+  2009-2011, Alan Calvert
+  2014-2025, Will Godfrey
+  2025, Ichthyostega
+License: GPL-2+
+
+Files: src/Misc/VerInfo.h
+ src/Synth/WaveInterpolator.h
+Copyright: 2002-2005, Nasca Octavian Paul
+  2022-2025, Ichthyostega
+License: GPL-2+
 
 Files: Util/YoshimiSplash.svg
 Copyright: 2006, Arun Kulshreshtha
@@ -82,6 +127,68 @@ Comment:
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+License: GPL-3
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation version 3 of the License.
+ .
+ This package is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+Comment:
+ On Debian systems, the complete text of the GNU General Public
+ License version 3 can be found in `/usr/share/common-licenses/GPL-3'.
+ .
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+License: GPL-3+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+ .
+ This package is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+Comment:
+ On Debian systems, the complete text of the GNU General Public
+ License version 3 can be found in `/usr/share/common-licenses/GPL-3'.
+ .
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+License: ISC
+ Permission to use, copy, modify, and/or distribute this software for any
+ purpose with or without fee is hereby granted, provided that the above
+ copyright notice and this permission notice appear in all copies.
+ .
+ THIS SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+License: LGPL-2+
+ This library is free software; you can redistribute it and/or modify it
+ under the terms of the GNU Library General Public License as published by
+ the Free Software Foundation; either version 2 of the License, or
+ (at your option) any later version.
+ .
+ This library is distributed in the hope that it will be useful, but
+ WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser
+ General Public License for more details.
+Comment:
+ On Debian systems, the complete text of the GNU Library General Public
+ License version 2 can be found in `/usr/share/common-licenses/LGPL-2'.
+ .
+ You should have received a copy of the GNU Library General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 License: CC-BY-4.0
  http://creativecommons.org/licenses/by/4.0/
@@ -826,50 +933,3 @@ License: CC-BY-SA-4.0
  public licenses.
  .
  Creative Commons may be contacted at creativecommons.org.
- 
-License: GPL-3
- This program is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation version 3 of the License.
- .
- This package is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-Comment:
- On Debian systems, the complete text of the GNU General Public
- License version 3 can be found in `/usr/share/common-licenses/GPL-3'.
- .
- You should have received a copy of the GNU General Public License
- along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-License: GPL-3+
- This program is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
- .
- This package is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-Comment:
- On Debian systems, the complete text of the GNU General Public
- License version 3 can be found in `/usr/share/common-licenses/GPL-3'.
- .
- You should have received a copy of the GNU General Public License
- along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-License: ISC
- Permission to use, copy, modify, and/or distribute this software for any
- purpose with or without fee is hereby granted, provided that the above
- copyright notice and this permission notice appear in all copies.
- .
- THIS SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
- ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
- ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
- OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
