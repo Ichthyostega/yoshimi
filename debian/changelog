@@ -1,7 +1,8 @@
-yoshimi (2.3.6.2-1~1ppa1~noble) noble; urgency=low
+yoshimi (2.3.6.2-1~1ppa1~focal) focal; urgency=low
 
-  * Rebuild latest version 2.3.6.2 for Ubuntu/Noble(24.04 LTS)
+  * Rebuild latest version 2.3.6.2 for Ubuntu/Focal(24.04 LTS)
   * retain debhelper(12) dependency for packaging on Ubuntu
+  * revert a newer FLTK header for compatibility
   * drop needless build-depend on dssi-dev
   * debian standards version is 4.7.3
   * unofficial DEB package by Ichthyostega
