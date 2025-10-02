@@ -55,7 +55,7 @@ add_definitions(-Wno-vla) # Nothing wrong with variable length arrays
 
 project (Yoshimi)
 
-set (YOSHIMI_VERSION "2.3.4.1")
+set (YOSHIMI_VERSION "2.3.5.1")
 file (WRITE version.txt "${YOSHIMI_VERSION}")
 
 
@@ -387,6 +387,7 @@ if (BuildWithFLTK)
         UI/WidgetMWSlider.cpp
         UI/MiscGui.cpp
         UI/Splash.cpp
+        UI/ScaleTrackedWindow.cpp
     )
     set (YOSHI_INCLUDES ${FLTK_INCLUDE_DIR})
 endif ()

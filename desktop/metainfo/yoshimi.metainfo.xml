@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Copyright 2016-2024 Yoshimi project <willgodfrey@musically.me.uk> -->
+<!-- Copyright 2016-2025 Yoshimi project <willgodfrey@musically.me.uk> -->
 <component type="desktop-application">
   <id>net.sourceforge.projects.yoshimi_2247</id>
   <metadata_license>CC-BY-4.0</metadata_license>
@@ -40,14 +40,17 @@
     <p>
     Version 2.3.3 has improved memory management, extension to keyboard shortcuts, better configuration control, and expands theme colour control, and adds realtime theme editing.
     </p>
-    Version 2.3.3 A new 'Omni' made has been added. Warnings provided when overwriting edited  instruments. Revision of XML files for cross-compatibility with MXML versions.
     <p>
+    Version 2.3.3 has a new 'Omni' mode added. Warnings provided when overwriting edited  instruments. Revision of XML files for cross-compatibility with MXML versions.
+    </p>
+    <p>
+    Version 2.3.5 has a set of LFOs added to the SubSynth engine. Also tooltip sizes now track the respective window size.
     </p>
   </description>
-   <launchable type="desktop-id">yoshimi.desktop</launchable>
+  <launchable type="desktop-id">yoshimi.desktop</launchable>
 
   <releases>
-      <release type="stable" version="2.3.4" date="2025-06-09" />
+    <release type="stable" version="2.3.5" date="2025-09-26" />
   </releases>
   <provides>
     <binary>yoshimi</binary>
@@ -55,7 +58,7 @@
 
   <screenshots>
     <screenshot type="default">
-       <image>https://yoshimi.sourceforge.io/docs/user-guide/images/Main.png</image>
+       <image>https://yoshimi.sourceforge.io/docs/user-guide/images/main.png</image>
        <caption>Yoshimi's main window</caption>
     </screenshot>
     <screenshot>
@@ -88,6 +91,6 @@
     <keyword>Synthesizer</keyword>
     <keyword>Softsynth</keyword>
   </keywords>
-  <url type="homepage">https://sourceforge.net/projects/yoshimi/</url>
-  <url type="help">http://yoshimi.github.io/docs/user-guide/</url>
+  <url type="homepage">https://yoshimi.sourceforge.io/</url>
+  <url type="help">https://yoshimi.sourceforge.io/docs/user-guide/</url>
 </component>

@@ -444,6 +444,8 @@ void GuiUpdates::decode_updates(SynthEngine *synth, CommandBlock *getData)
                 case TOPLEVEL::insert::envelopePointAdd:
                 case TOPLEVEL::insert::envelopePointDelete:
                 case TOPLEVEL::insert::envelopePointChange:
+                case TOPLEVEL::insert::envelopePointChangeDt:
+                case TOPLEVEL::insert::envelopePointChangeVal:
                     switch(parameter)
                     {
                         case TOPLEVEL::insertType::amplitude:
@@ -490,10 +492,29 @@ void GuiUpdates::decode_updates(SynthEngine *synth, CommandBlock *getData)
                     if (synth->getGuiMaster()->partui->subnoteui->filterui)
                         synth->getGuiMaster()->partui->subnoteui->filterui->returns_update(getData);
                     break;
+                case TOPLEVEL::insert::LFOgroup:
+                    switch(parameter)
+                    {
+                        case TOPLEVEL::insertType::amplitude:
+                            if (synth->getGuiMaster()->partui->subnoteui->amplfo)
+                                synth->getGuiMaster()->partui->subnoteui->amplfo->returns_update(getData);
+                            break;
+                        case TOPLEVEL::insertType::frequency:
+                            if (synth->getGuiMaster()->partui->subnoteui->freqlfogroup)
+                                synth->getGuiMaster()->partui->subnoteui->freqlfogroup->returns_update(getData);
+                            break;
+                        case TOPLEVEL::insertType::filter:
+                            if (synth->getGuiMaster()->partui->subnoteui->filterlfo)
+                                synth->getGuiMaster()->partui->subnoteui->filterlfo->returns_update(getData);
+                            break;
+                    }
+                    break;
                 case TOPLEVEL::insert::envelopeGroup:
                 case TOPLEVEL::insert::envelopePointAdd:
                 case TOPLEVEL::insert::envelopePointDelete:
                 case TOPLEVEL::insert::envelopePointChange:
+                case TOPLEVEL::insert::envelopePointChangeDt:
+                case TOPLEVEL::insert::envelopePointChangeVal:
                     switch(parameter)
                     {
                         case TOPLEVEL::insertType::amplitude:
@@ -563,6 +584,8 @@ void GuiUpdates::decode_updates(SynthEngine *synth, CommandBlock *getData)
                         decode_envelope(synth, getData);
                         break;
                     case TOPLEVEL::insert::envelopePointChange:
+                    case TOPLEVEL::insert::envelopePointChangeDt:
+                    case TOPLEVEL::insert::envelopePointChangeVal:
                         decode_envelope(synth, getData);
                         break;
                     case TOPLEVEL::insert::oscillatorGroup:
@@ -610,6 +633,8 @@ void GuiUpdates::decode_updates(SynthEngine *synth, CommandBlock *getData)
                 case TOPLEVEL::insert::envelopePointAdd:
                 case TOPLEVEL::insert::envelopePointDelete:
                 case TOPLEVEL::insert::envelopePointChange:
+                case TOPLEVEL::insert::envelopePointChangeDt:
+                case TOPLEVEL::insert::envelopePointChangeVal:
                     switch(parameter)
                     {
                         case TOPLEVEL::insertType::amplitude:

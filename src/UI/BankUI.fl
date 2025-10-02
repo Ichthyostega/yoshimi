@@ -57,6 +57,9 @@ decl {\#include "UI/WidgetCheckButton.h"} {public local
 decl {\#include "UI/WidgetSpinner.h"} {public global
 }
 
+decl {\#include "UI/ScaleTrackedWindow.h"} {public global
+}
+
 decl {\#include "Misc/Bank.h"} {public local
 }
 
@@ -152,9 +155,9 @@ class BankSlot {: {public Fl_Button, BankProcess_}
     bankID = bk;
     lastSeen = last;
     if (bank->engines_used(rt, bk, nslot) & 8)
-        labelcolor(yoshi_ins_typ);
+        labelcolor(yoshi_ins_typ);     // Slot marked as Yoshimi-format instrument in the banks-file;
     else
-        labelcolor(gen_text);} {}
+        labelcolor(bank_text);} {}
   }
   decl {int *what, *whatslot, nslot, highlight, *nselected;} {private local
   }
@@ -213,6 +216,11 @@ class BankSlot {: {public Fl_Button, BankProcess_}
     draw_box(value() ? (down_box() ? down_box() : fl_down(box())) : box(), x(), y(), w(), h(), Fl_Color(17));
 
     labelcolor(bank_text);
+        draw_label();
+        if (engine & 8)   // Slot marked as Yoshimi-format instrument in the banks-file
+            labelcolor(yoshi_ins_typ);
+        else
+            labelcolor(bank_text);
         draw_label();
 
     if (Fl::focus() == this) draw_focus();} {}
@@ -314,6 +322,7 @@ class BankUI {: {public BankProcess_, RootProcess_}
       label Bank
       callback {Hide(0);}
       xywh {687 245 780 570} type Double labelsize 12 labelcolor 64 hide resizable
+      class ScaleTrackedWindow
       code0 {instDW = o->w(), instDH = o->h();}
       code1 {o->size_range((instDW * 8 / 10), (instDH * 8 / 10), 0,0,0,0,1);}
     } {
@@ -528,6 +537,7 @@ class BankUI {: {public BankProcess_, RootProcess_}
       label {Yoshimi : Bank Search}
       callback {Hide(3);}
       xywh {1044 153 305 485} type Double box PLASTIC_THIN_UP_BOX color 22 labelsize 12 hide resizable
+      class ScaleTrackedWindow
       code0 {searchDW = o->w(); searchDH = o->h();}
       code1 {searchwin->size_range(searchDW, searchDH, 0, 0, 0, 0, 1);}
     } {
@@ -587,6 +597,7 @@ class BankUI {: {public BankProcess_, RootProcess_}
       label Root
       callback {Hide(1);}
       xywh {794 24 780 570} type Double labelsize 12 labelcolor 64 hide resizable
+      class ScaleTrackedWindow
       code0 {o->copy_label(bank->getRootFileTitle(fetchData(0, BANK::control::selectRoot, TOPLEVEL::section::bank)).c_str());}
       code1 {bankDW = o->w();bankDH = o->h();}
       code2 {o->size_range((instDW * 8 / 10), (instDH * 8 / 10), 0,0,0,0,1);}
@@ -770,6 +781,7 @@ class BankUI {: {public BankProcess_, RootProcess_}
       label {Bank Root Paths}
       callback {Hide(2);}
       xywh {88 54 460 270} type Double labelsize 12 hide resizable
+      class ScaleTrackedWindow
       code0 {readbankcfg();}
       code1 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Bank Root Paths"), UNUSED, TOPLEVEL::windowTitle)).c_str());}
       code2 {rootDW = o->w(); rootDH = o->h();}

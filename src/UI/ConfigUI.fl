@@ -44,6 +44,9 @@ decl {\#include "UI/WidgetCheckButton.h"} {public global
 decl {\#include "UI/WidgetSpinner.h"} {public global
 }
 
+decl {\#include "UI/ScaleTrackedWindow.h"} {public global
+}
+
 decl {\#include "Misc/Bank.h"} {private local
 }
 
@@ -76,6 +79,7 @@ class ConfigUI {} {
       label {Yoshimi Settings}
       callback {close->do_callback();}
       xywh {578 67 390 330} type Double hide resizable
+      class ScaleTrackedWindow
       code0 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Settings"), UNUSED, TOPLEVEL::windowTitle)).c_str());}
       code1 {if (isLV2()){jackTab->deactivate();alsaTab->deactivate();}}
       code2 {confDW = o->w();confDH = o->h();}
@@ -347,7 +351,7 @@ fillThemes();
                         else
                             o->value(1);}
             tooltip {Enable starting with this graphical interface} xywh {190 160 27 25} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
-            code0 {o->value(synth->getRuntime().showGui);}
+            code0 {o->value(synth->getRuntime().storedGui);}
             code1 {if (current_ID != 0) o->hide(); else if (isLV2()) o->deactivate();}
             class Fl_Check_Button2
           }
@@ -356,7 +360,7 @@ fillThemes();
             callback {//
                         send_data(0, CONFIG::control::enableCLI, o->value(), TOPLEVEL::type::Integer);}
             tooltip {Enable starting with interactive command line interface} xywh {190 180 27 25} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
-            code0 {o->value(synth->getRuntime().showCli);}
+            code0 {o->value(synth->getRuntime().storedCli);}
             code1 {if (current_ID != 0) o->hide(); else if (isLV2()) o->deactivate();}
             class Fl_Check_Button2
           }
@@ -952,6 +956,7 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
       label Presets
       callback {pClose->do_callback();}
       xywh {6 437 460 270} type Double hide resizable
+      class ScaleTrackedWindow
       code0 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Presets"), UNUSED, TOPLEVEL::windowTitle)).c_str());}
       code1 {preDW = o->w();preDH = o->h();}
       code2 {o->size_range(preDW, preDH, 0, 0, 0, 0, 1);}
@@ -2071,8 +2076,8 @@ send_data (0, CONFIG::control::alsaMidiType, o->value(), TOPLEVEL::type::Integer
                     logTimes->value(synth->getRuntime().showTimes);
                     logXML->value(synth->getRuntime().logXMLheaders);
                     saveAllXML->value(synth->getRuntime().xmlmax);
-                    enableGUI->value(synth->getRuntime().showGui);
-                    enableCLI->value(synth->getRuntime().showCli);
+                    enableGUI->value(synth->getRuntime().storedGui);
+                    enableCLI->value(synth->getRuntime().storedCli);
                     break;
     }} {}
   }
