@@ -2264,9 +2264,23 @@ int CmdInterpreter::envelopeSelect(Parser& input, unsigned char controlType)
 
     if (freeMode && cmd == -1)
     {
+
         int pointCount = readControl(synth, 0, ENVELOPEINSERT::control::points, npart, kitNumber, engine, insert, insertGroup);
         if (input.matchnMove(1, "Points"))
         {
+            if (controlType == type_read)
+            {
+                if (input.lineEnd(controlType))
+                    return REPLY::value_msg;
+                int point = string2int(input) -1;
+                if (point < 0 || point >= pointCount)
+                    return REPLY::value_msg;
+                int x = readControl(synth, TOPLEVEL::action::fromCLI, point, npart, kitNumber, engine, TOPLEVEL::insert::envelopePointChangeDt, insertGroup, 0);
+                //int y = readControl(synth, 0, point, npart, kitNumber, engine, TOPLEVEL::insert::envelopePointChangeVal, insertGroup);
+                std::cout << "point X " << x << std::endl;
+                //synth->getRuntime().Log("Point " + to_string(point) + ", X " + to_string(x) + ",  Y " + to_string(y));
+                return REPLY::done_msg;
+            }
             value = 0; // dummy value
             cmd = ENVELOPEINSERT::control::points;
             // not using already fetched value to get normal reporting
@@ -2275,7 +2289,7 @@ int CmdInterpreter::envelopeSelect(Parser& input, unsigned char controlType)
         {
             if (input.lineEnd(controlType))
                 return REPLY::value_msg;
-            value = string2int(input);
+            value = string2int(input) - 1;
             if (value == 0)
             {
                     synth->getRuntime().Log("Sustain can't be at first point");
@@ -2302,8 +2316,8 @@ int CmdInterpreter::envelopeSelect(Parser& input, unsigned char controlType)
                 if (input.lineEnd(controlType))
                     return REPLY::value_msg;
 
-                cmd = string2int(input); // point number
-                if (cmd == 0)
+                cmd = string2int(input) -1; // point number
+                if (cmd <= 0)
                 {
                     synth->getRuntime().Log("Can't add at first point");
                     return REPLY::done_msg;
@@ -2333,8 +2347,8 @@ int CmdInterpreter::envelopeSelect(Parser& input, unsigned char controlType)
                 if (input.lineEnd(controlType))
                     return REPLY::value_msg;
 
-                cmd = string2int(input); // point number
-                if (cmd == 0)
+                cmd = string2int(input) -1; // point number
+                if (cmd <= 0)
                 {
                     synth->getRuntime().Log("Can't delete first point");
                     return REPLY::done_msg;
@@ -2353,8 +2367,8 @@ int CmdInterpreter::envelopeSelect(Parser& input, unsigned char controlType)
                 if (input.lineEnd(controlType))
                 return REPLY::value_msg;
 
-                cmd = string2int(input); // point number
-                if (cmd < 0 || cmd >= (pointCount - 1))
+                cmd = string2int(input) -1; // point number
+                if (cmd <= 0 || cmd >= (pointCount))
                     return REPLY::range_msg;
                 input.skipChars();
                 if (input.lineEnd(controlType))
@@ -2409,7 +2423,11 @@ int CmdInterpreter::envelopeSelect(Parser& input, unsigned char controlType)
 
     //cout << ">> base cmd " << int(cmd) << "  part " << int(npart) << "  kit " << int(kitNumber) << "  engine " << int(engine) << "  parameter " << int(insertGroup) << endl;
 
-    return sendNormal(synth, 0, string2float(input), controlType, cmd, npart, kitNumber, engine, insert, insertGroup, offset);
+    /*
+     * seems to need direct send foo inserting a point
+     * mabe wrong range check value.
+     */
+    return sendDirect(synth, 0, string2float(input), controlType, cmd, npart, kitNumber, engine, insert, insertGroup, offset);
 }
 
 int CmdInterpreter::commandGroup(Parser& input)

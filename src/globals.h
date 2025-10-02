@@ -257,7 +257,9 @@ namespace TOPLEVEL // usage TOPLEVEL::section::vector
         resonanceGraphInsert,
         systemEffectSend,
         partEffectSelect,
-        kitGroup
+        kitGroup,
+        envelopePointChangeDt,
+        envelopePointChangeVal,
     };
 
     enum insertType : uchar {
@@ -867,6 +869,7 @@ namespace SUBSYNTH // usage SUBSYNTH::control::volume
         bandwidth = 16,
         bandwidthScale,
         enableBandwidthEnvelope,
+        enableFrequencyLFO,
 
         detuneFrequency = 32,
         equalTemperVariation,

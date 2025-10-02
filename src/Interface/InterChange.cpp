@@ -2300,6 +2300,8 @@ bool InterChange::processAdd(CommandBlock& cmd, SynthEngine& synth)
         case TOPLEVEL::insert::envelopePointAdd:
         case TOPLEVEL::insert::envelopePointDelete:
         case TOPLEVEL::insert::envelopePointChange:
+        case TOPLEVEL::insert::envelopePointChangeDt:
+        case TOPLEVEL::insert::envelopePointChangeVal:
             commandEnvelope(cmd);
             break;
         case TOPLEVEL::insert::resonanceGroup:
@@ -2334,6 +2336,8 @@ bool InterChange::processVoice(CommandBlock& cmd, SynthEngine& synth)
         case TOPLEVEL::insert::envelopePointAdd:
         case TOPLEVEL::insert::envelopePointDelete:
         case TOPLEVEL::insert::envelopePointChange:
+        case TOPLEVEL::insert::envelopePointChangeDt:
+        case TOPLEVEL::insert::envelopePointChangeVal:
             commandEnvelope(cmd);
             break;
         case TOPLEVEL::insert::oscillatorGroup:
@@ -2387,6 +2391,9 @@ bool InterChange::processSub(CommandBlock& cmd, SynthEngine& synth)
             if (write)
                 part.kit[kititem].subpars->paramsChanged();
             break;
+        case TOPLEVEL::insert::LFOgroup:
+            commandLFO(cmd);
+            break;
         case TOPLEVEL::insert::harmonicAmplitude:
             commandSub(cmd);
             if (write)
@@ -2401,13 +2408,11 @@ bool InterChange::processSub(CommandBlock& cmd, SynthEngine& synth)
             commandFilter(cmd);
             break;
         case TOPLEVEL::insert::envelopeGroup:
-            commandEnvelope(cmd);
-            break;
         case TOPLEVEL::insert::envelopePointAdd:
         case TOPLEVEL::insert::envelopePointDelete:
-            commandEnvelope(cmd);
-            break;
         case TOPLEVEL::insert::envelopePointChange:
+        case TOPLEVEL::insert::envelopePointChangeDt:
+        case TOPLEVEL::insert::envelopePointChangeVal:
             commandEnvelope(cmd);
             break;
     }
@@ -2443,13 +2448,11 @@ bool InterChange::processPad(CommandBlock& cmd)
             commandFilter(cmd);
             break;
         case TOPLEVEL::insert::envelopeGroup:
-            commandEnvelope(cmd);
-            break;
         case TOPLEVEL::insert::envelopePointAdd:
         case TOPLEVEL::insert::envelopePointDelete:
-            commandEnvelope(cmd);
-            break;
         case TOPLEVEL::insert::envelopePointChange:
+        case TOPLEVEL::insert::envelopePointChangeDt:
+        case TOPLEVEL::insert::envelopePointChangeVal:
             commandEnvelope(cmd);
             break;
         case TOPLEVEL::insert::oscillatorGroup:
@@ -3046,21 +3049,21 @@ void InterChange::commandConfig(CommandBlock& cmd)
             if (write)
             {
                 synth.getRuntime().storedGui = value_bool;
-                synth.getRuntime().showGui = value_bool;
+                synth.getRuntime().showGui  |= value_bool;
                 synth.getRuntime().updateConfig(control, value);
             }
             else
-                value = synth.getRuntime().showGui;
+                value = synth.getRuntime().storedGui;
             break;
         case CONFIG::control::enableCLI:
             if (write)
             {
                 synth.getRuntime().storedCli = value_bool;
-                synth.getRuntime().showCli = value_bool;
+                synth.getRuntime().showCli  |= value_bool;
                 synth.getRuntime().updateConfig(control, value);
             }
             else
-                value = synth.getRuntime().showCli;
+                value = synth.getRuntime().storedCli;
             break;
         case CONFIG::control::showSplash:
             if (write)
@@ -5408,6 +5411,13 @@ void InterChange::commandSub(CommandBlock& cmd)
                 value = param.PBandWidthEnvelopeEnabled;
             break;
 
+        case SUBSYNTH::control::enableFrequencyLFO:
+            if (write)
+                param.PFreqLfoEnabled = value_bool;
+            else
+                value = param.PFreqLfoEnabled;
+            break;
+
         case SUBSYNTH::control::detuneFrequency:
             if (write)
                 param.PDetune = value + 8192;
@@ -6405,6 +6415,21 @@ void InterChange::commandLFO(CommandBlock& cmd)
                 break;
         }
     }
+    else if (engine == PART::engine::subSynth)
+    {
+        switch (insertParam)
+        {
+            case TOPLEVEL::insertType::amplitude:
+                lfoReadWrite(cmd, part.kit[kititem].subpars->AmpLfo.get());
+                break;
+            case TOPLEVEL::insertType::frequency:
+                lfoReadWrite(cmd, part.kit[kititem].subpars->FreqLfo.get());
+                break;
+            case TOPLEVEL::insertType::filter:
+                lfoReadWrite(cmd, part.kit[kititem].subpars->GlobalFilterLfo.get());
+                break;
+        }
+    }
     else if (engine == PART::engine::padSynth)
     {
         switch (insertParam)
@@ -6539,7 +6564,7 @@ void InterChange::commandFilter(CommandBlock& cmd)
     }
     else if (engine == PART::engine::subSynth)
     {
-        filterReadWrite(cmd, part.kit[kititem].subpars->GlobalFilter
+        filterReadWrite(cmd, part.kit[kititem].subpars->GlobalFilter.get()
                     , &part.kit[kititem].subpars->PGlobalFilterVelocityScale
                     , &part.kit[kititem].subpars->PGlobalFilterVelocityScaleFunction);
     }
@@ -6825,16 +6850,16 @@ void InterChange::commandEnvelope(CommandBlock& cmd)
         switch (insertParam)
         {
             case TOPLEVEL::insertType::amplitude:
-                envelopeReadWrite(cmd, part.kit[kititem].subpars->AmpEnvelope);
+                envelopeReadWrite(cmd, part.kit[kititem].subpars->AmpEnvelope.get());
                 break;
             case TOPLEVEL::insertType::frequency:
-                envelopeReadWrite(cmd, part.kit[kititem].subpars->FreqEnvelope);
+                envelopeReadWrite(cmd, part.kit[kititem].subpars->FreqEnvelope.get());
                 break;
             case TOPLEVEL::insertType::filter:
-                envelopeReadWrite(cmd, part.kit[kititem].subpars->GlobalFilterEnvelope);
+                envelopeReadWrite(cmd, part.kit[kititem].subpars->GlobalFilterEnvelope.get());
                 break;
             case TOPLEVEL::insertType::bandwidth:
-                envelopeReadWrite(cmd, part.kit[kititem].subpars->BandWidthEnvelope);
+                envelopeReadWrite(cmd, part.kit[kititem].subpars->BandWidthEnvelope.get());
                 break;
         }
     }
@@ -6893,7 +6918,7 @@ void InterChange::envelopeReadWrite(CommandBlock& cmd, EnvelopeParams *pars)
     float val = cmd.data.value;
     bool write = (cmd.data.type & TOPLEVEL::type::Write) > 0;
     uchar insert = cmd.data.insert;
-    uchar Xincrement = cmd.data.offset;
+    uchar dt = cmd.data.offset;
 
     if (cmd.data.control == ENVELOPEINSERT::control::enableFreeMode)
     {
@@ -6922,6 +6947,8 @@ void InterChange::envelopeReadWrite(CommandBlock& cmd, EnvelopeParams *pars)
                 envelopePointDelete(cmd, pars);
                 break;
             case TOPLEVEL::insert::envelopePointChange:
+            case TOPLEVEL::insert::envelopePointChangeDt:
+            case TOPLEVEL::insert::envelopePointChangeVal:
                 envelopePointChange(cmd, pars);
                 break;
             default:
@@ -6931,12 +6958,12 @@ void InterChange::envelopeReadWrite(CommandBlock& cmd, EnvelopeParams *pars)
                     if (!pars->Pfreemode)
                     {
                         val = UNUSED;
-                        Xincrement = UNUSED;
+                        dt = UNUSED;
                     }
                     else
                     {
                         val = envpoints;
-                        Xincrement = envpoints; // don't really need this now
+                        dt = envpoints; // don't really need this now
                     }
                 }
                 else if (cmd.data.control == ENVELOPEINSERT::control::sustainPoint)
@@ -6954,7 +6981,7 @@ void InterChange::envelopeReadWrite(CommandBlock& cmd, EnvelopeParams *pars)
         if (doReturn) // some controls are common to both
         {
             cmd.data.value = val;
-            cmd.data.offset = Xincrement;
+            cmd.data.offset = dt;
             return;
         }
     }
@@ -7037,7 +7064,7 @@ void InterChange::envelopeReadWrite(CommandBlock& cmd, EnvelopeParams *pars)
 
         default:
             val = UNUSED;
-            Xincrement = UNUSED;
+            dt = UNUSED;
             break;
     }
     if (write)
@@ -7045,7 +7072,7 @@ void InterChange::envelopeReadWrite(CommandBlock& cmd, EnvelopeParams *pars)
         pars->paramsChanged();
     }
     cmd.data.value = val;
-    cmd.data.offset = Xincrement;
+    cmd.data.offset = dt;
     return;
 }
 
@@ -7053,7 +7080,7 @@ void InterChange::envelopeReadWrite(CommandBlock& cmd, EnvelopeParams *pars)
 void InterChange::envelopePointAdd(CommandBlock& cmd, EnvelopeParams *pars)
 {
     uchar point = cmd.data.control;
-    uchar Xincrement = cmd.data.offset;
+    uchar dt = cmd.data.offset;
     float val  =  cmd.data.value;
     bool write = (cmd.data.type & TOPLEVEL::type::Write) > 0;
     size_t envpoints = pars->Penvpoints;
@@ -7087,10 +7114,10 @@ void InterChange::envelopePointAdd(CommandBlock& cmd, EnvelopeParams *pars)
                 if (point <= pars->Penvsustain)
                     ++ pars->Penvsustain;
 
-                pars->Penvdt[point] = Xincrement;
+                pars->Penvdt[point] = dt;
                 pars->Penvval[point] = val;
                 cmd.data.value = val;
-                cmd.data.offset = Xincrement;
+                cmd.data.offset = dt;
                 pars->paramsChanged();
             }
             else
@@ -7129,7 +7156,7 @@ void InterChange::envelopePointAdd(CommandBlock& cmd, EnvelopeParams *pars)
 void InterChange::envelopePointDelete(CommandBlock& cmd, EnvelopeParams *pars)
 {
     uchar point = cmd.data.control;
-    uchar Xincrement = cmd.data.offset;
+    uchar dt = cmd.data.offset;
     float val  =  cmd.data.value;
     bool write = (cmd.data.type & TOPLEVEL::type::Write) > 0;
     size_t envpoints = pars->Penvpoints;
@@ -7158,10 +7185,10 @@ void InterChange::envelopePointDelete(CommandBlock& cmd, EnvelopeParams *pars)
                 if (point <= pars->Penvsustain)
                     ++ pars->Penvsustain;
 
-                pars->Penvdt[point] = Xincrement;
+                pars->Penvdt[point] = dt;
                 pars->Penvval[point] = val;
                 cmd.data.value = val;
-                cmd.data.offset = Xincrement;
+                cmd.data.offset = dt;
                 pars->paramsChanged();
             }
             else
@@ -7206,8 +7233,9 @@ void InterChange::envelopePointDelete(CommandBlock& cmd, EnvelopeParams *pars)
 
 void InterChange::envelopePointChange(CommandBlock& cmd, EnvelopeParams *pars)
 {
+    uchar insert = cmd.data.insert;
     uchar point = cmd.data.control;
-    uchar Xincrement = cmd.data.offset;
+    uchar dt = cmd.data.offset;
     float val  =  cmd.data.value;
     bool write = (cmd.data.type & TOPLEVEL::type::Write) > 0;
     size_t envpoints = pars->Penvpoints;
@@ -7221,24 +7249,61 @@ void InterChange::envelopePointChange(CommandBlock& cmd, EnvelopeParams *pars)
     if (write)
     {
         add2undo(cmd, noteSeen);
-        pars->Penvval[point] = val;
-        if (point == 0)
+        switch (insert)
         {
-            Xincrement = 0;
-        }
-        else
-        {
-            pars->Penvdt[point] = Xincrement;
+        case TOPLEVEL::insert::envelopePointChange:
+            pars->Penvval[point] = val;
+            if (point == 0)
+            {
+                dt = 0;
+            }
+            else
+            {
+                pars->Penvdt[point] = dt;
+            }
+            break;
+        case TOPLEVEL::insert::envelopePointChangeDt:
+            if (point == 0)
+            {
+                val = 0;
+            }
+            else
+            {
+                pars->Penvdt[point] = val;
+            }
+            break;
+        case TOPLEVEL::insert::envelopePointChangeVal:
+            pars->Penvval[point] = val;
+            break;
+        default:
+            // Should never be anything else.
+            assert(false);
+            break;
         }
         pars->paramsChanged();
     }
     else
     {
-        val = pars->Penvval[point];
-        Xincrement = pars->Penvdt[point];
+        switch (insert)
+        {
+        case TOPLEVEL::insert::envelopePointChange:
+            val = pars->Penvval[point];
+            dt = pars->Penvdt[point];
+            break;
+        case TOPLEVEL::insert::envelopePointChangeDt:
+            val = pars->Penvdt[point];
+            break;
+        case TOPLEVEL::insert::envelopePointChangeVal:
+            val = pars->Penvval[point];
+            break;
+        default:
+            // Should never be anything else.
+            assert(false);
+            break;
+        }
     }
     cmd.data.value = val;
-    cmd.data.offset = Xincrement;
+    cmd.data.offset = dt;
     return;
 }
 
@@ -7848,18 +7913,26 @@ float InterChange::returnLimits(CommandBlock& cmd)
             ResonanceLimits resonancelimits;
             return resonancelimits.getLimits(&cmd);
         }
-        if (insert == TOPLEVEL::insert::LFOgroup && engine != PART::engine::subSynth && parameter <= TOPLEVEL::insertType::filter)
+        if (insert == TOPLEVEL::insert::LFOgroup && parameter <= TOPLEVEL::insertType::filter)
         {
             LFOlimit lfolimits;
             return lfolimits.getLFOlimits(&cmd);
         }
-        if (insert == TOPLEVEL::insert::envelopeGroup)
+        switch (insert)
         {
-            envelopeLimit envelopeLimits;
-            return envelopeLimits.getEnvelopeLimits(&cmd);
+        case TOPLEVEL::insert::envelopeGroup:
+        case TOPLEVEL::insert::envelopePointAdd:
+        case TOPLEVEL::insert::envelopePointDelete:
+        case TOPLEVEL::insert::envelopePointChange:
+        case TOPLEVEL::insert::envelopePointChangeDt:
+        case TOPLEVEL::insert::envelopePointChangeVal:
+            {
+                envelopeLimit envelopeLimits;
+                return envelopeLimits.getEnvelopeLimits(&cmd);
+            }
+        default:
+            break;
         }
-        if (insert == TOPLEVEL::insert::envelopePointAdd || insert == TOPLEVEL::insert::envelopePointDelete || insert == TOPLEVEL::insert::envelopePointChange)
-            return 1; // temporary solution :(
         min = 0;
         max = 127;
         def = 0;

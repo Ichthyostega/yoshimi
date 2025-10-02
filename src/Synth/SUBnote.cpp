@@ -33,6 +33,7 @@
 #include "Params/Controller.h"
 #include "Synth/SUBnote.h"
 #include "Synth/Envelope.h"
+#include "Synth/LFO.h"
 #include "DSP/Filter.h"
 #include "Misc/SynthEngine.h"
 #include "Misc/SynthHelper.h"
@@ -145,8 +146,11 @@ SUBnote::SUBnote(SUBnote const& orig)
         numharmonics * sizeof(float));
 
     ampEnvelope.reset(new Envelope{*orig.ampEnvelope});
+    ampLFO.reset(new LFO{*orig.ampLFO});
     if (orig.freqEnvelope)
         freqEnvelope.reset(new Envelope{*orig.freqEnvelope});
+    if (orig.freqLFO)
+        freqLFO.reset(new LFO{*orig.freqLFO});
     if (orig.bandWidthEnvelope)
         bandWidthEnvelope.reset(new Envelope{*orig.bandWidthEnvelope});
     if (pars.PGlobalFilterEnabled)
@@ -154,6 +158,7 @@ SUBnote::SUBnote(SUBnote const& orig)
         globalFilterL.reset(new Filter{*orig.globalFilterL});
         globalFilterR.reset(new Filter{*orig.globalFilterR});
         globalFilterEnvelope.reset(new Envelope{*orig.globalFilterEnvelope});
+        globalFilterLFO.reset(new LFO{*orig.globalFilterLFO});
     }
 
     if (orig.lfilter)
@@ -474,14 +479,17 @@ void SUBnote::filterVarRun(SUBnote::bpfilter &filter, float *smps)
 // Init Parameters
 void SUBnote::initparameters(float freq)
 {
-    ampEnvelope.reset(new Envelope{pars.AmpEnvelope, freq, &synth});
+    ampEnvelope.reset(new Envelope{pars.AmpEnvelope.get(), freq, &synth});
+    ampLFO.reset(new LFO{pars.AmpLfo.get(), freq, &synth});
     if (pars.PFreqEnvelopeEnabled)
-        freqEnvelope.reset(new Envelope{pars.FreqEnvelope, freq, &synth});
+        freqEnvelope.reset(new Envelope{pars.FreqEnvelope.get(), freq, &synth});
+    if (pars.PFreqLfoEnabled)
+        freqLFO.reset(new LFO{pars.FreqLfo.get(), freq, &synth});
     if (pars.PBandWidthEnvelopeEnabled)
-        bandWidthEnvelope.reset(new Envelope{pars.BandWidthEnvelope, freq, &synth});
+        bandWidthEnvelope.reset(new Envelope{pars.BandWidthEnvelope.get(), freq, &synth});
     if (pars.PGlobalFilterEnabled)
     {
-        globalFilterL.reset(new Filter{*pars.GlobalFilter, synth});
+        globalFilterL.reset(new Filter{*pars.GlobalFilter.get(), synth});
         /* TODO
          * Sort this properly it is a temporary fix to stop a segfault
          * with the following very specific settings:
@@ -491,8 +499,9 @@ void SUBnote::initparameters(float freq)
          * Subsynth Stereo disabled
          */
         //if (stereo)
-            globalFilterR.reset(new Filter{*pars.GlobalFilter, synth});
-        globalFilterEnvelope.reset(new Envelope{pars.GlobalFilterEnvelope, freq, &synth});
+            globalFilterR.reset(new Filter{*pars.GlobalFilter.get(), synth});
+        globalFilterEnvelope.reset(new Envelope{pars.GlobalFilterEnvelope.get(), freq, &synth});
+        globalFilterLFO.reset(new LFO{pars.GlobalFilterLfo.get(), freq, &synth});
     }
 }
 
@@ -518,15 +527,19 @@ float SUBnote::computerolloff(float freq)
 
 void SUBnote::computeallfiltercoefs()
 {
-    float envfreq = 1.0f;
+    float envfreq = 0.0f;
     float envbw = 1.0f;
     float gain = 1.0f;
 
     if (freqEnvelope != NULL)
     {
         envfreq = freqEnvelope->envout() / 1200;
-        envfreq = power<2>(envfreq);
     }
+    if (freqLFO != NULL)
+    {
+        envfreq += freqLFO->lfoout() / 1200 * ctl.modwheel.relmod;
+    }
+    envfreq = power<2>(envfreq);
 
     envfreq *= powf(ctl.pitchwheel.relfreq, bendAdjust); // pitch wheel
 
@@ -583,6 +596,7 @@ void SUBnote::computeallfiltercoefs()
 void SUBnote::computecurrentparameters()
 {
     if (freqEnvelope != NULL
+        || freqLFO != NULL
         || bandWidthEnvelope != NULL
         || oldpitchwheel != ctl.pitchwheel.data
         || oldbandwidth != ctl.bandwidth.data
@@ -590,7 +604,7 @@ void SUBnote::computecurrentparameters()
         computeallfiltercoefs();
 
     // Envelope
-    newamplitude = volume * ampEnvelope->envout_dB();
+    newamplitude = volume * ampEnvelope->envout_dB() * ampLFO->amplfoout();
 
     // Filter
     if (globalFilterL != NULL)
@@ -603,7 +617,7 @@ void SUBnote::computecurrentparameters()
             (velF(note.vel, pars.PGlobalFilterVelocityScaleFunction) - 1);
         float filtercenterq = pars.GlobalFilter->getq();
         float filterFreqTracking = pars.GlobalFilter->getfreqtracking(note.freq);
-        float globalfilterpitch = filterCenterPitch + globalFilterEnvelope->envout();
+        float globalfilterpitch = filterCenterPitch + globalFilterEnvelope->envout() + globalFilterLFO->lfoout();
         float filterfreq = globalfilterpitch + ctl.filtercutoff.relfreq + filterFreqTracking;
         filterfreq = globalFilterL->getrealfreq(filterfreq);
 

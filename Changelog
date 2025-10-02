@@ -1,4 +1,74 @@
-yoshimi 2.3.4.1
+yoshimi 2.3.5.1
+
+2025-9-29 Will
+bn 2408
+BugFix: Banks not showing Yoshimi type instrument colour.
+BugFix: Off by 1 errors in CLI - envelope code.
+Set bugfix version 2.3.5.1
+
+2025-9-27 Will
+bn 2407
+Replaced rotary knob change with improved version from Jesper.
+
+2025-9-26 Will
+bn 2406
+Some final cleanups and doc. updates.
+Set release version 2.3.5
+
+2025-9-25 Will
+bn 2405
+Corrected rotary knob scaling for fltk 1.4
+Bugfix: not showing correct colour for yoshimi instruments.
+set version as 2.3.5 rc3
+
+2025-9-21 Will
+bn 2403
+BugFix: Main window top controls partially obscured.
+
+2025-9-18 Will
+bn 2402
+Final preparations for the next release.
+Updated docs.
+
+2025-9-17 Will
+bn 2400
+Made small adjustments to tooltip sizes.
+Min. is 12 point, and large sizes track a bit better.
+
+2025-9-3 Will
+bn 2399
+Merged in SubSynth LFO work from Kristian
+Adjusted Mixer panel VU limits for FLTK 1.4.x compatibility.
+Updated User Guide.
+
+2025-8-30 Will
+bn 2398
+Added missing include file to LV2 cmake file
+
+2025-8-27 Jesper
+bn 2397
+Adjusted tooltip positioning to handle cursor placements close to bottom of screen.
+
+2025-8-27 Will
+bn 2396
+Added scale tracking to Random Walk window
+
+2025-8-24 Jesper
+bn 2395
+Added scale tracking and tooltip size adjustment based on window under cursor.
+
+2025-7-23 Will
+bn 2394
+Added Slow Cymbal instrument to Drums bank.
+Preliminary work on CLI reading freemode points.
+Updated various docs.
+
+2025-7-17 Will
+bn 2393
+Merged in freemode midi learn from Kristian.
+Clarified MIDI learn action in the HTML user guide
+Merged in user guide image optimisation from Jesper.
+Added Slow Cymbal the Drums bank.
 
 2025-6-10 Will + Hermann
 bn 2392

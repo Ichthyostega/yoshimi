@@ -39,6 +39,17 @@
 
 using func::limit;
 
+// Prior to fltk 1.4, there was no built in support for handling screen scales.
+// This may not be the correct way to handle the scale factor.
+inline float get_scale_factor(Fl_Widget *widget) {
+#if FL_API_VERSION > 10400
+    Fl_Window* window = widget->window();
+    return Fl::screen_scale(window ? window->screen_num() : 0);
+#else
+    return 1.0f;
+#endif
+}
+
 WidgetPDial::WidgetPDial(int x,int y, int w, int h, const char *label) : Fl_Dial(x,y,w,h,label)
 {
     Fl_Group *save = Fl_Group::current();
@@ -90,7 +101,6 @@ int WidgetPDial::handle(int event)
 
     double dragsize, v, min = minimum(), max = maximum();
     int my, mx;
-
     int res = 0;
 
     switch (event)
@@ -171,7 +181,8 @@ void WidgetPDial::drawgradient(int cx,int cy,int sx,double m1,double m2)
 
 void WidgetPDial::draw()
 {
-    int cx = x(), cy = y(), sx = w(), sy = h();
+    float scale = get_scale_factor(this);
+    int cx = x() * scale, cy = y() * scale, sx = w() * scale, sy = h() * scale;
     double d = (sx>sy)?sy:sx; // d = the smallest side -2
     double dh = d/2;
        /*
@@ -182,8 +193,8 @@ void WidgetPDial::draw()
     double val = (value() - minimum()) / (maximum() - minimum());
     cairo_t *cr;
     cairo_surface_t* Xsurface = cairo_xlib_surface_create
-        (fl_display, fl_window, fl_visual->visual,Fl_Window::current()->w(),
-         Fl_Window::current()->h());
+        (fl_display, fl_window, fl_visual->visual,Fl_Window::current()->w() * scale,
+         Fl_Window::current()->h() * scale);
     cr = cairo_create (Xsurface);
     cairo_translate(cr,cx+dh,cy+dh);
     //relative lengths of the various parts:
