@@ -1,11 +1,12 @@
-yoshimi (2.3.6.2-1~1ppa1~focal) focal; urgency=low
+yoshimi (2.3.6.2-1~1ppa1~bionic) bionic; urgency=low
 
-  * Rebuild latest version 2.3.6.2 for Ubuntu/Focal(24.04 LTS)
-  * retain debhelper(12) dependency for packaging on Ubuntu
-  * revert a newer FLTK header for compatibility
-  * drop needless build-depend on dssi-dev
-  * debian standards version is 4.7.3
+  * Rebuild latest version 2.3.6.2 for Ubuntu/Bionic(18.04 LTS)
   * unofficial DEB package by Ichthyostega
+  * debian standards version is 4.7.3
+  * lower debhelper version to 10
+  * use GCC-9 from ppa:ubuntu-toolchain-r/test
+  * revert a newer FLTK header for compatibility
+  * As of 3/2026, this is the latest Yoshimi release
 
  -- Hermann Vosseler <deb@ichthyostega.de>  Thu, 12 Mar 2026 17:42:23 +0100
 
