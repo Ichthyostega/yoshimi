@@ -1,0 +1,26 @@
+From: Ichthyostega <prg@ichthyostega.de>
+Date: Tue, 20 Feb 2024 03:49:17 +0100
+Subject: sneak C++17 past old CMake
+
+Well in 2014 there was no '17
+
+setting the toggle via add_definitions directly,
+so CMake doesn't need to know about our horrible conspiracy.
+---
+ src/CMakeLists.txt | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index bd39690..0479631 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -30,7 +30,8 @@ endif ()
+ 
+ #set(CMAKE_CXX_COMPILER "clang++")
+ 
+-set (CMAKE_CXX_STANDARD 17) # we seem to need both for
++# set (CMAKE_CXX_STANDARD 17) # NOT SUPPORTED on Ubuntu 14.04
++#
+ add_definitions(-std=gnu++17) # various versions of cmake
+ 
+ add_definitions(-Wall)

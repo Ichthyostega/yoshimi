@@ -3,9 +3,7 @@ Date: Thu, 10 Apr 2025 02:32:33 +0200
 Subject: lower CMake minimum requirement
 
 Yoshimi now starts to require "modern CMake" --
-Ubuntu/Bionic provides 3.10, which hopefully is "modern" enough...
-
-Moreover we can attempt to revert use of new constructs.
+Hopefully some CMake >= 3.5 is still "modern" enough...
 ---
  src/CMakeLists.txt | 6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)
