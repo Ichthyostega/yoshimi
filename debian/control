@@ -9,7 +9,6 @@ Uploaders:
 Build-Depends:
  debhelper-compat (= 13),
  cmake,
- dssi-dev,
  fluid,
  libasound2-dev,
  libcairo2-dev,
