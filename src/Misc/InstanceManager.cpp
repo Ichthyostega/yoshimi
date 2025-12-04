@@ -313,26 +313,13 @@ bool InstanceManager::Instance::startUp(PluginCreator pluginCreator)
     }
     else
     {
-        auto configuredAudio = runtime().audioEngine;
-        auto configuredMidi  = runtime().midiEngine;
-
-        for (auto [tryAudio,tryMidi] : drivers_to_probe(runtime()))
-        {
-            runtime().Log("\n-----Connect-attempt----("+display(tryAudio)+"/"+display(tryMidi)+")----");
-            runtime().audioEngine = tryAudio;
-            runtime().midiEngine = tryMidi;
+/////////////////////////////////////////////////////////////////////////////////////////////OOO Stripdown: do not open client at all            
+            runtime().Log("-----Connect-NOT-AT-ALL----------------\n");
+            runtime().audioEngine = no_audio;
+            runtime().midiEngine = no_midi;
             runtime().init();
-            if (client->open(tryAudio, tryMidi))
-            {
-                if (tryAudio == configuredAudio and
-                    tryMidi == configuredMidi)
-                    runtime().configChanged = true;
-                runtime().runSynth = true;  // mark as active and enable background threads
-                runtime().Log("-----Connect-SUCCESS-------------------\n");
-                runtime().Log("Using "+display(tryAudio)+" for audio and "+display(tryMidi)+" for midi", _SYS_::LogError);
-                break;
-            }
-        }
+            runtime().runSynth = true;  // mark as active and enable background threads
+            runtime().Log("Using NO processing backend!!!!!!!!!!!!", _SYS_::LogError);
     }
     if (not runtime().runSynth)
         runtime().Log("Failed to instantiate MusicClient",_SYS_::LogError);
