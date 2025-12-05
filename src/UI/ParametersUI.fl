@@ -90,7 +90,8 @@ class ParametersUI {} {
 //                  synth->getGuiMaster()->vectorui->loadVector(file);
                     break;
                 case TOPLEVEL::XML::MLearn:
-                    synth->getGuiMaster()->midilearnui->loadMidi(file);
+///////////////////////////////////////////////////////////////////////////OOO Strip-down now defunct
+//                  synth->getGuiMaster()->midilearnui->loadMidi(file);
                     break;
             }
         }

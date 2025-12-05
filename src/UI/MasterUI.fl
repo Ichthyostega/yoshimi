@@ -109,9 +109,6 @@ decl {\#include "Interface/InterfaceAnchor.h"
     using RoutingTag = GuiDataExchange::RoutingTag;} {public local
 }
 
-decl {\#include "MidiLearnUI.h"} {public local
-}
-
 decl {\#include "Misc/FileMgrFuncs.h"
     using file::isRegularFile;
     using file::findLeafName;} {private local
@@ -355,9 +352,6 @@ class MasterUI {: {public GuiUpdates}
       if (paramsui)
           delete paramsui;
 
-      if (midilearnui)
-          delete midilearnui;
-
       if (yoshiLog)
           delete yoshiLog;
 
@@ -398,7 +392,7 @@ class MasterUI {: {public GuiUpdates}
       presetsui = new PresetsUI(synth);
       paramsui = new ParametersUI(synth);
 //    vectorui = new VectorUI(synth, bankui, paramsui);
-      midilearnui = new MidiLearnUI(synth);
+//    midilearnui = new MidiLearnUI(synth);
       yoshiLog = new ConsoleUI(synth);
       Fl_Tooltip::color(tooltip_back);
       Fl_Tooltip::textcolor(tooltip_text);
@@ -2686,11 +2680,6 @@ bpmfallback->format(format);} {}
         Showpanel();
 
 
-    if (lastSeen(synth, "Midi-learn"))
-        midilearnui->showLearn();
-    else
-        midilearnui->midilearnwindow->hide();
-
     if (lastSeen(synth, "Config"))
         configui->Show(synth); // this does some initialising
     else
@@ -2894,9 +2883,6 @@ bpmfallback->format(format);} {}
         syseffRtext();
         lastsyseffW = syseffsendwindow->w();
     }
-
-    if (midilearnui->midilearnwindow->visible())
-        midilearnui->learnRtext();
 
     if (aboutwindow->visible() && lastaboutW != aboutwindow->w())
     {
@@ -3232,11 +3218,6 @@ bpmfallback->format(format);} {}
             }
         }
 
-        if (midilearnui->midilearnwindow->visible())
-        {
-            midilearnui->learnW = 0;
-            midilearnui->learnRtext();
-        }
         if (aboutwindow->visible())
         {
             aboutRtext();
@@ -3264,8 +3245,6 @@ bpmfallback->format(format);} {}
   decl {ConfigUI *configui;} {public local
   }
   decl {ParametersUI *paramsui;} {public local
-  }
-  decl {MidiLearnUI *midilearnui;} {public local
   }
   decl {bool themeTrigger;} {public local
   }
