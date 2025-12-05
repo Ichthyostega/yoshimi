@@ -284,74 +284,25 @@ configure_file(
     "${CMAKE_CURRENT_BINARY_DIR}/yoshimi.desktop"
     IMMEDIATE @ONLY)
 
-set (DSP_sources
-    DSP/AnalogFilter.cpp  DSP/Filter.cpp  DSP/FormantFilter.cpp
-    DSP/SVFilter.cpp  DSP/Unison.cpp
-)
+file(GLOB_RECURSE DSP_sources CONFIGURE_DEPENDS "DSP/*.cpp")
 
-set (Effects_sources
-    Effects/Alienwah.cpp  Effects/Chorus.cpp  Effects/Echo.cpp
-    Effects/EffectLFO.cpp  Effects/EffectMgr.cpp  Effects/Effect.cpp
-    Effects/Phaser.cpp  Effects/Reverb.cpp  Effects/EQ.cpp
-    Effects/Distorsion.cpp  Effects/DynamicFilter.cpp
-)
+file(GLOB_RECURSE Effects_sources CONFIGURE_DEPENDS "Effects/*.cpp")
 
-set (Misc_sources
-    Misc/Bank.cpp  Misc/BuildScheduler.cpp  Misc/CmdOptions.cpp
-    Misc/Config.cpp  Misc/InstanceManager.cpp  Misc/Microtonal.cpp  Misc/Part.cpp
-    Misc/SynthEngine.cpp  Misc/WavFile.cpp  Misc/XMLStore.cpp
-)
+file(GLOB_RECURSE Misc_sources CONFIGURE_DEPENDS "Misc/*.cpp")
 
-set (Interface_Sources
-    Interface/InterChange.cpp
-    Interface/Data2Text.cpp
-    Interface/GuiDataExchange.h
-    Interface/GuiDataExchange.cpp
-    Interface/InterfaceAnchor.h
-    Interface/Text2Data.cpp
-    Interface/MidiLearn.cpp
-    Interface/Vectors.cpp
-    Interface/MidiDecode.cpp
-    Interface/RingBuffer.h
-    Interface/TextLists.h
-    Interface/TextLists.cpp
-)
+file(GLOB_RECURSE Interface_Sources CONFIGURE_DEPENDS "Interface/*.cpp")
 
-set (CLI_Sources
-    CLI/CmdInterface.cpp
-    CLI/CmdInterpreter.cpp
-)
+file(GLOB_RECURSE CLI_Sources CONFIGURE_DEPENDS "CLI/*.cpp")
 
-set (Params_sources
-    Params/ADnoteParameters.cpp  Params/EnvelopeParams.cpp
-    Params/FilterParams.cpp  Params/LFOParams.cpp
-    Params/SUBnoteParameters.cpp  Params/PADnoteParameters.cpp
-    Params/Controller.cpp  Params/ParamCheck.cpp
-    Params/UnifiedPresets.cpp
-    Params/OscilParameters.cpp
-)
+file(GLOB_RECURSE Params_sources CONFIGURE_DEPENDS "Params/*.cpp")
 
-set (Synth_sources
-    Synth/ADnote.cpp  Synth/Envelope.cpp  Synth/LFO.cpp  Synth/OscilGen.cpp
-    Synth/SUBnote.cpp  Synth/Resonance.cpp  Synth/PADnote.cpp
-)
+file(GLOB_RECURSE Synth_sources CONFIGURE_DEPENDS "Synth/*.cpp")
 
-set (MusicIO_sources
-    MusicIO/MusicClient.cpp  MusicIO/MusicIO.cpp  MusicIO/JackEngine.cpp
-    MusicIO/AlsaEngine.cpp
-)
+file(GLOB_RECURSE MusicIO_sources CONFIGURE_DEPENDS "MusicIO/*.cpp")
 
 if (BuildWithFLTK)
-    set (FltkUI_names
-        "PresetsUI" "EnvelopeUI"
-        "LFOUI" "FilterUI" "VirKeyboardUI"
-        "ConfigUI" "SUBnoteUI" "ResonanceUI"
-        "OscilGenUI" "ADnoteUI" "PADnoteUI"
-        "EffUI" "BankUI" "PartUI"
-        "MicrotonalUI" "MasterUI" "MasterMiscUI"
-        "ParametersUI" "ConsoleUI"
-        "MidiLearnUI"
-    )
+    file(GLOB_RECURSE FltkUI_specs CONFIGURE_DEPENDS "UI/*.fl")
+    file(GLOB_RECURSE FltkUI_additionalSrc CONFIGURE_DEPENDS "UI/*.cpp")
 
     set (guitmp generated-gui-sources)
     file (MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/${guitmp}")
@@ -359,7 +310,9 @@ if (BuildWithFLTK)
 # workaround fltk_wrap_ui breakage
     set (FltkUI_sources)
     set (FltkUI_headers)
-    foreach(basename ${FltkUI_names})
+    foreach(filename ${FltkUI_specs})
+        get_filename_component(filename "${filename}" NAME)
+        string(REGEX REPLACE "\\.[^\\.]+$" "" basename "${filename}") # strip any extension
         set (fluidfile "${CMAKE_CURRENT_SOURCE_DIR}/UI/${basename}.fl")
         set (sourcefile "${basename}.cpp")
         set (headerfile "${basename}.h")
@@ -373,18 +326,11 @@ if (BuildWithFLTK)
         )
         set (FltkUI_sources ${FltkUI_sources} "${sourcefile}")
         set (FltkUI_headers ${FltkUI_headers} "${headerfile}")
-    endforeach(basename ${FltkUI_names})
+    endforeach(filename ${FltkUI_specs})
 
     set (FltkUI_sources
         ${FltkUI_sources}
-        UI/DynamicTooltip.cpp
-        UI/WidgetPDial.cpp
-        UI/WidgetCheckButton.cpp
-        UI/WidgetSpinner.cpp
-        UI/WidgetMWSlider.cpp
-        UI/MiscGui.cpp
-        UI/Splash.cpp
-        UI/ScaleTrackedWindow.cpp
+        ${FltkUI_additionalSrc}
     )
     set (YOSHI_INCLUDES ${FLTK_INCLUDE_DIR})
 endif ()
@@ -475,6 +421,7 @@ endif ()
 add_executable (yoshimi ${ProgSources} main.cpp)
 
 target_link_libraries (yoshimi ${ExternLibraries})
+target_link_libraries (yoshimi stdc++fs)
 
 
 if (ARGP_LIB)
