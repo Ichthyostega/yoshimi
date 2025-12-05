@@ -87,9 +87,6 @@ decl {\#include "VirKeyboardUI.h"} {public local
 decl {\#include "ConfigUI.h"} {public local
 }
 
-decl {\#include "BankUI.h"} {public local
-}
-
 decl {\#include "PartUI.h"} {public local
 }
 
@@ -100,9 +97,6 @@ decl {\#include "PresetsUI.h"} {public local
 }
 
 decl {\#include "ParametersUI.h"} {public local
-}
-
-decl {\#include "VectorUI.h"} {public local
 }
 
 decl {\#include "ConsoleUI.h"} {public local
@@ -321,7 +315,6 @@ class MasterUI {: {public GuiUpdates}
       panelScale = 1;
 
       microtonalui = nullptr;
-      bankui = nullptr;
       virkeyboard = nullptr;
       configui = nullptr;
       presetsui = nullptr;
@@ -364,9 +357,6 @@ class MasterUI {: {public GuiUpdates}
       if (microtonalui)
           delete microtonalui;
 
-      if (bankui)
-          delete bankui;
-
       if (virkeyboard)
           delete virkeyboard;
 
@@ -378,9 +368,6 @@ class MasterUI {: {public GuiUpdates}
 
       if (paramsui)
           delete paramsui;
-
-      if (vectorui)
-          delete vectorui;
 
       if (midilearnui)
           delete midilearnui;
@@ -419,12 +406,12 @@ class MasterUI {: {public GuiUpdates}
       syseffSeen = false;
       partmax = collect_readData(synth, 0, MAIN::control::availableParts, TOPLEVEL::main);
       microtonalui = new MicrotonalUI(&synth->microtonal, synth);
-      bankui = new BankUI(synth);
+//    bankui = new BankUI(synth);
       virkeyboard = new VirKeyboard(synth);
       configui = new ConfigUI(synth, current_ID);
       presetsui = new PresetsUI(synth);
       paramsui = new ParametersUI(synth);
-      vectorui = new VectorUI(synth, bankui, paramsui);
+//    vectorui = new VectorUI(synth, bankui, paramsui);
       midilearnui = new MidiLearnUI(synth);
       yoshiLog = new ConsoleUI(synth);
       Fl_Tooltip::color(tooltip_back);
@@ -464,10 +451,7 @@ class MasterUI {: {public GuiUpdates}
   }
   Function {refreshInit()} {} {
     code {// update to current state and refresh sub-UIs and config
-    refresh_master_ui(1);
-    resetPartsClip();
-    bankui->readbankcfg();
-    bankui->rescan_for_banks();
+//////////////////////////////////////////////OOO Stripdown : no longer called
     //} {}
   }
   Function {make_window()} {} {
@@ -655,7 +639,6 @@ class MasterUI {: {public GuiUpdates}
       } {
         Fl_Group partui {
           xywh {3 315 379 172} color 47
-          code0 {partui->init(synth->part[npart], npart, bankui);}
           class PartUI
         } {}
         Fl_Group partControls {
@@ -1129,7 +1112,7 @@ Alan Calvert started the project}
           for (int i = 0; i < 16; i++)
           {
               panellistitem[i] = new Panellistitem(0, 0, 64, 270, "");
-              panellistitem[i]->init(i, bankui, synth);
+//            panellistitem[i]->init(i, bankui, synth);  ////////////////////////////OOO Strip-down
           }}
       } {}
       Fl_Button towide {
@@ -2320,13 +2303,6 @@ Alan Calvert started the project}
         panellistitem[part]->refresh();
     }
 
-    if (vectorui->vectorwindow->visible()) // should this really be here?
-    {
-        for (int part = 0; part < partmax; ++part)
-        {
-            vectorui->setInstrumentLabel(part);
-        }
-    }
 
     int oldswitch = channelswitch->value();
     int nextValue = collect_readData(synth, 0, MAIN::control::soloType, TOPLEVEL::section::main);
@@ -2475,8 +2451,6 @@ Alan Calvert started the project}
   }
   Function {updatepartprogram(int next)} {} {
     code {//
-    if (vectorui)
-        vectorui->setInstrumentLabel(next);
 
     if (partui->part->Prcvchn <  NUM_MIDI_CHANNELS)
     {
@@ -2534,66 +2508,6 @@ Alan Calvert started the project}
     if (filename.empty())
         return;
     send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate, MAIN::control::saveNamedPatchset, 0, TOPLEVEL::type::Integer, TOPLEVEL::section::main, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(filename));} {}
-  }
-  Function {refresh_master_ui(int type)} {} {
-    code {//
-    if (microtonalui) // not taking chances!
-        delete microtonalui;
-    partmax = collect_readData(synth, 0, MAIN::control::availableParts, TOPLEVEL::main);
-    maxparts->value(partmax);
-    maxparts->redraw();
-    checkmaxparts();
-    panning_law->value(fetchData(0, MAIN::control::panLawType, TOPLEVEL::section::main));
-
-    int next = collect_readData(synth, 0, MAIN::control::partNumber, TOPLEVEL::main); // make sure it's the right one!
-    npartcounter->value(next + 1);
-    partSwitch(next);
-
-    // resync to effect data from last push-update
-    syseffnocounter->value(syseffectui->effNum() + 1);
-    sysefftype->value(syseffectui->effType());
-    syseffectui->refresh();
-
-    refreshInsEffUI();
-
-    sysinsgroup->value(SystemEffectsGrp);
-
-    bool isDirty;
-    SysEffOn->value(syseffectui->isEnabled());
-    // note: effect type selection is never disabled
-    if (syseffectui->effType() > 0)
-    {
-        isDirty = syseffectui->isChanged();
-        syseffectui->UpdatePresetColour(isDirty, sysefftype->value());
-    }
-    if (inseffectui->effType() > 0)
-    {
-        isDirty = inseffectui->isChanged();
-        inseffectui->UpdatePresetColour(isDirty, insefftype->value());
-    }
-
-    showSysEfxUI();
-
-    masterkeyshift->value(synth->Pkeyshift - 64);
-    setBpmFallbackValue(synth->PbpmFallback);
-    mastervolumedial->value(synth->Pvolume);
-    mastervolumedial->selection_color(setKnob(synth->Pvolume,90));
-    globalfinedetune->value(synth->microtonal.Pglobalfinedetune);
-    globalfinedetune->selection_color(setKnob(synth->microtonal.Pglobalfinedetune,64));
-    microtonalui = new MicrotonalUI(&synth->microtonal, synth);
-    if (type & 0x80)
-        setMasterLabel(textMsgBuffer.fetch((type >> 8) & UNUSED));
-    updatesendwindow();
-    updatepanel(type > 0);
-    if (type != 5)
-        vectorui->RefreshChans();
-    mastermono->value(0);
-    mastermono->label("Stereo");
-    if (type == 0x14)
-    {
-        for (int i = 1; i < 6; ++i)
-            configui->update_config(i);
-    }} {}
   }
   Function {checkmaxparts()} {return_type bool
   } {
@@ -2785,22 +2699,6 @@ bpmfallback->format(format);} {}
     if (lastSeen(synth, "Mixer") & 3)
         Showpanel();
 
-    if (lastSeen(synth, "Bank-instrument"))
-        bankui->ShowInst();
-
-    loadWin(synth, fetchW, fetchH, fetchX, fetchY, fetchO, "Bank-bank");
-    bankui->bankuiwindow->position(fetchX, fetchY);
-    if (fetchO)
-        bankui->Showbank();
-    else
-        bankui->bankuiwindow->hide();
-
-    loadWin(synth, fetchW, fetchH, fetchX, fetchY, fetchO, "Bank-root");
-    bankui->rootuiwindow->position(fetchX, fetchY);
-    if (fetchO)
-        bankui->ShowRoot();
-    else
-        bankui->rootuiwindow->hide();
 
     if (lastSeen(synth, "Midi-virtualkeyboard"))
         virkeyboard->ShowKbd();
@@ -2827,40 +2725,9 @@ bpmfallback->format(format);} {}
     else if (yoshiLog->logConsole->visible())
         yoshiLog->Hide(synth);
 
-    if (lastSeen(synth, "Vector"))
-        vectorui->Show(synth);
-    else
-        vectorui->vectorwindow->hide();
 
-     if (lastSeen(synth, "Part-effects"))
-        partui->Showefx();
-    else
-        partui->partfx->hide();
-
-    if (lastSeen(synth, "Part-controllers"))
-        partui->Showctl();
-    else
-        partui->ctlwindow->hide();
-
-    if (lastSeen(synth, "Part-aftertouch"))
-        partui->ShowAT();
-    else
-        partui->aftertouchcontrol->hide();
-
-    if (lastSeen(synth, "Part-ctlmidi"))
-        partui->Showctlmidi();
-    else
-        partui->ctlmidi->hide();
-
-    if (lastSeen(synth, "Part-kit"))
-        partui->Showkit();
-    else
-        partui->instrumentkitlist->hide();
-
-    if (lastSeen(synth, "Part-edit"))
-        partui->Showedit();
-    else
-        partui->instrumenteditwindow->hide();} {}
+////////////////////////////////////////////////////OOO Strip-down : partui is defunct, can not init
+    ;} {}
   }
   Function {checkBuffer()} {} {
     code {//
@@ -3052,9 +2919,6 @@ bpmfallback->format(format);} {}
         lastsyseffW = syseffsendwindow->w();
     }
 
-    if (vectorui->vectorwindow->visible())
-        vectorui->vectorRtext();
-
     if (microtonalui->microtonaluiwindow->visible())
         microtonalui->scaleRtext();
 
@@ -3083,8 +2947,9 @@ bpmfallback->format(format);} {}
         configui->presetsRtext();
 
     presetsui->UpresetsRtext();
-    bankui->wincheck();
-    partui->wincheck();} {}
+////////////////////////////////////////////////////OOO Strip-down : partui is defunct, can not init
+//    partui->wincheck();
+    ;} {}
   }
   Function {mainRtext()} {} {
     code {//
@@ -3400,11 +3265,6 @@ bpmfallback->format(format);} {}
             }
         }
 
-        if (vectorui->vectorwindow->visible())
-        {
-            vectorui->lastvectorW = 0;
-            vectorui->vectorRtext();
-        }
         if (microtonalui->microtonaluiwindow->visible())
         {
             microtonalui->lastscaleW = 0;
@@ -3439,7 +3299,6 @@ bpmfallback->format(format);} {}
             configui->presetsRtext();
 
         }
-        bankui->theme();
         partui->theme();
         ;} {}
   }
@@ -3449,11 +3308,7 @@ bpmfallback->format(format);} {}
   }
   decl {ParametersUI *paramsui;} {public local
   }
-  decl {VectorUI *vectorui;} {public local
-  }
   decl {MidiLearnUI *midilearnui;} {public local
-  }
-  decl {BankUI *bankui;} {public local
   }
   decl {MicrotonalUI *microtonalui;} {public local
   }

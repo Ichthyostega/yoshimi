@@ -40,7 +40,6 @@ decl {\#include "Misc/Microtonal.h"} {public local
 
 decl {\#include "UI/MiscGui.h"
     \#include "EffUI.h"
-    \#include "BankUI.h"
     \#include "ADnoteUI.h"
     \#include "SUBnoteUI.h"
     \#include "PADnoteUI.h"
