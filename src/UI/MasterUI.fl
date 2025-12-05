@@ -90,9 +90,6 @@ decl {\#include "ConfigUI.h"} {public local
 decl {\#include "PartUI.h"} {public local
 }
 
-decl {\#include "MicrotonalUI.h"} {public local
-}
-
 decl {\#include "PresetsUI.h"} {public local
 }
 
@@ -314,7 +311,6 @@ class MasterUI {: {public GuiUpdates}
       panelgroup = 0;
       panelScale = 1;
 
-      microtonalui = nullptr;
       virkeyboard = nullptr;
       configui = nullptr;
       presetsui = nullptr;
@@ -353,9 +349,6 @@ class MasterUI {: {public GuiUpdates}
 
       message->hide();
       delete message;
-
-      if (microtonalui)
-          delete microtonalui;
 
       if (virkeyboard)
           delete virkeyboard;
@@ -405,7 +398,7 @@ class MasterUI {: {public GuiUpdates}
       msgSeen = false;
       syseffSeen = false;
       partmax = collect_readData(synth, 0, MAIN::control::availableParts, TOPLEVEL::main);
-      microtonalui = new MicrotonalUI(&synth->microtonal, synth);
+//    microtonalui = new MicrotonalUI(&synth->microtonal, synth);
 //    bankui = new BankUI(synth);
       virkeyboard = new VirKeyboard(synth);
       configui = new ConfigUI(synth, current_ID);
@@ -2705,11 +2698,6 @@ bpmfallback->format(format);} {}
     else
         virkeyboard->virkeyboardwindow->hide();
 
-    if (lastSeen(synth, "Scales"))
-        microtonalui->showScales();
-    else
-        microtonalui->microtonaluiwindow->hide();
-
     if (lastSeen(synth, "Midi-learn"))
         midilearnui->showLearn();
     else
@@ -2918,9 +2906,6 @@ bpmfallback->format(format);} {}
         syseffRtext();
         lastsyseffW = syseffsendwindow->w();
     }
-
-    if (microtonalui->microtonaluiwindow->visible())
-        microtonalui->scaleRtext();
 
     if (midilearnui->midilearnwindow->visible())
         midilearnui->learnRtext();
@@ -3265,11 +3250,6 @@ bpmfallback->format(format);} {}
             }
         }
 
-        if (microtonalui->microtonaluiwindow->visible())
-        {
-            microtonalui->lastscaleW = 0;
-            microtonalui->scaleRtext();
-        }
         if (midilearnui->midilearnwindow->visible())
         {
             midilearnui->learnW = 0;
@@ -3309,8 +3289,6 @@ bpmfallback->format(format);} {}
   decl {ParametersUI *paramsui;} {public local
   }
   decl {MidiLearnUI *midilearnui;} {public local
-  }
-  decl {MicrotonalUI *microtonalui;} {public local
   }
   decl {VirKeyboard *virkeyboard;} {public local
   }
