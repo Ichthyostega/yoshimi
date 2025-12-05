@@ -65,9 +65,6 @@ decl {\#include "BankUI.h"} {public local
 decl {\#include "PartUI.h"} {public local
 }
 
-decl {\#include "MicrotonalUI.h"} {public local
-}
-
 decl {\#include "PresetsUI.h"} {public local
 }
 
@@ -704,7 +701,9 @@ Right mouse button: Instrument edit} xywh {12 248 40 20} box PLASTIC_UP_BOX labe
     return engine;} {}
   }
   Function {~Panellistitem()} {} {
-    code {panellistitem->hide();} {}
+    code {//  panellistitem->hide()
+/////////////////////////////////////////OOO Strip-down now defunct
+    ;} {}
   }
   decl {int npart;} {private local
   }
