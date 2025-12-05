@@ -352,7 +352,7 @@ if (BuildWithFLTK)
         "OscilGenUI" "ADnoteUI" "PADnoteUI"
         "EffUI" "BankUI" "PartUI"
         "MicrotonalUI" "MasterUI" "MasterMiscUI"
-        "ParametersUI" "ConsoleUI" "VectorUI"
+        "ParametersUI" "ConsoleUI"
         "MidiLearnUI"
     )
 
