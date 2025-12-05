@@ -53,9 +53,6 @@ decl {\#include "SUBnoteUI.h"} {public local
 decl {\#include "EffUI.h"} {public local
 }
 
-decl {\#include "VirKeyboardUI.h"} {public local
-}
-
 decl {\#include "ConfigUI.h"} {public local
 }
 

@@ -81,9 +81,6 @@ decl {\#include "SUBnoteUI.h"} {public local
 decl {\#include "EffUI.h"} {public local
 }
 
-decl {\#include "VirKeyboardUI.h"} {public local
-}
-
 decl {\#include "ConfigUI.h"} {public local
 }
 
@@ -311,7 +308,6 @@ class MasterUI {: {public GuiUpdates}
       panelgroup = 0;
       panelScale = 1;
 
-      virkeyboard = nullptr;
       configui = nullptr;
       presetsui = nullptr;
       paramsui = nullptr;
@@ -349,9 +345,6 @@ class MasterUI {: {public GuiUpdates}
 
       message->hide();
       delete message;
-
-      if (virkeyboard)
-          delete virkeyboard;
 
       if (configui)
           delete configui;
@@ -400,7 +393,7 @@ class MasterUI {: {public GuiUpdates}
       partmax = collect_readData(synth, 0, MAIN::control::availableParts, TOPLEVEL::main);
 //    microtonalui = new MicrotonalUI(&synth->microtonal, synth);
 //    bankui = new BankUI(synth);
-      virkeyboard = new VirKeyboard(synth);
+//    virkeyboard = new VirKeyboard(synth);
       configui = new ConfigUI(synth, current_ID);
       presetsui = new PresetsUI(synth);
       paramsui = new ParametersUI(synth);
@@ -2693,11 +2686,6 @@ bpmfallback->format(format);} {}
         Showpanel();
 
 
-    if (lastSeen(synth, "Midi-virtualkeyboard"))
-        virkeyboard->ShowKbd();
-    else
-        virkeyboard->virkeyboardwindow->hide();
-
     if (lastSeen(synth, "Midi-learn"))
         midilearnui->showLearn();
     else
@@ -2909,12 +2897,6 @@ bpmfallback->format(format);} {}
 
     if (midilearnui->midilearnwindow->visible())
         midilearnui->learnRtext();
-
-    if (virkeyboard->virkeyboardwindow->visible() && lastvirtW != virkeyboard->virkeyboardwindow->w())
-    {
-        virkeyboard->virtRtext();
-        lastvirtW = virkeyboard->virkeyboardwindow->w();
-    }
 
     if (aboutwindow->visible() && lastaboutW != aboutwindow->w())
     {
@@ -3255,11 +3237,6 @@ bpmfallback->format(format);} {}
             midilearnui->learnW = 0;
             midilearnui->learnRtext();
         }
-        if (virkeyboard->virkeyboardwindow->visible())
-        {
-            virkeyboard->lastvirtW = 0;
-            virkeyboard->virtRtext();
-        }
         if (aboutwindow->visible())
         {
             aboutRtext();
@@ -3289,8 +3266,6 @@ bpmfallback->format(format);} {}
   decl {ParametersUI *paramsui;} {public local
   }
   decl {MidiLearnUI *midilearnui;} {public local
-  }
-  decl {VirKeyboard *virkeyboard;} {public local
   }
   decl {bool themeTrigger;} {public local
   }

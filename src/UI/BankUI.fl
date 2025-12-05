@@ -1281,8 +1281,9 @@ class BankUI {: {public BankProcess_, RootProcess_}
             }
             send_data(TOPLEVEL::action::forceUpdate, MAIN::control::loadInstrumentFromBank, slot, TOPLEVEL::type::Integer, TOPLEVEL::section::main, synth->getGuiMaster()->npart);
             // Reads from slot
-            if (synth->getGuiMaster()->virkeyboard->virkeyboardwindow->visible())
-                synth->getGuiMaster()->virkeyboard->virkeys->take_focus();
+//////////////////////////////////////////////////////////////////////////////////////OOO Strip-down dead...
+//          if (synth->getGuiMaster()->virkeyboard->virkeyboardwindow->visible())
+//              synth->getGuiMaster()->virkeyboard->virkeys->take_focus();
             if (what == 3)
                 Hide(0);
             return;
