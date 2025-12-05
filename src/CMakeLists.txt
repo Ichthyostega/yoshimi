@@ -102,9 +102,6 @@ option (BuildForDiagnostic "Add diagnostics and debug info for optimised release
 
 option (BuildWithFLTK "Build with FLTK GUI" ON)
 
-#option to build lv2 plugin
-option (LV2Plugin "Build yoshimi lv2 plugin interface" ON)
-
 # developer info
 option (ShowNoteOnTimes "Report Note-On Times" OFF)
 option (ReportNoteEvents "Report Notes On/Off Count" OFF)
@@ -584,20 +581,3 @@ add_custom_target (distclean
     COMMAND rm -f ${CMAKE_SOURCE_DIR}/LV2_Plugin/ -type d -name CMakeFiles | xargs -r rm -rff
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
-
-
-if (LV2Plugin)
-    if (NOT BuildWithFLTK)
-        message(FATAL_ERROR "Can't build LV2 headless")
-    endif ()
-    if (EXISTS $ENV{LV2_PATH})
-        set(LV2_INSTALL_DIR $ENV{LV2_PATH} CACHE PATH
-        "Specifies where the LV2 libraries should be installed")
-    else()
-        set(LV2_INSTALL_DIR ${CMAKE_INSTALL_LIBDIR}/lv2 CACHE PATH
-        "Specifies where the LV2 libraries should be installed")
-    endif ()
-
-    pkg_check_modules(LV2 REQUIRED lv2>=1.0.0)
-    add_subdirectory(LV2_Plugin)
-endif ()
