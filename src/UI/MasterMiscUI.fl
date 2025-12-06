@@ -68,9 +68,6 @@ decl {\#include "PresetsUI.h"} {public local
 decl {\#include "ParametersUI.h"} {public local
 }
 
-decl {\#include "ConsoleUI.h"} {public local
-}
-
 decl {\#include "MasterUI.h"} {private global
 }
 

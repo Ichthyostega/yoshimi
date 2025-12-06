@@ -93,9 +93,6 @@ decl {\#include "PresetsUI.h"} {public local
 decl {\#include "ParametersUI.h"} {public local
 }
 
-decl {\#include "ConsoleUI.h"} {public local
-}
-
 decl {\#include "MasterMiscUI.h"} {public local
 }
 
@@ -310,7 +307,6 @@ class MasterUI {: {public GuiUpdates}
       paramsui = nullptr;
       syseffectui = nullptr;
       inseffectui = nullptr;
-      yoshiLog = nullptr;
       queryDW = 0;
 
       lastmainW = -1;
@@ -352,9 +348,6 @@ class MasterUI {: {public GuiUpdates}
       if (paramsui)
           delete paramsui;
 
-      if (yoshiLog)
-          delete yoshiLog;
-
       if (querywindow)
       {
           querywindow->hide();
@@ -393,7 +386,7 @@ class MasterUI {: {public GuiUpdates}
       paramsui = new ParametersUI(synth);
 //    vectorui = new VectorUI(synth, bankui, paramsui);
 //    midilearnui = new MidiLearnUI(synth);
-      yoshiLog = new ConsoleUI(synth);
+//    yoshiLog = new ConsoleUI(synth);
       Fl_Tooltip::color(tooltip_back);
       Fl_Tooltip::textcolor(tooltip_text);
       make_window();
@@ -2512,7 +2505,10 @@ Alan Calvert started the project}
     code {query("", "", "", "Bad things happened,\\nYoshimi strategically retreats.");} {}
   }
   Function {Log(string msg)} {} {
-    code {yoshiLog->log(msg);} {}
+    code {//
+//////////////////////////////OOO Strip-down deceased
+//    yoshiLog->log(msg)
+    ;} {}
   }
   Function {showSysEfxUI()} {private
   } {
@@ -2643,10 +2639,12 @@ Alan Calvert started the project}
   Function {setLogging(bool isConsole)} {} {
     code {//
     logenable = isConsole;
-    if (logenable)
-        yoshiLog->Show(synth);
-    else if (yoshiLog->logConsole->visible())
-        yoshiLog->Hide(synth);} {}
+//////////////////////////////////////////////////////OOO Strip-down now without function!    
+//  if (logenable)
+//      yoshiLog->Show(synth);
+//  else if (yoshiLog->logConsole->visible())
+//      yoshiLog->Hide(synth)
+    ;} {}
   }
   Function {setBpmFallbackValue(float value)} {return_type void
   } {
@@ -2684,11 +2682,6 @@ bpmfallback->format(format);} {}
         configui->Show(synth); // this does some initialising
     else
         configui->configwindow->hide();
-
-    if (lastSeen(synth, "System-log") & 1)
-        yoshiLog->Show(synth);
-    else if (yoshiLog->logConsole->visible())
-        yoshiLog->Hide(synth);
 
 
 ////////////////////////////////////////////////////OOO Strip-down : partui is defunct, can not init
@@ -2812,9 +2805,6 @@ bpmfallback->format(format);} {}
         else
             lastmainW = masterwindow->w();
     }
-
-    if (yoshiLog->logConsole->visible())
-        yoshiLog->consoleRtext();
 
     if (panelwindow->visible())
     {
@@ -3172,11 +3162,6 @@ bpmfallback->format(format);} {}
   Function {theme()} {} {
     code {//
         lastmainW = 0;
-        if (yoshiLog->logConsole->visible())
-        {
-            yoshiLog->lastlogW = 0;
-            yoshiLog->consoleRtext();
-        }
         if (panelwindow->visible())
         {
             panelRtext();
@@ -3254,8 +3239,6 @@ bpmfallback->format(format);} {}
     comment {This is only public for vector control} public local
   }
   decl {Panellistitem *panellistitem[NUM_MIDI_PARTS];} {public local
-  }
-  decl {ConsoleUI *yoshiLog;} {public local
   }
   decl {PresetsUI *presetsui;} {private local
   }
