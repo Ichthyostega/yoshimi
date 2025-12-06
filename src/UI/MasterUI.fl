@@ -592,10 +592,6 @@ class MasterUI {: {public GuiUpdates}
       Fl_Group partuigroup {
         xywh {3 315 379 178} box ENGRAVED_FRAME
       } {
-        Fl_Group partui {
-          xywh {3 315 379 172} color 47
-          class PartUI
-        } {}
         Fl_Group partControls {
           xywh {3 315 378 175}
         } {
@@ -2291,26 +2287,6 @@ Alan Calvert started the project}
     panelwindow->changed();
     ;} {}
   }
-  Function {partSwitch(int next)} {} {
-    code {//
-    if (npart != next)
-    {
-        npartcounter->value(next + 1);
-        npartcounter->redraw();
-        updatelistitem(npart); // deselect old one
-        npart = next;
-    }
-    updatelistitem(next); // select and/or modify
-    partui->rebuild(npart);
-
-    partEnable->value(synth->part[npart]->Penabled == 1);
-    if (partEnable->value() == 1)
-        partControls->activate();
-    else
-        partControls->deactivate();
-    refreshControls(npart);
-    masterwindow->redraw();} {}
-  }
   Function {updateEngines(int engine, string instrumentName)} {} {
     code {//
         if (engine & 1) // addsynth
@@ -2377,7 +2353,8 @@ Alan Calvert started the project}
     partVelOffset->selection_color(setKnob(partVelOffset->value(),64));
     partVelSense->value(synth->part[npart]->Pvelsns);
     partVelSense->selection_color(setKnob(partVelSense->value(),64));
-    partui->setinstrumentlabel();
+////////////////////////////////////OOO Strip-down defunct
+//    partui->setinstrumentlabel();
     partMidiCh->value(synth->part[npart]->Prcvchn + 1);
     partOmniEnable->value(synth->part[npart]->Pomni);
     partKeyLimit->value(synth->part[npart]->Pkeylimit);
@@ -2402,23 +2379,9 @@ Alan Calvert started the project}
         partKeymode->value(tmp);
     updateModepatch(tmp > PART_MONO && synth->part[npart]->Pdrummode != 0);
 
-    partui->checkEngines();} {}
-  }
-  Function {updatepartprogram(int next)} {} {
-    code {//
-
-    if (partui->part->Prcvchn <  NUM_MIDI_CHANNELS)
-    {
-        partMidiCh->value(partui->part->Prcvchn + 1);
-        partMidiCh->textcolor(gen_text);
-    }
-    else
-    {
-        //partMidiCh->textcolor(midi_solo_release);
-        partMidiCh->textcolor(gen_text);
-        partMidiCh->redraw();
-    }
-    partSwitch(next);} {}
+////////////////////////////////////OOO Strip-down defunct
+//  partui->checkEngines()
+    ;} {}
   }
   Function {setMasterLabel(string name)} {} {
     code {//
@@ -2435,16 +2398,8 @@ Alan Calvert started the project}
   }
   Function {do_load_instrument(string fname)} {} {
     code {//
-    int npart = partui->npart;
-
-    if ((npart & 0x30) == (panelgroup & 0x30))
-    {
-        int displaypart = npart & 0x0f;
-        panellistitem[displaypart]->partenabled->value(0);
-        panellistitem[displaypart]->panellistitemgroup->deactivate();
-    }
-    partEnable->value(0);
-    send_data(TOPLEVEL::action::forceUpdate, MAIN::control::loadInstrumentByName, 0, TOPLEVEL::type::Integer, TOPLEVEL::section::main, npart, UNUSED, UNUSED, textMsgBuffer.push(fname));} {}
+///////////////////////////////////////////OOO Strip-down all code removed since partUI is now defunct
+  ;} {}
   }
   Function {do_load_master(string filename)} {} {
     code {//
@@ -3175,7 +3130,6 @@ bpmfallback->format(format);} {}
         {
             aboutRtext();
         }
-        partui->theme();
         ;} {}
   }
   decl {SynthEngine *synth;} {public local
@@ -3186,6 +3140,10 @@ bpmfallback->format(format);} {}
   }
   decl {int partmax;} {
     comment {This is only public for vector control} public local
+  }
+  decl {PartUI* partui;
+//////////////////////OOO Strip-down introduced since other defunct components still refer to this field 
+  ;} { public local
   }
   decl {Panellistitem *panellistitem[NUM_MIDI_PARTS];} {public local
   }

@@ -482,8 +482,9 @@ class Panellistitem {: {public Fl_Group}
           label Edit
           callback {//
               int newpart = npart | synth->getGuiMaster()->panelgroup;
-              if (Fl::event() == FL_RELEASE && Fl::event_button() == FL_RIGHT_MOUSE)
-                  synth->getGuiMaster()->partui->Showedit();
+////////////////////////////////////////////////////////////////////////////////////////////OOO Strip-down partUI is now defunct              
+//              if (Fl::event() == FL_RELEASE && Fl::event_button() == FL_RIGHT_MOUSE)
+//                  synth->getGuiMaster()->partui->Showedit();
 
               if ((int)bankui->cbwig->value() != (newpart + 1))
               {
