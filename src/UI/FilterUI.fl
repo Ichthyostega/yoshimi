@@ -1175,8 +1175,9 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
             synth->getGuiMaster()->syseffectui->UpdatePresetColour(1, EFFECT::type::dynFilter - EFFECT::type::none);
         else if (part == TOPLEVEL::section::insertEffects)
             synth->getGuiMaster()->inseffectui->UpdatePresetColour(1, EFFECT::type::dynFilter - EFFECT::type::none);
-        else
-           synth->getGuiMaster()->partui->inseffectui->UpdatePresetColour(1, EFFECT::type::dynFilter - EFFECT::type::none); // normal part effect
+//////////////////////////////OOO Strip-down .... does not exist anymore
+//      else
+//         synth->getGuiMaster()->partui->inseffectui->UpdatePresetColour(1, EFFECT::type::dynFilter - EFFECT::type::none); // normal part effect
     }
 
     bool isAdd = (eng == PART::engine::addSynth);

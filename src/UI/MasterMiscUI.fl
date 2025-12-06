@@ -50,9 +50,6 @@ decl {\#include "EffUI.h"} {public local
 decl {\#include "BankUI.h"} {public local
 }
 
-decl {\#include "PartUI.h"} {public local
-}
-
 decl {\#include "MasterUI.h"} {private global
 }
 

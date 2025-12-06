@@ -75,24 +75,20 @@ decl {\#include "UI/ScaleTrackedWindow.h"} {public global
 decl {\#include "EffUI.h"} {public local
 }
 
-decl {\#include "PartUI.h"} {public local
-}
-
-decl {\#include "PresetsUI.h" /////////////////////OOO Strip-down still required by already defunct subwindows
-} {public local
-}
-
 decl {\#include "MasterMiscUI.h"} {public local
 }
 
 decl {\#include "Misc/SynthEngine.h"} {public local
 }
 
-decl {\#include "Interface/InterChange.h"} {public local
+decl {\#include "Misc/SynthEngine.h"} {public local
 }
 
 decl {\#include "Interface/InterfaceAnchor.h"
     using RoutingTag = GuiDataExchange::RoutingTag;} {public local
+}
+
+decl {\#include "Params/Controller.h"} {private local
 }
 
 decl {\#include "Misc/FileMgrFuncs.h"
@@ -3136,10 +3132,6 @@ bpmfallback->format(format);} {}
   }
   decl {int partmax;} {
     comment {This is only public for vector control} public local
-  }
-  decl {PartUI* partui;
-//////////////////////OOO Strip-down introduced since other defunct components still refer to this field 
-  ;} { public local
   }
   decl {Panellistitem *panellistitem[NUM_MIDI_PARTS];} {public local
   }
