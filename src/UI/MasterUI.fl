@@ -81,16 +81,11 @@ decl {\#include "SUBnoteUI.h"} {public local
 decl {\#include "EffUI.h"} {public local
 }
 
-decl {\#include "ConfigUI.h"} {public local
-}
-
 decl {\#include "PartUI.h"} {public local
 }
 
-decl {\#include "PresetsUI.h"} {public local
-}
-
-decl {\#include "ParametersUI.h"} {public local
+decl {\#include "PresetsUI.h" /////////////////////OOO Strip-down still required by already defunct subwindows
+} {public local
 }
 
 decl {\#include "MasterMiscUI.h"} {public local
@@ -297,14 +292,10 @@ class MasterUI {: {public GuiUpdates}
 	 : GuiUpdates{_interChange, std::move(connectionData)}} {} {
     code {//
       synth = nullptr;
-      presetsui = nullptr;
       npart = 0;
       panelgroup = 0;
       panelScale = 1;
 
-      configui = nullptr;
-      presetsui = nullptr;
-      paramsui = nullptr;
       syseffectui = nullptr;
       inseffectui = nullptr;
       queryDW = 0;
@@ -339,15 +330,6 @@ class MasterUI {: {public GuiUpdates}
       message->hide();
       delete message;
 
-      if (configui)
-          delete configui;
-
-      if (presetsui)
-          delete presetsui;
-
-      if (paramsui)
-          delete paramsui;
-
       if (querywindow)
       {
           querywindow->hide();
@@ -381,9 +363,9 @@ class MasterUI {: {public GuiUpdates}
 //    microtonalui = new MicrotonalUI(&synth->microtonal, synth);
 //    bankui = new BankUI(synth);
 //    virkeyboard = new VirKeyboard(synth);
-      configui = new ConfigUI(synth, current_ID);
-      presetsui = new PresetsUI(synth);
-      paramsui = new ParametersUI(synth);
+//    configui = new ConfigUI(synth, current_ID);
+//    presetsui = new PresetsUI(synth);
+//    paramsui = new ParametersUI(synth);
 //    vectorui = new VectorUI(synth, bankui, paramsui);
 //    midilearnui = new MidiLearnUI(synth);
 //    yoshiLog = new ConsoleUI(synth);
@@ -2208,9 +2190,10 @@ Alan Calvert started the project}
     }
     panelwindow->show();
     panelType = type;
-    configui->PanelLayout->value(2 - type);
-    if (configui->configwindow->visible())
-        configui->configwindow->redraw();
+/////////////////////////////////////////////////OOO Strip-down now defunct
+//    configui->PanelLayout->value(2 - type);
+//    if (configui->configwindow->visible())
+//        configui->configwindow->redraw();
     panelRtext();} {}
   }
   Function {Showpanel()} {} {
@@ -2236,7 +2219,6 @@ Alan Calvert started the project}
         fetchW = defW; // it's messed up so force default
         fetchH = defH;
     }
-    configui->PanelLayout->value(2 - tmp);
     panelwindow->size_range(defW, defH, 0, 0, 0, 0, 1);
     checkSane(fetchX, fetchY, fetchW, fetchH, defW, defH);
     panelwindow->resize(fetchX, fetchY, fetchW, fetchH);
@@ -2572,7 +2554,10 @@ Alan Calvert started the project}
   Function {getPresetsUi()} {return_type {PresetsUI *}
   } {
     code {//
-    return presetsui;} {}
+    return nullptr;
+//////////////////////////////OOO Strip-down Kabooom!
+//  return presetsui
+    ;} {}
   }
   Function {resetPartsClip()} {} {
     code {//
@@ -2676,13 +2661,6 @@ bpmfallback->format(format);} {}
 
     if (lastSeen(synth, "Mixer") & 3)
         Showpanel();
-
-
-    if (lastSeen(synth, "Config"))
-        configui->Show(synth); // this does some initialising
-    else
-        configui->configwindow->hide();
-
 
 ////////////////////////////////////////////////////OOO Strip-down : partui is defunct, can not init
     ;} {}
@@ -2880,16 +2858,6 @@ bpmfallback->format(format);} {}
         lastaboutW = aboutwindow->w();
     }
 
-    if (paramsui->Recent->visible())
-        paramsui->paramRtext();
-
-    if (configui->configwindow->visible())
-        configui->configRtext();
-
-    if (configui->presets->visible())
-        configui->presetsRtext();
-
-    presetsui->UpresetsRtext();
 ////////////////////////////////////////////////////OOO Strip-down : partui is defunct, can not init
 //    partui->wincheck();
     ;} {}
@@ -3207,29 +3175,10 @@ bpmfallback->format(format);} {}
         {
             aboutRtext();
         }
-        if (paramsui->Recent->visible())
-        {
-            paramsui->lastParamW = 0;
-            paramsui->paramRtext();
-        }
-        if (configui->configwindow->visible())
-        {
-            configui->configRtext();
-        }
-        if (configui->presets->visible())
-        {
-            configui->lastpresetW = 0;
-            configui->presetsRtext();
-
-        }
         partui->theme();
         ;} {}
   }
   decl {SynthEngine *synth;} {public local
-  }
-  decl {ConfigUI *configui;} {public local
-  }
-  decl {ParametersUI *paramsui;} {public local
   }
   decl {bool themeTrigger;} {public local
   }
@@ -3239,8 +3188,6 @@ bpmfallback->format(format);} {}
     comment {This is only public for vector control} public local
   }
   decl {Panellistitem *panellistitem[NUM_MIDI_PARTS];} {public local
-  }
-  decl {PresetsUI *presetsui;} {private local
   }
   decl {string panelwindowlabel} {private local
   }

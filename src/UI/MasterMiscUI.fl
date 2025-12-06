@@ -53,19 +53,10 @@ decl {\#include "SUBnoteUI.h"} {public local
 decl {\#include "EffUI.h"} {public local
 }
 
-decl {\#include "ConfigUI.h"} {public local
-}
-
 decl {\#include "BankUI.h"} {public local
 }
 
 decl {\#include "PartUI.h"} {public local
-}
-
-decl {\#include "PresetsUI.h"} {public local
-}
-
-decl {\#include "ParametersUI.h"} {public local
 }
 
 decl {\#include "MasterUI.h"} {private global
@@ -337,7 +328,8 @@ class VUMeter {: {public Fl_Box}
         ++tick500;
         if (!(tick500 & 15)) // approx 500mS delay
         {
-            synth->getGuiMaster()->configui->halfSecTimer();
+/////////////////////////////////////////////////////////////////////////OOO Strip-down
+//          synth->getGuiMaster()->configui->halfSecTimer();
         }
     }} {}
   }
