@@ -174,86 +174,35 @@ GuiUpdates::GuiUpdates(InterChange& _interChange, InterfaceAnchor&& connectionDa
 
 void GuiUpdates::read_updates(SynthEngine *synth)
 {
-    CommandBlock getData;
-    while (synth->interchange.toGUI.read(getData.bytes))
-    {
-        decode_updates(synth, &getData);
-    }
-
-    // test refresh time
-    /*
-    static int count = 0;
-    static int toggle = false;
-    ++count;
-    if (count > 30)
-    {
-        count = 0;
-        toggle = !toggle;
-        if (toggle)
-            synth->getRuntime().Log("Tick");
-        else
-            synth->getRuntime().Log("tock");
-    }
-    */
-
-    // and pull up to 5 entries from log
-    for (int i = 0; !synth->getRuntime().logList.empty() && i < 5; ++i)
-    {
-        synth->getGuiMaster()->Log(synth->getRuntime().logList.front());
-        synth->getRuntime().logList.pop_front();
-    }
-}
-
-
-void GuiUpdates::decode_envelope(SynthEngine *synth, CommandBlock *getData)
-{
-    unsigned char engine = getData->data.engine;
-    unsigned char parameter = getData->data.parameter;
-    if (engine >= PART::engine::addMod1)
-    {
-        switch(parameter)
-        {
-            case TOPLEVEL::insertType::amplitude:
-                if (synth->getGuiMaster()->partui->adnoteui->advoice->voiceFMampenvgroup)
-                    synth->getGuiMaster()->partui->adnoteui->advoice->voiceFMampenvgroup->returns_update(getData);
-                break;
-            case TOPLEVEL::insertType::frequency:
-                if (synth->getGuiMaster()->partui->adnoteui->advoice->voiceFMfreqenvgroup)
-                    synth->getGuiMaster()->partui->adnoteui->advoice->voiceFMfreqenvgroup->returns_update(getData);
-                break;
-        }
-    }
-    else
-    {
-        switch(parameter)
-        {
-            case TOPLEVEL::insertType::amplitude:
-                if (synth->getGuiMaster()->partui->adnoteui->advoice->voiceampenvgroup)
-                    synth->getGuiMaster()->partui->adnoteui->advoice->voiceampenvgroup->returns_update(getData);
-                break;
-            case TOPLEVEL::insertType::frequency:
-                if (synth->getGuiMaster()->partui->adnoteui->advoice->voicefreqenvgroup)
-                    synth->getGuiMaster()->partui->adnoteui->advoice->voicefreqenvgroup->returns_update(getData);
-                break;
-            case TOPLEVEL::insertType::filter:
-                if (synth->getGuiMaster()->partui->adnoteui->advoice->voicefilterenvgroup)
-                    synth->getGuiMaster()->partui->adnoteui->advoice->voicefilterenvgroup->returns_update(getData);
-                break;
-        }
-    }
-}
-
-
-void GuiUpdates::decode_updates(SynthEngine *synth, CommandBlock *getData)
-{
-    uchar control   = getData->data.control;
-    uchar npart     = getData->data.part;
-    uchar kititem   = getData->data.kit;
-    uchar engine    = getData->data.engine;
-    uchar insert    = getData->data.insert;
-    uchar parameter = getData->data.parameter;
-    uchar miscmsg   = getData->data.miscmsg;
-
+/////////////////////////////////////////////////////////////OOO Strip-down disabled since all called functionality will be removed
+//    CommandBlock getData;
+//    while (synth->interchange.toGUI.read(getData.bytes))
+//    {
+//        decode_updates(synth, &getData);
+//    }
+//
+//    // test refresh time
+//    /*
+//    static int count = 0;
+//    static int toggle = false;
+//    ++count;
+//    if (count > 30)
+//    {
+//        count = 0;
+//        toggle = !toggle;
+//        if (toggle)
+//            synth->getRuntime().Log("Tick");
+//        else
+//            synth->getRuntime().Log("tock");
+//    }
+//    */
+//
+//    // and pull up to 5 entries from log
+//    for (int i = 0; !synth->getRuntime().logList.empty() && i < 5; ++i)
+//    {
+//        synth->getGuiMaster()->Log(synth->getRuntime().logList.front());
+//        synth->getRuntime().logList.pop_front();
+//    }
 }
 
 

@@ -183,8 +183,6 @@ public:
     auto connectPartEffect(){ return GuiDataExchange::Connection<EffectDTO>(interChange.guiDataExchange, anchor.partEffectParam);}
 
 private:
-    void decode_envelope(SynthEngine *synth, CommandBlock *getData);
-    void decode_updates(SynthEngine *synth, CommandBlock *getData);
 };
 
 inline void saveWin(SynthEngine *synth, int w, int h, int x, int y, int o, std::string filename)

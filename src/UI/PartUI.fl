@@ -42,9 +42,6 @@ decl {\#include <FL/fl_ask.H>
 decl {\#include "UI/MiscGui.h"
     \#include "EffUI.h"
     \#include "BankUI.h"
-    \#include "ADnoteUI.h"
-    \#include "SUBnoteUI.h"
-    \#include "PADnoteUI.h"
     \#include "UI/WidgetMWSlider.h"
     \#include "UI/WidgetSpinner.h"
     \#include "UI/WidgetCheckButton.h"
@@ -1748,6 +1745,8 @@ class PartUI {: {public Fl_Group, PartUI_}
             return;
         }
 
+////////////////////////////////////////////////////////////OOO Strip-down everything below PartUI is basically defunct now
+/*
         if (kititem != lastkititem)
             return; // only update engines if current kititem;
         if (engine >= PART::engine::addVoice1 && engine < PART::engine::addVoiceModEnd)
@@ -1817,15 +1816,15 @@ class PartUI {: {public Fl_Group, PartUI_}
             }
             return;
         }
-
+*/
         std::cout << "invalid paste" << std::endl;} {}
   }
   Function {PartUI(int x,int y, int w, int h, const char *label=0):Fl_Group(x,y,w,h,label)} {} {
     code {//
     part = NULL;
-    adnoteui = NULL;
-    subnoteui = NULL;
-    padnoteui = NULL;
+//    adnoteui = NULL;
+//    subnoteui = NULL;
+//    padnoteui = NULL;
     editSeen = false;
     fxSeen = false;
     kitSeen = false;
@@ -1841,6 +1840,8 @@ class PartUI {: {public Fl_Group, PartUI_}
   }
   Function {rebuild(int npart_)} {} {
     code {//
+////////////////////////////////////OOO Strip-down defunct
+/*    
         if (adnoteui != NULL)
         {
             delete adnoteui;
@@ -1873,7 +1874,9 @@ class PartUI {: {public Fl_Group, PartUI_}
         kitrefresh();
         controllersrefresh();
         ctlmidirefresh();
-        ATrefresh();} {}
+        ATrefresh()
+*/
+        ;} {}
   }
   Function {fillInstrumentType()} {} {
     code {//
@@ -2262,6 +2265,8 @@ class PartUI {: {public Fl_Group, PartUI_}
   }
   Function {showparameters(int kititem, int engine)} {} {
     code {//
+/////////////////////////////////////////////////////OOO Strip-down all children are defunct now
+/*
     kitname = part->kit[kititem].Pname;
     if (engine == -1)
     {   // this is used if I want to clear the engine from the part
@@ -2304,7 +2309,9 @@ class PartUI {: {public Fl_Group, PartUI_}
     if (engine == 1 && subnoteui != NULL)
         subnoteui->Showsub();
     if (engine == 2 && padnoteui != NULL)
-        padnoteui->Showpad();} {}
+        padnoteui->Showpad()
+*/
+    ;} {}
   }
   Function {setinstrumentlabel(string text = "")} {} {
     code {//
@@ -2492,13 +2499,7 @@ class PartUI {: {public Fl_Group, PartUI_}
         ATRtext();
         lastatW = aftertouchcontrol->w();
     }
-
-    if (adnoteui)
-        adnoteui->wincheck();
-    if (subnoteui)
-        subnoteui->subRtext();
-    if (padnoteui)
-        padnoteui->padRtext();} {}
+    ;} {}
   }
   Function {theme()} {} {
     code {//
@@ -2542,12 +2543,6 @@ class PartUI {: {public Fl_Group, PartUI_}
         {
             ATRtext();
         }
-        if (adnoteui)
-            adnoteui->theme();
-        if (subnoteui)
-            subnoteui->theme();
-        if (padnoteui)
-            padnoteui->theme();
         ;} {}
   }
   Function {editRtext()} {} {
@@ -2793,21 +2788,7 @@ class PartUI {: {public Fl_Group, PartUI_}
   }
   Function {~PartUI()} {} {
     code {//
-    if (adnoteui)
-    {
-        adnoteui->ADnoteGlobalParameters->hide();
-        delete adnoteui;
-    }
-    if (subnoteui)
-    {
-        //subnoteui->hide();
-        delete subnoteui;
-    }
-    if (padnoteui)
-    {
-        //padnoteui->hide();
-        delete padnoteui;
-    }
+///////////////////////////////OOO Strip-down removed destructors for child-windows
     if (atSeen > 0)
         saveWin(synth, aftertouchcontrol->w(), aftertouchcontrol->h(), aftertouchcontrol->x(), aftertouchcontrol->y(), true, "Part-aftertouch");
     aftertouchcontrol->hide();
@@ -2844,12 +2825,6 @@ class PartUI {: {public Fl_Group, PartUI_}
   decl {Part *part;} {public local
   }
   decl {BankUI *bankui;} {private local
-  }
-  decl {ADnoteUI *adnoteui;} {public local
-  }
-  decl {SUBnoteUI *subnoteui;} {public local
-  }
-  decl {PADnoteUI *padnoteui;} {public local
   }
   decl {int npart;} {public local
   }

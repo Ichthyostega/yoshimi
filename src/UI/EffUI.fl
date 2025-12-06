@@ -44,9 +44,6 @@ decl {\#include "UI/MiscGui.h"} {public local
 decl {\#include "UI/WidgetPDial.h"} {public local
 }
 
-decl {\#include "EnvelopeUI.h"} {public local
-}
-
 decl {\#include "FilterUI.h"} {public local
 }
 
