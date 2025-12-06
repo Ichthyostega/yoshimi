@@ -72,12 +72,6 @@ decl {\#include "UI/WidgetSpinner.h"} {public local
 decl {\#include "UI/ScaleTrackedWindow.h"} {public global
 }
 
-decl {\#include "ADnoteUI.h"} {public local
-}
-
-decl {\#include "SUBnoteUI.h"} {public local
-}
-
 decl {\#include "EffUI.h"} {public local
 }
 
@@ -1062,7 +1056,7 @@ Alan Calvert started the project}
         code0 {//
           for (int i = 0; i < 16; i++)
           {
-              panellistitem[i] = new Panellistitem(0, 0, 64, 270, "");
+//            panellistitem[i] = new Panellistitem(0, 0, 64, 270, "");   ////////////OOO Strip-down  the note-type child windows are dead now
 //            panellistitem[i]->init(i, bankui, synth);  ////////////////////////////OOO Strip-down
           }}
       } {}
@@ -1080,20 +1074,12 @@ Alan Calvert started the project}
       }
       Fl_Choice Panelgroups {
         label {Part Group}
-        callback {//
-        panelgroup = o->value() * NUM_MIDI_CHANNELS;
-        for (int i = 0; i < NUM_MIDI_CHANNELS; ++i)
-            panellistitem[i]->refresh();}
         xywh {5 300 86 18} down_box BORDER_BOX labelsize 12 labelcolor 64 align 1 textsize 12 textcolor 64
         code0 {o->add("1 to 16");o->add("17 to 32");o->add("33 to 48");o->add("49 to 64");}
         code1 {o->value(panelgroup / NUM_MIDI_CHANNELS);}
       } {}
       Fl_Choice Panelsmallgroups {
         label {Part Group}
-        callback {//
-        panelgroup = o->value() * NUM_MIDI_CHANNELS;
-        for (int i = 0; i < NUM_MIDI_CHANNELS; ++i)
-            panellistitem[i]->refresh();}
         xywh {5 300 86 18} down_box BORDER_BOX labelsize 12 labelcolor 64 align 1 textsize 12
         code0 {o->add("1 to 16");o->add("17 to 32");}
         code1 {o->value(panelgroup / NUM_MIDI_CHANNELS);}
@@ -2154,13 +2140,10 @@ Alan Calvert started the project}
 
         ;} {}
   }
-  Function {updatelistitem(int part)} {} {
-    code {//
-    int tmp = part % NUM_MIDI_CHANNELS;
-    panellistitem[tmp]->refresh();} {}
-  }
   Function {changepanelstyle(int type, bool force = false)} {} {
     code {//
+/////////////////////////////////////////////////OOO Strip-down now defunct
+/*
     if (type == 0)
         type = 1;
     panelwindow->hide();
@@ -2190,6 +2173,7 @@ Alan Calvert started the project}
 //    configui->PanelLayout->value(2 - type);
 //    if (configui->configwindow->visible())
 //        configui->configwindow->redraw();
+*/
     panelRtext();} {}
   }
   Function {Showpanel()} {} {
@@ -2232,7 +2216,8 @@ Alan Calvert started the project}
   }
   Function {updatepanel(bool full = false)} {} {
     code {//
-
+/////////////////////////////////////////////////OOO Strip-down now defunct
+/*
     if (partmax == (NUM_MIDI_CHANNELS * 4))
     {
         Panelgroups->show();
@@ -2285,10 +2270,13 @@ Alan Calvert started the project}
         CSpend->hide();
     }
     panelwindow->changed();
+*/
     ;} {}
   }
   Function {updateEngines(int engine, string instrumentName)} {} {
     code {//
+/////////////////////////////////////////////////OOO Strip-down now defunct
+/*
         if (engine & 1) // addsynth
         instrumentaddbox->color(add_back);
     else
@@ -2310,7 +2298,9 @@ Alan Calvert started the project}
     {
         int num = npart % NUM_MIDI_CHANNELS;
         panellistitem[num]->refresh();
-    }} {}
+    }
+*/
+    ;} {}
   }
   Function {updateModepatch(bool inactive)} {} {
     code {//
@@ -2514,16 +2504,6 @@ Alan Calvert started the project}
 //  return presetsui
     ;} {}
   }
-  Function {resetPartsClip()} {} {
-    code {//
-    for (int i = 0; i < NUM_MIDI_CHANNELS; i++)
-    {
-        if (panellistitem[i] && panellistitem[i]->partVUMeter)
-        {
-            panellistitem[i]->partVUMeter->resetPart(true);
-        }
-    }} {}
-  }
   Function {refreshInsEffUI()} {} {
     code {//
     insefftype->value(inseffectui->effType());
@@ -2556,13 +2536,21 @@ Alan Calvert started the project}
   }
   Function {setPanelPartVolWidget(int _npart, float _value)} {} {
     code {//
+////////////////////////////////////////////////OOO Strip-down now defunct
+/*    
     panellistitem[_npart]->partvolume->value(_value);
-    panellistitem[_npart]->partvolume->selection_color(setSlider(_value,96));} {}
+    panellistitem[_npart]->partvolume->selection_color(setSlider(_value,96))
+*/
+    ;} {}
   }
   Function {setPanelPartPanWidget(int _npart, float _value)} {} {
     code {//
+/////////////////////////////////////////////////OOO Strip-down now defunct
+/*
     panellistitem[_npart]->partpanning->value(_value);
-    panellistitem[_npart]->partpanning->selection_color(setKnob(_value,64));} {}
+    panellistitem[_npart]->partpanning->selection_color(setKnob(_value,64))
+*/
+    ;} {}
   }
   Function {setPartMidiWidget(int _npart, unsigned char _value)} {} {
     code {//
@@ -2572,9 +2560,13 @@ Alan Calvert started the project}
   }
   Function {setPanelPartMidiWidget(int _npart, unsigned char _value)} {} {
     code {//
+/////////////////////////////////////////////////OOO Strip-down now defunct
+/*
     panellistitem[_npart]->partrcv->value(_value);
     panellistitem[_npart]->partrcv->textcolor(gen_text);
-    panellistitem[_npart]->partrcv->redraw();} {}
+    panellistitem[_npart]->partrcv->redraw()
+*/
+    ;} {}
   }
   Function {setLogging(bool isConsole)} {} {
     code {//
@@ -2951,6 +2943,8 @@ bpmfallback->format(format);} {}
     if (dScale < 0.2f)
         dScale = 0.2f;
     panelScale = dScale;
+/////////////////////////////////////////////////OOO Strip-down now defunct
+/*    
     if (panelType == 1)
     {
         for (int i = 0; i < 16; ++ i)
@@ -2998,7 +2992,9 @@ bpmfallback->format(format);} {}
         channelswitch->textsize(size12);
     Panelclose->labelsize(size14);
 
-    panelwindow->redraw();} {}
+    panelwindow->redraw()
+*/
+    ;} {}
   }
   Function {aboutRtext()} {} {
     code {//
