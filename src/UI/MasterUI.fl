@@ -312,11 +312,6 @@ class MasterUI {: {public GuiUpdates}
           saveWin(synth, syseffsendwindow->w(), syseffsendwindow->h(), syseffsendwindow->x(), syseffsendwindow->y(), true, "Master-systemeffectsend");
       delete syseffsendwindow;
 
-      if (panelType < 4)
-          saveWin(synth, panelwindow->w(), panelwindow->h(), panelwindow->x(), panelwindow->y(), panelType, "Mixer");
-      panelwindow->hide();
-      delete panelwindow;
-
       message->hide();
       delete message;
 
@@ -368,8 +363,7 @@ class MasterUI {: {public GuiUpdates}
       bool foundWindows = Showmaster();
       if (current_ID > 0)
           foundWindows = true; //  not relevant for later windows
-      loadWindowData();
-      string starterror = "";
+//    loadWindowData();
 /////////////////////////////////////////////////////////OOO Stripdown: simplified     
           setMasterLabel("Wayland : Bughunt");
 /////////////////////////////////////////////////////////OOO Stripdown: simplified     
@@ -1038,102 +1032,6 @@ Alan Calvert started the project}
       Fl_Box sys23txt {
         label {3->4}
         xywh {82 156 35 17} labelsize 10 labelcolor 64
-      }
-    }
-    Fl_Window panelwindow {
-      label {Yoshimi : Mixer Panel}
-      callback {Panelclose->do_callback();}
-      xywh {421 26 1040 320} type Double labelfont 13 labelsize 13 hide resizable
-      code1 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Mixer Panel"), UNUSED, TOPLEVEL::windowTitle)).c_str());}
-      class ScaleTrackedWindow
-    } {
-      Fl_Group Panelframe {
-        xywh {2 2 1036 286} box ENGRAVED_FRAME
-        code0 {//
-          for (int i = 0; i < 16; i++)
-          {
-//            panellistitem[i] = new Panellistitem(0, 0, 64, 270, "");   ////////////OOO Strip-down  the note-type child windows are dead now
-//            panellistitem[i]->init(i, bankui, synth);  ////////////////////////////OOO Strip-down
-          }}
-      } {}
-      Fl_Button towide {
-        label {Change to 1 x 16}
-        callback {//
-        changepanelstyle(1, true);}
-        xywh {360 290 130 25} box PLASTIC_THIN_UP_BOX color 228 labelcolor 64
-      }
-      Fl_Button todeep {
-        label {Change to 2 x 8}
-        callback {//
-        changepanelstyle(2, true);}
-        xywh {831 290 120 25} box PLASTIC_THIN_UP_BOX color 228 labelcolor 64
-      }
-      Fl_Choice Panelgroups {
-        label {Part Group}
-        xywh {5 300 86 18} down_box BORDER_BOX labelsize 12 labelcolor 64 align 1 textsize 12 textcolor 64
-        code0 {o->add("1 to 16");o->add("17 to 32");o->add("33 to 48");o->add("49 to 64");}
-        code1 {o->value(panelgroup / NUM_MIDI_CHANNELS);}
-      } {}
-      Fl_Choice Panelsmallgroups {
-        label {Part Group}
-        xywh {5 300 86 18} down_box BORDER_BOX labelsize 12 labelcolor 64 align 1 textsize 12
-        code0 {o->add("1 to 16");o->add("17 to 32");}
-        code1 {o->value(panelgroup / NUM_MIDI_CHANNELS);}
-      } {}
-      Fl_Spinner CSspinner {
-        label CC
-        callback {//
-        CSpend->show();}
-        xywh {209 300 50 18} labelsize 12 labelcolor 64 align 1 minimum 0 maximum 127 value 115 textsize 12 textcolor 64
-        code0 {CS_CC = collect_readData(synth, 0, MAIN::control::soloCC, TOPLEVEL::section::main);}
-        code1 {if (CS_CC < 128) o->value(CS_CC); else o->value(115);}
-        class WidgetSpinner
-      }
-      Fl_Button CSpend {
-        label Pending
-        callback {//
-        CS_CC = collect_readData(synth, 0, MAIN::control::soloType, TOPLEVEL::section::main);
-        int candidate = CSspinner->value();
-        if (candidate == CS_CC)
-        {
-            o->hide();
-            return;
-        }
-
-        string name = textMsgBuffer.fetch(collect_readData(synth, candidate, MAIN::knownCCtest, TOPLEVEL::main));
-        if (!name.empty())
-        {
-            query("", "", "", "In use for " + name);
-            if (CS_CC < 128)
-            {
-                CSspinner->value(CS_CC);
-                CSspinner->redraw();
-            }
-
-        }
-        else
-        {
-            send_data(TOPLEVEL::action::forceUpdate, MAIN::control::soloCC, CSspinner->value(), TOPLEVEL::type::Integer, TOPLEVEL::section::main);
-        }}
-        tooltip {Click to set} xywh {276 290 70 25} box PLASTIC_UP_BOX color 90 labelsize 12 labelcolor 64 hide
-      }
-      Fl_Choice channelswitch {
-        label Solo
-        callback {//
-                send_data(TOPLEVEL::action::forceUpdate, MAIN::control::soloType, o->value(), TOPLEVEL::type::Integer, TOPLEVEL::section::main);}
-        tooltip {Assign groups of parts to Ch 1, singly enabled by MIDI} xywh {114 300 74 18} down_box BORDER_BOX labelsize 12 labelcolor 64 align 1 textsize 12 textcolor 64
-        code0 {o->add("Off");o->add("Row");o->add("Column");o->add("Loop");o->add("TwoWay");o->add("Channel");}
-        code1 {o->value(collect_readData(synth, 0, MAIN::control::soloType, TOPLEVEL::section::main));}
-        code2 {if (o->value() == 0) CSspinner->hide(); else CSspinner->show();}
-        code3 {CS_CC = o->value();}
-      } {}
-      Fl_Button Panelclose {
-        label {&Close}
-        callback {//
-    panelType |= 4;
-    saveWin(synth, panelwindow->w(), panelwindow->h(), panelwindow->x(), panelwindow->y(), panelType, "Mixer");
-    panelwindow->hide();}
-        xywh {975 290 60 25} box THIN_UP_BOX color 196 labelfont 1 labelcolor 64
       }
     }
     Fl_Window message {
@@ -2136,168 +2034,6 @@ Alan Calvert started the project}
 
         ;} {}
   }
-  Function {changepanelstyle(int type, bool force = false)} {} {
-    code {//
-/////////////////////////////////////////////////OOO Strip-down now defunct
-/*
-    if (type == 0)
-        type = 1;
-    panelwindow->hide();
-    if (type == 1)
-    {
-        panelwindow->reset(PANEL_SINGLE_X, PANEL_SINGLE_Y);
-        if (force)
-            panelwindow->size(PANEL_SINGLE_X, PANEL_SINGLE_Y);
-        panelwindow->size_range((PANEL_SINGLE_X * 9) / 10, (PANEL_SINGLE_Y * 9) / 10, 0, 0, 0, 0, 1);
-        towide->hide();
-        todeep->show();
-        if (force)
-            Panelclose->position(975, 290);
-    }
-    else if (type == 2)
-    {
-        panelwindow->reset(PANEL_DUAL_X, PANEL_DUAL_Y);
-        if (force)
-            panelwindow->size(PANEL_DUAL_X, PANEL_DUAL_Y);
-        panelwindow->size_range((PANEL_DUAL_X * 4) / 5, (PANEL_DUAL_Y * 4) / 5, 0, 0, 0, 0, 1);
-        towide->show();
-        todeep->hide();
-    }
-    panelwindow->show();
-    panelType = type;
-/////////////////////////////////////////////////OOO Strip-down now defunct
-//    configui->PanelLayout->value(2 - type);
-//    if (configui->configwindow->visible())
-//        configui->configwindow->redraw();
-*/
-    panelRtext();} {}
-  }
-  Function {Showpanel()} {} {
-    code {//
-    int fetchW, fetchH, fetchX, fetchY, fetchO;
-    loadWin(synth, fetchW, fetchH, fetchX, fetchY, fetchO, "Mixer");
-    //std::cout << "fetch " << fetchO << std::endl;
-    if (fetchO == 0)
-        fetchO = 1; // it's never been seen so set the default
-
-    int tmp = fetchO & 3;
-    // find default sizes
-    int defW = (PANEL_SINGLE_X * 9) / 10;
-    int defH = (PANEL_SINGLE_Y * 9) / 10;
-    if (tmp == 2)
-    {
-        defW = (PANEL_DUAL_X * 4) / 5;
-        defH = (PANEL_DUAL_Y * 4) / 5;
-    }
-    panelwindow->reset(defW, defH);
-    if (fetchW < defW || fetchH < defH)
-    {
-        fetchW = defW; // it's messed up so force default
-        fetchH = defH;
-    }
-    panelwindow->size_range(defW, defH, 0, 0, 0, 0, 1);
-    checkSane(fetchX, fetchY, fetchW, fetchH, defW, defH);
-    panelwindow->resize(fetchX, fetchY, fetchW, fetchH);
-
-    if (fetchO < 4)
-    {
-        changepanelstyle(tmp);
-        updatepanel();
-    }
-    else
-    {
-        panelType = fetchO;
-        panelwindow->hide();
-    }} {}
-  }
-  Function {updatepanel(bool full = false)} {} {
-    code {//
-/////////////////////////////////////////////////OOO Strip-down now defunct
-/*
-    if (partmax == (NUM_MIDI_CHANNELS * 4))
-    {
-        Panelgroups->show();
-        Panelgroups->value(panelgroup / NUM_MIDI_CHANNELS);
-    }
-    else
-        Panelgroups->hide();
-
-    if (partmax == (NUM_MIDI_CHANNELS * 2))
-    {
-        Panelsmallgroups->show();
-        Panelsmallgroups->value(panelgroup / NUM_MIDI_CHANNELS);
-    }
-    else
-        Panelsmallgroups->hide();
-
-    for (int part = 0; part < NUM_MIDI_CHANNELS; ++part)
-    {
-        panellistitem[part]->refresh();
-    }
-
-
-    int oldswitch = channelswitch->value();
-    int nextValue = collect_readData(synth, 0, MAIN::control::soloType, TOPLEVEL::section::main);
-    channelswitch->value(nextValue);
-    if (full)
-    {
-        oldswitch = channelswitch->value(); // disables 'pending'
-        CS_CC = nextValue;
-    }
-    if (nextValue > MIDI::SoloType::Disabled)
-    {
-        if (oldswitch == MIDI::SoloType::Disabled)
-        {
-            CSspinner->value(115);
-            CSpend->show();
-        }
-        else
-        {
-            CSspinner->value(fetchData(0, MAIN::control::soloCC, TOPLEVEL::section::main));
-            CSpend->hide();
-        }
-        CSspinner->show();
-    }
-    else
-    {
-        synth->getRuntime().channelSwitchCC = 128; // TODO why does the following fail?
-        //send_data(TOPLEVEL::action::forceUpdate, MAIN::control::soloCC, 128, TOPLEVEL::type::Integer, TOPLEVEL::section::main);
-        CSspinner->hide();
-        CSpend->hide();
-    }
-    panelwindow->changed();
-*/
-    ;} {}
-  }
-  Function {updateEngines(int engine, string instrumentName)} {} {
-    code {//
-/////////////////////////////////////////////////OOO Strip-down now defunct
-/*
-        if (engine & 1) // addsynth
-        instrumentaddbox->color(add_back);
-    else
-        instrumentaddbox->color(bank_back_used);
-
-    if (engine & 2) // subsynth
-        instrumentsubbox->color(sub_back);
-    else
-        instrumentsubbox->color(bank_back_used);
-
-    if (engine & 4) // padsynth
-        instrumentpadbox->color(pad_back);
-    else
-        instrumentpadbox->color(bank_back_used);
-
-    instrumentlabel->copy_label(instrumentName.c_str());
-
-    if (npart >= panelgroup && npart < (panelgroup + NUM_MIDI_CHANNELS))
-    {
-        int num = npart % NUM_MIDI_CHANNELS;
-        panellistitem[num]->refresh();
-    }
-*/
-    ;} {}
-  }
   Function {updateModepatch(bool inactive)} {} {
     code {//
         if (inactive)
@@ -2375,7 +2111,6 @@ Alan Calvert started the project}
         if (!name.empty())
             spacer = " - ";
         masterwindow->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push(name), UNUSED, TOPLEVEL::windowTitle)).c_str());
-        panelwindow->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Mixer Panel" + spacer + name), UNUSED, TOPLEVEL::windowTitle)).c_str());
         masterwindow->changed();} {}
   }
   Function {do_load_scale(string fname)} {} {
@@ -2409,13 +2144,6 @@ Alan Calvert started the project}
   } {
     code {//
     bool changed = false;
-    if (panelgroup >= partmax)
-    {
-        panelgroup = 0;
-        Panelgroups->value(0);
-        Panelsmallgroups->value(0);
-        changed = true;
-    }
     npartcounter->range(1, maxparts->value());
     if (npart >= maxparts->value())
     {
@@ -2530,40 +2258,6 @@ Alan Calvert started the project}
         partEnable->value(active);
     }} {}
   }
-  Function {setPanelPartVolWidget(int _npart, float _value)} {} {
-    code {//
-////////////////////////////////////////////////OOO Strip-down now defunct
-/*    
-    panellistitem[_npart]->partvolume->value(_value);
-    panellistitem[_npart]->partvolume->selection_color(setSlider(_value,96))
-*/
-    ;} {}
-  }
-  Function {setPanelPartPanWidget(int _npart, float _value)} {} {
-    code {//
-/////////////////////////////////////////////////OOO Strip-down now defunct
-/*
-    panellistitem[_npart]->partpanning->value(_value);
-    panellistitem[_npart]->partpanning->selection_color(setKnob(_value,64))
-*/
-    ;} {}
-  }
-  Function {setPartMidiWidget(int _npart, unsigned char _value)} {} {
-    code {//
-    if (_npart == npart)
-        partMidiCh->value(_value);
-    partMidiCh->textcolor(gen_text);} {}
-  }
-  Function {setPanelPartMidiWidget(int _npart, unsigned char _value)} {} {
-    code {//
-/////////////////////////////////////////////////OOO Strip-down now defunct
-/*
-    panellistitem[_npart]->partrcv->value(_value);
-    panellistitem[_npart]->partrcv->textcolor(gen_text);
-    panellistitem[_npart]->partrcv->redraw()
-*/
-    ;} {}
-  }
   Function {setLogging(bool isConsole)} {} {
     code {//
     logenable = isConsole;
@@ -2597,16 +2291,6 @@ bpmfallback->format(format);} {}
   Function {getSynth()} {return_type {SynthEngine *}
   } {
     code {return synth;} {}
-  }
-  Function {loadWindowData()} {} {
-    code {//
-    int fetchW, fetchH, fetchX, fetchY, fetchO;
-
-    if (lastSeen(synth, "Mixer") & 3)
-        Showpanel();
-
-////////////////////////////////////////////////////OOO Strip-down : partui is defunct, can not init
-    ;} {}
   }
   Function {checkBuffer()} {} {
     code {//
@@ -2725,15 +2409,6 @@ bpmfallback->format(format);} {}
             ++lastmainW;
         else
             lastmainW = masterwindow->w();
-    }
-
-    if (panelwindow->visible())
-    {
-        if (panelwindow->w() != lastpanelW)
-        {
-            panelRtext();
-            lastpanelW = panelwindow->w();
-        }
     }
 
     if (message->visible() && message->w() != lastmsgW)
@@ -2911,87 +2586,6 @@ bpmfallback->format(format);} {}
 
     masterwindow->redraw();} {}
   }
-  Function {panelRtext()} {} {
-    code {//
-    int w = panelwindow->w();
-    int h = panelwindow->h();
-    float dW;
-    float dH;
-
-    if (panelType == 1)
-    {
-        dW = w / float(PANEL_SINGLE_X);
-        dH = h / float(PANEL_SINGLE_Y);
-
-    }
-    else
-    {
-        dW = w / float(PANEL_DUAL_X);
-        dH = h / float(PANEL_DUAL_Y);
-    }
-
-    float dScale;
-
-    if (dW < dH)
-        dScale = dW;
-    else
-        dScale = dH;
-    if (dScale < 0.2f)
-        dScale = 0.2f;
-    panelScale = dScale;
-/////////////////////////////////////////////////OOO Strip-down now defunct
-/*    
-    if (panelType == 1)
-    {
-        for (int i = 0; i < 16; ++ i)
-        {
-            panellistitem[i]->resize((8 + (i * 64)) * dW, 12 * dH, 63 * dW, 268 * dH);
-            panellistitem[i]->itemRtext(dScale);
-        }
-
-    }
-    else
-    {
-        for (int i = 0; i < 8; ++ i)
-        {
-            panellistitem[i]->resize((8 + (i * 64)) * dW, 12 * dH, 63 * dW, 268 * dH);
-            panellistitem[i]->itemRtext(dScale);
-        }
-        for (int i = 8; i < 16; ++ i)
-        {
-            panellistitem[i]->resize((8 + ((i - 8) * 64)) * dW, 290 * dH, 63 * dW, 268 * dH);
-            panellistitem[i]->itemRtext(dScale);
-        }
-
-        towide->resize(335 * dW, (PANEL_DUAL_Y - 30) * dH, 130 * dW, 25 * dH);
-        Panelsmallgroups->resize(5 * dW, (PANEL_DUAL_Y - 23) * dH, 86 * dW, 18 * dH);
-        Panelgroups->resize(5 * dW, (PANEL_DUAL_Y - 23) * dH, 86 * dW, 18 * dH);
-        CSspinner->resize(173 * dW, (PANEL_DUAL_Y - 23) * dH, 50 * dW, 18 * dH);
-        CSpend->resize(227 * dW, (PANEL_DUAL_Y - 30) * dH, 74 * dW, 25 * dH);
-        channelswitch->resize(95 * dW, (PANEL_DUAL_Y -23) * dH, 74 * dW, 18 * dH);
-        Panelclose->resize((PANEL_DUAL_X - 55) * dW, (PANEL_DUAL_Y - 30) * dH, 50 * dW, 25 * dH);
-
-    }
-
-    int size12 = int(12 * dScale);
-    int size14 = int(14 * dScale);
-    towide->labelsize(size14);
-    todeep->labelsize(size14);
-    Panelgroups->labelsize(size12);
-        Panelgroups->textsize(size12);
-    Panelsmallgroups->labelsize(size12);
-        Panelsmallgroups->textsize(size12);
-    CSspinner->labelsize(size12);
-        CSspinner->textsize(size12);
-    CSpend->labelsize(size12);
-    channelswitch->labelsize(size12);
-        channelswitch->textsize(size12);
-    Panelclose->labelsize(size14);
-
-    panelwindow->redraw()
-*/
-    ;} {}
-  }
   Function {aboutRtext()} {} {
     code {//
     float dScale = aboutwindow->w() / float(aboutDW);
@@ -3077,10 +2671,6 @@ bpmfallback->format(format);} {}
   Function {theme()} {} {
     code {//
         lastmainW = 0;
-        if (panelwindow->visible())
-        {
-            panelRtext();
-        }
         if (message->visible())
         {
             lastmsgW = 0;
@@ -3132,10 +2722,6 @@ bpmfallback->format(format);} {}
   }
   decl {int partmax;} {
     comment {This is only public for vector control} public local
-  }
-  decl {Panellistitem *panellistitem[NUM_MIDI_PARTS];} {public local
-  }
-  decl {string panelwindowlabel} {private local
   }
   decl {int current_ID;} {private local
   }
