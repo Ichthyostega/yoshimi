@@ -136,8 +136,6 @@ void collect_writeData(SynthEngine *synth, float value, unsigned char action, un
 
 void alert(SynthEngine *synth, string message);
 int choice(SynthEngine *synth, string one, string two, string three, string message);
-string setfiler(SynthEngine *synth, string title, string name, bool save, int extension);
-string input_text(SynthEngine *synth, string label, string text);
 
 int setSlider(float current, float normal);
 int setKnob(float current, float normal);
