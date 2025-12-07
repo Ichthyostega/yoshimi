@@ -27,6 +27,7 @@
 #include <pthread.h>
 #include <thread>
 #include <atomic>
+#include <memory>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -182,6 +183,21 @@ string runShellCommand(string command)
  */
 int main(int argc, char *argv[])
 {
+    cout << "\nHello World - this is a gutted Yoshimi..." << endl;
+
+    auto guiMaster = std::make_unique<MasterUI>(
+                         InterfaceAnchor(/*uninitialised for this test*/));
+
+    guiMaster->Init();
+
+    while (guiMaster and guiMaster->runGUI)
+    {
+        guiMaster->checkBuffer();
+        Fl::wait(33333); // process GUI events
+    }
+
+    cout << "\nNo crash yet -- farewell cruel World!" << endl;
+    exit(0);
     /*
      * The following is a way to quickly identify and read key config startup values
      * before the synth engine has started, or any of the normal functions have been

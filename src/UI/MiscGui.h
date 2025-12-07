@@ -159,7 +159,7 @@ unsigned int logDial2millisec(int);
 class GuiUpdates
 {
 protected:
-    GuiUpdates(InterChange&, InterfaceAnchor&&);
+    GuiUpdates(InterfaceAnchor&&);
 
     // must not be copied nor moved
     GuiUpdates(GuiUpdates &&)                =delete;
@@ -168,13 +168,10 @@ protected:
     GuiUpdates& operator=(GuiUpdates const&) =delete;
 
 public:
-    InterChange& interChange;
     InterfaceAnchor anchor;
 
-    auto connectSysEffect() { return GuiDataExchange::Connection<EffectDTO>(interChange.guiDataExchange, anchor.sysEffectParam); }
-    auto connectInsEffect() { return GuiDataExchange::Connection<EffectDTO>(interChange.guiDataExchange, anchor.insEffectParam); }
-    auto connectPartEffect(){ return GuiDataExchange::Connection<EffectDTO>(interChange.guiDataExchange, anchor.partEffectParam);}
-
+////////////////OOO Strip-down: core <-> UI communication severed
+///////
 private:
 };
 

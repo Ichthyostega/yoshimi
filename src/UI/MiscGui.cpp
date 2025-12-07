@@ -45,9 +45,8 @@ namespace { // Implementation details...
     TextMsgBuffer& textMsgBuffer = TextMsgBuffer::instance();
 }
 
-GuiUpdates::GuiUpdates(InterChange& _interChange, InterfaceAnchor&& connectionData)
-    : interChange{_interChange}
-    , anchor{std::move(connectionData)}
+GuiUpdates::GuiUpdates(InterfaceAnchor&& connectionData)
+    : anchor{std::move(connectionData)}
 { }
 
 

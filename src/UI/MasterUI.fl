@@ -170,8 +170,8 @@ class KeyHandle {: {public Fl_Box}
 
 class MasterUI {: {public GuiUpdates}
 } {
-  Function {MasterUI(InterChange& _interChange, InterfaceAnchor connectionData)
-	 : GuiUpdates{_interChange, std::move(connectionData)}} {} {
+  Function {MasterUI(InterfaceAnchor connectionData)
+	 : GuiUpdates{std::move(connectionData)}} {} {
     code {//
 ////////////////OOO Strip-down: synth* eliminated
       npart = 0;
@@ -207,6 +207,7 @@ class MasterUI {: {public GuiUpdates}
   }
   Function {Init()} {} {
     code {//
+      runGUI = true; //////////////////////OOO Strip-down: to control UI directly
       current_ID = anchor.synthID;
 ////////////////OOO Strip-down: synth* eliminated
       file::createDir(file::configDir() + "/windows");
@@ -234,7 +235,7 @@ class MasterUI {: {public GuiUpdates}
           foundWindows = true; //  not relevant for later windows
 //    loadWindowData();
 /////////////////////////////////////////////////////////OOO Stripdown: simplified     
-          setMasterLabel("Wayland : Bughunt");
+          setMasterLabel("Yoshimi: Wayland - Bughunt");
 /////////////////////////////////////////////////////////OOO Stripdown: simplified     
 } {}
   }
@@ -260,6 +261,9 @@ class MasterUI {: {public GuiUpdates}
   Function {make_window()} {} {
     Fl_Window masterwindow {
       label {Yoshimi crash on Wayland}
+      callback {/////////////////////////OOO Strip-down : close standalone UI without much ado
+                runGUI = false;
+               ;}
       xywh {411 233 385 525} type Double labelfont 13 labelsize 12 hide resizable
       code0 {mainDW = 385; mainDH = 470;}
       code1 {masterwindow->size_range(394, 500, 0, 0, 0, 0, 1);}
@@ -748,12 +752,9 @@ Instance from 1 to 31}
   return -23;
   ;} {}
   }
-  Function {setMasterLabel(string name)} {} {
+  Function {setMasterLabel(const char* name)} {} {
     code {//
-        string spacer = "";
-        if (!name.empty())
-            spacer = " - ";
-        masterwindow->copy_label("deceased");
+        masterwindow->copy_label(name);
         masterwindow->changed();} {}
   }
   Function {showSysEfxUI()} {private
@@ -1072,6 +1073,9 @@ Instance from 1 to 31}
             }
         }
         ;} {}
+  }
+  decl {bool runGUI; //////////////////////////OOO Strip-down allows to shutdown a standalone GUI without SynthEngine
+       } {public global
   }
   decl {bool themeTrigger;} {public local
   }
