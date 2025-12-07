@@ -595,11 +595,8 @@ void InstanceManager::Instance::startGUI_forApp()
 {
 #ifdef GUI_FLTK
     interChange().createGuiMaster();
-
-    if (runtime().audioEngine < 1)
-        alert(synth.get(), "Yoshimi could not connect to any sound system. Running with no Audio.");
-    if (runtime().midiEngine < 1)
-        alert(synth.get(), "Yoshimi could not connect to any MIDI system. Running with no MIDI.");
+    
+////////////////OOO Strip-down: alert / UI communication severed
 #endif
 }
 

@@ -25,7 +25,6 @@
 #include <string>
 
 #include "Misc/Config.h"
-#include "Misc/SynthEngine.h"
 #include "Misc/FileMgrFuncs.h"
 #include "Misc/FormatFuncs.h"
 #include "Misc/MirrorData.h"
@@ -35,9 +34,13 @@
 #include "Interface/InterfaceAnchor.h"
 using RoutingTag = GuiDataExchange::RoutingTag;
 
+using std::string;
 using file::saveText;
 using file::loadText;
 using func::string2int;
+
+class InterChange;
+#include "Effects/EffectMgr.h"
 
 enum ValueType {
     VC_plainValue,
@@ -130,12 +133,6 @@ enum ValueType {
     VC_RandWalkSpread,
 };
 
-float collect_readData(SynthEngine *synth, float value, unsigned char control, unsigned char part, unsigned char kititem = UNUSED, unsigned char engine = UNUSED, unsigned char insert = UNUSED, unsigned char parameter = UNUSED, unsigned char offset = UNUSED, unsigned char miscmsg = UNUSED, unsigned char request = UNUSED);
-
-void collect_writeData(SynthEngine *synth, float value, unsigned char action, unsigned char type, unsigned char control, unsigned char part, unsigned char kititem = UNUSED, unsigned char engine = UNUSED, unsigned char insert = UNUSED, unsigned char parameter = UNUSED, unsigned char offset = UNUSED, unsigned char miscmsg = UNUSED);
-
-void alert(SynthEngine *synth, string message);
-int choice(SynthEngine *synth, string one, string two, string three, string message);
 
 int setSlider(float current, float normal);
 int setKnob(float current, float normal);
@@ -169,8 +166,6 @@ protected:
     GuiUpdates(GuiUpdates const&)            =delete;
     GuiUpdates& operator=(GuiUpdates &&)     =delete;
     GuiUpdates& operator=(GuiUpdates const&) =delete;
-
-    void read_updates(SynthEngine *synth);
 
 public:
     InterChange& interChange;
@@ -318,34 +313,6 @@ inline void checkSane(int& x, int& y, int& w, int& h, int defW, int defH, bool h
     // Restore position relative to screen position.
     x += minX;
     y += minY;
-}
-
-inline void voiceOscUpdate(SynthEngine *synth_, int npart, int kititem, int nvoice, int &nvs, int &nvp)
-{
-        SynthEngine *synth = synth_;
-        int extOsc= collect_readData(synth,0,ADDVOICE::control::voiceOscillatorSource, npart, kititem, PART::engine::addVoice1 + nvoice);
-        if (collect_readData(synth,0,ADDVOICE::control::externalOscillator, npart, kititem, PART::engine::addVoice1 + nvoice) >= 0)
-        {
-            while (collect_readData(synth,0,ADDVOICE::control::externalOscillator, npart, kititem, PART::engine::addVoice1 + nvs) >= 0)
-                nvp = nvs = collect_readData(synth,0,ADDVOICE::control::externalOscillator, npart, kititem, PART::engine::addVoice1 + nvs);
-        }
-        else if (extOsc >= 0)
-            nvs = extOsc;
-
-        return;
-
-        // the original code
-
-        /*if (pars->VoicePar[nvoice].PVoice  >= 0)
-        {
-            while (pars->VoicePar[nvs].PVoice  >= 0)
-                nvp = nvs = pars->VoicePar[nvs].PVoice;
-        }
-        else if (pars->VoicePar[nvoice].Pextoscil  >= 0)
-            nvs = pars->VoicePar[nvoice].Pextoscil;
-        oscil->changeParams(pars->VoicePar[nvs].POscil);
-        osc->init(oscil,0,pars->VoicePar[nvp].Poscilphase, synth);
-        */
 }
 
 #endif /*MISCGUI_H*/
