@@ -161,7 +161,7 @@ bool InterChange::Init()
 void InterChange::createGuiMaster()
 {
     // provide InterfaceAnchor record with all connection IDs
-    guiMaster.reset(new MasterUI(*this, synth.buildGuiAnchor()));
+    guiMaster.reset(new MasterUI(synth.buildGuiAnchor()));
     guiMaster->Init();
 }
 
