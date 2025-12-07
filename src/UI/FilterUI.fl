@@ -62,9 +62,6 @@ decl {\#include <FL/fl_draw.H>} {public local
 decl {\#include <FL/fl_ask.H>} {public local
 }
 
-decl {\#include "PresetsUI.h"} {public local
-}
-
 decl {\#include "Params/FilterParams.h"} {public local
 }
 
@@ -407,7 +404,7 @@ return Fl_Box::handle(event);} {}
   }
 }
 
-class FilterUI {: {public Fl_Group,PresetsUI_}
+class FilterUI {: {public Fl_Group }
 } {
   Function {FilterUI(int x,int y, int w, int h, const char *label=0):Fl_Group(x,y,w,h,label)} {} {
     code {//

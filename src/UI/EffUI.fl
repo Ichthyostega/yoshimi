@@ -57,9 +57,6 @@ decl {\#include "Effects/EffectMgr.h"} {public local
 decl {\#include "Misc/MirrorData.h"} {public local
 }
 
-decl {\#include "PresetsUI.h"} {public local
-}
-
 decl {\#include "Misc/TextMsgBuffer.h"
 
     namespace { // Implementation details...
@@ -169,7 +166,7 @@ class EQGraph {: {public Fl_Box}
   }
 }
 
-class EffUI {: {public Fl_Group,public PresetsUI_}
+class EffUI {: {public Fl_Group}
 } {
   Function {EffUI(int x,int y, int w, int h, const char *label=0):Fl_Group(x,y,w,h,label)} {} {
     code {//
