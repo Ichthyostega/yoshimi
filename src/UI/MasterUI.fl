@@ -234,9 +234,9 @@ class MasterUI {: {public GuiUpdates}
       if (current_ID > 0)
           foundWindows = true; //  not relevant for later windows
 //    loadWindowData();
-/////////////////////////////////////////////////////////OOO Stripdown: simplified     
+/////////////////////////////////////////////////////////OOO Stripdown: simplified
           setMasterLabel("Yoshimi: Wayland - Bughunt");
-/////////////////////////////////////////////////////////OOO Stripdown: simplified     
+/////////////////////////////////////////////////////////OOO Stripdown: simplified
 } {}
   }
   Function {Showmaster()} {return_type bool

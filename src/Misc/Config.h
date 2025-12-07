@@ -38,9 +38,7 @@
 #include "Misc/Alloc.h"
 #include "Misc/VerInfo.h"
 #include "Misc/InstanceManager.h"
-#include "MusicIO/MusicClient.h"
 
-#ifdef GUI_FLTK
 #include "FL/Fl.H"
 /* =============== configure Wayland / X11 and Cairo =============== */
 #if FL_API_VERSION < 10400
@@ -58,7 +56,6 @@
 
 #endif/*FLTK_HAVE_CAIRO*/
 #endif/*FLTK-API level*/
-#endif/*GUI_FLTK*/
 
 using std::atomic_bool;
 using std::bitset;
@@ -148,9 +145,7 @@ class Config
         bool          isLittleEndian;
         int           virKeybLayout;
 
-        audio_driver  audioEngine;
         bool          engineChanged;
-        midi_driver   midiEngine;
         bool          midiChanged;
         int           alsaMidiType;
         string        audioDevice;

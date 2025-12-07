@@ -26,222 +26,26 @@
 */
 
 
+/* ***** THIS IS A CRIPLED VERSION OF YOSHIMI  ***** */
+/* ***** and starts only an empty GUI shell   ***** */
+
+
 #include "Misc/Config.h"
 #include "Misc/XMLStore.h"
-#include "Misc/FileMgrFuncs.h"
-#include "Misc/FormatFuncs.h"
 
-#include <mxml.h>
-#include <zlib.h>
-#include <cassert>
-#include <utility>
-#include <algorithm>
-#include <sstream>
 #include <string>
 
-using file::saveText;
-using file::loadGzipped;
-using file::saveGzipped;
-using file::findExtension;
-using func::string2int;
-using func::string2uint;
-using func::string2float;
-using func::asLongString;
-using func::asString;
-
-using std::optional;
 using std::string;
-using std::move;
 
 
 namespace { // internal details of MXML integration
 
-    const auto XML_VER    = "1.0";
-    const auto ROOT_ZYN   = "ZynAddSubFX-data";
-    const auto ROOT_YOSHI = "Yoshimi-data";
-
-    auto topElmName(XMLStore::Metadata const& meta)
-    {
-        return meta.isZynCompat()? ROOT_ZYN : ROOT_YOSHI;
-    }
-
-    /** @remark ancient XML files often start with leading whitespace
-     *          which is not tolerated by the XML parser */
-    const char* withoutLeadingWhitespace(const char * text)
-    {
-        while (isspace(*text))
-            ++text;
-        return text;
-    }
+            ////////////////OOO Strip-down: core impl elided
 
 
-    #if MXML_MAJOR_VERSION < 4
-        #define mxml_ws_t int
-    #endif
-
-    const char* XMLStore_whitespace_callback(void*, mxml_node_t* node, mxml_ws_t where)
-    {
-        const auto NO_WHITESPACE = nullptr;
-        const auto INSERT_NEWLINE = "\n";
-
-        const char* name = mxmlGetElement(node);
-
-        auto isCloseString = [&]{ return where == MXML_WS_BEFORE_CLOSE and name and !strncmp(name, "string", 6); };
-        auto isXMLDocStart = [&]{ return where == MXML_WS_BEFORE_OPEN  and
-                                                                       #if MXML_MAJOR_VERSION >= 4
-                                                                          mxmlGetType(node) == MXML_TYPE_DIRECTIVE
-                                                                       #else
-                                                                          name and !strncmp(name, "?xml", 4)  // Legacy-MXML creates an Element with name="?xml...."
-                                                                       #endif
-                                                                       ;};
-        if (isXMLDocStart() or isCloseString())
-            return NO_WHITESPACE;
-
-        if (where == MXML_WS_BEFORE_OPEN or where == MXML_WS_BEFORE_CLOSE)
-            return INSERT_NEWLINE;
-
-        return NO_WHITESPACE;
-    }
-
-
-
-
-    /** Helper to fit with MXML's optionally-NULL char* arguments */
-    class OStr
-    {
-        string rendered{};
-
-    public:
-        OStr() = default;
-        // standard copy operations acceptable
-
-        OStr(string str)
-            : rendered{move(str)}
-            { }
-
-        OStr(const char* const literal)
-            : OStr(string(literal? literal:""))
-            { }
-
-        template<typename X>
-        OStr(X x)
-            : rendered{func::asString(x)}
-            { }
-
-        operator bool()         const { return rendered.size(); }
-        operator const char*()  const { return rendered.size()? rendered.c_str() : nullptr; }
-    };
-
-
-    /** Configuration how to adapt and use the MXML API */
-    struct Policy
-    {
-#if MXML_MAJOR_VERSION < 4
-        /* ==================== MXML Legacy API (until v3) ==================== */
-
-        #define MXML_TYPE_ELEMENT MXML_ELEMENT
-        #define MXML_TYPE_OPAQUE  MXML_OPAQUE
-        #define MXML_TYPE_TEXT    MXML_TEXT
-
-
-        static mxml_node_t* parseOpaque(const char* xml)
-        {
-            return mxmlLoadString(MXML_NO_PARENT, xml, MXML_OPAQUE_CALLBACK);
-        }                                          //  ^^^^ treat all node content as »opaque« data, i.e. passed-through as-is
-
-        static mxml_node_t* buildDocRoot(const char* doctypeID)
-        {// setup a new tree as valid XML with given doctype
-            mxml_node_t* root = mxmlNewXML(XML_VER);
-            mxml_node_t* decl = mxmlNewElement(root, "!DOCTYPE");
-            mxmlElementSetAttr(decl, doctypeID, nullptr);
-            return root;
-        }
-
-        char* render()
-        {
-            mxmlSetWrapMargin(0);
-            // disable automatic line wrapping and control whitespace per callback
-            return mxmlSaveAllocString(mxmlElm(), [](mxml_node_t* node, int where)
-                                                   { return XMLStore_whitespace_callback(nullptr, node, where); });
-        }
-
-
-#else   /* ==================== MXML Current API (from v4) ==================== */
-
-        #define MXML_NO_PARENT nullptr
-
-
-        static mxml_node_t* parseOpaque(const char* xml)
-        {// treat all node content as »opaque« data, i.e. passed-through as-is
-            mxml_options_t* options = mxmlOptionsNew();
-            mxmlOptionsSetWrapMargin(options, 0);   // disable automatic line-wrap
-            mxmlOptionsSetTypeValue(options, MXML_TYPE_OPAQUE);
-            mxml_node_t* document = mxmlLoadString(MXML_NO_PARENT, options, xml);
-            mxmlOptionsDelete(options);
-            return document;
-        }
-
-        static mxml_node_t* buildDocRoot(string doctypeID)
-        {// setup a new tree as valid XML with given doctype
-            mxml_node_t* root = mxmlNewXML(XML_VER);
-            mxmlNewDeclaration(root, OStr{"DOCTYPE "+doctypeID});
-            return root;
-        }
-
-        char* render()
-        {// disable automatic line wrapping and control whitespace per callback
-            mxml_options_t* options = mxmlOptionsNew();
-            mxmlOptionsSetWrapMargin(options, 0);
-            mxmlOptionsSetWhitespaceCallback(options, XMLStore_whitespace_callback, /*cbdata*/nullptr);
-            char* buffer = mxmlSaveAllocString(mxmlElm(), options);
-            mxmlOptionsDelete(options);
-            return buffer;
-        }
-#endif  /* ====== MXML version switch ======= */
-
-
-
-        mxml_node_t* mxmlElm()
-        {
-            return reinterpret_cast<mxml_node_t*>(this);
-        }
-
-        mxml_node_t* searchChild(OStr elmName    =OStr()
-                                ,OStr attribName =OStr()
-                                ,OStr attribVal  =OStr())
-        {
-            return mxmlFindElement(mxmlElm(), mxmlElm(), elmName, attribName, attribVal, MXML_DESCEND_FIRST);
-        }
-
-
-        void setAttrStr(OStr& attribName, OStr& val)
-        {
-            mxmlElementSetAttr(mxmlElm(), attribName, val);
-        }
-
-        const char * getAttrStr(OStr& attribName)
-        {
-            return mxmlElementGetAttr(mxmlElm(), attribName);
-        }
-
-        void addTextContent(OStr& content)
-        {
-            mxmlNewOpaque(mxmlElm(), content);
-        }
-
-        const char * getFirstTextContent()
-        {
-            mxml_node_t* child = mxmlGetFirstChild(mxmlElm());
-            if (child and MXML_TYPE_OPAQUE == mxmlGetType(child))
-                return mxmlGetOpaque(child);
-            else
-                return nullptr;
-        }
-    };
 }//(End)internal details
 
 
-/* ==== Helper for metadata parsing and rendering ==== */
 
 string renderXmlType(TOPLEVEL::XML type)
 {
@@ -303,85 +107,19 @@ enum XMLtree::DocType : uint {
 
 
 
-
-
-/**
- * Abstracted access point to an MXML tree representation.
- * @remark the »downstream« code using the XML library stores Node*
- *         to represent an abstracted element backed by XML, and can
- *         access and manipulate its content through the Node interface.
- *         Yet the pointer stored there at runtime actually points at
- *         an internal struct defined by MXML. The translation between
- *         both worlds is handled in the Policy baseclass; this allows
- *         us to adapt to different MXML versions.
- */
 struct XMLtree::Node
-    : Policy
     {
-        static Node* asNode(mxml_node_t* mxmlElm)
-        {
-            return reinterpret_cast<Node*>(mxmlElm);
-        }
 
         static Node* newTree(DocType dt)
         {
-            return asNode(buildDocRoot(dt == DT_ZYN? ROOT_ZYN:ROOT_YOSHI));
+            ////////////////OOO Strip-down: core impl elided
         }
 
         static Node* parse(const char* xml)
         {
-            assert (xml);
-            return asNode(parseOpaque(xml));
+            ////////////////OOO Strip-down: core impl elided
         }
 
-        void addRef()
-        {
-            uint refCnt = mxmlRetain(mxmlElm());
-            assert(refCnt > 1);    (void)refCnt;
-        }
-
-        void unref()
-        {   //  decrement refcount -- possibly delete
-            mxmlRelease(mxmlElm());
-        }
-
-        Node* addChild(OStr elmName)
-        {
-            return asNode(mxmlNewElement(mxmlElm(), elmName));
-        }
-
-        Node* findChild(OStr elmName, OStr id =OStr())
-        {
-            OStr optIDAttrib{id? "id":nullptr};
-            return findChild(elmName, optIDAttrib, id);
-        }
-
-        Node* findChild(OStr elmName, OStr attribName, OStr attribVal)
-        {
-            return asNode(searchChild(elmName, attribName, attribVal));
-        }
-
-        Node& setAttrib(OStr attribName, OStr val)
-        {
-            setAttrStr(attribName, val);
-            return *this;
-        }
-        Node& setText(OStr content)
-        {// String always stored as content within a node
-            assert (not mxmlGetFirstChild(mxmlElm())); // no children yet
-            addTextContent(content);
-            return *this;
-        }
-
-        const char * getAttrib(OStr attribName)
-        {
-            return getAttrStr(attribName);
-        }
-
-        const char * getText()
-        {// complete content of a node, but no nested nodes
-            return getFirstTextContent();
-        }
     };
 
 
@@ -391,43 +129,21 @@ struct XMLtree::Node
 
 XMLtree::~XMLtree()
 {
-    if (node)
-        node->unref();
+            ////////////////OOO Strip-down: core impl elided
 }
 
 XMLtree::XMLtree(Node* treeLocation)
     : node{treeLocation}
 {
-    if (node)
-        node->addRef();
-
-    static_assert(1 == sizeof(XMLtree::Node)
-                 ,"Node acts as placeholder for a MXML datatype "
-                  "and must not define any data fields on its own."
-                 );
+            ////////////////OOO Strip-down: core impl elided
 }
 
 XMLtree::XMLtree(XMLtree&& ref)
     : node{nullptr}
 {
-    std::swap(node, ref.node);
+            ////////////////OOO Strip-down: core impl elided
 }
 
-
-/**
- * @internal Init to allow XMLStore the setup of a valid new Yoshimi XML document.
- * @see XMLStore::buildXMLRoot()
- * @warning note the side-effect; wipes out any content established thus far.
- * @remark the DocType enum is deliberately declared forward and thus the possible
- *         enumerators are only known within this translation unit.
- */
-XMLtree& XMLtree::makeRoot(DocType doctype)
-{
-    if (node)
-        node->unref();
-    node = Node::newTree(doctype);
-    return *this;
-}
 
 /** Factory: create from XML buffer.
  * @remark buffer is owned by caller and will only be read
@@ -435,8 +151,7 @@ XMLtree& XMLtree::makeRoot(DocType doctype)
  */
 XMLtree XMLtree::parse(const char* xml)
 {
-    return xml? Node::parse(withoutLeadingWhitespace(xml))
-              : nullptr;
+            ////////////////OOO Strip-down: core impl elided
 }
 
 /** render XMLtree into new malloc() buffer
@@ -444,250 +159,129 @@ XMLtree XMLtree::parse(const char* xml)
  */
 char* XMLtree::render()
 {
-    return node? node->render() : nullptr;
+            ////////////////OOO Strip-down: core impl elided
 }
 
 
 XMLtree XMLtree::addElm(string name)
 {
-    assert (node);
-    return node->addChild(name);
+            ////////////////OOO Strip-down: core impl elided
 }
 
 XMLtree XMLtree::addElm(string name, uint id)
 {
-    XMLtree child = addElm(name);
-    child.addAttrib("id", asString(id));
-    return child;
+            ////////////////OOO Strip-down: core impl elided
 }
 
 XMLtree XMLtree::getElm(string name)
 {
-    return XMLtree{node? node->findChild(name) : nullptr};
+            ////////////////OOO Strip-down: core impl elided
 }
 
 XMLtree XMLtree::getElm(string name, uint id)
 {
-    return XMLtree{node? node->findChild(name, id) : nullptr};
+            ////////////////OOO Strip-down: core impl elided
 }
 
 string XMLtree::getAttrib(string name)
 {
-    const char* valStr = node? node->getAttrib(name) : nullptr;
-    return valStr? string{valStr} : string{};
+            ////////////////OOO Strip-down: core impl elided
 }
 
 uint XMLtree::getAttrib_uint(string name)
 {
-    const char* valStr = node? node->getAttrib(name) : nullptr;
-    return valStr? string2uint(valStr) : 0;
+            ////////////////OOO Strip-down: core impl elided
 }
 
 XMLtree& XMLtree::addAttrib(string name, string val)
 {
-    assert(node);
-    node->setAttrib(name,val);
-    return *this;
+            ////////////////OOO Strip-down: core impl elided
 }
 
 /** add simple parameter element: with attribute name, value */
 void XMLtree::addPar_int(string const& name, int val)
 {
-    assert(node);
-    node->addChild("par")
-            ->setAttrib("name",name)
-             .setAttrib("value",val);
+            ////////////////OOO Strip-down: core impl elided
 }
 
 void XMLtree::addPar_uint(string const& name, uint val)
 {
-    assert(node);
-    node->addChild("parU")
-            ->setAttrib("name",name)
-             .setAttrib("value",val);
+            ////////////////OOO Strip-down: core impl elided
 }
 
-/** add value both as integral number and as float persisted as exact bitstring */
 void XMLtree::addPar_frac(string const& name, float val)
 {
-    assert(node);
-    node->addChild("par")
-            ->setAttrib("name",  name)
-             .setAttrib("value", lrint(val)) // NOTE: rounded to integer
-             .setAttrib("exact_value", func::asExactBitstring(val));
+            ////////////////OOO Strip-down: core impl elided
 }
 
-/** add floating-point both textually in decimal-format and as exact bitstring */
 void XMLtree::addPar_real(string const& name, float val)
 {
-    assert(node);
-    node->addChild("par_real")
-            ->setAttrib("name",  name)
-             .setAttrib("value", asLongString(val)) // decimal floating-point form
-             .setAttrib("exact_value", func::asExactBitstring(val));
+            ////////////////OOO Strip-down: core impl elided
 }
 
 void XMLtree::addPar_bool(string const& name, bool yes)
 {
-    assert(node);
-    node->addChild("par_bool")
-            ->setAttrib("name",name)
-             .setAttrib("value",yes? "yes":"no");
+            ////////////////OOO Strip-down: core impl elided
 }
 
-/** add string parameter: the name as attribute and the text as content */
 void XMLtree::addPar_str(string const& name, string const& text)
 {
-    assert(node);
-    node->addChild("string")
-            ->setAttrib("name",name)
-             .setText(text);
+            ////////////////OOO Strip-down: core impl elided
 }
 
 
-/**
- * Retrieve numeric value from a nested parameter element.
- * - if present, the stored representation will be converted to an int ∈[min ... max]
- * - otherwise, defaultVal is returned
- */
 int XMLtree::getPar_int(string const& name, int defaultVal, int min, int max)
 {
-    if (node)
-    {
-        if (Node* paramElm = node->findChild("par","name",name))
-        {
-            const char* valStr = paramElm->getAttrib("value");
-            if (valStr)
-                return std::clamp(string2int(valStr), min, max);
-        }
-    }
-    // parameter entry not retrieved
-    return defaultVal;
+            ////////////////OOO Strip-down: core impl elided
 }
 
-/** @note performs transparent migration of values formerly stored as int `"value"` */
 uint XMLtree::getPar_uint(string const& name, uint defaultVal, uint min, uint max)
 {
-    if (node)
-    {
-        if (Node* paramElm = node->findChild("parU","name",name))
-        {                                 //  ^^^^
-            const char* valStr = paramElm->getAttrib("value");
-            if (valStr)
-                return std::clamp(string2uint(valStr), min, max);
-        }                             // ^^^^
-        else
-        if (Node* paramElm = node->findChild("par","name",name))
-        {
-            const char* valStr = paramElm->getAttrib("value");
-            if (valStr)
-                return std::clamp(uint(string2int(valStr)), min, max);
-        }                      // ^^^^        ^^^
-    }
-    // parameter entry not retrieved
-    return defaultVal;
+            ////////////////OOO Strip-down: core impl elided
 }
 
-/** @internal attempt to retrieve a float value,
- *            preferably using the exact IEEE 754 bitstring stored in an attribute "exact_value";
- *            For legacy format, fall back to the "value" attribute, which can either be a decimal
- *            floating-point (for `<par_real...`) or even just an integer (for the 0...127 char params)
- */
 optional<float> XMLtree::readParCombi(string const& elmID, string const& name)
 {
-    if (node)
-    {
-        Node* paramElm = node->findChild(elmID,"name",name);
-        if (paramElm)
-        {
-            const char* valStr = paramElm->getAttrib("exact_value");
-            if (valStr)
-                return func::bitstring2float(valStr);
-
-            // fall-back to legacy format
-            valStr = paramElm->getAttrib("value");
-            if (valStr)
-                return string2float(valStr);
-        }
-    }
-    // parameter entry not retrieved
-    return std::nullopt;
+            ////////////////OOO Strip-down: core impl elided
 }
 
-/** a (former) int parameter that has been refined to allow for fractional values,
- *  falling back to integral values when loading legacy instruments. */
 float XMLtree::getPar_frac(string const& name, float defaultVal, float min, float max)
 {
-    auto val = readParCombi("par",name);
-    return std::clamp(val? *val:defaultVal, min, max);
+            ////////////////OOO Strip-down: core impl elided
 }
 
 float XMLtree::getPar_real(string const& name, float defaultVal)
 {
-    auto val = readParCombi("par_real",name);
-    return val? *val:defaultVal;
+            ////////////////OOO Strip-down: core impl elided
 }
 
 float XMLtree::getPar_real(string const& name, float defaultVal, float min, float max)
 {
-    return std::clamp(getPar_real(name,defaultVal), min, max);
+            ////////////////OOO Strip-down: core impl elided
 }
 
-/** value limited to [0 ... 127] */
 int XMLtree::getPar_127(string const& name, int defaultVal)
 {
-    return getPar_int(name, defaultVal, 0, 127);
+            ////////////////OOO Strip-down: core impl elided
 }
 
-/** value limited to [0 ... 255] */
 int XMLtree::getPar_255(string const& name, int defaultVal)
 {
-    return getPar_int(name, defaultVal, 0, 255);
+            ////////////////OOO Strip-down: core impl elided
 }
 
-/** @note performs transparent migration of settings formerly stored as int `"value"` */
 bool XMLtree::getPar_bool(string const& name, bool defaultVal)
 {
-    if (node)
-    {
-        if (Node* paramElm = node->findChild("par_bool","name",name))
-        {
-            const char* valStr = paramElm->getAttrib("value");
-            if (valStr)
-                return func::string2bool(valStr);
-        }
-        else
-        if (Node* paramElm = node->findChild("par","name",name))
-        {
-            const char* valStr = paramElm->getAttrib("value");
-            if (valStr)
-                return bool(string2int(valStr));
-        }
-    }
-    // parameter entry not retrieved
-    return defaultVal;
+            ////////////////OOO Strip-down: core impl elided
 }
 
 string XMLtree::getPar_str(string const& name)
 {
-    if (node)
-    {
-        Node* paramElm = node->findChild("string","name",name);
-        if (paramElm)
-        {
-            const char* text = paramElm->getText();
-            if (text)
-                return string{text};
-        }
-    }
-    // parameter entry not retrieved
-    return string{};
+            ////////////////OOO Strip-down: core impl elided
 }
 
 
 
-
-/* ===== XMLStore implementation ===== */
 
 
 
@@ -711,289 +305,48 @@ XMLStore::XMLStore(const char* xml)
 
 void XMLStore::buildXMLRoot()
 {
-    if (root)
-        return;
-
-    assert (meta.isValid());
-
-    if (meta.isZynCompat())
-    {
-        root.makeRoot(XMLtree::DT_ZYN);
-        root.addElm(topElmName(meta))
-            .addAttrib("version-major",     asString(meta.zynVer.maj))
-            .addAttrib("version-minor",     asString(meta.zynVer.min))
-            .addAttrib("version-revision",  asString(meta.zynVer.rev))
-            .addAttrib("Yoshimi-major",     asString(meta.yoshimiVer.maj))
-            .addAttrib("Yoshimi-minor",     asString(meta.yoshimiVer.min))
-            .addAttrib("Yoshimi-revision",  asString(meta.yoshimiVer.rev))
-            .addAttrib("ZynAddSubFX-author","Nasca Octavian Paul")
-            .addAttrib("Yoshimi-author",    "Alan Ernest Calvert")
-            .addElm("INFORMATION")
-            .addPar_str("XMLtype", renderXmlType(meta.type));
-            ;
-    }
-    else
-    {// Yoshimi native format
-        root.makeRoot(XMLtree::DT_YOSHIMI);
-        root.addElm(topElmName(meta))
-            .addAttrib("Yoshimi-major",   asString(meta.yoshimiVer.maj))
-            .addAttrib("Yoshimi-minor",   asString(meta.yoshimiVer.min))
-            .addAttrib("Yoshimi-revision",asString(meta.yoshimiVer.rev))
-            .addAttrib("Yoshimi-author",  "Alan Ernest Calvert")
-            .addElm("INFORMATION")
-            .addPar_str("XMLtype", renderXmlType(meta.type));
-            ;
-    }
-    assert(root);
+            ////////////////OOO Strip-down: core impl elided
 }
 
 
 XMLStore::Metadata XMLStore::extractMetadata()
 {
-    if (XMLtree top = root.getElm(ROOT_YOSHI))
-        return Metadata{parseXMLtype(top.getElm("INFORMATION").getPar_str("XMLtype"))
-                       ,VerInfo{top.getAttrib_uint("Yoshimi-major")
-                               ,top.getAttrib_uint("Yoshimi-minor")
-                               ,top.getAttrib_uint("Yoshimi-revision")
-                               }
-                       ,VerInfo{}
-                       };
-    else
-    if (XMLtree top = root.getElm(ROOT_ZYN))
-        return Metadata{parseXMLtype(top.getElm("INFORMATION").getPar_str("XMLtype"))
-                       ,VerInfo{top.getAttrib_uint("Yoshimi-major")
-                               ,top.getAttrib_uint("Yoshimi-minor")
-                               ,top.getAttrib_uint("Yoshimi-revision")
-                               }
-                       ,VerInfo{top.getAttrib_uint("version-major")
-                               ,top.getAttrib_uint("version-minor")
-                               ,top.getAttrib_uint("version-revision")
-                               }
-                       };
-    else
-        return Metadata{}; // marked as invalid
+            ////////////////OOO Strip-down: core impl elided
 }
 
 
 XMLtree XMLStore::accessTop()
 {
-    buildXMLRoot();
-    assert (root);
-    return root.getElm(topElmName(meta));
+            ////////////////OOO Strip-down: core impl elided
 }
 
 
 
 
 
-namespace{
-    void slowinfosearch(char* idx, XMLStore::Features&);
-}
 
 
 XMLStore::Features XMLStore::checkfileinformation(string const& filename, Logger const& log)
 {
-    Features features;
-
-    string report;
-    string xml = loadGzipped(filename, report);
-    if (not report.empty())
-        log(report, _SYS_::LogNotSerious);
-
-    if (not xml.empty())
-    {
-        char* xmldata = & xml[0];
-        char* first = strstr(xmldata, "<!DOCTYPE Yoshimi-data>");
-        features.yoshiFormat = bool(first);
-        char* start = strstr(xmldata, "<INFORMATION>");
-        char* end = strstr(xmldata, "</INFORMATION>");
-        char* idx = start;
-        uint seen = 0;
-
-        if (start && end && start < end)
-        {
-            // Andrew: just make it simple
-            // Will: but not too simple :)
-
-            /*
-             * the following could be in any order. We are checking for
-             * the actual existence of the fields as well as their value.
-             */
-            idx = strstr(start, "name=\"ADDsynth_used\"");
-            if (idx != NULL)
-            {
-                seen |= 2;
-                if (strstr(idx, "name=\"ADDsynth_used\" value=\"yes\""))
-                    features.ADDsynth_used = 1;
-            }
-
-            idx = strstr(start, "name=\"SUBsynth_used\"");
-            if (idx != NULL)
-            {
-                seen |= 4;
-                if (strstr(idx, "name=\"SUBsynth_used\" value=\"yes\""))
-                    features.SUBsynth_used = 1;
-            }
-
-            idx = strstr(start, "name=\"PADsynth_used\"");
-            if (idx != NULL)
-            {
-                seen |= 1;
-                if (strstr(idx, "name=\"PADsynth_used\" value=\"yes\""))
-                    features.PADsynth_used = 1;
-            }
-        }
-
-        idx = strstr(xmldata, "<INFO>");
-        if (idx)
-        {// search for the classification type of the instrument
-            idx = strstr(idx, "par name=\"type\" value=\"");
-            if (idx != NULL)
-                features.instType = string2int(idx + 23);
-
-            if (seen != 7) // at least one was missing
-                slowinfosearch(xmldata, features);
-        }
-    }
-    return features;
+            ////////////////OOO Strip-down: core impl elided
 }
 
 
-namespace {// local helper
-
-void slowinfosearch(char* idx, XMLStore::Features& features)
-{
-    idx = strstr(idx, "<INSTRUMENT_KIT>");
-    if (idx == NULL)
-        return;
-
-    string mark;
-    int max = NUM_KIT_ITEMS;
-    /*
-     * The following *must* exist, otherwise the file is corrupted.
-     * They will always be in this order, which means we only need
-     * to scan once through the file.
-     * We can stop if we get to a point where ADD, SUB and PAD
-     * have all been enabled.
-     */
-    idx = strstr(idx, "name=\"kit_mode\"");
-    if (idx == NULL)
-        return;
-    if (strncmp(idx + 16 , "value=\"0\"", 9) == 0)
-        max = 1;
-
-    for (int kitnum = 0; kitnum < max; ++kitnum)
-    {
-        mark = "<INSTRUMENT_KIT_ITEM id=\"" + asString(kitnum) + "\">";
-        idx = strstr(idx, mark.c_str());
-        if (idx == NULL)
-            return;
-
-        idx = strstr(idx, "name=\"enabled\"");
-        if (idx == NULL)
-            return;
-        if (!strstr(idx, "name=\"enabled\" value=\"yes\""))
-            continue;
-
-        if (!features.ADDsynth_used)
-        {
-            idx = strstr(idx, "name=\"add_enabled\"");
-            if (idx == NULL)
-                return;
-            if (strncmp(idx + 26 , "yes", 3) == 0)
-                features.ADDsynth_used = 1;
-        }
-        if (!features.SUBsynth_used)
-        {
-            idx = strstr(idx, "name=\"sub_enabled\"");
-            if (idx == NULL)
-                return;
-            if (strncmp(idx + 26 , "yes", 3) == 0)
-                features.SUBsynth_used = 1;
-        }
-        if (!features.PADsynth_used)
-        {
-            idx = strstr(idx, "name=\"pad_enabled\"");
-            if (idx == NULL)
-                return;
-            if (strncmp(idx + 26 , "yes", 3) == 0)
-                features.PADsynth_used = 1;
-        }
-        if (features.ADDsynth_used
-          & features.SUBsynth_used
-          & features.PADsynth_used)
-        {
-            return;
-        }
-    }
-  return;
-}
-}//(End)local helper
 
 
-/**
- * Render tree contents into XML format.
- * @return NULL if empty, otherwise pointer to a char buffer, allocated with malloc()
- * @warning user must free the returned buffer
- */
 char* XMLStore::render()
 {
-    return root.render();
+            ////////////////OOO Strip-down: core impl elided
 }
 
 
-/**
- * Render tree contents into XML format and write it into a file,
- * possibly gzip compressed (0 means no compression)
- * @return true on success
- */
 bool XMLStore::saveXMLfile(string filename, Logger const& log, uint gzipCompressionLevel)
 {
-    bool success{false};
-    if (not root)
-        log("XML: empty tree -- nothing to save", _SYS_::LogNotSerious);
-    else
-    {
-        char* xmldata = render();
-        if (not xmldata)
-            log("XML: Failed to allocate storage for rendered XML");
-        else
-        {
-            gzipCompressionLevel = std::clamp(gzipCompressionLevel, 0u, 9u);
-            if (gzipCompressionLevel == 0)
-            {
-                if (not saveText(xmldata, filename))
-                    log("XML: Failed to save xml file \""+filename+"\"(uncompressed)", _SYS_::LogNotSerious);
-                else
-                    success = true;
-            }
-            else
-            {
-                string result = saveGzipped(xmldata, filename, gzipCompressionLevel);
-                if (not result.empty())
-                    log(result, _SYS_::LogNotSerious);
-                else
-                    success = true;
-            }
-            free(xmldata);
-        }
-    }
-    return success;
+            ////////////////OOO Strip-down: core impl elided
 }
 
 
 XMLtree XMLStore::loadFile(string filename, Logger const& log)
 {
-    string report{};
-    string xmldata = loadGzipped(filename, report);
-    if (not report.empty())
-        log(report, _SYS_::LogNotSerious);
-
-    XMLtree content{XMLtree::parse(xmldata.c_str())};
-    if (not content)
-        log("XML: File \""+filename+"\" can not be parsed as XML", _SYS_::LogNotSerious);
-    if (xmldata.empty())
-        log("XML: Could not load xml file: " + filename, _SYS_::LogNotSerious);
-
-    return content;
+            ////////////////OOO Strip-down: core impl elided
 }

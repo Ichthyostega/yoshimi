@@ -135,9 +135,7 @@ Config::Config(SynthEngine& synthInstance)
     , finishedCLI{true}
     , isLittleEndian{true}
     , virKeybLayout{0}
-    , audioEngine{DEFAULT_AUDIO}
     , engineChanged{false}
-    , midiEngine{DEFAULT_MIDI}
     , midiChanged{false}
     , alsaMidiType{1}          // search
     , audioDevice{"default"}

@@ -41,7 +41,6 @@
 #include "Misc/RandomGen.h"
 #include "Misc/Microtonal.h"
 #include "Misc/Bank.h"
-#include "DSP/FFTwrapper.h"
 #include "Interface/InterChange.h"
 #include "Interface/MidiLearn.h"
 #include "Interface/MidiDecode.h"
