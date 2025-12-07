@@ -784,14 +784,6 @@ Instance from 1 to 31}
     inseffectuigroup->show();
     lastmainW = 0;} {}
   }
-  Function {getPresetsUi()} {return_type {PresetsUI *}
-  } {
-    code {//
-    return nullptr;
-//////////////////////////////OOO Strip-down Kabooom!
-//  return presetsui
-    ;} {}
-  }
   Function {checkBuffer()} {} {
     code {//
             if (lastmainW < 0) // not ready yet!
