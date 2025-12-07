@@ -28,7 +28,6 @@
 #define RESONANCE_H
 
 #include "globals.h"
-#include "DSP/FFTwrapper.h"
 #include "Params/ParamCheck.h"
 
 class SynthEngine;

@@ -37,10 +37,7 @@
 #include "Misc/Alloc.h"
 #include "Misc/VerInfo.h"
 #include "Misc/InstanceManager.h"
-#include "MusicIO/MusicClient.h"
-#ifdef GUI_FLTK
 #include "FL/Fl.H"
-#endif
 #include "globals.h"
 
 using std::atomic_bool;
@@ -51,6 +48,9 @@ using std::list;
 class XMLtree;
 class XMLStore;
 class SynthEngine;
+
+enum audio_driver { no_audio = 0, jack_audio, alsa_audio};
+enum midi_driver  { no_midi = 0, jack_midi, alsa_midi};
 
 
 class Config
