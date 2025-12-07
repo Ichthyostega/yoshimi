@@ -47,9 +47,6 @@ decl {\#include "UI/WidgetPDial.h"} {public local
 decl {\#include "FilterUI.h"} {public local
 }
 
-decl {\#include "Misc/SynthEngine.h"} {public local
-}
-
 decl {\#include "Misc/NumericFuncs.h"
     using func::power;} {private local
 }
@@ -78,9 +75,10 @@ class EQGraph {: {public Fl_Box}
   Function {EQGraph(int x,int y, int w, int h, const char *label=0):Fl_Box(x,y,w,h,label)} {} {
     code {//} {}
   }
-  Function {init(SynthEngine* synth, RoutingTag conEQ)} {} {
+  Function {init(RoutingTag conEQ)} {} {
     code {//
-        graph.activate(GuiDataExchange::Connection<EqGraphDTO>{synth->interchange.guiDataExchange, conEQ});} {}
+////////////////OOO Strip-down: core call eliminated
+    ;} {}
   }
   Function {draw_freq_line(float freq, bool major = false)} {} {
     code {//
@@ -192,8 +190,7 @@ class EffUI {: {public Fl_Group,public PresetsUI_}
 
         if (filterwindow != NULL)
         {
-            if (filterwindow->visible())
-                saveWin(synth, filterwindow->w(), filterwindow->h(), filterwindow->x(), filterwindow->y(), true, "xFilter-dynamic " + to_string(npart));
+////////////////OOO Strip-down: core call eliminated
             filterwindow->hide();
             delete(filterwindow);
         }} {}
@@ -1604,7 +1601,7 @@ If Sep is enabled: Right Delay} xywh {172 45 30 30} box ROUND_UP_BOX labelsize 1
       class ScaleTrackedWindow
       code0 {filtDW = o->w(); filtDH = o->h();}
       code1 {o->size_range(filtDW, filtDH, 0, 0, 0, 0, 1);}
-      code2 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("DynFilter"), npart, TOPLEVEL::windowTitle,UNUSED, effNum())).c_str());}
+      code2 {o->copy_label("defunct");}
     } {
       Fl_Group fwin_filterui {
         label {DynFilter effect  - Filter}
@@ -1615,7 +1612,7 @@ If Sep is enabled: Right Delay} xywh {172 45 30 30} box ROUND_UP_BOX labelsize 1
       Fl_Button filterclose {
         label Close
         callback {//
-    saveWin(synth, filterwindow->w(), filterwindow->h(), filterwindow->x(), filterwindow->y(), false, "xFilter-dynamic " + to_string(npart));
+////////////////OOO Strip-down: core call eliminated
     filterwindow->hide();}
         xywh {124 86 46 20} box THIN_UP_BOX color 196 labelsize 12 labelcolor 64
       }
@@ -1682,12 +1679,14 @@ If Sep is enabled: Right Delay} xywh {172 45 30 30} box ROUND_UP_BOX labelsize 1
     {
         offset = dfp->value();
     }
-    collect_writeData(synth, value, action, type, control, npart, group, effNum(), UNUSED, parameter, offset);} {}
+////////////////OOO Strip-down: core call eliminated
+    ;} {}
   }
   Function {fetchData(float value, int control, int part, int kititem = UNUSED, int engine = UNUSED, int insert = UNUSED, int parameter = UNUSED, int offset = UNUSED, int miscmsg = UNUSED, int request = UNUSED)} {return_type float
   } {
     code {//
-        return collect_readData(synth, value, control, part, kititem, engine, insert, parameter, offset, miscmsg, request);} {}
+////////////////OOO Strip-down: core call eliminated
+        ;} {}
   }
   Function {returns_update(CommandBlock *getData)} {} {
     code {//
@@ -2284,10 +2283,10 @@ If Sep is enabled: Right Delay} xywh {172 45 30 30} box ROUND_UP_BOX labelsize 1
             break;
     };} {}
   }
-  Function {init(SynthEngine* synth_, RoutingTag conEffect, RoutingTag conEQ, int npart_)} {} {
+  Function {init(RoutingTag conEffect, RoutingTag conEQ, int npart_)} {} {
     code {//
-    synth = synth_;
-    effect.activate(GuiDataExchange::Connection<EffectDTO>{synth->interchange.guiDataExchange, conEffect});
+////////////////OOO Strip-down: core call eliminated
+
     npart = npart_;
 
     make_null_window();
@@ -2299,7 +2298,7 @@ If Sep is enabled: Right Delay} xywh {172 45 30 30} box ROUND_UP_BOX labelsize 1
     make_distortion_window();
     make_dynamicfilter_window();
     make_eq_window();
-    eqgraph->init(synth, conEQ);
+    eqgraph->init(conEQ);
 
     int px=this->parent()->x();
     int py=this->parent()->y();
@@ -2906,7 +2905,7 @@ If Sep is enabled: Right Delay} xywh {172 45 30 30} box ROUND_UP_BOX labelsize 1
   Function {Showfilt()} {} {
     code {//
     int fetchW, fetchH, fetchX, fetchY, fetchO;
-    loadWin(synth, fetchW, fetchH, fetchX, fetchY, fetchO, "xFilter-dynamic " + to_string(npart));
+////////////////OOO Strip-down: core call eliminated
 
     if (fetchW < filtDW || fetchH < filtDH)
     {
@@ -2962,8 +2961,6 @@ If Sep is enabled: Right Delay} xywh {172 45 30 30} box ROUND_UP_BOX labelsize 1
 
     int dbl = effParam(npb + 4);
     stagescounter->value(dbl);} {}
-  }
-  decl {SynthEngine *synth;} {private local
   }
   decl {MirrorData<EffectDTO> effect;} {private local
   }
