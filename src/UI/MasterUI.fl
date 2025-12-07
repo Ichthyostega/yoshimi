@@ -78,12 +78,6 @@ decl {\#include "EffUI.h"} {public local
 decl {\#include "MasterMiscUI.h"} {public local
 }
 
-decl {\#include "Misc/SynthEngine.h"} {public local
-}
-
-decl {\#include "Misc/SynthEngine.h"} {public local
-}
-
 decl {\#include "Interface/InterfaceAnchor.h"
     using RoutingTag = GuiDataExchange::RoutingTag;} {public local
 }
@@ -120,9 +114,10 @@ class KeyHandle {: {public Fl_Box}
   Function {KeyHandle(int x,int y, int w, int h, const char *label=0):Fl_Box(x,y,w,h,label)} {} {
     code {} {}
   }
-  Function {init(SynthEngine *_synth)} {} {
+  Function {init()} {} {
     code {//
-        synth = _synth;} {}
+////////////////OOO Strip-down: synth* eiminated
+        ;} {}
   }
   Function {handle(int event)} {return_type int
   } {
@@ -141,12 +136,12 @@ class KeyHandle {: {public Fl_Box}
         {
             if (Fl::event_state() == 327680) //ctrl + shift
             {
-                synth->getGuiMaster()->redo->do_callback();
+////////////////OOO Strip-down: core call eliminated
                 ev = 1;
             }
              else if (Fl::event_ctrl())
              {
-                 synth->getGuiMaster()->undo->do_callback();
+////////////////OOO Strip-down: core call eliminated
                  ev = 1;
              }
         }
@@ -156,13 +151,13 @@ class KeyHandle {: {public Fl_Box}
             {
                 case 'r':
                 {
-                    synth->getGuiMaster()->redo->do_callback();
+////////////////OOO Strip-down: core call eliminated
                     ev = 1;
                     break;
                 }
                 case 'u':
                 {
-                    synth->getGuiMaster()->undo->do_callback();
+////////////////OOO Strip-down: core call eliminated
                     ev = 1;
                     break;
                 }
@@ -171,8 +166,6 @@ class KeyHandle {: {public Fl_Box}
     }
     return ev;} {}
   }
-  decl {SynthEngine *synth;} {private local
-  }
 }
 
 class MasterUI {: {public GuiUpdates}
@@ -180,7 +173,7 @@ class MasterUI {: {public GuiUpdates}
   Function {MasterUI(InterChange& _interChange, InterfaceAnchor connectionData)
 	 : GuiUpdates{_interChange, std::move(connectionData)}} {} {
     code {//
-      synth = nullptr;
+////////////////OOO Strip-down: synth* eliminated
       npart = 0;
       panelgroup = 0;
       panelScale = 1;
@@ -204,11 +197,10 @@ class MasterUI {: {public GuiUpdates}
   Function {~MasterUI()} {} {
     code {//
       syseffsendwindow->hide();
-      if (syseffSeen)
-          saveWin(synth, syseffsendwindow->w(), syseffsendwindow->h(), syseffsendwindow->x(), syseffsendwindow->y(), true, "Master-systemeffectsend");
+////////////////OOO Strip-down: core call eliminated
       delete syseffsendwindow;
 
-      saveWin(synth, masterwindow->w(), masterwindow->h(), masterwindow->x(), masterwindow->y(), true, "Master");
+////////////////OOO Strip-down: core call eliminated
 
       masterwindow->hide();
       delete masterwindow;} {}
@@ -216,13 +208,12 @@ class MasterUI {: {public GuiUpdates}
   Function {Init()} {} {
     code {//
       current_ID = anchor.synthID;
-      synth = anchor.synth;
-      assert(synth);
+////////////////OOO Strip-down: synth* eliminated
       file::createDir(file::configDir() + "/windows");
       panelType = 5;
       msgSeen = false;
       syseffSeen = false;
-      partmax = collect_readData(synth, 0, MAIN::control::availableParts, TOPLEVEL::main);
+      partmax = 55; ////////////////OOO Strip-down: core call eliminated
 //    microtonalui = new MicrotonalUI(&synth->microtonal, synth);
 //    bankui = new BankUI(synth);
 //    virkeyboard = new VirKeyboard(synth);
@@ -251,7 +242,7 @@ class MasterUI {: {public GuiUpdates}
   } {
     code {//
     int fetchW, fetchH, fetchX, fetchY, fetchO;
-    loadWin(synth, fetchW, fetchH, fetchX, fetchY, fetchO, "Master");
+////////////////OOO Strip-down: core call eliminated
     if (fetchW < mainDW || fetchH < mainDH)
     {
         fetchW = mainDW;
@@ -277,7 +268,7 @@ class MasterUI {: {public GuiUpdates}
       Fl_Box keyHandle {
         label keyhandler
         xywh {0 0 385 500} box FLAT_BOX
-        code0 {o->init(synth);}
+        code0 {o->init();}
         class KeyHandle
       }
       Fl_Tabs sysinsgroup {
@@ -428,7 +419,7 @@ class MasterUI {: {public GuiUpdates}
       } {
         Fl_Group syseffectui {
           xywh {3 218 379 95} labeltype NO_LABEL labelcolor 64
-          code0 {o->init(synth, anchor.sysEffectParam, anchor.sysEffectEQ, TOPLEVEL::section::systemEffects);
+          code0 {o->init(anchor.sysEffectParam, anchor.sysEffectEQ, TOPLEVEL::section::systemEffects);
                  o->activate();
                  o->show();}
           class EffUI
@@ -440,7 +431,7 @@ class MasterUI {: {public GuiUpdates}
       } {
         Fl_Group inseffectui {
           xywh {3 218 379 95} color 52 labelcolor 64
-          code0 {o->init(synth, anchor.insEffectParam, anchor.insEffectEQ, TOPLEVEL::section::insertEffects);
+          code0 {o->init(anchor.insEffectParam, anchor.insEffectEQ, TOPLEVEL::section::insertEffects);
                  o->hide();}
           code1 {o->deactivate(); // initially deactivated}
           class EffUI
@@ -613,7 +604,7 @@ class MasterUI {: {public GuiUpdates}
         Fl_Box vumeter {
           label {VU-Meter}
           xywh {3 491 379 34} color 48
-          code0 {o->init(-1, synth);}
+          code0 {o->init(-1);}
           class VUMeter
         }
         Fl_Button {} {
@@ -678,14 +669,14 @@ Instance from 1 to 31}
       callback {syseffClose->do_callback();}
       xywh {534 25 120 245} type Double labelfont 13 labelsize 13 hide resizable
       code0 {syseffDW = 120; syseffDH = 245;}
-      code1 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Sends"), UNUSED, TOPLEVEL::windowTitle)).c_str());}
+      code1 {o->copy_label("dead");}
       code2 {o->size_range(syseffDW, syseffDH, 0, 0, 0, 0, 1);}
       class ScaleTrackedWindow
     } {
       Fl_Button syseffClose {
         label Close
         callback {//
-    saveWin(synth, syseffsendwindow->w(), syseffsendwindow->h(), syseffsendwindow->x(), syseffsendwindow->y(), false, "Master-systemeffectsend");
+////////////////OOO Strip-down: core call eliminated
     syseffsendwindow->hide();
     syseffSeen = false;}
         xywh {20 216 80 25} box THIN_UP_BOX color 196 labelcolor 64
@@ -762,7 +753,7 @@ Instance from 1 to 31}
         string spacer = "";
         if (!name.empty())
             spacer = " - ";
-        masterwindow->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push(name), UNUSED, TOPLEVEL::windowTitle)).c_str());
+        masterwindow->copy_label("deceased");
         masterwindow->changed();} {}
   }
   Function {showSysEfxUI()} {private
@@ -805,7 +796,7 @@ Instance from 1 to 31}
     code {//
             if (lastmainW < 0) // not ready yet!
                 return;
-            read_updates(synth);
+//          read_updates(synth);////////////////OOO Strip-down: core call eliminated
             wincheck();} {}
   }
   Function {rescaleMain()} {} {
@@ -1089,8 +1080,6 @@ Instance from 1 to 31}
             }
         }
         ;} {}
-  }
-  decl {SynthEngine *synth;} {public local
   }
   decl {bool themeTrigger;} {public local
   }

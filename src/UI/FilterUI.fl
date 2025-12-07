@@ -77,9 +77,6 @@ decl {\#include <FL/names.h>} {private global
 decl {\#include "MasterUI.h"} {private global
 }
 
-decl {\#include "Misc/SynthEngine.h"} {public global
-}
-
 decl {\#include "UI/ScaleTrackedWindow.h"} {public global
 }
 
@@ -414,7 +411,6 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
 } {
   Function {FilterUI(int x,int y, int w, int h, const char *label=0):Fl_Group(x,y,w,h,label)} {} {
     code {//
-        synth = NULL;
         pars=NULL;
         velsnsamp=NULL;
         velsns=NULL;
@@ -533,8 +529,6 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
     if (type > 2)
         type = 3;
     //std::cout << "type open " << type << std::endl;
-    formantparswindow->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Formant Editor"), npart, TOPLEVEL::windowTitle, kititem, engine)).c_str());
-    loadWin(synth, W, H, X, Y, O, "xFilter-formant " + std::to_string(type));
     if (W < formantDW || H < formantDH)
     {
         W = formantDW;
@@ -553,14 +547,14 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
       Fl_Button filtC {
         label C
         callback {//
-            synth->getGuiMaster()->getPresetsUi()->Ucopy(npart, kititem, engine, TOPLEVEL::insert::filterGroup);
+            // core call eliminated
             ;}
         xywh {202 8 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 197
       }
       Fl_Button filtP {
         label P
         callback {//
-            synth->getGuiMaster()->getPresetsUi()->Upaste(npart, kititem, engine, TOPLEVEL::insert::filterGroup);
+            // core call eliminated
             ;}
         xywh {220 8 15 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 10 labelcolor 197
       }
@@ -829,8 +823,7 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
     if (engine > 2)
         type = 3;
     //std::cout << "type close " << type << std::endl;
-    if (formantSeen)
-        saveWin(synth, formantparswindow->w(), formantparswindow->h(), formantparswindow->x(), formantparswindow->y(), false, "xFilter-formant " +std::to_string(type));
+                // core call eliminated
     formantSeen = false,
     formantparswindow->hide();
     lastformantW = 0;}
@@ -839,7 +832,7 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
         Fl_Button formCopy {
           label C
           callback {//
-              synth->getGuiMaster()->getPresetsUi()->Ucopy(npart, kititem, engine, TOPLEVEL::insert::filterGroup,0, nvowel);
+            // core call eliminated
               // dummy parameter always stores all possible formants
               ;}
           xywh {635 25 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
@@ -847,7 +840,7 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
         Fl_Button formPaste {
           label P
           callback {//
-              synth->getGuiMaster()->getPresetsUi()->Upaste(npart, kititem, engine, TOPLEVEL::insert::filterGroup,0, nvowel);
+            // core call eliminated
               // dummy parameter always stores all possible formants
               ;}
           xywh {665 25 25 15} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
@@ -1139,311 +1132,14 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
   Function {send_data(int action, int control, float value, int type, int parameter = UNUSED, int offset = UNUSED)} {} {
     code {//
         type |= TOPLEVEL::type::Write;
-        collect_writeData(synth, value, action, type, control, npart, kititem, engine, TOPLEVEL::insert::filterGroup, parameter, offset);} {}
+            // core call eliminated
+        ;} {}
   }
   Function {fetchData(float value, int control, int part, int kititem = UNUSED, int engine = UNUSED, int insert = UNUSED, int parameter = UNUSED, int offset = UNUSED, int miscmsg = UNUSED, int request = UNUSED)} {return_type float
   } {
     code {//
-        return collect_readData(synth, value, control, part, kititem, engine, insert, parameter, offset, miscmsg, request);} {}
-  }
-  Function {returns_update(CommandBlock *getData)} {} {
-    code {//
-    float value = getData->data.value;
-    unsigned char control = getData->data.control;
-    unsigned char part = getData->data.part;
-    unsigned char kititem = getData->data.kit;
-    unsigned char eng = getData->data.engine;
-    unsigned char param =  getData->data.parameter;
-    unsigned char offset = getData->data.offset;
-
-    bool isCurrent =  (param == nformant && offset == nvowel);
-
-    int value_int = lrintf(value);
-
-    bool fromUs = ((getData->data.source & TOPLEVEL::action::noAction) == TOPLEVEL::action::fromGUI);
-
-    dynFilt = (kititem == EFFECT::type::dynFilter);
-
-    if (part != npart || (!dynFilt && eng != engine))
-        return;
-    if (dynFilt)
-    {
-        //std::cout << "is dyn " << value << std::endl;
-        dynPreset = fetchData(0, EFFECT::control::preset, npart, kititem, engine);
-
-        if (part == TOPLEVEL::section::systemEffects)
-            synth->getGuiMaster()->syseffectui->UpdatePresetColour(1, EFFECT::type::dynFilter - EFFECT::type::none);
-        else if (part == TOPLEVEL::section::insertEffects)
-            synth->getGuiMaster()->inseffectui->UpdatePresetColour(1, EFFECT::type::dynFilter - EFFECT::type::none);
-//////////////////////////////OOO Strip-down .... does not exist anymore
-//      else
-//         synth->getGuiMaster()->partui->inseffectui->UpdatePresetColour(1, EFFECT::type::dynFilter - EFFECT::type::none); // normal part effect
-    }
-
-    bool isAdd = (eng == PART::engine::addSynth);
-    bool isVoice = (eng >= PART::engine::addVoice1);
-    bool isSub = (eng == PART::engine::subSynth);
-    bool isPad = (eng == PART::engine::padSynth);
-
-    switch(control)
-    {
-        case FILTERINSERT::control::centerFrequency:
-        {
-            cfreqdial->value(value);
-            if (dynFilt)
-            {
-                switch (dynPreset)
-                {
-                    case 0:
-                        cfreqdial->selection_color(setKnob(value,FILTDEF::dynFreq0.def));
-                        break;
-                    case 1:
-                        cfreqdial->selection_color(setKnob(value,FILTDEF::dynFreq1.def));
-                        break;
-                    case 2:
-                        cfreqdial->selection_color(setKnob(value,FILTDEF::dynFreq2.def));
-                        break;
-                    case 3:
-                        cfreqdial->selection_color(setKnob(value,FILTDEF::dynFreq3.def));
-                        break;
-                    case 4:
-                        cfreqdial->selection_color(setKnob(value,FILTDEF::dynFreq4.def));
-                        break;
-                }
-                formantfiltergraph->redraw();
-            }
-            else if(isAdd)
-                cfreqdial->selection_color(setKnob(value,FILTDEF::addFreq.def));
-            else if(isVoice)
-                cfreqdial->selection_color(setKnob(value,FILTDEF::voiceFreq.def));
-            else if (isSub)
-                cfreqdial->selection_color(setKnob(value,FILTDEF::subFreq.def));
-            else if(isPad)
-                cfreqdial->selection_color(setKnob(value,FILTDEF::padFreq.def));
-            break;
-        }
-
-        case FILTERINSERT::control::Q:
-        {
-            qdial->value(value);
-
-            if (dynFilt)
-            {
-                switch (dynPreset)
-                {
-                    case 0:
-                        qdial->selection_color(setKnob(value,FILTDEF::dynQval0.def));
-                        break;
-                    case 1:
-                        qdial->selection_color(setKnob(value,FILTDEF::dynQval1.def));
-                        break;
-                    case 2:
-                        qdial->selection_color(setKnob(value,FILTDEF::dynQval2.def));
-                        break;
-                    case 3:
-                        qdial->selection_color(setKnob(value,FILTDEF::dynQval3.def));
-                        break;
-                    case 4:
-                        qdial->selection_color(setKnob(value,FILTDEF::dynQval4.def));
-                        break;
-                }
-                formantfiltergraph->redraw();
-            }
-            else if (isVoice)
-                qdial->selection_color(setKnob(value,FILTDEF::voiceQval.def));
-            else
-                qdial->selection_color(setKnob(value,FILTDEF::qVal.def));
-            if (filtertype->value() == 1)
-                formantfiltergraph->redraw();
-            break;
-        }
-
-        case FILTERINSERT::control::frequencyTracking:
-            freqtrdial->value(value);
-            freqtrdial->selection_color(setKnob(value,FILTDEF::freqTrack.def));
-            break;
-
-        case FILTERINSERT::control::velocitySensitivity:
-        {
-            vsnsadial->value(value);
-            if (isVoice)
-                vsnsadial->selection_color(setKnob(value,FILTDEF::voiceVelSense.def));
-            else
-                vsnsadial->selection_color(setKnob(value,FILTDEF::velSense.def));
-            if (velsnsamp != NULL)
-                *velsnsamp = value;
-            break;
-        }
-
-        case FILTERINSERT::control::velocityCurve:
-            vsnsdial->value(value);
-            vsnsdial->selection_color(setKnob(value,FILTDEF::velFuncSense.def));
-            if (velsns != NULL)
-                *velsns = value;
-            break;
-
-        case FILTERINSERT::control::gain:
-            gaindial->value(value);
-            gaindial->selection_color(setKnob(value,FILTDEF::gain.def));
-            formantfiltergraph->redraw();
-            break;
-
-        case FILTERINSERT::control::stages:
-            if (!fromUs)
-                stcounter->value(value_int + 1);
-            formantfiltergraph->redraw();
-            break;
-
-        case FILTERINSERT::control::baseType:
-            filtertype->value(value_int);
-            cfreqdial->setValueType(getFilterFreqType(value));
-            refresh();
-            break;
-
-        case FILTERINSERT::control::analogType:
-            analogfiltertypechoice->value(value_int);
-            if (value_int < 2)
-                qdial->deactivate();
-            else
-                qdial->activate();
-            updateVCforQ();
-            break;
-
-        case FILTERINSERT::control::stateVariableType:
-            svfiltertypechoice->value(value_int);
-            break;
-
-        case FILTERINSERT::control::frequencyTrackingRange:
-            freqtrackoffset->value(value_int);
-            freqtrdial->setValueType(getFilterFreqTrackType(value));
-            if (value_int)
-            {
-                freqtracknormal->hide();
-                freqtrackchecked->show();
-            }
-            else
-            {
-                freqtracknormal->show();
-                freqtrackchecked->hide();
-            }
-            break;
-
-        case FILTERINSERT::control::formantSlowness:
-            if (!fromUs)
-            {
-                frsldial->value(value);
-                frsldial->selection_color(setKnob(value,FILTDEF::formSpeed.def));
-            }
-            break;
-
-        case FILTERINSERT::control::formantClearness:
-            if (!fromUs)
-            {
-                wvknob->value(value);
-                wvknob->selection_color(setKnob(value,findDynClearDef()));
-            }
-            break;
-
-        case FILTERINSERT::control::formantFrequency:
-            if (isCurrent)
-            {
-                if (!fromUs)
-                {
-                    formant_freq_dial->value(value);
-                    formant_freq_dial->selection_color(setKnob(value,findDynDef(0))); // has pseudo default
-                }
-                formantfiltergraph->redraw();
-            }
-            break;
-
-        case FILTERINSERT::control::formantQ:
-            if (isCurrent)
-            {
-                if (!fromUs)
-                {
-                    formant_q_dial->value(value);
-                    formant_q_dial->selection_color(setKnob(value,FILTDEF::formQ.def));
-                }
-                formantfiltergraph->redraw();
-            }
-            break;
-
-        case FILTERINSERT::control::formantAmplitude:
-            if (isCurrent)
-            {
-                if (!fromUs)
-                {
-                    formant_amp_dial->value(value);
-                    formant_amp_dial->selection_color(setKnob(value,FILTDEF::formAmp.def));
-                }
-                formantfiltergraph->redraw();
-            }
-            break;
-
-        case FILTERINSERT::control::formantStretch:
-            if (!fromUs)
-            {
-                strchdial->value(value);
-                strchdial->selection_color(setKnob(value,FILTDEF::formStretch.def));
-            }
-            break;
-
-        case FILTERINSERT::control::formantCenter:
-            cfknob->value(value*5);
-            cfknob->selection_color(setSlider(value,64));
-            centerfreqvo->do_callback();
-            formantfiltergraph->redraw();
-            break;
-
-        case FILTERINSERT::control::formantOctave:
-            octknob->value(value*5);
-            octknob->selection_color(setSlider(value,64));
-            octavesfreqvo->do_callback();
-            formantfiltergraph->redraw();
-            break;
-
-        case FILTERINSERT::control::numberOfFormants:
-            formantcount->value(value_int);
-            update_formant_window();
-            formantfiltergraph->redraw();
-            break;
-
-        case FILTERINSERT::control::vowelNumber:
-            nvowel = value_int;
-            update_formant_window();
-            check_vowel();
-            formantfiltergraph->redraw();
-            break;
-
-        case FILTERINSERT::control::formantNumber:
-            nformant = value_int;
-            update_formant_window();
-            formantfiltergraph->redraw();
-           break;
-
-        case FILTERINSERT::control::sequenceSize:
-            seqsize->value(value_int);
-            update_formant_window();
-            check_vowel();
-            formantfiltergraph->redraw();
-            break;
-
-        case FILTERINSERT::control::sequencePosition:
-            update_formant_window();
-            check_vowel();
-            break;
-
-        case FILTERINSERT::control::vowelPositionInSequence:
-            vowel_counter->value(value_int);
-            update_formant_window();
-            check_vowel();
-            formantfiltergraph->redraw();
-            break;
-
-        case FILTERINSERT::control::negateInput:
-            neginput->value(value != 0);
-            break;
-    }} {}
+            // core call eliminated
+        ;} {}
   }
   Function {findDynDef(int type)} {return_type float
   } {
@@ -1562,7 +1258,6 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
   Function {init(FilterParams *filterpars_,unsigned char *velsnsamp_,unsigned char *velsns_, int npart_, int kititem_, int engine_)} {} {
     code {//
     pars=filterpars_;
-    synth = & pars->getSynthEngine();
     velsnsamp = velsnsamp_;
     velsns = velsns_;
     npart = npart_;
@@ -1626,8 +1321,6 @@ class FilterUI {: {public Fl_Group,PresetsUI_}
   decl {unsigned char *velsnsamp,*velsns;} {private local
   }
   decl {int nvowel,nformant,nseqpos, nseqsize, nVoCount, nFoCount;} {private local
-  }
-  decl {SynthEngine *synth;} {private local
   }
   decl {int npart;} {private local
   }
