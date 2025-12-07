@@ -19,7 +19,6 @@
 
 */
 
-#include "Misc/SynthEngine.h"
 #include "Misc/TextMsgBuffer.h"
 #include "Misc/NumericFuncs.h"
 #include "Params/RandomWalk.h"
@@ -46,154 +45,10 @@ namespace { // Implementation details...
     TextMsgBuffer& textMsgBuffer = TextMsgBuffer::instance();
 }
 
-float collect_readData(SynthEngine *synth, float value, unsigned char control, unsigned char part, unsigned char kititem, unsigned char engine, unsigned char insert, unsigned char parameter, unsigned char offset, unsigned char miscmsg, unsigned char request)
-{
-    unsigned char type = 0;
-    unsigned char action = TOPLEVEL::action::fromGUI;
-    if (request < TOPLEVEL::type::Limits)
-        type = request | TOPLEVEL::type::Limits; // its a limit test
-    else if (request != UNUSED)
-        action |= request;
-    CommandBlock putData;
-    putData.data.value = value;
-    putData.data.type = type;
-    putData.data.source = action;
-    putData.data.control = control;
-    putData.data.part = part;
-    putData.data.kit = kititem;
-    putData.data.engine = engine;
-    putData.data.insert = insert;
-    putData.data.parameter = parameter;
-    putData.data.offset = offset;
-    putData.data.miscmsg = miscmsg;
-    float result = synth->interchange.readAllData(putData);
-    if (miscmsg != NO_MSG) // outgoing value - we want to read this text
-        result = putData.data.miscmsg; // returned message ID
-    return result;
-}
-
-void collect_writeData(SynthEngine *synth, float value, unsigned char action, unsigned char type, unsigned char control, unsigned char part, unsigned char kititem, unsigned char engine, unsigned char insert, unsigned char parameter, unsigned char offset, unsigned char miscmsg)
-{
-    if (part < NUM_MIDI_PARTS && engine == PART::engine::padSynth)
-    {
-        if (collect_readData(synth, 0, TOPLEVEL::control::partBusy, part))
-        {
-            alert(synth, "Part " + to_string(part + 1) + " is busy");
-            return;
-        }
-    }
-    CommandBlock putData;
-    putData.data.value = value;
-    putData.data.control = control;
-    putData.data.part = part;
-    putData.data.kit = kititem;
-    putData.data.engine = engine;
-    putData.data.insert = insert;
-    putData.data.parameter = parameter;
-    putData.data.offset = offset;
-    putData.data.miscmsg = miscmsg;
-    if (action == TOPLEVEL::action::fromMIDI)
-        type = type | 1; // faking MIDI from virtual keyboard
-    else
-    {
-        if (part != TOPLEVEL::section::midiLearn)
-        { // midilearn UI must pass though un-modified
-            unsigned char typetop = type & (TOPLEVEL::type::Write | TOPLEVEL::type::Integer);
-            unsigned char buttons = Fl::event_button();
-            if (part == TOPLEVEL::section::main && (control != MAIN::control::volume &&  control  != MAIN::control::detune))
-                type = 1;
-
-            if (buttons == 3 && Fl::event_is_click())
-            {
-                // check range & if learnable
-                float newValue;
-                putData.data.type = 3 | TOPLEVEL::type::Limits;
-                newValue = synth->interchange.readAllData(putData);
-                if (Fl::event_state(FL_CTRL) != 0)
-                {
-                    if (putData.data.type & TOPLEVEL::type::Learnable)
-                    {
-                        // identifying this for button 3 as MIDI learn
-                        type = TOPLEVEL::type::LearnRequest;
-                    }
-                    else
-                    {
-                        alert(synth, "Can't learn this control");
-                        synth->getRuntime().Log("Can't MIDI-learn this control");
-                        type = TOPLEVEL::type::Learnable;
-                    }
-                }
-                else if (insert != TOPLEVEL::insert::filterGroup  || parameter == UNUSED)
-                {
-                    putData.data.value = newValue;
-                    type = TOPLEVEL::type::Write;
-                    action |= TOPLEVEL::action::forceUpdate;
-                    // has to be write as it's 'set default'
-                }
-            }
-            else if (buttons > 2)
-                type = 1; // change scroll wheel to button 1
-            type |= typetop;
-            action |= TOPLEVEL::action::fromGUI;
-        }
-    }
-
-    putData.data.type = type;
-    putData.data.source = action;
-
-    if (!synth->interchange.fromGUI.write(putData.bytes))
-        synth->getRuntime().Log("Unable to write to fromGUI buffer.");
-}
-
-void alert(SynthEngine *synth, string message)
-{
-    synth->getGuiMaster()->query("", "", "", message);
-}
-
-int choice(SynthEngine *synth, string one, string two, string three, string message)
-{
-    return synth->getGuiMaster()->query(one, two, three, message);
-}
-
-
 GuiUpdates::GuiUpdates(InterChange& _interChange, InterfaceAnchor&& connectionData)
     : interChange{_interChange}
     , anchor{std::move(connectionData)}
 { }
-
-
-void GuiUpdates::read_updates(SynthEngine *synth)
-{
-/////////////////////////////////////////////////////////////OOO Strip-down disabled since all called functionality will be removed
-//    CommandBlock getData;
-//    while (synth->interchange.toGUI.read(getData.bytes))
-//    {
-//        decode_updates(synth, &getData);
-//    }
-//
-//    // test refresh time
-//    /*
-//    static int count = 0;
-//    static int toggle = false;
-//    ++count;
-//    if (count > 30)
-//    {
-//        count = 0;
-//        toggle = !toggle;
-//        if (toggle)
-//            synth->getRuntime().Log("Tick");
-//        else
-//            synth->getRuntime().Log("tock");
-//    }
-//    */
-//
-//    // and pull up to 5 entries from log
-//    for (int i = 0; !synth->getRuntime().logList.empty() && i < 5; ++i)
-//    {
-//        synth->getGuiMaster()->Log(synth->getRuntime().logList.front());
-//        synth->getRuntime().logList.pop_front();
-//    }
-}
 
 
 // for setting slider peg colour
