@@ -288,42 +288,17 @@ class MasterUI {: {public GuiUpdates}
           label {Stop!}
           tooltip {Cease all sound immediately!} xywh {7 30 66 24} box PLASTIC_UP_BOX color 89 labelfont 1 labelsize 11 labelcolor 64 align 16
         }
-        Fl_Button mainvirtkeyb {
-          label {Virtual Key&board}
-          tooltip {Virtual Keyboard} xywh {81 60 106 24} box GTK_THIN_UP_BOX color 198 labelsize 11 labelcolor 64
-        }
         Fl_Button mixerpanel {
           label {Mixer &Panel}
           tooltip {Mixer Panel Window} xywh {81 30 106 24} box GTK_THIN_UP_BOX color 198 labelsize 11 labelcolor 64
         }
-        Fl_Button mainmidilearn {
-          label {&Midi Learn}
-          tooltip {Message Log} xywh {81 90 106 24} box GTK_THIN_UP_BOX color 198 labelsize 11 labelcolor 64
-        }
-        Fl_Button vectors {
-          label {&Vectors}
-          tooltip {Vector Setup Window} xywh {195 30 66 24} box GTK_THIN_UP_BOX color 198 labelsize 11 labelcolor 64
-        }
-        Fl_Button undo {
-          label {&Undo}
-          tooltip {Revert last change} xywh {195 60 66 24} box PLASTIC_UP_BOX color 228 labelsize 11 labelcolor 64
-        }
-        Fl_Button redo {
-          label {&Redo}
-          tooltip {Re-apply last change} xywh {195 91 66 24} box PLASTIC_UP_BOX color 228 labelsize 11 labelcolor 64
-        }
         Fl_Box topcontrols1 {
           xywh {267 30 114 142} box ENGRAVED_FRAME
         }
-        Fl_Spinner masterkeyshift {
-          label {Key Shift}
-          tooltip {Shift pitch +/- N semitones} xywh {328 108 44 20} labelsize 10 labelcolor 64 minimum -36 maximum 36 textfont 1 textsize 12 textcolor 64
-          class WidgetSpinner
-        }
-        Fl_Spinner bpmfallback {
-          label {F. BPM}
-          tooltip {Fallback BPM (Beats Per Minute). This is only used if the MIDI driver does not provide its own BPM information.} xywh {316 142 56 20} labelsize 10 labelcolor 64 minimum 0 maximum 0 value 120 textfont 1 textsize 12 textcolor 64
-          class WidgetSpinner
+        Fl_Dial mastervolumedial {
+          label Volume
+          tooltip {Master Volume} xywh {330 42 40 40} box ROUND_UP_BOX color 29 labelsize 10 labelcolor 64 maximum 127
+          class WidgetPDial
         }
       }
     }
@@ -439,21 +414,15 @@ class MasterUI {: {public GuiUpdates}
 
     mainreset->labelsize(size11);
     mainstop->labelsize(size11);
-    mainvirtkeyb->labelsize(size11);
+  ///////////////////////////////////////OOO Strip-down : most widgets removed for further investigation
     mixerpanel->labelsize(size11);
-    mainmidilearn->labelsize(size11);
-    vectors->labelsize(size11);
+  ///////////////////////////////////////OOO Strip-down : most widgets removed for further investigation
+    mastervolumedial->labelsize(size);
   ///////////////////////////////////////OOO Strip-down : most widgets removed for further investigation
   ///////////////////////////////////////OOO Strip-down : most widgets removed for further investigation
-    masterkeyshift->labelsize(size);
-    masterkeyshift->textsize(size12);
-    bpmfallback->labelsize(size);
-    bpmfallback->textsize(size12);
-
   ///////////////////////////////////////OOO Strip-down : most widgets removed for further investigation
 
-    undo->labelsize(size11);
-    redo->labelsize(size11);
+  ///////////////////////////////////////OOO Strip-down : most widgets removed for further investigation
 
     masterwindow->redraw();} {}
   }
