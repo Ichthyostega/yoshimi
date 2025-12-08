@@ -315,16 +315,6 @@ class MasterUI {: {public GuiUpdates}
         Fl_Box topcontrols1 {
           xywh {267 30 114 142} box ENGRAVED_FRAME
         }
-        Fl_Dial globalfinedetune {
-          label Detune
-          tooltip {Global Fine Detune} xywh {278 42 40 40} box ROUND_UP_BOX color 29 labelsize 10 labelcolor 64 maximum 127 value 64
-          class WidgetPDial
-        }
-        Fl_Dial mastervolumedial {
-          label Volume
-          tooltip {Master Volume} xywh {330 42 40 40} box ROUND_UP_BOX color 29 labelsize 10 labelcolor 64 maximum 127
-          class WidgetPDial
-        }
         Fl_Spinner masterkeyshift {
           label {Key Shift}
           tooltip {Shift pitch +/- N semitones} xywh {328 108 44 20} labelsize 10 labelcolor 64 minimum -36 maximum 36 textfont 1 textsize 12 textcolor 64
@@ -453,8 +443,7 @@ class MasterUI {: {public GuiUpdates}
     mixerpanel->labelsize(size11);
     mainmidilearn->labelsize(size11);
     vectors->labelsize(size11);
-    globalfinedetune->labelsize(size);
-    mastervolumedial->labelsize(size);
+  ///////////////////////////////////////OOO Strip-down : most widgets removed for further investigation
   ///////////////////////////////////////OOO Strip-down : most widgets removed for further investigation
     masterkeyshift->labelsize(size);
     masterkeyshift->textsize(size12);
