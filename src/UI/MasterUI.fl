@@ -178,8 +178,7 @@ class MasterUI {: {public GuiUpdates}
       panelgroup = 0;
       panelScale = 1;
 
-      syseffectui = nullptr;
-      inseffectui = nullptr;
+  ///////////////////////////////////////OOO Strip-down : most widgets removed for further investigation
       queryDW = 0;
 
       lastmainW = -1;
@@ -196,9 +195,7 @@ class MasterUI {: {public GuiUpdates}
   }
   Function {~MasterUI()} {} {
     code {//
-      syseffsendwindow->hide();
-////////////////OOO Strip-down: core call eliminated
-      delete syseffsendwindow;
+  ///////////////////////////////////////OOO Strip-down : most widgets removed for further investigation
 
 ////////////////OOO Strip-down: core call eliminated
 
@@ -275,84 +272,6 @@ class MasterUI {: {public GuiUpdates}
         code0 {o->init();}
         class KeyHandle
       }
-      Fl_Tabs sysinsgroup {
-        label {System/Insert}
-        callback {//
-            if (o->value() == SystemEffectsGrp)
-                showSysEfxUI();
-            else if (o->value() == InsertionEffectsGrp)
-                showInsEfxUI();
-            ;}
-        xywh {3 148 379 68} box PLASTIC_UP_BOX color 44 selection_color 223 labeltype NO_LABEL labelsize 12 labelcolor 64 align 5
-      } {
-        Fl_Group SystemEffectsGrp {
-          label { System Effects }
-          xywh {3 176 379 40} color 223 selection_color 31 labelfont 1 labelsize 12 labelcolor 64 align 4
-        } {
-          Fl_Spinner syseffnocounter {
-            label Effect
-            xywh {40 186 44 20} labeltype NO_LABEL labelsize 11 labelcolor 64 align 0 maximum 4 textfont 1 textsize 11 textcolor 64
-            code0 {o->range(1, NUM_SYS_EFX);}
-            code1 {o->value(1);}
-            class WidgetSpinner
-          }
-          Fl_Choice sysefftype {
-            label Type
-            xywh {120 186 96 20} down_box BORDER_BOX labeltype NO_LABEL labelsize 11 labelcolor 64 align 16 textfont 1 textsize 11 textcolor 64
-            code0 {o->add("No Effect");o->add("Reverb");o->add("Echo");o->add("Chorus");o->add("Phaser");o->add("AlienWah");o->add("Distortion");o->add("EQ");o->add("DynFilter");}
-            code1 {o->value(0); // initially disabled -- enabled only when effect slot is occupied}
-          } {}
-          Fl_Check_Button SysEffOn {
-            label On
-            xywh {247 186 20 20} down_box DOWN_BOX value 1 selection_color 64 labelfont 3 labelcolor 226 align 4
-            class Fl_Check_Button2
-          }
-          Fl_Button sysEffSend {
-            label {Send to}
-            xywh {275 186 62 20} box GTK_THIN_UP_BOX color 221 labelfont 1 labelsize 11 labelcolor 64
-          }
-          Fl_Button sysCopy {
-            label C
-            xywh {350 182 25 14} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
-          }
-          Fl_Button sysPaste {
-            label P
-            xywh {350 197 25 14} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
-          }
-        }
-        Fl_Group InsertionEffectsGrp {
-          label { Insertion Effects }
-          xywh {3 176 379 40} color 223 selection_color 31 labelfont 1 labelsize 12 labelcolor 64 align 4 hide
-        } {
-          Fl_Spinner inseffnocounter {
-            label Effect
-            xywh {40 186 36 20} labeltype NO_LABEL labelsize 11 labelcolor 64 align 20 maximum 8 textfont 1 textsize 11 textcolor 64
-            code0 {o->range(1, NUM_INS_EFX);}
-            code1 {o->value(1);}
-            class WidgetSpinner
-          }
-          Fl_Choice insefftype {
-            label Type
-            xywh {120 186 96 20} down_box BORDER_BOX labeltype NO_LABEL labelsize 11 labelcolor 64 align 0 textfont 1 textsize 11 textcolor 64
-            code0 {o->add("No Effect");o->add("Reverb");o->add("Echo");o->add("Chorus");o->add("Phaser");o->add("AlienWah");o->add("Distortion");o->add("EQ");o->add("DynFilter");}
-            code1 {o->value(0);}
-            code2 {o->activate(); // not disabled; user may activate this slot by picking some effect type}
-          } {}
-          Fl_Choice inseffpart {
-            label {To }
-            xywh {242 186 96 20} down_box BORDER_BOX labelfont 1 labelsize 11 labelcolor 64 textfont 1 textsize 11 textcolor 64
-            code3 {o->value(1); // initially deactivated}
-          } {}
-          Fl_Button insCopy {
-            label C
-            xywh {350 182 25 14} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
-          }
-          Fl_Button insPaste {
-            label P
-            xywh {350 197 25 14} box THIN_UP_BOX color 179 labelfont 1 labelsize 11 labelcolor 197
-          }
-        }
-      }
       Fl_Menu_Bar mastermenu {
         tooltip {Click to open menus} xywh {-7 0 395 25} labelsize 12 labelcolor 64 textsize 12 textcolor 64
       } {}
@@ -417,332 +336,6 @@ class MasterUI {: {public GuiUpdates}
           class WidgetSpinner
         }
       }
-      Fl_Group syseffectuigroup {
-        xywh {3 218 379 95} box FLAT_BOX color 48 labeltype NO_LABEL labelcolor 64
-        code0 {o->show();}
-      } {
-        Fl_Group syseffectui {
-          xywh {3 218 379 95} labeltype NO_LABEL labelcolor 64
-          code0 {o->init(anchor.sysEffectParam, anchor.sysEffectEQ, TOPLEVEL::section::systemEffects);
-                 o->activate();
-                 o->show();}
-          class EffUI
-        } {}
-      }
-      Fl_Group inseffectuigroup {
-        xywh {3 218 379 95} box FLAT_BOX color 48 labelcolor 64
-        code0 {o->hide();}
-      } {
-        Fl_Group inseffectui {
-          xywh {3 218 379 95} color 52 labelcolor 64
-          code0 {o->init(anchor.insEffectParam, anchor.insEffectEQ, TOPLEVEL::section::insertEffects);
-                 o->hide();}
-          code1 {o->deactivate(); // initially deactivated}
-          class EffUI
-        } {}
-      }
-      Fl_Group partuigroup {
-        xywh {3 315 379 178} box ENGRAVED_FRAME
-      } {
-        Fl_Group partControls {
-          xywh {3 315 378 175}
-        } {
-          Fl_Dial partVol {
-            label Volume
-            xywh {340 356 32 32} labelsize 10 labelcolor 64 maximum 127 step 1
-            class WidgetPDial
-          }
-          Fl_Dial partPan {
-            label Panning
-            xywh {292 356 32 32} labelsize 10 labelcolor 64 maximum 127 step 1
-            class WidgetPDial
-          }
-          Fl_Dial partVelOffset {
-            label {Vel.Offs}
-            xywh {244 356 32 32} labelsize 10 labelcolor 64 maximum 127 step 1
-            class WidgetPDial
-          }
-          Fl_Dial partVelSense {
-            label {Vel.Sense}
-            xywh {196 356 32 32} labelsize 10 labelcolor 64 maximum 127 step 1
-            class WidgetPDial
-          }
-          Fl_Group instrumentGroup {
-            xywh {136 320 195 25} box GTK_THIN_UP_BOX color 198
-          } {
-            Fl_Box instrumentaddbox {
-              xywh {140 325 60 15} box FLAT_BOX
-            }
-            Fl_Box instrumentsubbox {
-              xywh {200 325 65 15} box FLAT_BOX
-            }
-            Fl_Box instrumentpadbox {
-              xywh {264 325 63 15} box FLAT_BOX
-            }
-            Fl_Box instrumentlabel {
-              label {Simple Sound}
-              xywh {139 324 187 16} selection_color 64 labelfont 1 labelsize 12 labelcolor 64 align 16
-            }
-            Fl_Box instrumentFrame {
-              xywh {140 325 187 15} box THIN_DOWN_FRAME labelcolor 49
-            }
-            Fl_Button buttontop {
-              tooltip {Left mouse button: choose/save/.. from/to bank, Right button: instrument name} xywh {136 320 195 25} box NO_BOX selection_color 64 labeltype NO_LABEL labelsize 12 labelcolor 64 align 16
-            }
-          }
-          Fl_Spinner partMidiCh {
-            label Midi
-            tooltip {MIDI channel for this part} xywh {35 381 40 19} color 7 labelsize 12 labelcolor 64 maximum 16 textsize 11 textcolor 64
-            class WidgetSpinner
-          }
-          Fl_Button partEdit {
-            label {&Edit}
-            tooltip {View/change instrument sound and details} xywh {334 320 42 25} box GTK_THIN_UP_BOX color 198 labelfont 1 labelsize 12 labelcolor 64
-          }
-          Fl_Button partControllers {
-            label {Con&trollers}
-            tooltip {MIDI Controller range settings} xywh {72 405 81 20} box GTK_THIN_UP_BOX color 198 labelsize 12 labelcolor 64
-          }
-          Fl_Button partMidiCCs {
-            label {Mi&di CCs}
-            tooltip {Emulates common MIDI CCs} xywh {164 405 64 20} box GTK_THIN_UP_BOX color 198 labelsize 12 labelcolor 64
-          }
-          Fl_Box modepatch {
-            label Mode
-            xywh {141 357 32 16} box FLAT_BOX labelsize 11 labelcolor 64
-          }
-          Fl_Choice partKeymode {
-            tooltip {Poly, Mono or Legato mode} xywh {65 355 72 19} down_box BORDER_BOX labelsize 11 labelcolor 64 textfont 1 textsize 11 textcolor 64
-            code0 {o->add("Poly");o->add("Mono");o->add("Legato");}
-          } {}
-          Fl_Check_Button partPortamento {
-            label Portamento
-            tooltip {Enable/Disable the portamento} xywh {83 381 20 20} down_box DOWN_BOX labelfont 3 labelsize 11 labelcolor 226 align 8
-            class Fl_Check_Button2
-          }
-          Fl_Spinner minKeyCount {
-            label {Min Note}
-            tooltip {Minimum note the part receives} xywh {59 431 41 20} labelsize 10 labelcolor 64 minimum 0 maximum 127 textsize 11 textcolor 64
-            class WidgetSpinner
-          }
-          Fl_Spinner maxKeyCount {
-            label {Max Note}
-            tooltip {Maximum note the part receives} xywh {59 463 41 20} labelsize 10 labelcolor 64 minimum 0 maximum 127 textsize 11 textcolor 64
-            class WidgetSpinner
-          }
-          Fl_Button setMinToLast {
-            label Set
-            tooltip {Set minimum note to the last note played} xywh {105 432 30 16} box PLASTIC_UP_BOX color 228 labelsize 10 labelcolor 64
-          }
-          Fl_Button setNormal {
-            label R
-            tooltip {Reset the minimum key to 0 and maximum key to 127} xywh {105 450 30 16} box PLASTIC_UP_BOX color 228 labelfont 1 labelsize 11 labelcolor 64
-          }
-          Fl_Button setMaxToLast {
-            label Set
-            tooltip {Set maximum note to the last note played} xywh {105 468 30 16} box PLASTIC_UP_BOX color 228 labelsize 10 labelcolor 64
-          }
-          Fl_Spinner partKeyShift {
-            label {Key Shift}
-            xywh {192 432 38 20} labelsize 10 labelcolor 64 minimum -36 maximum 36 textsize 11 textcolor 64
-            code0 {o->range(MIN_KEY_SHIFT, MAX_KEY_SHIFT);}
-            class WidgetSpinner
-          }
-          Fl_Spinner partKeyLimit {
-            label {Key Limit}
-            tooltip {Maximum keys for this part} xywh {192 464 38 20} labelsize 10 labelcolor 64 value 20 textsize 11 textcolor 64
-            code0 {o->range(1, POLYPHONY); // enough for one part!}
-            class WidgetSpinner
-          }
-          Fl_Group sysEffBox {
-            xywh {236 412 139 73} box ENGRAVED_FRAME labelcolor 64
-          } {
-            Fl_Text_Display sysEffName {
-              label {Send to System Effect}
-              xywh {255 463 103 1} box NO_BOX selection_color 64 labelsize 11 labelcolor 64 align 2 textcolor 64
-            }
-            Fl_Dial sysEff1 {
-              label 1
-              xywh {243 434 25 25} labelfont 1 labelsize 10 labelcolor 64 align 1 maximum 127 step 1
-              code1 {o->setValueType(VC_percent127);}
-              code2 {o->selection_color(setKnob(o->value(),0));}
-              class WidgetPDial
-            }
-            Fl_Dial sysEff2 {
-              label 2
-              xywh {276 434 25 25} labelfont 1 labelsize 10 labelcolor 64 align 1 maximum 127 step 1
-              code1 {o->setValueType(VC_percent127);}
-              code2 {o->selection_color(setKnob(o->value(),0));}
-              class WidgetPDial
-            }
-            Fl_Dial sysEff3 {
-              label 3
-              xywh {309 434 25 25} labelfont 1 labelsize 10 labelcolor 64 align 1 maximum 127 step 1
-              code1 {o->setValueType(VC_percent127);}
-              code2 {o->selection_color(setKnob(o->value(),0));}
-              class WidgetPDial
-            }
-            Fl_Dial sysEff4 {
-              label 4
-              xywh {342 434 25 25} labelfont 1 labelsize 10 labelcolor 64 align 1 maximum 127 step 1
-              code1 {o->setValueType(VC_percent127);}
-              code2 {o->selection_color(setKnob(o->value(),0));}
-              class WidgetPDial
-            }
-          }
-          Fl_Check_Button partOmniEnable {
-            label Omni
-            tooltip {Enable part to listen on all MIDI channels. If Omni Mode Change is enabled in configuration, then a MIDI message of that type overrides this setting. Toggle this setting to reset it after such a MIDI message.} xywh {46 406 15 20} down_box DOWN_BOX selection_color 64 labelsize 12 labelcolor 64 align 4
-            class Fl_Check_Button2
-          }
-        }
-        Fl_Check_Button partEnable {
-          label On
-          xywh {35 355 20 20} down_box DOWN_BOX selection_color 64 labelcolor 64 align 4
-          class Fl_Check_Button2
-        }
-      }
-      Fl_Group {} {
-        xywh {3 490 379 35} box DOWN_BOX color 43 labelsize 12
-      } {
-        Fl_Box vumeter {
-          label {VU-Meter}
-          xywh {3 491 379 34} color 48
-          code0 {o->init(-1);}
-          class VUMeter
-        }
-        Fl_Button {} {
-          tooltip {Click here to clear VU peak reading and overload warning.} xywh {5 493 376 30} box NO_BOX labelcolor 64
-        }
-      }
-      Fl_Button mastermono {
-        label Stereo
-        tooltip {Master Mono/Stereo switch} xywh {7 90 66 24} box PLASTIC_UP_BOX down_box PLASTIC_UP_BOX color 228 selection_color 89 labelfont 3 labelsize 11 labelcolor 226
-      }
-      Fl_Spinner maxparts {
-        label of
-        tooltip {Set the number of available parts} xywh {93 322 40 20} labelsize 11 labelcolor 64 minimum 16 maximum 64 step 16 value 16 textsize 11 textcolor 64
-        code0 {o->value(55);}
-        class WidgetSpinner
-      }
-      Fl_Spinner npartcounter {
-        label Part
-        xywh {36 322 40 20} labelsize 11 labelcolor 64 when 6 minimum 0 maximum 64 textsize 11 textcolor 64
-        class WidgetSpinner
-      }
-      Fl_Choice panning_law {
-        label {Pan Law }
-        tooltip {Relative values when panned to extremes:
-   Per side, Equivalent Mono} xywh {84 122 164 20} down_box BORDER_BOX labelsize 11 labelcolor 64 textfont 1 textsize 12 textcolor 64
-        code0 {o->add("Cut: 0dB, -6dB");o->add("Default: +3dB, -3dB");o->add("Boost: +6dB, 0dB");}
-      } {}
-      Fl_Group setInstance {
-        xywh {82 57 193 60} box PLASTIC_UP_BOX color 223 hide
-      } {
-        Fl_Button {} {
-          xywh {84 59 188 57} box NO_BOX
-        }
-        Fl_Text_Display InstBlurb {
-          label {Accept next, or enter
-Instance from 1 to 31}
-          xywh {95 89 163 6} box NO_BOX labelsize 12
-        }
-        Fl_Button {} {
-          xywh {162 91 35 22} box FLAT_BOX down_box FLAT_BOX labelfont 1 labelsize 11
-        }
-        Fl_Button cancelInst {
-          label Cancel
-          xywh {209 90 56 22} box PLASTIC_UP_BOX labelfont 1 labelsize 11
-        }
-        Fl_Button nextInst {
-          label Next
-          xywh {93 90 56 22} box PLASTIC_UP_BOX labelfont 1 labelsize 11
-        }
-        Fl_Input valueInst {
-          xywh {162 90 37 22} textsize 11
-        }
-      }
-      Fl_Box divider {
-        xywh {18 350 350 2} box THIN_DOWN_FRAME
-      }
-    }
-    comment {line spaces in boxes below are critical} {in_source in_header
-    }
-    Fl_Window syseffsendwindow {
-      label {Yoshimi : Sys Send}
-      callback {syseffClose->do_callback();}
-      xywh {534 25 120 245} type Double labelfont 13 labelsize 13 hide resizable
-      code0 {syseffDW = 120; syseffDH = 245;}
-      code1 {o->copy_label("dead");}
-      code2 {o->size_range(syseffDW, syseffDH, 0, 0, 0, 0, 1);}
-      class ScaleTrackedWindow
-    } {
-      Fl_Button syseffClose {
-        label Close
-        callback {//
-////////////////OOO Strip-down: core call eliminated
-    syseffsendwindow->hide();
-    syseffSeen = false;}
-        xywh {20 216 80 25} box THIN_UP_BOX color 196 labelcolor 64
-      }
-      Fl_Box syseffname {
-        label {Send output of system effect  to other system effects}
-        xywh {5 5 110 35} labelsize 10 labelcolor 64 align 192
-      }
-      Fl_Dial syseff01 {
-        xywh {9 65 30 30} labelsize 10 align 1 maximum 127 step 1
-        code0 {o->setValueType(VC_percent127);}
-        class WidgetPDial
-      }
-      Fl_Dial syseff02 {
-        xywh {45 65 30 30} labelsize 10 align 1 maximum 127 step 1
-        code0 {o->setValueType(VC_percent127);}
-        class WidgetPDial
-      }
-      Fl_Dial syseff03 {
-        xywh {83 65 30 30} labelsize 10 align 1 maximum 127 step 1
-        code0 {o->setValueType(VC_percent127);}
-        class WidgetPDial
-      }
-      Fl_Dial syseff12 {
-        xywh {45 118 30 30} labelsize 10 align 1 maximum 127 step 1
-        code0 {o->setValueType(VC_percent127);}
-        class WidgetPDial
-      }
-      Fl_Dial syseff13 {
-        xywh {83 118 30 30} labelsize 10 align 1 maximum 127 step 1
-        code0 {o->setValueType(VC_percent127);}
-        class WidgetPDial
-      }
-      Fl_Dial syseff23 {
-        xywh {83 171 30 30} labelsize 10 align 1 maximum 127 step 1
-        code0 {o->setValueType(VC_percent127);}
-        class WidgetPDial
-      }
-      Fl_Box sys01txt {
-        label {1->2}
-        xywh {7 50 35 17} labelsize 10 labelcolor 64
-      }
-      Fl_Box sys02txt {
-        label {1->3}
-        xywh {43 50 35 17} labelsize 10 labelcolor 64
-      }
-      Fl_Box sys03txt {
-        label {1->4}
-        xywh {80 50 35 17} labelsize 10 labelcolor 64
-      }
-      Fl_Box sys12txt {
-        label {2->3}
-        xywh {44 103 35 17} labelsize 10 labelcolor 64
-      }
-      Fl_Box sys13txt {
-        label {2->4}
-        xywh {82 103 35 17} labelsize 10 labelcolor 64
-      }
-      Fl_Box sys23txt {
-        label {3->4}
-        xywh {82 156 35 17} labelsize 10 labelcolor 64
-      }
     }
   }
   Function {query(string one, string two, string three, string text)} {return_type int
@@ -760,29 +353,13 @@ Instance from 1 to 31}
   Function {showSysEfxUI()} {private
   } {
     code {//
-    inseffectui->hide();
-    inseffectui->deactivate();
-    inseffectuigroup->hide();
-    inseffectuigroup->deactivate();
-
-    syseffectui->activate();
-    syseffectui->show();
-    syseffectuigroup->activate();
-    syseffectuigroup->show();
+  ///////////////////////////////////////OOO Strip-down : most widgets removed for further investigation
     lastmainW = 0;} {}
   }
   Function {showInsEfxUI()} {private
   } {
     code {//
-    syseffectui->hide();
-    syseffectui->deactivate();
-    syseffectuigroup->hide();
-    syseffectuigroup->deactivate();
-
-    inseffectui->activate();
-    inseffectui->show();
-    inseffectuigroup->activate();
-    inseffectuigroup->show();
+  ///////////////////////////////////////OOO Strip-down : most widgets removed for further investigation
     lastmainW = 0;} {}
   }
   Function {checkBuffer()} {} {
@@ -802,18 +379,7 @@ Instance from 1 to 31}
 
 
             int x, y, w, h;
-            if (syseffSeen)
-            {
-                x = syseffsendwindow->x();
-                y = syseffsendwindow->y();
-                w = syseffDW * ratio;
-                h = syseffDH * ratio;
-                if ((x + w) > Fl::w())
-                    x = Fl::w() - w;
-                if ((y + h) > Fl::h())
-                    y = Fl::h() - h;
-                syseffsendwindow->resize(x, y, w, h);
-            }
+  ///////////////////////////////////////OOO Strip-down : most widgets removed for further investigation
 
             // we always check the main window last
             x = masterwindow->x();
@@ -860,59 +426,9 @@ Instance from 1 to 31}
             lastmainW = masterwindow->w();
     }
 
-    if (syseffectui->visible())
-    {
-        int efftype = EFFECT::type::eq - EFFECT::type::none;
-        if(sysefftype->value() == efftype)
-        {
-            if (lastsyseffeqW < 0.15f)
-            {
-                lastsyseffeqW += 0.01f;
-            }
-            else if (lastsyseffeqW != mainScale)
-            {
-                syseffectui->effRtext(mainScale, efftype);
-                lastsyseffeqW = mainScale;
-            }
-        }
-    }
-    if (syseffectui != NULL)
-    {
-        if (syseffectui->filterwindow != NULL)
-        {
-            if (syseffectui->filterwindow->visible())
-            {
-                if (lastsysDynFiltW != syseffectui->filterwindow->w())
-                {
-                    syseffectui->filtRtext();
-                    lastsysDynFiltW = syseffectui->filterwindow->w();
-                }
-            }
-        }
-    }
+  ///////////////////////////////////////OOO Strip-down : most widgets removed for further investigation
 
-    if (inseffectui != NULL)
-    {
-        if(inseffectui->filterwindow != NULL)
-        {
-            if (inseffectui->filterwindow->visible())
-            {
-                if (lastinsDynFiltW != inseffectui->filterwindow->w())
-                {
-                    inseffectui->filtRtext();
-                    lastinsDynFiltW = inseffectui->filterwindow->w();
-                }
-            }
-        }
-    }
-
-    if (syseffsendwindow->visible() &&  syseffsendwindow->w() != lastsyseffW)
-    {
-        syseffRtext();
-        lastsyseffW = syseffsendwindow->w();
-    }
-
-////////////////////////////////////////////////////OOO Strip-down : partui is defunct, can not init
+  ////////////////////////////////////////////////////OOO Strip-down : partui is defunct, can not init
 //    partui->wincheck();
     ;} {}
   }
@@ -929,39 +445,7 @@ Instance from 1 to 31}
     mastermenu->textsize(size12);
 
     // part insert controls
-    partVol->labelsize(size);
-    partPan->labelsize(size);
-    partVelOffset->labelsize(size);
-    partVelSense->labelsize(size);
-    instrumentlabel->labelsize(size12);
-    partEdit->labelsize(size12);
-    partControllers->labelsize(size12);
-    partMidiCCs->labelsize(size12);
-    partMidiCh->labelsize(size11);
-        partMidiCh->textsize(size11);
-    partOmniEnable->labelsize(size11);
-    partKeymode->textsize(size11);
-        modepatch->labelsize(size11);
-    partPortamento->labelsize(size11);
-    minKeyCount->labelsize(size);
-        minKeyCount->textsize(size11);
-    maxKeyCount->labelsize(size);
-        maxKeyCount->textsize(size11);
-    setMinToLast->labelsize(size);
-    setNormal->labelsize(size11);
-    setMaxToLast->labelsize(size);
-    partKeyShift->labelsize(size);
-        partKeyShift->textsize(size11);
-    partKeyLimit->labelsize(size);
-        partKeyLimit->textsize(size11);
-
-    sysEff1->labelsize(size);
-    sysEff2->labelsize(size);
-    sysEff3->labelsize(size);
-    sysEff4->labelsize(size);
-    sysEffName->labelsize(size);
-
-    partEnable->labelsize(size14);
+  ///////////////////////////////////////OOO Strip-down : most widgets removed for further investigation
 
     mainreset->labelsize(size11);
     mainstop->labelsize(size11);
@@ -971,51 +455,13 @@ Instance from 1 to 31}
     vectors->labelsize(size11);
     globalfinedetune->labelsize(size);
     mastervolumedial->labelsize(size);
-    mastermono->labelsize(size11);
+  ///////////////////////////////////////OOO Strip-down : most widgets removed for further investigation
     masterkeyshift->labelsize(size);
     masterkeyshift->textsize(size12);
     bpmfallback->labelsize(size);
     bpmfallback->textsize(size12);
 
-    InstBlurb->labelsize(size11);
-    nextInst->labelsize(size11);
-    valueInst->textsize(size11);
-    cancelInst->labelsize(size11);
-    SystemEffectsGrp->labelsize(size12);
-    InsertionEffectsGrp->labelsize(size12);
-    if (syseffectui->visible())
-    {;
-        syseffnocounter->labelsize(size11);
-            syseffnocounter->textsize(size11);
-        sysefftype->labelsize(size11);
-            sysefftype->textsize(size11);
-
-        SysEffOn->labelsize(size14);
-        sysEffSend->labelsize(size11);
-        sysCopy->labelsize(size11);
-        sysPaste->labelsize(size11);
-        syseffectui->effRtext(mainScale, sysefftype->value());
-    }
-    else
-    {
-        inseffnocounter->labelsize(size11);
-            inseffnocounter->textsize(size11);
-        insefftype->labelsize(size11);
-            insefftype->textsize(size11);
-
-        inseffpart->labelsize(size11);
-            inseffpart->textsize(size11);
-        insCopy->labelsize(size11);
-        insPaste->labelsize(size11);
-        inseffectui->effRtext(mainScale, insefftype->value());
-    }
-    npartcounter->labelsize(size11);
-        npartcounter->textsize(size11);
-    maxparts->labelsize(size11);
-        maxparts->textsize(size11);
-
-    panning_law->labelsize(size12);
-        panning_law->textsize(size12);
+  ///////////////////////////////////////OOO Strip-down : most widgets removed for further investigation
 
     undo->labelsize(size11);
     redo->labelsize(size11);
@@ -1024,55 +470,14 @@ Instance from 1 to 31}
   }
   Function {syseffRtext()} {} {
     code {//
-    float dScale = syseffsendwindow->w() / float(syseffDW);
-
-    int size = int(10 * dScale);
-    syseffname->labelsize(size);
-
-    syseffClose->labelsize(int(14 * dScale));
-    sys01txt->labelsize(size);
-    sys02txt->labelsize(size);
-    sys03txt->labelsize(size);
-    sys12txt->labelsize(size);
-    sys13txt->labelsize(size);
-    sys23txt->labelsize(size);
-    syseffsendwindow->redraw();} {}
+  ///////////////////////////////////////OOO Strip-down : most widgets removed for further investigation
+    ;} {}
   }
   Function {theme()} {} {
     code {//
         lastmainW = 0;
-        if (syseffsendwindow->visible())
-        {
-            syseffRtext();
-        }
-        if (syseffectui != NULL)
-        {
-            if (syseffectui->filterwindow != NULL)
-            {
-                    if (syseffectui->filterwindow->visible())
-                    {
-                        lastsysDynFiltW = 0;
-                        syseffectui->filtRtext();
-                    }
-                    if(syseffectui->fwin_filterui)
-                        syseffectui->fwin_filterui->theme();
-            }
-
-        }
-        if (inseffectui != NULL)
-        {
-            if (inseffectui->filterwindow != NULL)
-            {
-                    if (inseffectui->filterwindow->visible())
-                    {
-                        lastinsDynFiltW = 0;
-                        inseffectui->filtRtext();
-                    }
-                    if(inseffectui->fwin_filterui)
-                        inseffectui->fwin_filterui->theme();
-            }
-        }
-        ;} {}
+  ///////////////////////////////////////OOO Strip-down : most widgets removed for further investigation
+       ;} {}
   }
   decl {bool runGUI; //////////////////////////OOO Strip-down allows to shutdown a standalone GUI without SynthEngine
        } {public global
