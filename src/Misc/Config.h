@@ -97,7 +97,6 @@ class Config
         Logger const& getLogger(){ return logHandler; }
         bool loadPresetsList();
         bool savePresetsList();
-        void loadConfig();
         bool updateConfig(int control, int value);
         void initBaseConfig(XMLStore&);
         void verifyVersion(XMLStore const&);
@@ -121,8 +120,6 @@ class Config
         void signalCheck();
         void setRtprio(int prio);
         using ThreadFun = void*(void*);
-        bool startThread(pthread_t*, ThreadFun*, void* arg,
-                         bool schedfifo, char lowprio, string const& name = "");
         string const& programCmd()     { return programcommand; }
 
         bool    isLV2;
@@ -235,12 +232,6 @@ class Config
         int   presetsRootID;
         int   tempBank;
         int   tempRoot;
-#ifdef REPORT_NOTES_ON_OFF
-        int   noteOnSent; // note test
-        int   noteOnSeen;
-        int   noteOffSent;
-        int   noteOffSeen;
-#endif //REPORT_NOTES_ON_OFF
         uint  VUcount;
         uchar channelSwitchType;
         uchar channelSwitchCC;
@@ -290,11 +281,9 @@ class Config
     private:
         void findManual();
         static void* _findManual(void*);
-        pthread_t  findManual_Thread;
 
         void defaultPresets();
         void buildConfigLocation();
-        bool initFromPersistentConfig();
         bool extractBaseParameters(XMLStore&);
         bool extractConfigData(XMLStore&);
         void capturePatchState(XMLStore&);

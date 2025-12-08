@@ -47,7 +47,6 @@ InterChange::InterChange(SynthEngine& synthInstance)
     guiDataExchange{[](CommandBlock const&){ /* no communication GUI */ }},
     syncWrite(false),
     lowPrioWrite(false),
-    sortResultsThreadHandle(0),
     swapRoot1(UNUSED),
     swapBank1(UNUSED),
     swapInstrument1(UNUSED),

@@ -24,6 +24,7 @@
 
 
 #include <iostream>
+#include <memory>
 
 #include "Interface/InterfaceAnchor.h"
 #include "MasterUI.h"
@@ -42,8 +43,7 @@ int main()
 {
     cout << "\nHello World - this is a gutted Yoshimi..." << endl;
 
-    auto guiMaster = std::make_unique<MasterUI>(
-                         InterfaceAnchor(/*uninitialised for this test*/));
+    auto guiMaster = std::make_unique<MasterUI>(InterfaceAnchor(/*uninitialised for this test*/));
 
     guiMaster->Init();
     cout << "\n!!!!! Yoshimi-GUI started *WITHOUT* crash !!!!!\n" << endl;
