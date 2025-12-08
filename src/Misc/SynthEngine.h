@@ -57,9 +57,7 @@ class Controller;
 class TextMsgBuffer;
 class InterfaceAnchor;
 
-#ifdef GUI_FLTK
 class MasterUI;
-#endif
 
 using std::string;
 using std::to_string;
@@ -292,10 +290,8 @@ class SynthEngine
         int keyshift;
 
     public:
-#ifdef GUI_FLTK
         ///////////////////TODO 1/2024 : retract direct usage of direct SynthEngine* from UI
         MasterUI* getGuiMaster();
-#endif
     private:
         CallbackGuiClosed callbackGuiClosed;
         string windowTitle;

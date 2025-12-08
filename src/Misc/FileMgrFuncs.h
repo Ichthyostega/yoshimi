@@ -35,7 +35,6 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <stdio.h>
-#include <zlib.h>
 
 #include "globals.h"
 
@@ -571,21 +570,6 @@ inline void dir2string(string &wanted, string currentDir, string exten, int opt 
 }
 
 
-inline string saveGzipped(const char* data, string const& filename, int compression)
-{
-    char options[10];
-    snprintf(options, 10, "wb%d", compression);
-
-    gzFile gzfile;
-    gzfile = gzopen(filename.c_str(), options);
-    if (gzfile == NULL)
-        return "gzopen() == NULL";
-    int res = gzputs(gzfile, data);
-    gzclose(gzfile);
-    return res<0? "Failure writing compressed data": "";
-}
-
-
 inline ssize_t saveData(char *buff, size_t bytes, string const& filename)
 {
     int writefile = open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC,
@@ -612,83 +596,6 @@ inline bool saveText(string const& text, string const& filename)
 }
 
 
-inline string loadGzipped(string const& filename, string& report)
-{
-    const int BUF_SIZE = 4096;
-    stringstream readStream;
-    gzFile gzf  = gzopen(filename.c_str(), "rb");
-    if (not gzf)
-        report = ("Failed to open file " + filename + " for load: " + string(strerror(errno)));
-    else
-    {
-        int readFlag{1};
-        while (readFlag > 0)
-        {
-            std::array<char, BUF_SIZE+1> fetchBuf{0};
-            readFlag = gzread(gzf, fetchBuf.data(), BUF_SIZE);
-            if (readFlag > 0)
-                readStream << fetchBuf.data();
-        }
-        if (readFlag < 0)
-        {
-            int errnum{0};
-            report = ("Read error in zlib: " + string(gzerror(gzf, &errnum)));
-            if (errnum == Z_ERRNO)
-                report = ("Filesystem error: " + string(strerror(errno)));
-        }
-        gzclose(gzf);
-    }
-    return readStream.str();
-}
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////TODO 4/25 : old version --> obsolete after switch to XMLStore
-inline char * loadGzipped_OBSOLETE_(string const& _filename, string * report)
-{
-    string filename = _filename;
-    char *data = NULL;
-    gzFile gzf  = gzopen(filename.c_str(), "rb");
-    if (!gzf)
-    {
-        *report = ("Failed to open file " + filename + " for load: " + string(strerror(errno)));
-        return NULL;
-    }
-    const int bufSize = 4096;
-    char fetchBuf[4097];
-    int this_read;
-    int total_bytes = 0;
-    stringstream readStream;
-    for (bool quit = false; !quit;)
-    {
-        memset(fetchBuf, 0, sizeof(fetchBuf) * sizeof(char));
-        this_read = gzread(gzf, fetchBuf, bufSize);
-        if (this_read > 0)
-        {
-            readStream << fetchBuf;
-            total_bytes += this_read;
-        }
-        else if (this_read < 0)
-        {
-            int errnum;
-            *report = ("Read error in zlib: " + string(gzerror(gzf, &errnum)));
-            if (errnum == Z_ERRNO)
-                *report = ("Filesystem error: " + string(strerror(errno)));
-            quit = true;
-        }
-        else if (total_bytes > 0)
-        {
-            data = new char[total_bytes + 1];
-            if (data)
-            {
-                memset(data, 0, total_bytes + 1);
-                memcpy(data, readStream.str().c_str(), total_bytes);
-            }
-            quit = true;
-        }
-    }
-    gzclose(gzf);
-    //*report = "it looks like we successfully loaded" + filename;
-    return data;
-}
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////TODO 4/25 : old version --> obsolete after switch to XMLStore
 
 /*
  * This is used for text files, preserving individual lines. These can

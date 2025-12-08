@@ -34,7 +34,6 @@
 #include "Params/OscilParameters.h"
 #include "Synth/Resonance.h"
 
-#include <semaphore.h>
 
 #include <list>
 #include <memory>
@@ -66,12 +65,10 @@ class InterChange : private DataText
         static constexpr size_t commandBlockSize = sizeof (CommandBlock);
         SynthEngine& synth;
 
-#ifdef GUI_FLTK
         std::unique_ptr<MasterUI> guiMaster;
 
         ///////////////////TODO 1/2024 : retract usage of direct SynthEngine* from UI
         friend class SynthEngine;
-#endif
 
     public:
         InterChange(SynthEngine&);
@@ -84,27 +81,20 @@ class InterChange : private DataText
 
         bool Init();
 
-#ifdef GUI_FLTK
         void createGuiMaster();
         void shutdownGui();
-#endif
 
         CommandBlock commandData;
-#ifndef YOSHIMI_LV2_PLUGIN
         RingBuffer <9, log2 (commandBlockSize)> fromCLI;
-#endif
         RingBuffer <10, log2 (commandBlockSize)> decodeLoopback;
-#ifdef GUI_FLTK
         RingBuffer <10, log2 (commandBlockSize)> fromGUI;
         RingBuffer <11, log2 (commandBlockSize)> toGUI;
-#endif
         RingBuffer <10, log2 (commandBlockSize)> fromMIDI;
         RingBuffer <10, log2 (commandBlockSize)> returnsBuffer;
         RingBuffer <4, log2 (commandBlockSize)> muteQueue;
 
         GuiDataExchange guiDataExchange;
 
-        sem_t sortResultsThreadSemaphore;
         void spinSortResultsThread();
 
         void generateSpecialInstrument(int npart, std::string name);
@@ -127,7 +117,6 @@ class InterChange : private DataText
     private:
         void* sortResultsThread();
         static void* _sortResultsThread(void* arg);
-        pthread_t  sortResultsThreadHandle;
         void muteQueueWrite(CommandBlock&);
         void indirectTransfers(CommandBlock&, bool noForward = false);
         int indirectVector(CommandBlock&, uchar& newMsg, bool& guiTo, std::string& text);
