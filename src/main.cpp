@@ -46,15 +46,26 @@ int main()
     auto guiMaster = std::make_unique<MasterUI>(InterfaceAnchor(/*uninitialised for this test*/));
 
     guiMaster->Init();
-    cout << "\n!!!!! Yoshimi-GUI started *WITHOUT* crash !!!!!\n" << endl;
+    cout << "\n\n... FLTK UI created" << endl;
 
+    uint loopCnt{0};
 
     while (guiMaster and guiMaster->runGUI)
     {
         guiMaster->checkBuffer();
         Fl::wait(33333); // process GUI events
+
+        if (++loopCnt < 10)
+        {
+            cout << "... FLTK event loop "<<loopCnt << endl;
+        }
+        else
+        if (loopCnt == 10)
+        {
+            cout << "... FLTK event loop running *WITHOUT* crash !!!!!\n" << endl;
+        }
     }
 
-    cout << "\nStill no crash yet -- farewell cruel World!" << endl;
+    cout << "\nStill no crash yet ("<<loopCnt<<" turns) -- farewell cruel World!" << endl;
     exit(0);
 }
