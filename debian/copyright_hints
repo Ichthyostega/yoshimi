@@ -218,13 +218,14 @@ Files: CHECK_ON_RELEASE
  doc/Histories/Yoshimi_2.3.1_features.txt
  doc/Histories/Yoshimi_2.3.2_features.txt
  doc/Histories/Yoshimi_2.3.3_features.txt
+ doc/Histories/Yoshimi_2.3.4_features.txt
  doc/Histories/Yoshimi_Early_History.txt
  doc/Histories/Yoshimi_License_History.txt
  doc/Histories/Yoshimi_Only_NRPNs.txt
  doc/Histories/Zyn_ChangeLog
  doc/Histories/Zyn_HISTORY.txt
  doc/Note_Envelopes.txt
- doc/Yoshimi_2.3.4_features.txt
+ doc/Yoshimi_2.3.5_features.txt
  doc/Yoshimi_License_History.txt
  doc/Yoshimi_Quote.txt
  doc/examples/Arram_Koth_Finale.txt
@@ -346,6 +347,7 @@ Copyright: 2002-2005, Nasca Octavian Paul
   2011, Alan Calvert
   2014-2021, Will Godfrey
   2014-2024, Will Godfrey
+  2014-2025, Will Godfrey
   2015-2023, Will Godfrey
   2016-2024, Will Godfrey
   2016-2025, Will Godfrey
@@ -400,7 +402,7 @@ Copyright: 2002-2005, Nasca Octavian Paul
   2014-2021, Will Godfrey & others
   2014-2023, Will Godfrey & others
   2014-2025, Will Godfrey & others
-  2015-2024, Will Godfrey & others
+  2015-2025, Will Godfrey & others
   2017-2023, Will Godfrey & others
 License: GPL-2+
  FIXME
@@ -613,6 +615,12 @@ Copyright: 2002-2005, Nasca Octavian Paul
 License: GPL-2+
  FIXME
 
+Files: src/UI/ScaleTrackedWindow.cpp
+ src/UI/ScaleTrackedWindow.h
+Copyright: 2025, Jesper Lloyd
+License: GPL-2+
+ FIXME
+
 Files: src/Params/ParamCheck.cpp
  src/Params/ParamCheck.h
 Copyright: 2018-2023, Kristian Amlie, Will Godfrey
@@ -652,6 +660,13 @@ Files: src/Misc/WavFile.cpp
  src/Misc/WavFile.h
 Copyright: 2006, Nasca Octavian Paul
   2008, Nasca Octavian Paul
+License: UNKNOWN
+ FIXME
+
+Files: desktop/metainfo/yoshimi.appdata.xml
+ desktop/metainfo/yoshimi.metainfo.xml
+Copyright: 2002-2009, Nasca Octavian Paul), development of Yoshimi has continued for quite a while now in its own direction. Originally these included major optimizations for audio and MIDI performance. More recently there has been progressive development of user-level access to all controls, including command line access. Since V1.5.0 there is full Midi Learn capability.
+  2016-2025, Yoshimi project <willgodfrey@musically.me.uk> -->
 License: UNKNOWN
  FIXME
 
@@ -1051,6 +1066,11 @@ Copyright: 2021, William Godfrey
 License: GPL-2+
  FIXME
 
+Files: banks/Drums/0047-Slow Cymbal.xiy
+Copyright: NONE
+License: GPL-3
+ FIXME
+
 Files: src/UI/VectorUI.fl
 Copyright: 2016-2024, Will Godfrey
 License: GPL-3+
@@ -1074,12 +1094,6 @@ License: UNKNOWN
 
 Files: doc/examples/themes/gray-dark-01.clr
 Copyright: 2023, Lorenzo Sutton - License GPL 2.0 or later
-License: UNKNOWN
- FIXME
-
-Files: desktop/metainfo/yoshimi.metainfo.xml
-Copyright: 2002-2009, Nasca Octavian Paul), development of Yoshimi has continued for quite a while now in its own direction. Originally these included major optimizations for audio and MIDI performance. More recently there has been progressive development of user-level access to all controls, including command line access. Since V1.5.0 there is full Midi Learn capability.
-  2016-2024, Yoshimi project <willgodfrey@musically.me.uk> -->
 License: UNKNOWN
  FIXME
 
