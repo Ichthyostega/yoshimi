@@ -79,6 +79,10 @@ Copyright: 2011, Alan Calvert
            2014-2024, Will Godfrey
 License: GPL-3+
 
+Files: src/UI/ScaleTrackedWindow.*
+Copyright: 2025, Jesper Lloyd
+License: GPL-2+
+
 Files: banks/Drums/0004-Natural?Drum?Kit.xiz
        banks/Drums/0005-Natural?Snare?-?variable?deca.xiz
        banks/Drums/0006-HiHat?closed?-?variable?decay.xiz
@@ -87,6 +91,14 @@ License: GPL-3
 
 Files: banks/Drums/0040-Crash?Full?2.xiz
 Copyright: 2012-2023, Lorenzo Sutton, Dario Straulino
+License: GPL-3
+
+Files: banks/Drums/0047-Slow Cymbal.xiy
+Copyright: Dario Straulino & Will Godfrey
+License: GPL-3
+
+Files: banks/Choir_and_Voice/0102-Vocalise.xiy
+Copyright: 2025, Aleksey Zhehanov
 License: GPL-3
 
 Files: doc/examples/Original?Zyn?Patchsets/*
