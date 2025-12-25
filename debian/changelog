@@ -1,13 +1,14 @@
-yoshimi (2.3.5.3-1) UNRELEASED; urgency=medium
+yoshimi (2.3.5.3-1) unstable; urgency=medium
 
   * New upstream version 2.3.5.3
 
   * Update copyright information
     + Update copyrights
-    + Update licenserule exceptions
+    + Fix file-pattern for files with spaces
+    + Update licensecheck exceptions
     * Re-generate d/copyright_hints
 
- -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Thu, 25 Dec 2025 15:57:47 +0100
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Thu, 25 Dec 2025 16:47:24 +0100
 
 yoshimi (2.3.5.2-1) unstable; urgency=medium
 
