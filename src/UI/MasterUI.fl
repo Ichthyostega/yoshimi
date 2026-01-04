@@ -298,6 +298,9 @@ class MasterUI {: {public GuiUpdates}
         Fl_Dial mastervolumedial {
           label Volume
           tooltip {Master Volume} xywh {330 42 40 40} box ROUND_UP_BOX color 29 labelsize 10 labelcolor 64 maximum 127
+          code0 {
+            mastervolumedial->setGraphicsType(VC_SubBandwidthScale); ///////////////NOTE: hooked in for Demo of Wayland/Cairo problem
+          //}
           class WidgetPDial
         }
       }

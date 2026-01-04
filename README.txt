@@ -1,20 +1,41 @@
-Version 2.3.5
+This is a DEMO for an issue with FLTK + Wayland + Cairo
 
-New feature: A set of LFOs for the SubSynth engine.
+The code in this branch is a stripped-down variant of the
+Yoshimi soft synth https://yoshimi.sourceforge.io/
 
-New feature: Popup tooltips scale to match the parent window.
+The code base of Yoshimi is quite elaborate and has a long history,
+dating back into the late 90ies. All that time, the open source
+contributors managed to keep it running and evolving.
 
-Various code refinements.
 
-Yoshimi source code is available from either:
-https://sourceforge.net/projects/yoshimi
-Or:
-https://github.com/Yoshimi/yoshimi
+For this PROBLEM DEMO version
+ - the entire Synth Engine was removed
+ - the CMake build is also reduced to the bare minimum
+ - it runs single threaded, with the UI in the main thread
+ - the UI only has some minimal widgets (and looks strange,
+   since also the theming support was removed)
+ - in this branch there is a ton of unused code, and a lot
+   of undefined symbols -- it just passes the compiler.
 
-Full build instructions are in 'INSTALL'.
+Build:
 
-Our list archive is at:
-https://www.freelists.org/archive/yoshimi
+ - on Debian `apt install build-essential cmake libfltk1.4-dev`
+ - `mkdir build`
+ - `cmake -S src -B build`
+ - `cmake --build build -- -j8`
 
-To post, email to:
-yoshimi@freelists.org
+then launch `build/yoshimi` and turn the "volume" dial
+
+Observations:
+
+ - When running under X11 (with FLTK 1.4) :
+ 
+   * pop-up is positioned as intended, close to the rotary knob
+   * BUT Cairo drawing not visible (no red line)
+    
+ - When running under Wayland
+    
+   * pop-up appears in the middle of the window
+   * BUT Cairo drawing works: there is a dynamic red line
+
+
