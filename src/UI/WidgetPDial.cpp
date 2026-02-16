@@ -42,7 +42,7 @@ using func::limit;
 // Prior to fltk 1.4, there was no built in support for handling screen scales.
 // This may not be the correct way to handle the scale factor.
 inline float get_scale_factor(Fl_Widget *widget) {
-#if FL_API_VERSION > 10400
+#if FL_API_VERSION >= 10400
     Fl_Window* window = widget->window();
     return Fl::screen_scale(window ? window->screen_num() : 0);
 #else
@@ -191,11 +191,18 @@ void WidgetPDial::draw()
         * fl_pie(cx - 2, cy - 2, d + 4, d + 4, 0, 360);
         */
     double val = (value() - minimum()) / (maximum() - minimum());
-    cairo_t *cr;
+#ifndef YOSHIMI_CAIRO_LEGACY
+    cairo_t* cr = Fl::cairo_make_current(window());
+               // works both with Wayland and X11
+
+#else
+    // Legacy solution : retrieve drawing surface from XServer
     cairo_surface_t* Xsurface = cairo_xlib_surface_create
         (fl_display, fl_window, fl_visual->visual,Fl_Window::current()->w() * scale,
-         Fl_Window::current()->h() * scale);
-    cr = cairo_create (Xsurface);
+        Fl_Window::current()->h() * scale);
+    cairo_t* cr = cairo_create (Xsurface);
+#endif
+    cairo_save(cr);
     cairo_translate(cr,cx+dh,cy+dh);
     //relative lengths of the various parts:
     double rCint = 10.5/35;
@@ -286,7 +293,14 @@ void WidgetPDial::draw()
     cairo_stroke (cr);
     //freeing the resources
     cairo_pattern_destroy(pat);
-    cairo_surface_destroy(Xsurface);  cairo_destroy(cr);
+    cairo_restore(cr);
+#ifndef YOSHIMI_CAIRO_LEGACY
+    // Fltk handles the lifecycle of cr in fltk >= 1.4.0
+    Fl::cairo_flush(cr);
+#else
+    cairo_surface_destroy(Xsurface);
+    cairo_destroy(cr);
+#endif
 }
 
 inline void WidgetPDial::pdialcolor(int r,int g,int b)
