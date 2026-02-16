@@ -1,4 +1,43 @@
-yoshimi 2.3.5.2
+yoshimi 2.3.6
+
+2026-02-14 Will
+bn 2420
+Replaced main window tabs with emulated type (simliar to AddSynth Voice tabs).
+Updated docs.
+Set release version 2.3.6
+
+2026-02-8 Will
+bn 2419
+Made small adjustment to CLI CrossFade controls
+Added/adjusted comments in globals h
+
+2026-02-6 Will
+bn 2418
+BugFix: Some part level changes were reporting an unrecognised effect.
+This was caused by the position of effectNumber in globals.h
+Moving this past those controls so that it is with the other effect
+controls cures the problem.
+It seems it is acting as a group boundary.
+CLI crossfade vol now works correctly - needed to increase the limit value in Misc/Part.cpp
+
+2026-02-5 Will
+bn 2417
+Included Improved Crossfade from Kristian.
+Updated dev_notes.
+
+2026-01-17 Will
+bn 2416
+Changing partlevel controls are no longer marked as instrument changed.
+
+2026-01-17 Will
+bn 2415
+SubSynth bandwidth scale drawing no longer uses cairo
+(although the original code has been kept but disabled)
+Minor adjustments also made to graph line widths and colours.
+
+2025-12-27 Will
+bn 2414
+Merged in Jespers cario-fltk1.4 / Wayland patch
 
 2025-12-20 Will
 bn 2412
