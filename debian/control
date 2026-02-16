@@ -1,6 +1,5 @@
 Source: yoshimi
 Section: sound
-Priority: optional
 Maintainer: Debian Multimedia Maintainers <debian-multimedia@lists.debian.org>
 Uploaders:
  Dennis Braun <snd@debian.org>,
