@@ -1,0 +1,20 @@
+Description: Drop installation of non-existant appdata.xml file
+Author: IOhannes m zmölnig <umlaeute@debian.org>
+Origin: Debian
+Bug: https://github.com/Yoshimi/yoshimi/issues/246
+Last-Update: 2026-02-16
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- yoshimi.orig/src/CMakeLists.txt
++++ yoshimi/src/CMakeLists.txt
+@@ -549,8 +549,8 @@
+     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps)
+ install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/metainfo/yoshimi.metainfo.xml
+     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/metainfo)
+-install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/metainfo/yoshimi.appdata.xml
+-    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/metainfo)
++#install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/metainfo/yoshimi.appdata.xml
++#    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/metainfo)
+ install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../desktop/yoshimi.1
+     DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
+ 
