@@ -1,3 +1,12 @@
+yoshimi (2.3.6.1-1) UNRELEASED; urgency=medium
+
+  * New upstream version 2.3.6.1
+  * Drop obsolete patches
+  * Update copyright information
+    + Re-generated d/copyright_hints
+
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Fri, 20 Feb 2026 14:12:22 +0100
+
 yoshimi (2.3.6-1) unstable; urgency=medium
 
   * New upstream version 2.3.6
