@@ -11,7 +11,7 @@ so CMake doesn't need to know about our horrible conspiracy.
  1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
-index bd39690..0479631 100644
+index 07d7189..97ae157 100644
 --- a/src/CMakeLists.txt
 +++ b/src/CMakeLists.txt
 @@ -30,7 +30,8 @@ endif ()

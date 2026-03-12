@@ -13,7 +13,7 @@ do not provide that newer header; thus reverting this change
  2 files changed, 1 insertion(+), 3 deletions(-)
 
 diff --git a/src/UI/MiscGui.cpp b/src/UI/MiscGui.cpp
-index ada37f9..d6331cf 100644
+index 95f2249..e5dd483 100644
 --- a/src/UI/MiscGui.cpp
 +++ b/src/UI/MiscGui.cpp
 @@ -29,7 +29,6 @@
@@ -25,7 +25,7 @@ index ada37f9..d6331cf 100644
  #include <cairo-xlib.h>
  
 diff --git a/src/UI/WidgetPDial.cpp b/src/UI/WidgetPDial.cpp
-index 00861a9..49d57b5 100644
+index 254ffb2..47ba4b0 100644
 --- a/src/UI/WidgetPDial.cpp
 +++ b/src/UI/WidgetPDial.cpp
 @@ -32,8 +32,7 @@

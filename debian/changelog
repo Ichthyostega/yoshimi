@@ -1,10 +1,10 @@
-yoshimi (2.3.6.2-1~1ppa1~xenial) xenial; urgency=low
+yoshimi (2.3.6.2-1~1ppa2~trusty) trusty; urgency=low
 
-  * Rebuild latest version 2.3.6.2 for Ubuntu/Xenial(16.04 LTS)
+  * Rebuild latest version 2.3.6.2 for Ubuntu/Trusty(14.04 LTS)
   * unofficial DEB package by Ichthyostega
-  * debian standards version is 4.7.3
+  * lower debian standards version to 4.3.0
   * use GCC-9 from ppa:ubuntu-toolchain-r/test
-  * tweaks to allow build on this somewhat old platform
+  * tweaks to allow build on this rather old platform
     * force build with -fPIC
     * lower debhelper and compliance level
     * revert a newer FLTK header for compatibility
@@ -145,7 +145,7 @@ yoshimi (2.2.3-1~buster) Lumiera-buster-tool; urgency=low
   * Rebuild/Backport for Debian/Buster(oldstable).
   * unofficial DEB package by Ichthyostega
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Wed, 15 Feb 2023 01:16:20 +0100
+ -- Hermann Vosseler <deb@ichthyostega.de>  Wed, 15 Feb 2023 01:23:55 +0100
 
 yoshimi (2.2.2.1-2~buster) Lumiera-buster-tool; urgency=low
 
@@ -231,7 +231,7 @@ yoshimi (2.0.1-1~buster) Lumiera-buster-tool; urgency=low
   [ Mattia Rizzolo ]
   * Remove unused build-dependency on liboost-dev.
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 27 Apr 2021 00:31:05 +0200
+ -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 27 Apr 2021 00:42:55 +0200
 
 yoshimi (2.0-1~buster) Lumiera-buster-tool; urgency=low
 
@@ -248,7 +248,7 @@ yoshimi (2.0-1~buster) Lumiera-buster-tool; urgency=low
     + Change license for desktop/metainfo/* and Util/YoshimiSplash.svg to CC-BY-4.0
   * Fix license name of yoshimi.appdata.xml to make lintian happy
 
- -- Hermann Vosseler <deb@ichthyostega.de>  Fri, 05 Mar 2021 01:12:42 +0100
+ -- Hermann Vosseler <deb@ichthyostega.de>  Fri, 05 Mar 2021 01:23:42 +0100
 
 yoshimi (1.7.1-1~buster) Lumiera-buster-tool; urgency=low
 
