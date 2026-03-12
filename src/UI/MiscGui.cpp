@@ -1394,7 +1394,7 @@ void custom_graphics(ValueType vt, float val,int W,int H)
         string xMarkers[] = {"x10","x100","x1k","x10k","10%","1%","0.1%","0.01%"};
 
         /* Scale lines */
-
+        fl_line_style(0, 1); // just to be sure
         fl_font(fl_font(),8);
         for (i = 0; i < 4; i++) /* 10x / 10%, 100x / 1% ... */
         {
@@ -1440,12 +1440,19 @@ void custom_graphics(ValueType vt, float val,int W,int H)
         /* Unit marker at the lower right of the graph */
         fl_draw("Hz", x0 + _w, y0 + 4, 20, 12, Fl_Align(FL_ALIGN_LEFT));
 
-        /* Vertical center line */
-        fl_color(38);
+        /* Horizontal center line */
+        fl_line_style(0, 2);
+        fl_color(tooltip_grid);
         fl_line(x0 - margin, cy, x0 + _w, cy);
 
         /* Function curve */
-        fl_color(tooltip_curve);
+        fl_color(reson_graph_line); // red by default
+        fl_line(x0, cy - (val * 0.8f), x0 + _w, cy + (val * 0.65f));
+    return;
+
+    /*
+     * The following no longer used.
+     */
         if ((int)val == 0)
         {
             fl_line(x0, cy, x0 + _w, cy);
@@ -1455,19 +1462,29 @@ void custom_graphics(ValueType vt, float val,int W,int H)
             const float p = ((int)val / 64.0f) * 3.0;
 
             /* Cairo not necessary, but makes it easier to read the graph */
-            cairo_t *cr;
+#ifndef YOSHIMI_CAIRO_LEGACY
+            cairo_t *cr = Fl::cairo_make_current(Fl_Window::current());
+
+#else
+            // Legacy solution : retrieve drawing surface from XServer
             cairo_surface_t* Xsurface = cairo_xlib_surface_create
                 (fl_display, fl_window, fl_visual->visual,
                  Fl_Window::current()->w(), Fl_Window::current()->h());
-            cr = cairo_create (Xsurface);
-
+            cairo_t *cr = cairo_create (Xsurface);
+#endif
+            cairo_save(cr);
             cairo_set_source_rgb(cr, 1, 0, 0);
             cairo_set_line_width(cr, 1.5);
             cairo_move_to(cr, x0, cy - ry * log10(power<50>(p)));
             cairo_line_to(cr, x0 + _w, cy - ry * log10(powf(0.05, p)));
             cairo_stroke(cr);
-
-            cairo_surface_destroy(Xsurface);  cairo_destroy(cr);
+            cairo_restore(cr);
+#ifndef YOSHIMI_CAIRO_LEGACY
+            Fl::cairo_flush(cr);
+#else
+            cairo_surface_destroy(Xsurface);
+            cairo_destroy(cr);
+#endif
         }
         break;
     }

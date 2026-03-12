@@ -1,4 +1,75 @@
-yoshimi 2.3.5.1
+yoshimi 2.3.6.1
+
+2026-03-11 Will
+bn 2422
+Merged in Bank and MusicIO fixes from Hermann.
+corrected error in dev_notes/MIDI_Aftertouch.txt
+Set bugfix version 2.3.6.2
+
+2026-02-17 Will
+bn 2421
+Removed orphaned appdata line in CmakeLists.txt
+Resolved oversize spinner arrows in main window when at default size.
+Corrected spelling errors in docs.
+Set bugfix version 2.3.6.1
+
+2026-02-14 Will
+bn 2420
+Replaced main window tabs with emulated type (simliar to AddSynth Voice tabs).
+Updated docs.
+Set release version 2.3.6
+
+2026-02-8 Will
+bn 2419
+Made small adjustment to CLI CrossFade controls
+Added/adjusted comments in globals h
+
+2026-02-6 Will
+bn 2418
+BugFix: Some part level changes were reporting an unrecognised effect.
+This was caused by the position of effectNumber in globals.h
+Moving this past those controls so that it is with the other effect
+controls cures the problem.
+It seems it is acting as a group boundary.
+CLI crossfade vol now works correctly - needed to increase the limit value in Misc/Part.cpp
+
+2026-02-5 Will
+bn 2417
+Included Improved Crossfade from Kristian.
+Updated dev_notes.
+
+2026-01-17 Will
+bn 2416
+Changing partlevel controls are no longer marked as instrument changed.
+
+2026-01-17 Will
+bn 2415
+SubSynth bandwidth scale drawing no longer uses cairo
+(although the original code has been kept but disabled)
+Minor adjustments also made to graph line widths and colours.
+
+2025-12-27 Will
+bn 2414
+Merged in Jespers cario-fltk1.4 / Wayland patch
+
+2025-12-20 Will
+bn 2412
+Set version 2.3.5.3
+Formal release of XML V3/V4 identification.
+
+2025-12-14 Hermann
+bn 2411
+Provide code variant to support MXML v4 in src/Misc/XMLStore.cpp
+Builds upon the rework of XML handling from 2025-6-1 (bn 2387).
+
+2025-11-06 Will
+bn 2410
+Permanently removed (apparently) redunant code in UI/WidgetCheckButton.cpp
+Set version 2.3.5.2
+
+2025-10-20 Will
+bn 2409
+Added SubSynth LFOs to CLI access.
 
 2025-9-29 Will
 bn 2408
@@ -109,6 +180,13 @@ Set version 2.3.4 rc1
 2025-6-6 Will
 bn 2387
 Merged in changed parts warnings from parts branch.
+
+2025-6-1 Hermann
+Rework of XML handling code and Yoshimi data formats:
+All access to the MXML library now confined to a single
+translation unit XMLStore.cpp, automatic memory management
+now delegated to MXML. Processing of metadata consolidated.
+This refactoring became necessary to support MXML v4 (see 2025-12)
 
 2025-5-26 Will
 bn 2386
