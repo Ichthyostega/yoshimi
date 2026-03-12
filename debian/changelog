@@ -1,4 +1,4 @@
-yoshimi (2.3.6.2-1~trixie) Lumiera-trixie-tool; urgency=low
+yoshimi (2.3.6.2-1~noble) Lumiera-noble-tool; urgency=low
 
   * New upstream version 2.3.6.2
   * Bump Debian standards version to 4.7.3
@@ -6,7 +6,7 @@ yoshimi (2.3.6.2-1~trixie) Lumiera-trixie-tool; urgency=low
   * Remove redudant rules-requires-root field
   * Drop useless build-depend on dssi-dev
   * Update copyright information
-  * Rebuild for Debian/Trixie(stable).
+  * Rebuild for Ubuntu/Noble(24.04 LTS).
   * unofficial DEB package by Ichthyostega
 
  -- Hermann Vosseler <deb@ichthyostega.de>  Thu, 12 Mar 2026 03:33:23 +0100
