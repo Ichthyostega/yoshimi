@@ -1,23 +1,15 @@
-yoshimi (2.3.6.1-1) UNRELEASED; urgency=medium
+yoshimi (2.3.6.2-1~trixie) Lumiera-trixie-tool; urgency=low
 
-  * New upstream version 2.3.6.1
-  * Drop obsolete patches
+  * New upstream version 2.3.6.2
+  * Bump Debian standards version to 4.7.3
+  * Drop now obsolete 'Priority: optional'
+  * Remove redudant rules-requires-root field
+  * Drop useless build-depend on dssi-dev
   * Update copyright information
-    + Re-generated d/copyright_hints
+  * Rebuild for Debian/Trixie(stable).
+  * unofficial DEB package by Ichthyostega
 
- -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Fri, 20 Feb 2026 14:12:22 +0100
-
-yoshimi (2.3.6-1) unstable; urgency=medium
-
-  * New upstream version 2.3.6
-  * Add patch to fix installation of non-existant file
-  * Add explicit salsa-ci configuration
-  * Drop obsolete 'Priority: optional' stanza.
-  * Remove redudant rules-requires-root-no field
-  * Drop useless B-D on dssi-dev
-  * Bump standards version to 4.7.3
-
- -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Mon, 16 Feb 2026 19:36:40 +0100
+ -- Hermann Vosseler <deb@ichthyostega.de>  Thu, 12 Mar 2026 03:33:23 +0100
 
 yoshimi (2.3.5.1-1~trixie) Lumiera-trixie-tool; urgency=low
 
