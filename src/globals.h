@@ -633,38 +633,38 @@ namespace PART // usage PART::control::volume
 {
     enum control : uchar {
         enable = 0,
+        volume,
+        velocitySense,
+        panning,
+        velocityOffset,
+        midiChannel,
+        omni,
+        minNote,
+        maxNote,
+        minToLastKey,
+        maxToLastKey,
+        resetMinMaxKey,
+        maxNotes,
+        keyShift,
+        partToSystemEffect1,
+        partToSystemEffect2,
+        partToSystemEffect3,
+        partToSystemEffect4,
+        kitItemMute,
+        enableKitLine = 32, // first marked as instrument changed
         enableAdd,
         enableSub,
         enablePad,
-        enableKitLine,
-        kitItemMute,
-        volume = 10,         // . |
-        velocitySense,       // . |
-        panning,             // . |
-        velocityOffset,      // . |
-        midiChannel,         // . |
-        omni,                // . |
-        keyMode,             // . |
-        channelATset,        // . |
-        keyATset,            // . |
-        minNote,             // . |
-        maxNote,             // .  > 20 not stored in instruments.
-        minToLastKey,        // . |
-        maxToLastKey,        // . |
-        resetMinMaxKey,      // . |
-        maxNotes,            // . |
-        keyShift,            // . |
-        partToSystemEffect1, // . |
-        partToSystemEffect2, // . |
-        partToSystemEffect3, // . |
-        partToSystemEffect4, // . |
-        effectNumber = 40,      //
+        keyMode,
+        channelATset,
+        keyATset,
         portamento,
-        humanise = 50,
+        humanise,
         humanvelocity,
-        drumMode = 57,
+        drumMode,
         kitMode,
-        kitEffectNum = 64,
+        effectNumber = 64, // start of effects grouping
+        kitEffectNum,
         effectType,
         effectDestination,
         effectBypass,
@@ -724,7 +724,8 @@ namespace PART // usage PART::control::volume
         Off = 0,
         Multi,
         Single,
-        CrossFade
+        CrossFadeVel,
+        CrossFadeVol,
     };
 
     enum engine : uchar {
@@ -1150,7 +1151,7 @@ namespace EFFECT // usage EFFECT::control::level
 }
 
 namespace DISPLAY  // usage DISPLAY::control::hide
-{
+{ // *** Not currently in use ***
     enum control : char {
         hide = 0, // current window
         show,
