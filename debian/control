@@ -1,6 +1,5 @@
 Source: yoshimi
 Section: sound
-Priority: optional
 Maintainer: Debian Multimedia Maintainers <debian-multimedia@lists.debian.org>
 Uploaders:
  Dennis Braun <snd@debian.org>,
@@ -10,7 +9,6 @@ Uploaders:
 Build-Depends:
  debhelper-compat (= 13),
  cmake,
- dssi-dev,
  fluid,
  libasound2-dev,
  libcairo2-dev,
@@ -29,8 +27,7 @@ Build-Depends:
  pkgconf,
  sharutils,
  zlib1g-dev,
-Standards-Version: 4.7.2
-Rules-Requires-Root: no
+Standards-Version: 4.7.3
 Vcs-Git: https://github.com/Ichthyostega/yoshimi.git -b deb
 Homepage: https://yoshimi.github.io
 

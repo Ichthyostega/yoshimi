@@ -13,7 +13,7 @@ Copyright: 2002-2009, Nasca Octavian Paul and others
            2017, Jesper Lloyd
            2014, Andrew Deryabin <andrewderyabin@gmail.com>
            2021-2025, Ichthyostega
-           2014-2025, Will Godfrey & others
+           2014-2026, Will Godfrey & others
 License: GPL-2+
 
 Files: src/UI/ParametersUI.fl
@@ -21,6 +21,10 @@ Files: src/UI/ParametersUI.fl
 Copyright: 2011, Alan Calvert
            2014-2024, Will Godfrey
 License: GPL-3+
+
+Files: src/UI/ScaleTrackedWindow.*
+Copyright: 2025, Jesper Lloyd
+License: GPL-2+
 
 Files: banks/Drums/0004-Natural?Drum?Kit.xiz
        banks/Drums/0005-Natural?Snare?-?variable?deca.xiz
@@ -30,6 +34,14 @@ License: GPL-3
 
 Files: banks/Drums/0040-Crash?Full?2.xiz
 Copyright: 2012-2023, Lorenzo Sutton, Dario Straulino
+License: GPL-3
+
+Files: banks/Drums/0047-Slow?Cymbal.xiy
+Copyright: Dario Straulino & Will Godfrey
+License: GPL-3
+
+Files: banks/Choir_and_Voice/0102-Vocalise.xiy
+Copyright: 2025, Aleksey Zhehanov
 License: GPL-3
 
 Files: doc/examples/Original?Zyn?Patchsets/*
