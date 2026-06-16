@@ -1,7 +1,7 @@
-yoshimi (2.3.6.4-1~forky) Lumiera-forky-tool; urgency=medium
+yoshimi (2.3.6.4-1~bookworm) Lumiera-bookworm-tool; urgency=medium
 
   * New upstream bugfix release 2.3.6.4 (LAC-26)
-  * Rebuild for Debian/Forky(testing).
+  * Rebuild for Debian/Bookworm(oldstable).
   * unofficial DEB package by Ichthyostega
 
  -- Hermann Vosseler <deb@ichthyostega.de>  Tue, 16 Jun 2026 13:13:55 +0200
