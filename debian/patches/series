@@ -1,2 +1,3 @@
 0001-lower-CMake-minimum-requirement.patch
+0002-sneak-C-17-past-old-CMake.patch
 0030-revert-newer-FLTK-header.patch
