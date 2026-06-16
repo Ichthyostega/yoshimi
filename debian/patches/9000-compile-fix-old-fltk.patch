@@ -1,0 +1,44 @@
+From: Ichthyostega <prg@ichthyostega.de>
+Date: Thu, 12 Mar 2026 19:32:53 +0100
+Subject: compile-fix-old-fltk
+
+disable FLTK code guarded by Fl::is_scheme (a construct not yet supported by FLTK in 2014)
+Remark: most of that usage was gradually removed, since Yoshimi now uses a custom-made
+        theming and styling. We /believe/ that these remaining settings are without effect
+
+Patch adapted/reduced 2026-03-12
+---
+ src/UI/WidgetCheckButton.cpp | 19 ++++++++++---------
+ 1 file changed, 10 insertions(+), 9 deletions(-)
+
+diff --git a/src/UI/WidgetCheckButton.cpp b/src/UI/WidgetCheckButton.cpp
+index e139397..b638d77 100644
+--- a/src/UI/WidgetCheckButton.cpp
++++ b/src/UI/WidgetCheckButton.cpp
+@@ -125,16 +125,17 @@ void Fl_Light_Button2::draw()
+     int ww = W/2+1;
+     int xx = dx;
+     if (w()<ww+2*xx) xx = (w()-ww)/2;
+-    if (Fl::is_scheme("plastic"))
+-    {
+-      col = active_r() ? selection_color() : fl_inactive(selection_color());
+-      fl_color(value() ? col : fl_color_average(col, FL_BLACK, 0.5f));
+-      fl_pie(x()+xx, y()+dy+1, ww, hh, 0, 360);
+-    }
+-    else
+-    {
++////////////////////////////////////////////////////////does not compile on Ubuntu 14.04
++//  if (Fl::is_scheme("plastic"))
++//  {
++//    col = active_r() ? selection_color() : fl_inactive(selection_color());
++//    fl_color(value() ? col : fl_color_average(col, FL_BLACK, 0.5f));
++//    fl_pie(x()+xx, y()+dy+1, ww, hh, 0, 360);
++//  }
++//  else
++//  {
+       draw_box(FL_THIN_DOWN_BOX, x()+xx, y()+dy+1, ww, hh, col);
+-    }
++//  }
+     lx = dx + ww + 2;
+   }
+   draw_label(x()+lx, y(), w()-lx-bx, h());
