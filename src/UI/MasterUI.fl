@@ -635,7 +635,7 @@ class MasterUI {: {public GuiUpdates}
                 query("", "", "", "Nothing to save!");
                 return;
             }
-            if (synth->part[npart]->info.Ptype == 0)
+            if (synth->part[npart]->meta.info.Ptype == 0)
             {
                 if (choice(synth, "", "Save", "Cancel", "Please set instrument type before saving.\\nCopyright info also recommended.") != 2)
                     return;

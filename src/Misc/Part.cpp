@@ -173,28 +173,15 @@ void Part::defaults(int npart)
     setNoteMap(0);
 }
 
-void Part::setNoteMap(int keyshift)
-{
-    for (int i = 0; i < MAX_OCTAVE_SIZE; ++i)
-    {
-        if (Pdrummode)
-            PnoteMap[i] = microtonal->getFixedNoteFreq(i);
-        else
-        {
-            PnoteMap[i] = microtonal->getNoteFreq(i, keyshift + synth.Pkeyshift - 64);
-        }
-    }
-}
-
 
 void Part::defaultsinstrument()
 {
     Pname = DEFAULT_NAME;
     Poriginal = UNTITLED;
     PyoshiType = false;
-    info.Ptype = 0;
-    info.Pauthor.clear();
-    info.Pcomments.clear();
+    meta.info.Ptype = 0;
+    meta.info.Pauthor.clear();
+    meta.info.Pcomments.clear();
 
     Pkitmode = 0;
     PkitfadeType = 0;
@@ -272,6 +259,19 @@ Part::~Part()
     }
 }
 
+
+void Part::setNoteMap(int keyshift)
+{
+    for (int i = 0; i < MAX_OCTAVE_SIZE; ++i)
+    {
+        if (Pdrummode)
+            PnoteMap[i] = microtonal->getFixedNoteFreq(i);
+        else
+        {
+            PnoteMap[i] = microtonal->getNoteFreq(i, keyshift + synth.Pkeyshift - 64);
+        }
+    }
+}
 
 void Part::setChannelAT(int type, int value)
 {
@@ -1280,9 +1280,9 @@ void Part::add2XML_InstrumentData(XMLtree& xmlInstrument)
 {
     XMLtree xmlInfo = xmlInstrument.addElm("INFO");
         xmlInfo.addPar_str("name"    , Poriginal);
-        xmlInfo.addPar_str("author"  , info.Pauthor);
-        xmlInfo.addPar_str("comments", info.Pcomments);
-        xmlInfo.addPar_int("type"    , type_offset[info.Ptype]);
+        xmlInfo.addPar_str("author"  , meta.info.Pauthor);
+        xmlInfo.addPar_str("comments", meta.info.Pcomments);
+        xmlInfo.addPar_int("type"    , type_offset[meta.info.Ptype]);
         xmlInfo.addPar_str("file"    , Pname);
         if (Pname == DEFAULT_NAME)
             return;
@@ -1534,8 +1534,8 @@ void Part::getfromXML_InstrumentData(XMLtree& xmlInstrument)
     {
         Poriginal = xmlInfo.getPar_str("name");
         // counting type numbers but checking the *contents* of type_offset()
-        info.Pauthor = func::formatTextLines(xmlInfo.getPar_str("author"), 54);
-        info.Pcomments = func::formatTextLines(xmlInfo.getPar_str("comments"), 54);
+        meta.info.Pauthor = func::formatTextLines(xmlInfo.getPar_str("author"), 54);
+        meta.info.Pcomments = func::formatTextLines(xmlInfo.getPar_str("comments"), 54);
         int found = xmlInfo.getPar_int("type", 0, -20, 255); // should cover all!
         int type = 0;
         int offset = 0;
@@ -1546,7 +1546,7 @@ void Part::getfromXML_InstrumentData(XMLtree& xmlInstrument)
         }
         if (offset == UNUSED)
             type = 0; // undefined
-        info.Ptype = type;
+        meta.info.Ptype = type;
 
         // The following is surprisingly complex!
         if (Pname.empty())
