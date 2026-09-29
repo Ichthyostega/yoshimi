@@ -63,6 +63,33 @@ class Part
             Disabled,
         };
 
+        // Reference settings used at design time of this instrument.
+        // Persisted to record the context used for the design, and to compensate
+        // when used in a different setup (to the degree this is possible).
+        struct DesignValues
+        {
+            uint refSampleRate    = 0;  // in samples per second (eg. 48000)
+            int  refControlRate   = 0;  // in audio samples per control period (eg. 128) -- seeded by buffer size
+            int  refSpectralBound = 0;  // spectral resolution limit (see PadSynth) -- seeded by oscilsize setting
+        };
+
+        // Instrument description (persistent)
+        struct Info
+        {
+            uchar  Ptype;
+            string Pauthor;
+            string Pcomments;
+        };
+
+        struct InstrumentMetadata
+        {
+            Info         info;
+            DesignValues design;
+        };
+
+        InstrumentMetadata meta;
+
+
        ~Part();
         Part(uchar id, Microtonal*, fft::Calc&, SynthEngine&);
 
@@ -76,9 +103,9 @@ class Part
         inline float pannedVolRight() { return volume * pangainR; }
         void reset(int npart);
         void defaults(int npart);
-        void setNoteMap(int keyshift);
         void defaultsinstrument();
         void cleanup();
+        void setNoteMap(int keyshift);
 
         // Midi commands implemented
         void setChannelAT(int type, int value);
@@ -161,12 +188,6 @@ class Part
         string Pname;
         string Poriginal;
 
-        struct Info {
-            uchar  Ptype;
-            string Pauthor;
-            string Pcomments;
-        };
-        Info info;
         const uchar partID;
 
         Samples partoutl;

@@ -1512,22 +1512,22 @@ int InterChange::indirectPart(CommandBlock& cmd, uchar& newMsg, bool& guiTo, str
         case PART::control::instrumentCopyright:
             if (write)
             {
-                part.info.Pauthor = text;
+                part.meta.info.Pauthor = text;
                 guiTo = true;
             }
             else
-                text = part.info.Pauthor;
+                text = part.meta.info.Pauthor;
             cmd.data.source &= ~TOPLEVEL::action::lowPrio;
             newMsg = true;
             break;
         case PART::control::instrumentComments:
             if (write)
             {
-                part.info.Pcomments = text;
+                part.meta.info.Pcomments = text;
                 guiTo = true;
             }
             else
-                text = part.info.Pcomments;
+                text = part.meta.info.Pcomments;
             cmd.data.source &= ~TOPLEVEL::action::lowPrio;
             newMsg = true;
             break;
@@ -1571,11 +1571,11 @@ int InterChange::indirectPart(CommandBlock& cmd, uchar& newMsg, bool& guiTo, str
         case PART::control::instrumentType:
             if (write)
             {
-                part.info.Ptype = value;
+                part.meta.info.Ptype = value;
                 guiTo = true;
             }
             else
-                value = part.info.Ptype;
+                value = part.meta.info.Ptype;
             cmd.data.source &= ~TOPLEVEL::action::lowPrio;
             break;
         case PART::control::defaultInstrumentCopyright:
@@ -1584,12 +1584,12 @@ int InterChange::indirectPart(CommandBlock& cmd, uchar& newMsg, bool& guiTo, str
             {
                 text = loadText(name); // TODO provide failure warning
                 text = func::formatTextLines(text, 54);
-                part.info.Pauthor = text;
+                part.meta.info.Pauthor = text;
                 guiTo = true;
             }
             else
             {
-                text = part.info.Pauthor;
+                text = part.meta.info.Pauthor;
                 saveText(text, name);
             }
             cmd.data.source &= ~TOPLEVEL::action::lowPrio;
@@ -1874,8 +1874,8 @@ void InterChange::generateSpecialInstrument(int npart, string name)
     assert(npart < NUM_MIDI_PARTS);
     Part& part{*synth.part[npart]};
     part.Pname = name;
-    part.info.Ptype = 17; // Warm Pad
-    part.info.Pauthor = "Yoshimi Team\nGPL V2 or later";
+    part.meta.info.Ptype = 17; // Warm Pad
+    part.meta.info.Pauthor = "Yoshimi Team\nGPL V2 or later";
     part.partefx[0]->changeeffect(1);
     part.kit[0].Padenabled = false;
     part.kit[0].Psubenabled = true;
