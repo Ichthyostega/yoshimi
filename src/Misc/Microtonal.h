@@ -87,7 +87,7 @@ class Microtonal
         string scale2scl();
         string map2kbm();
 
-        string Pname;
+        string PscaleName;
         string Pcomment;
 
         void add2XML(XMLtree&);

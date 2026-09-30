@@ -1422,7 +1422,7 @@ bool SynthEngine::SingleVector(list<string>& msg_buf, int chan)
     }
     msg_buf.push_back("Channel " + asString(chan + 1));
     msg_buf.push_back("  X CC = " + asString((int)  Runtime.vectordata.Xaxis[chan]) + ",  " + Xtext);
-    msg_buf.push_back("  L = " + part[chan]->Pname + ",  R = " + part[chan + 16]->Pname);
+    msg_buf.push_back("  L = " + part[chan]->meta.info.Pfilename + ",  R = " + part[chan + 16]->meta.info.Pfilename);
 
     if (Runtime.vectordata.Yaxis[chan] > 0x7f
         || Runtime.numAvailableParts < NUM_MIDI_CHANNELS * 4)
@@ -1445,7 +1445,7 @@ bool SynthEngine::SingleVector(list<string>& msg_buf, int chan)
                 Ytext += " 4";
         }
         msg_buf.push_back("  Y CC = " + asString((int) Runtime.vectordata.Yaxis[chan]) + ",  " + Ytext);
-        msg_buf.push_back("  U = " + part[chan + 32]->Pname + ",  D = " + part[chan + 48]->Pname);
+        msg_buf.push_back("  U = " + part[chan + 32]->meta.info.Pfilename + ",  D = " + part[chan + 48]->meta.info.Pfilename);
         msg_buf.push_back("  Name = " + Runtime.vectordata.Name[chan]);
     }
     return true;

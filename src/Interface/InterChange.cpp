@@ -449,7 +449,7 @@ void InterChange::indirectTransfers(CommandBlock& cmd, bool noForward)
             if (switchNum == TOPLEVEL::section::scales && control == SCALES::control::importScl)
             {   // loading a tuning includes a name and comment!
                 cmd.data.control = SCALES::control::name;
-                cmd.data.miscmsg = textMsgBuffer.push(synth.microtonal.Pname);
+                cmd.data.miscmsg = textMsgBuffer.push(synth.microtonal.PscaleName);
                 returnsBuffer.write(cmd.bytes);
 
                 cmd.data.control = SCALES::control::comment;
@@ -633,10 +633,10 @@ int InterChange::indirectScales(CommandBlock& cmd, uchar& newMsg, bool& guiTo, s
         case SCALES::control::name:
             if (write)
             {
-                synth.microtonal.Pname = text;
+                synth.microtonal.PscaleName = text;
             }
             else
-                text = synth.microtonal.Pname;
+                text = synth.microtonal.PscaleName;
             newMsg = true;
             break;
         case SCALES::control::comment:
@@ -1065,7 +1065,7 @@ int InterChange::indirectBank(CommandBlock& cmd, uchar& newMsg, bool& guiTo, str
                 parameter = synth.getRuntime().currentPart;
                 cmd.data.parameter = parameter;
             }
-            text = synth.part[parameter]->Pname;
+            text = synth.part[parameter]->meta.info.Pfilename;
             if (text == DEFAULT_NAME)
                 text = "FAILED Can't save default instrument type";
             else if (!synth.bank.savetoslot(engine, kititem, insert, parameter))
@@ -1536,14 +1536,14 @@ int InterChange::indirectPart(CommandBlock& cmd, uchar& newMsg, bool& guiTo, str
             {
                 if (write)
                 {
-                    part.Pname = text;
-                    if (part.Poriginal.empty() || part.Poriginal == UNTITLED)
-                        part.Poriginal = text;
+                    part.meta.info.Pfilename = text;
+                    if (part.meta.info.PdisplayName.empty() || part.meta.info.PdisplayName == UNTITLED)
+                        part.meta.info.PdisplayName = text;
                     guiTo = true;
                 }
                 else
                 {
-                    text = part.Pname;
+                    text = part.meta.info.Pfilename;
                 }
             }
             else if (part.Pkitmode)
@@ -1554,12 +1554,12 @@ int InterChange::indirectPart(CommandBlock& cmd, uchar& newMsg, bool& guiTo, str
                 {
                     if (write)
                     {
-                        part.kit[kititem].Pname = text;
+                        part.kit[kititem].PitemName = text;
                         guiTo = true;
                     }
                     else
                     {
-                        text = part.kit[kititem].Pname;
+                        text = part.kit[kititem].PitemName;
                     }
                 }
             }
@@ -1815,7 +1815,7 @@ float InterChange::buildWindowTitle(CommandBlock& cmd)
         name += " - Part ";
         name += to_string(section + 1);
         name += " ";
-        name += synth.part[section]->Pname;
+        name += synth.part[section]->meta.info.Pfilename;
 
         if (synth.part[section]->Pkitmode != 0)
         {
@@ -1825,7 +1825,7 @@ float InterChange::buildWindowTitle(CommandBlock& cmd)
             {
                 name += to_string(kititem + 1);
                 name += " ";
-                string kitname = synth.part[section]->kit[kititem].Pname;
+                string kitname = synth.part[section]->kit[kititem].PitemName;
                 if (!kitname.empty())
                 {
                     name += "- ";
@@ -1873,7 +1873,7 @@ void InterChange::generateSpecialInstrument(int npart, string name)
 {
     assert(npart < NUM_MIDI_PARTS);
     Part& part{*synth.part[npart]};
-    part.Pname = name;
+    part.meta.info.Pfilename = name;
     part.meta.info.Ptype = 17; // Warm Pad
     part.meta.info.Pauthor = "Yoshimi Team\nGPL V2 or later";
     part.partefx[0]->changeeffect(1);
@@ -2091,9 +2091,9 @@ bool InterChange::commandSend(CommandBlock& cmd)
         uchar insert  = cmd.data.insert;
         if (npart < NUM_MIDI_PARTS && (insert != UNUSED || (control != PART::control::enable && control != PART::control::instrumentName)))
         {
-            if (synth.part[npart]->Pname == DEFAULT_NAME)
+            if (synth.part[npart]->meta.info.Pfilename == DEFAULT_NAME)
             {
-                synth.part[npart]->Pname = UNTITLED;
+                synth.part[npart]->meta.info.Pfilename = UNTITLED;
                 cmd.data.source |= TOPLEVEL::action::forceUpdate;
             }
         }

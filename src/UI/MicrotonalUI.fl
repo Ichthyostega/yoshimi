@@ -182,7 +182,7 @@ class MicrotonalUI {} {
           callback {//
           send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate, SCALES::control::name, 0, TOPLEVEL::type::Integer, UNUSED, textMsgBuffer.push(string(o->value())));}
           xywh {7 64 285 25} labelfont 1 labelsize 11 labelcolor 64 align 5 textcolor 64
-          code0 {o->value(microtonal->Pname.c_str());}
+          code0 {o->value(microtonal->PscaleName.c_str());}
         }
         Fl_Input commentinput {
           label {Description:}

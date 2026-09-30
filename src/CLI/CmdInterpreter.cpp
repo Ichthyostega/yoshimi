@@ -5554,7 +5554,7 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
     {
         if (controlType != TOPLEVEL::type::Write)
         {
-            Runtime.Log("Part name is " + synth->part[npart]->Pname);
+            Runtime.Log("Part name is " + synth->part[npart]->meta.info.Pfilename);
             return REPLY::done_msg;
         }
 

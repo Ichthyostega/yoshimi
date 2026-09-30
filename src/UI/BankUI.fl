@@ -1304,7 +1304,7 @@ class BankUI {: {public BankProcess_, RootProcess_}
         if (mode == 2)
         {   // save(write) to slot (choices reversed for 'No' priority)
             bool doit = true;
-            if (synth->part[curPart]->Pname == DEFAULT_NAME)
+            if (synth->part[curPart]->meta.info.Pfilename == DEFAULT_NAME)
             {
                 alert(synth, "Can't store instrument with default name");
                 mode = 1;

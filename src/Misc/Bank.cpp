@@ -251,7 +251,7 @@ string Bank::clearslot(uint ninstrument, size_t rootID, size_t bankID)
 bool Bank::savetoslot(size_t rootID, size_t bankID, int ninstrument, int npart)
 {
     string filepath = getBankPath(rootID, bankID);
-    string name = synth.part[npart]->Pname;
+    string name = synth.part[npart]->meta.info.Pfilename;
     if (filepath.at(filepath.size() - 1) != '/')
         filepath += "/";
     clearslot(ninstrument, rootID, bankID);

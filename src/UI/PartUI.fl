@@ -103,14 +103,14 @@ class PartKitItem {: {public Fl_Group}
         Fl_Button labelbutton {
           label {Bass Drum}
           callback {//
-          string tmp = input_text(synth, "Kit item name:", part->kit[n].Pname);
-          if (tmp != "" && tmp != part->kit[n].Pname)
+          string tmp = input_text(synth, "Kit item name:", part->kit[n].PitemName);
+          if (tmp != "" && tmp != part->kit[n].PitemName)
           {
               send_data(TOPLEVEL::action::lowPrio, PART::control::instrumentName, 0, TOPLEVEL::type::Integer, n, UNUSED, TOPLEVEL::insert::kitGroup, UNUSED, textMsgBuffer.push(tmp));
               o->copy_label(tmp.c_str());
           }}
           xywh {90 4 130 14} box THIN_DOWN_BOX down_box FLAT_BOX color 7 labelfont 1 labelsize 10 labelcolor 64 align 20
-          code0 {o->copy_label(part->kit[n].Pname.c_str());}
+          code0 {o->copy_label(part->kit[n].PitemName.c_str());}
         }
         Fl_Counter minkcounter {
           callback {//
@@ -1899,8 +1899,8 @@ class PartUI {: {public Fl_Group, PartUI_}
         fillInstrumentType();
         copyright->value(part->meta.info.Pauthor.c_str());
         commentField->value(part->meta.info.Pcomments.c_str());
-        string name = part->Poriginal;
-        if (!name.empty() && name != UNTITLED && part->Pname != name)
+        string name = part->meta.info.PdisplayName;
+        if (!name.empty() && name != UNTITLED && part->meta.info.Pfilename != name)
         {
             originaltext->copy_label(name.c_str());
             originalname->show();
@@ -1989,7 +1989,7 @@ class PartUI {: {public Fl_Group, PartUI_}
                 partkititem[i]->padcheck->value(0);
                 partkititem[i]->padeditbutton->deactivate();
             }
-            partkititem[i]->labelbutton->copy_label(part->kit[i].Pname.c_str());
+            partkititem[i]->labelbutton->copy_label(part->kit[i].PitemName.c_str());
             partkititem[i]->minkcounter->value(part->kit[i].Pminkey);
             partkititem[i]->maxkcounter->value(part->kit[i].Pmaxkey);
             int effnum = part->kit[i].Psendtoparteffect + 1;
@@ -2223,7 +2223,7 @@ class PartUI {: {public Fl_Group, PartUI_}
     code {//
     engine = 0;
     if (instrumentName == "")
-        instrumentName = part->Pname;
+        instrumentName = part->meta.info.Pfilename;
     partname = instrumentName;
 
     if (part->kit[0].Padenabled)
@@ -2270,7 +2270,7 @@ class PartUI {: {public Fl_Group, PartUI_}
   }
   Function {showparameters(int kititem, int engine)} {} {
     code {//
-    kitname = part->kit[kititem].Pname;
+    kitname = part->kit[kititem].PitemName;
     if (engine == -1)
     {   // this is used if I want to clear the engine from the part
         if (kititem == lastkititem)
@@ -2347,7 +2347,7 @@ class PartUI {: {public Fl_Group, PartUI_}
     else
         synth->getGuiMaster()->instrumentlabel->labelcolor(gen_text);
     if (text == "")
-        text = part->Pname.c_str();
+        text = part->meta.info.Pfilename.c_str();
     partname = text;
     synth->getGuiMaster()->instrumentlabel->copy_label(text.c_str());} {}
   }
