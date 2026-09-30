@@ -31,6 +31,7 @@
 #include "DSP/FFTwrapper.h"
 #include "Params/ParamCheck.h"
 #include "Misc/Alloc.h"
+#include "Interface/TextLists.h"
 
 #include <memory>
 #include <string>
@@ -76,7 +77,7 @@ class Part
         // Instrument description (persistent)
         struct Info
         {
-            uchar  Ptype;
+            InstrumentType Ptype = InstrumentType::Undefined;
             string Pauthor;
             string Pcomments;
             string Pfilename;    // the file-system name this instrument is saved under
