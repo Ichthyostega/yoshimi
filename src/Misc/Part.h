@@ -79,6 +79,8 @@ class Part
             uchar  Ptype;
             string Pauthor;
             string Pcomments;
+            string Pfilename;    // the file-system name this instrument is saved under
+            string PdisplayName; // the name shown to the user (may differ after a rename)
         };
 
         struct InstrumentMetadata
@@ -135,7 +137,7 @@ class Part
         // part's kit
         struct KitItem
         {
-            string Pname;
+            string PitemName;
             uchar  Penabled;
             uchar  Pmuted;
             uchar  Pminkey;
@@ -185,8 +187,6 @@ class Part
         uchar  PbreathControl;
         uchar  Peffnum;
         int    Paudiodest;     // jack output routing
-        string Pname;
-        string Poriginal;
 
         const uchar partID;
 

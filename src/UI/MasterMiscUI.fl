@@ -688,7 +688,7 @@ Right mouse button: Instrument edit} xywh {10 249 40 20} box PLASTIC_UP_BOX labe
         partname->labelcolor(yoshi_ins_typ);
     else
         partname->labelcolor(gen_text);
-    partname->copy_label(synth->part[npart | *plgroup]->Pname.c_str());
+    partname->copy_label(synth->part[npart | *plgroup]->meta.info.Pfilename.c_str());
     ;} {}
   }
   Function {findengines(int npart)} {return_type {unsigned int}

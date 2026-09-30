@@ -132,7 +132,7 @@ void Microtonal::defaults(int type)
         octave[11].type = 2;
         octave[11].x1 = 2;
         octave[11].x2 = 1;
-        Pname = string("12tET");
+        PscaleName = string("12tET");
         Pcomment = string("Default Tuning");
 
     }
@@ -167,7 +167,7 @@ void Microtonal::defaults(int type)
         octave[11].type = 2;
         octave[11].x1 = 2;
         octave[11].x2 = 1;
-        Pname = string("12tET");
+        PscaleName = string("12tET");
         Pcomment = string("Equal Temperament 12 notes per octave");
     }
     setglobalfinedetune(64.0); // always set this
@@ -511,7 +511,7 @@ int Microtonal::loadscl(string const& filename)
     }
     if (err == 0)
     {
-        Pname = findLeafName(filename);
+        PscaleName = findLeafName(filename);
         Pcomment = string(line);
         // loads the number of the notes
         if (getLineFromText(text, line))
@@ -677,7 +677,7 @@ int Microtonal::loadkbm(string const& filename)
 string Microtonal::scale2scl()
 {
     string text = "! ";
-    text += synth->microtonal.Pname;
+    text += synth->microtonal.PscaleName;
     text += "\n!\n ";
     text += synth->microtonal.Pcomment;
     text += "\n ";
@@ -743,7 +743,7 @@ string Microtonal::map2kbm()
 void Microtonal::add2XML(XMLtree& xmlMicrotonal)
 {
     xmlMicrotonal.addPar_bool("enabled", Penabled);
-    xmlMicrotonal.addPar_str ("name"   , Pname);
+    xmlMicrotonal.addPar_str ("name"   , PscaleName);
     xmlMicrotonal.addPar_str ("comment", Pcomment);
 
     xmlMicrotonal.addPar_bool("invert_up_down", Pinvertupdown);
@@ -803,7 +803,7 @@ int Microtonal::getfromXML(XMLtree& xmlMicrotonal)
 {
     int errorResult{0};
     Penabled = xmlMicrotonal.getPar_bool("enabled", Penabled);
-    Pname    = xmlMicrotonal.getPar_str("name");
+    PscaleName    = xmlMicrotonal.getPar_str("name");
     Pcomment = xmlMicrotonal.getPar_str("comment");
 
     Pinvertupdown       = xmlMicrotonal.getPar_bool("invert_up_down", Pinvertupdown);

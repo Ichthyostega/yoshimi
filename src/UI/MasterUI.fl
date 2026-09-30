@@ -629,7 +629,7 @@ class MasterUI {: {public GuiUpdates}
             * to offer the INTERNAL name first rather than a possibly
             * confusing external filename.
             */
-            string newname = synth->part[npart]->Pname;
+            string newname = synth->part[npart]->meta.info.Pfilename;
             if (newname == DEFAULT_NAME)
             {
                 query("", "", "", "Nothing to save!");
@@ -697,7 +697,7 @@ class MasterUI {: {public GuiUpdates}
             {
                 bool valid = false;
                 for (int npart = 0; npart < NUM_MIDI_PARTS; npart ++)
-                if (synth->part[npart]->Pname != DEFAULT_NAME)
+                if (synth->part[npart]->meta.info.Pfilename != DEFAULT_NAME)
                 {
                     valid = true;
                     npart = NUM_MIDI_PARTS;
@@ -1225,10 +1225,10 @@ class MasterUI {: {public GuiUpdates}
           }
           else if (event == FL_RIGHT_MOUSE)
           {
-              string name = input_text(synth, "Instrument name:", synth->part[npart]->Pname);
+              string name = input_text(synth, "Instrument name:", synth->part[npart]->meta.info.Pfilename);
               if (name == DEFAULT_NAME)
                   alert(synth, "Can't use name of default sound");
-              else if (name != synth->part[npart]->Pname)
+              else if (name != synth->part[npart]->meta.info.Pfilename)
               {
                   unsigned char id = textMsgBuffer.push(name);
                   send_data(TOPLEVEL::action::lowPrio | TOPLEVEL::action::forceUpdate, PART::control::instrumentName, 0, TOPLEVEL::type::Integer, npart, UNUSED, UNUSED, UNUSED, id);
@@ -2914,7 +2914,7 @@ Alan Calvert started the project}
 
             case PART::control::instrumentName:
                 partui->checkEngines();
-                synth->getGuiMaster()->instrumentlabel->copy_label(synth->part[npart]->Pname.c_str());
+                synth->getGuiMaster()->instrumentlabel->copy_label(synth->part[npart]->meta.info.Pfilename.c_str());
                 seen = true;
                 break;
 

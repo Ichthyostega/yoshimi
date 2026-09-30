@@ -84,7 +84,7 @@ Part::Part(uchar id, Microtonal* microtonal_, fft::Calc& fft_, SynthEngine& _syn
 
     for (int n = 0; n < NUM_KIT_ITEMS; ++n)
     {
-        kit[n].Pname.clear();
+        kit[n].PitemName.clear();
         kit[n].adpars = NULL;
         kit[n].subpars = NULL;
         kit[n].padpars = NULL;
@@ -123,10 +123,10 @@ Part::Part(uchar id, Microtonal* microtonal_, fft::Calc& fft_, SynthEngine& _syn
     /*
      * Do we actually need the following two?
      * defaults is called for all parts at startup by Config.cpp
-     * and Pname is then set to the default name when defaults
+     * and Pfilename is then set to the default name when defaults
      * calls defaultsinstrument
      */
-    Pname.clear();
+    meta.info.Pfilename.clear();
     defaults(0);
 }
 
@@ -176,8 +176,8 @@ void Part::defaults(int npart)
 
 void Part::defaultsinstrument()
 {
-    Pname = DEFAULT_NAME;
-    Poriginal = UNTITLED;
+    meta.info.Pfilename = DEFAULT_NAME;
+    meta.info.PdisplayName = UNTITLED;
     PyoshiType = false;
     meta.info.Ptype = 0;
     meta.info.Pauthor.clear();
@@ -198,7 +198,7 @@ void Part::defaultsinstrument()
         kit[n].Padenabled = 0;
         kit[n].Psubenabled = 0;
         kit[n].Ppadenabled = 0;
-        kit[n].Pname.clear();
+        kit[n].PitemName.clear();
         kit[n].Psendtoparteffect = 0;
         if (n != 0)
             setkititemstatus(n, 0);
@@ -1236,7 +1236,7 @@ void Part::setkititemstatus(int kititem, int Penabled_)
         kit[kititem].Padenabled = 0;
         kit[kititem].Psubenabled = 0;
         kit[kititem].Ppadenabled = 0;
-        kit[kititem].Pname.clear();
+        kit[kititem].PitemName.clear();
         kit[kititem].Psendtoparteffect = 0;
         if (kit[kititem].adpars)
         {
@@ -1279,12 +1279,12 @@ void Part::setkititemstatus(int kititem, int Penabled_)
 void Part::add2XML_InstrumentData(XMLtree& xmlInstrument)
 {
     XMLtree xmlInfo = xmlInstrument.addElm("INFO");
-        xmlInfo.addPar_str("name"    , Poriginal);
+        xmlInfo.addPar_str("name"    , meta.info.PdisplayName);
         xmlInfo.addPar_str("author"  , meta.info.Pauthor);
         xmlInfo.addPar_str("comments", meta.info.Pcomments);
         xmlInfo.addPar_int("type"    , type_offset[meta.info.Ptype]);
-        xmlInfo.addPar_str("file"    , Pname);
-        if (Pname == DEFAULT_NAME)
+        xmlInfo.addPar_str("file"    , meta.info.Pfilename);
+        if (meta.info.Pfilename == DEFAULT_NAME)
             return;
 
     XMLtree xmlKit = xmlInstrument.addElm("INSTRUMENT_KIT");
@@ -1299,7 +1299,7 @@ void Part::add2XML_InstrumentData(XMLtree& xmlInstrument)
             xmlKitItem.addPar_bool("enabled", kit[i].Penabled);
             if (kit[i].Penabled)
             {
-                xmlKitItem.addPar_str("name", kit[i].Pname);
+                xmlKitItem.addPar_str("name", kit[i].PitemName);
 
                 xmlKitItem.addPar_bool("muted", kit[i].Pmuted);
                 xmlKitItem.addPar_int ("min_key", kit[i].Pminkey);
@@ -1439,10 +1439,10 @@ bool Part::saveXML(string filename, bool yoshiFormat)
 {
     XMLStore xml{TOPLEVEL::XML::Instrument, not yoshiFormat};
 
-    if (Pname < "!") // this shouldn't be possible
-        Pname = UNTITLED;
-    else if ((Poriginal.empty() || Poriginal == UNTITLED) && Pname != UNTITLED)
-        Poriginal = Pname;
+    if (meta.info.Pfilename < "!") // this shouldn't be possible
+        meta.info.Pfilename = UNTITLED;
+    else if ((meta.info.PdisplayName.empty() || meta.info.PdisplayName == UNTITLED) && meta.info.Pfilename != UNTITLED)
+        meta.info.PdisplayName = meta.info.Pfilename;
 
     XMLtree xmlTop = xml.accessTop(); // setup metadata and info node
     XMLtree xmlInfo = xmlTop.getElm("INFORMATION");
@@ -1494,10 +1494,10 @@ int Part::loadXML(string filename)
     if (PyoshiType != marked_as_Yoshi)
         logg("WARNING: file extension does not match Yoshimi format in file \""+filename+"\"");
 
-    Pname = findLeafName(filename);
-    int chk = findSplitPoint(Pname);
+    meta.info.Pfilename = findLeafName(filename);
+    int chk = findSplitPoint(meta.info.Pfilename);
     if (chk > 0)
-        Pname = Pname.substr(chk + 1, Pname.size() - chk - 1);
+        meta.info.Pfilename = meta.info.Pfilename.substr(chk + 1, meta.info.Pfilename.size() - chk - 1);
 
     getfromXML_InstrumentData(xmlInstrument);
 
@@ -1532,7 +1532,7 @@ void Part::getfromXML_InstrumentData(XMLtree& xmlInstrument)
     assert(xmlInstrument);
     if (XMLtree xmlInfo = xmlInstrument.getElm("INFO"))
     {
-        Poriginal = xmlInfo.getPar_str("name");
+        meta.info.PdisplayName = xmlInfo.getPar_str("name");
         // counting type numbers but checking the *contents* of type_offset()
         meta.info.Pauthor = func::formatTextLines(xmlInfo.getPar_str("author"), 54);
         meta.info.Pcomments = func::formatTextLines(xmlInfo.getPar_str("comments"), 54);
@@ -1548,25 +1548,26 @@ void Part::getfromXML_InstrumentData(XMLtree& xmlInstrument)
             type = 0; // undefined
         meta.info.Ptype = type;
 
-        // The following is surprisingly complex!
-        if (Pname.empty())
-            Pname = xmlInfo.getPar_str("file");
+        // Heuristics to migrate names from legacy instruments and state files
+        // Introduced 2021-02-16 with 57fbd4ec6
+        if (meta.info.Pfilename.empty())
+            meta.info.Pfilename = xmlInfo.getPar_str("file");
 
-        if (Poriginal == DEFAULT_NAME) // it's an old one
-            Poriginal = UNTITLED;
-        if (Pname.empty()) // it's an older state file
+        if (meta.info.PdisplayName == DEFAULT_NAME) // it's an old one
+            meta.info.PdisplayName = UNTITLED;
+        if (meta.info.Pfilename.empty()) // it's an older state file
         {
-            if (Poriginal.empty())
-                Pname = UNTITLED;
+            if (meta.info.PdisplayName.empty())
+                meta.info.Pfilename = UNTITLED;
             else
-                Pname = Poriginal;
+                meta.info.Pfilename = meta.info.PdisplayName;
         }
-        else if (Poriginal.empty() || Poriginal == UNTITLED) // it's one from zyn
-            Poriginal = Pname;
-        if (Pname.empty() && Poriginal == UNTITLED)
+        else if (meta.info.PdisplayName.empty() || meta.info.PdisplayName == UNTITLED) // it's one from zyn
+            meta.info.PdisplayName = meta.info.Pfilename;
+        if (meta.info.Pfilename.empty() && meta.info.PdisplayName == UNTITLED)
         {
-            Pname = UNTITLED;
-            Poriginal = UNTITLED;
+            meta.info.Pfilename = UNTITLED;
+            meta.info.PdisplayName = UNTITLED;
         }
     }
 
@@ -1586,10 +1587,10 @@ void Part::getfromXML_InstrumentData(XMLtree& xmlInstrument)
                 setkititemstatus(i, xmlKitItem.getPar_bool("enabled", kit[i].Penabled));
                 if (kit[i].Penabled)
                 {
-                    kit[i].Pname   = xmlKitItem.getPar_str("name");
-                    kit[i].Pmuted  = xmlKitItem.getPar_bool("muted",  kit[i].Pmuted);
-                    kit[i].Pminkey = xmlKitItem.getPar_127("min_key", kit[i].Pminkey);
-                    kit[i].Pmaxkey = xmlKitItem.getPar_127("max_key", kit[i].Pmaxkey);
+                    kit[i].PitemName = xmlKitItem.getPar_str("name");
+                    kit[i].Pmuted    = xmlKitItem.getPar_bool("muted",  kit[i].Pmuted);
+                    kit[i].Pminkey   = xmlKitItem.getPar_127("min_key", kit[i].Pminkey);
+                    kit[i].Pmaxkey   = xmlKitItem.getPar_127("max_key", kit[i].Pmaxkey);
                     kit[i].Psendtoparteffect = xmlKitItem.getPar_127("send_to_instrument_effect"
                                                                     ,kit[i].Psendtoparteffect);
                     kit[i].Padenabled  = xmlKitItem.getPar_bool("add_enabled", kit[i].Padenabled);
@@ -1680,7 +1681,7 @@ void Part::getfromXML(XMLtree& xmlPart)
 
     if (XMLtree xmlInstrument = xmlPart.getElm("INSTRUMENT"))
     {
-        Pname.clear(); // erase any previous name
+        meta.info.Pfilename.clear(); // erase any previous name
         getfromXML_InstrumentData(xmlInstrument);
     }
     if (XMLtree xmlController = xmlPart.getElm("CONTROLLER"))
