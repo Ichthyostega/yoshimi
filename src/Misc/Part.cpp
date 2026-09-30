@@ -179,7 +179,7 @@ void Part::defaultsinstrument()
     meta.info.Pfilename = DEFAULT_NAME;
     meta.info.PdisplayName = UNTITLED;
     PyoshiType = false;
-    meta.info.Ptype = 0;
+    meta.info.Ptype = InstrumentType::Undefined;
     meta.info.Pauthor.clear();
     meta.info.Pcomments.clear();
 
@@ -1282,7 +1282,7 @@ void Part::add2XML_InstrumentData(XMLtree& xmlInstrument)
         xmlInfo.addPar_str("name"    , meta.info.PdisplayName);
         xmlInfo.addPar_str("author"  , meta.info.Pauthor);
         xmlInfo.addPar_str("comments", meta.info.Pcomments);
-        xmlInfo.addPar_int("type"    , type_offset[meta.info.Ptype]);
+        xmlInfo.addPar_int("type"    , instrumentTypeToXML(meta.info.Ptype));
         xmlInfo.addPar_str("file"    , meta.info.Pfilename);
         if (meta.info.Pfilename == DEFAULT_NAME)
             return;
@@ -1533,20 +1533,10 @@ void Part::getfromXML_InstrumentData(XMLtree& xmlInstrument)
     if (XMLtree xmlInfo = xmlInstrument.getElm("INFO"))
     {
         meta.info.PdisplayName = xmlInfo.getPar_str("name");
-        // counting type numbers but checking the *contents* of type_offset()
         meta.info.Pauthor = func::formatTextLines(xmlInfo.getPar_str("author"), 54);
         meta.info.Pcomments = func::formatTextLines(xmlInfo.getPar_str("comments"), 54);
         int found = xmlInfo.getPar_int("type", 0, -20, 255); // should cover all!
-        int type = 0;
-        int offset = 0;
-        while (offset != UNUSED && offset != found)
-        {
-            ++type;
-            offset = type_offset[type];
-        }
-        if (offset == UNUSED)
-            type = 0; // undefined
-        meta.info.Ptype = type;
+        meta.info.Ptype = instrumentTypeFromXML(found);
 
         // Heuristics to migrate names from legacy instruments and state files
         // Introduced 2021-02-16 with 57fbd4ec6

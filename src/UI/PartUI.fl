@@ -556,7 +556,7 @@ class PartUI {: {public Fl_Group, PartUI_}
               send_data(TOPLEVEL::action::lowPrio, PART::control::instrumentType, o->value(), TOPLEVEL::type::Integer, npart);}
           xywh {5 25 155 20} down_box BORDER_BOX labelfont 1 labelsize 11 labelcolor 64 align 5 textfont 1 textsize 11 textcolor 64
           code0 {fillInstrumentType();}
-          code1 {o->value(part->meta.info.Ptype);}
+          code1 {o->value(int(part->meta.info.Ptype));}
         } {}
       }
       Fl_Box humaniseBox {
@@ -1911,7 +1911,7 @@ class PartUI {: {public Fl_Group, PartUI_}
             originalname->hide();
             originaltext->hide();
         }
-        instrumentType->value(part->meta.info.Ptype);
+        instrumentType->value(int(part->meta.info.Ptype));
         humanise->value(fetchData(0, PART::control::humanise, npart));
             humanise->selection_color(setSlider(humanise->value(),0));
         velocityhumanise->value(fetchData(0, PART::control::humanvelocity, npart));

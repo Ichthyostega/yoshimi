@@ -1571,11 +1571,11 @@ int InterChange::indirectPart(CommandBlock& cmd, uchar& newMsg, bool& guiTo, str
         case PART::control::instrumentType:
             if (write)
             {
-                part.meta.info.Ptype = value;
+                part.meta.info.Ptype = InstrumentType(uchar(value));
                 guiTo = true;
             }
             else
-                value = part.meta.info.Ptype;
+                value = float(uchar(part.meta.info.Ptype));
             cmd.data.source &= ~TOPLEVEL::action::lowPrio;
             break;
         case PART::control::defaultInstrumentCopyright:
@@ -1874,7 +1874,7 @@ void InterChange::generateSpecialInstrument(int npart, string name)
     assert(npart < NUM_MIDI_PARTS);
     Part& part{*synth.part[npart]};
     part.meta.info.Pfilename = name;
-    part.meta.info.Ptype = 17; // Warm Pad
+    part.meta.info.Ptype = InstrumentType::WarmPad;
     part.meta.info.Pauthor = "Yoshimi Team\nGPL V2 or later";
     part.partefx[0]->changeeffect(1);
     part.kit[0].Padenabled = false;
@@ -3771,7 +3771,7 @@ void InterChange::commandBank(CommandBlock& cmd)
                 textMsgBuffer.push(synth.bank.getname(value_int, kititem, engine));
             else
             {
-                int offset = type_offset [parameter];
+                int offset = instrumentTypeToXML(InstrumentType(parameter));
                 /*
                  * This version of the call is for building up lists of instruments that match the given type.
                  * It will find the next in the series until the entire bank structure has been scanned.

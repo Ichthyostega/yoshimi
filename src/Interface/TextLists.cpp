@@ -1160,6 +1160,21 @@ const int type_offset [] = {0, 1, -3, 2, 3, 4, 5, 6, 7, -6, -2, 8, 9, 10, -5, 11
  * Note: can't use -1 as ID
  */
 
+int instrumentTypeToXML(InstrumentType type)
+{
+    return type_offset[size_t(type)];
+}
+
+InstrumentType instrumentTypeFromXML(int xmlCode)
+{
+    size_t pos = 0;
+    while (type_offset[pos] != UNUSED && type_offset[pos] != xmlCode)
+        ++pos;
+    if (type_offset[pos] == UNUSED) // unrecognised code
+        pos = 0;                    // -> Undefined
+    return InstrumentType(pos);
+}
+
 std::string fx_presets [] = {
     "1, off",
     "13, cathedral 1, cathedral 2, cathedral 3, hall 1, hall 2, room 1, room 2, basement, tunnel, echoed 1, echoed 2, very long 1, very long 2",

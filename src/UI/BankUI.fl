@@ -1310,7 +1310,7 @@ class BankUI {: {public BankProcess_, RootProcess_}
                 mode = 1;
                 doit = false;
             }
-            else if (synth->part[curPart]->meta.info.Ptype == 0)
+            else if (synth->part[curPart]->meta.info.Ptype == InstrumentType::Undefined)
             {
                 if (choice(synth, "", "Save", "Cancel", "Please set instrument type before saving.\\nCopyright info also recommended.") != 2)
                     doit = false;
