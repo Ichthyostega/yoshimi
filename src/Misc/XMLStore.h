@@ -91,7 +91,7 @@ class XMLtree
         void addPar_bool(string const& name, bool val);
         void addPar_str (string const& name, string const&);     // add string parameter (name and string)
 
-        int  getPar_int (string const& name, int defaultVal, int min, int max);
+        int  getPar_int (string const& name, int defaultVal, int min = std::numeric_limits<int>::min(), int max = std::numeric_limits<int>::max());
         int  getPar_127 (string const& name, int defaultVal);    // value limited to [0 ... 127]
         int  getPar_255 (string const& name, int defaultVal);    // value limited to [0 ... 255]
         uint getPar_uint(string const& name, uint defaultVal, uint min = 0, uint max = std::numeric_limits<uint>::max());

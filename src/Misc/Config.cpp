@@ -770,7 +770,7 @@ bool Config::updateConfig(int configKey, int value)
                 par(Cfg::alsaMidiSource         ) =  textMsgBuffer.push(xmlConf.getPar_str("linux_alsa_midi_dev"));// string
                 par(Cfg::alsaMidiType           ) = xmlConf.getPar_int ("alsa_midi_type", 0, 0, 2);
                 par(Cfg::alsaAudioDevice        ) =  textMsgBuffer.push(xmlConf.getPar_str("linux_alsa_audio_dev"));// string
-                par(Cfg::alsaSampleRate         ) = xmlConf.getPar_int ("sample_rate", samplerate, 44100, 192000);
+                par(Cfg::alsaSampleRate         ) = xmlConf.getPar_int ("sample_rate", samplerate, MIN_SAMPLE_RATE, MAX_SAMPLE_RATE);
                 par(Cfg::readAudio              ) = audio_driver(xmlConf.getPar_int("audio_engine", 0, no_audio, alsa_audio));
                 par(Cfg::readMIDI               ) =  midi_driver(xmlConf.getPar_int("midi_engine", 0, no_midi, alsa_midi));
 //              par(Cfg::addPresetRootDir       ) = // string NOT stored
@@ -944,7 +944,7 @@ bool Config::extractConfigData(XMLStore& xml)
         alsaAudioDevice = conf.getPar_str ("linux_alsa_audio_dev");
         alsaMidiDevice  = conf.getPar_str ("linux_alsa_midi_dev");
         if (!rateChanged)
-            samplerate  = conf.getPar_int ("sample_rate", samplerate, 44100, 192000);
+            samplerate  = conf.getPar_int ("sample_rate", samplerate, MIN_SAMPLE_RATE, MAX_SAMPLE_RATE);
 
         // midi options
         midi_bank_root   = conf.getPar_int ("midi_bank_root"           , midi_bank_root,     0, 128);

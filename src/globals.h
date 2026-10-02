@@ -98,6 +98,8 @@ using ushort = unsigned short;
 #define MAX_OSCIL_SIZE 16384
 #define MIN_BUFFER_SIZE 16
 #define MAX_BUFFER_SIZE 8192
+#define MIN_SAMPLE_RATE 44100
+#define MAX_SAMPLE_RATE 192000
 #define NO_MSG 255 // these two may become different
 #define UNUSED 255
 
