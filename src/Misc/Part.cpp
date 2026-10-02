@@ -183,6 +183,14 @@ void Part::defaultsinstrument()
     meta.info.Pauthor.clear();
     meta.info.Pcomments.clear();
 
+    // by default: capture current processing parameters as DesignValues
+    // (start from a clean baseline, never carry over values of a previous instrument)
+    meta.design = DesignValues{};
+    meta.adaptSampleRate = true;
+    meta.adaptControlRate = true;
+    meta.adaptSpectralBound = true;
+    establishDesignValues();
+
     Pkitmode = 0;
     PkitfadeType = 0;
     Pdrummode = 0;
@@ -215,6 +223,43 @@ void Part::defaultsinstrument()
         Pefxroute[nefx] = 0; // route to next effect
     }
     Peffnum = 0;
+}
+
+
+/** Establish the Invariant: DesignValues are valid and usable.
+ *  - if current settings shall be used, retrieve these
+ *  - otherwise do not touch the stored DesignValues
+ *  - but fall back to current settings when values are missing
+ */
+void Part::establishDesignValues()
+{
+      // precondition: the engine's processing parameters must be final
+      // (SynthEngine::Init sets them before the Parts are created)
+      // (zero is the marker for "unset", so a zero value would break the logic below)
+    assert(synth.samplerate > 0);
+    assert(synth.buffersize > 0);
+    assert(synth.oscilsize  > 0);
+
+    if (meta.design.refSampleRate == 0
+        or not meta.adaptSampleRate )
+    {
+        meta.design.refSampleRate = synth.samplerate;
+    }
+    if (meta.design.refControlRate == 0
+        or not meta.adaptControlRate )
+    {
+        meta.design.refControlRate = synth.buffersize;
+    }
+    if (meta.design.refSpectralBound == 0
+        or not meta.adaptSpectralBound )
+    {
+        meta.design.refSpectralBound = synth.oscilsize;
+    }
+
+      // postcondition: the Invariant holds
+    assert(meta.design.refSampleRate    > 0);
+    assert(meta.design.refControlRate   > 0);
+    assert(meta.design.refSpectralBound > 0);
 }
 
 
@@ -1284,6 +1329,12 @@ void Part::add2XML_InstrumentData(XMLtree& xmlInstrument)
         xmlInfo.addPar_str("comments", meta.info.Pcomments);
         xmlInfo.addPar_int("type"    , instrumentTypeToXML(meta.info.Ptype));
         xmlInfo.addPar_str("file"    , meta.info.Pfilename);
+        // Persist the DesignValues if desired, which allows to adapt/normalise
+        // when this instrument is used with different processing parameters)
+        // A marker value of zero indicates that no normalisation shall be performed
+        xmlInfo.addPar_uint("design_sample_rate"   , meta.adaptSampleRate   ? meta.design.refSampleRate : 0);
+        xmlInfo.addPar_int ("design_control_rate"  , meta.adaptControlRate  ? meta.design.refControlRate : 0);
+        xmlInfo.addPar_int ("design_spectral_bound", meta.adaptSpectralBound? meta.design.refSpectralBound : 0);
         if (meta.info.Pfilename == DEFAULT_NAME)
             return;
 
@@ -1527,6 +1578,40 @@ int Part::loadXML(string filename)
 }
 
 
+/** Retrieve the DesignValues (processing parameters as used by the instrument designer).
+ *  This decoding is total: all three values and flags are assigned unconditionally,
+ *  independent of any previous state.
+ *  Any design value can be marked as "not adapted" -- which implies that the instrument
+ *  uses the current processing parameters, and no adaptation or normalisation shall be
+ *  performed on derived sound synthesis settings. This case is triggered either by a
+ *  stored value 0 (or any other value outside the valid range). Notably this happens
+ *  when loading a legacy instrument with no persisted DesignValues.
+ *  @note values from XML are deliberately retrieved without clamping, since a
+ *        clamped out-of-range value would pass for a valid design value.
+ */
+void Part::getfromXML_DesignValues(XMLtree& xmlInstrument)
+{
+    uint origSampleRate    = 0;
+    int  origControlRate   = 0;
+    int  origSpectralBound = 0;
+    if (XMLtree xmlInfo = xmlInstrument.getElm("INFO"))
+    {
+        origSampleRate    = xmlInfo.getPar_uint("design_sample_rate"   , 0);  // no clamping: range check below
+        origControlRate   = xmlInfo.getPar_int ("design_control_rate"  , 0);
+        origSpectralBound = xmlInfo.getPar_int ("design_spectral_bound", 0);
+    }
+    meta.adaptSampleRate    = MIN_SAMPLE_RATE <= origSampleRate    and origSampleRate    <= MAX_SAMPLE_RATE;
+    meta.adaptControlRate   = MIN_BUFFER_SIZE <= origControlRate   and origControlRate   <= MAX_BUFFER_SIZE;
+    meta.adaptSpectralBound = MIN_OSCIL_SIZE  <= origSpectralBound and origSpectralBound <= MAX_OSCIL_SIZE;
+    meta.design.refSampleRate    = meta.adaptSampleRate?    origSampleRate    : 0;
+    meta.design.refControlRate   = meta.adaptControlRate?   origControlRate   : 0;
+    meta.design.refSpectralBound = meta.adaptSpectralBound? origSpectralBound : 0;
+
+    // where not adapted, DesignValues = current settings
+    establishDesignValues();
+}
+
+
 void Part::getfromXML_InstrumentData(XMLtree& xmlInstrument)
 {
     assert(xmlInstrument);
@@ -1560,6 +1645,7 @@ void Part::getfromXML_InstrumentData(XMLtree& xmlInstrument)
             meta.info.PdisplayName = UNTITLED;
         }
     }
+    getfromXML_DesignValues(xmlInstrument);
 
     if (XMLtree xmlKit = xmlInstrument.getElm("INSTRUMENT_KIT"))
     {

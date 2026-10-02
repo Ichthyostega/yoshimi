@@ -88,6 +88,10 @@ class Part
         {
             Info         info;
             DesignValues design;
+              // whether to compensate towards DesignValues
+            bool adaptSampleRate    = false;
+            bool adaptControlRate   = false;
+            bool adaptSpectralBound = false;
         };
 
         InstrumentMetadata meta;
@@ -213,6 +217,7 @@ class Part
 
     private:
         void getfromXML_InstrumentData(XMLtree&);
+        void getfromXML_DesignValues(XMLtree&);
         void add2XML_InstrumentData(XMLtree&);
         void add2XML_synthUsage(XMLtree&);
 
@@ -220,6 +225,7 @@ class Part
         void KillNotePos(int pos);
         void ReleaseNotePos(int pos);
         void monoNoteHistoryRecall();
+        void establishDesignValues();
 
         void startNewNotes        (int pos, size_t item, size_t currItem, Note, bool portamento, float volumeAdjustment);
         void startLegato          (int pos, size_t item, size_t currItem, Note);
