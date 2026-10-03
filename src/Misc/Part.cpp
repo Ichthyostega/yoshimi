@@ -139,9 +139,6 @@ void Part::resetParameters()
     Penabled = 0;
     Pminkey = 0;
     Pmaxkey = 127;
-    Pkeymode = PART_NORMAL;
-    PchannelATchoice = 0;
-    PkeyATchoice = 0;
     setVolume(96);
     TransVolume = 128; // ensure it always gets set
     Pkeyshift = 64;
@@ -176,6 +173,9 @@ void Part::resetInstrument()
     Pdrummode = 0;
     Pfrand = 0;
     Pvelrand = 0;
+    Pkeymode = PART_NORMAL;
+    PchannelATchoice = 0;
+    PkeyATchoice = 0;
 
     for (int n = 0; n < NUM_KIT_ITEMS; ++n)
     {
@@ -1565,7 +1565,9 @@ int Part::loadXMLInstrument(string filename)
 
     if (PyoshiType)
     {// Yoshimi native format stores additional information with the instrument...
-        Pkeymode = xmlInstrument.getPar_int("key_mode", Pkeymode, PART_NORMAL, MIDI_LEGATO);
+        Pkeymode = xmlInstrument.getPar_int("key_mode", Pkeymode, PART_NORMAL, PART_LEGATO);
+        PchannelATchoice = xmlInstrument.getPar_int("channel_aftertouch", PchannelATchoice, 0, 255);
+        PkeyATchoice     = xmlInstrument.getPar_int("key_aftertouch",     PkeyATchoice,     0, 255);
         Pfrand   = xmlInstrument.getPar_127("random_detune", Pfrand);
         if (Pfrand > 50)
             Pfrand = 50;
