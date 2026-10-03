@@ -120,12 +120,12 @@ class OscilSpectrum {: {public Fl_Box}
     int ly = h();
     const int maxdb = 60; // must be multiple of 10
     int GX = 2;
-    int n = lx / GX - 1;
+    size_t n = (lx > GX)? size_t(lx / GX - 1) : 0;
     if (n > synth->halfoscilsize)
         n = synth->halfoscilsize;
     float x;
     float* spc = new float[n];
-    for (int i = 0; i < n; ++i)
+    for (size_t i = 0; i < n; ++i)
         spc[i] = 0.0;
 
     if (oscbase == 0)
@@ -135,7 +135,7 @@ class OscilSpectrum {: {public Fl_Box}
 
     // normalize
     float max = 0;
-    for (int i = 0; i < n; ++i)
+    for (size_t i = 0; i < n; ++i)
     {
         x = fabsf(spc[i]);
         if (max < x)
@@ -159,7 +159,7 @@ class OscilSpectrum {: {public Fl_Box}
         fl_line(ox, oy + ky - 1, ox + lx - 2, oy + ky - 1);
     }
 
-    for (int i = 2; i < n; ++i)
+    for (size_t i = 2; i < n; ++i)
     {
         int tmp = i * GX - 2;
         fl_line(ox + tmp, oy + 2, ox + tmp, oy + ly - 2);
@@ -171,7 +171,7 @@ class OscilSpectrum {: {public Fl_Box}
 
     // draws the spectrum
     fl_color(spectrum_line);
-    for (int i = 0; i < n; ++i)
+    for (size_t i = 0; i < n; ++i)
     {
         int tmp = i * GX + 2;
         x = spc[i] / max;
@@ -296,7 +296,7 @@ class Oscilloscope {: {public Fl_Box}
 
     // normalize
     float max = 0;
-    for (int o = 0; o < synth->oscilsize; ++o)
+    for (uint o = 0; o < synth->oscilsize; ++o)
     {
         if (max < fabsf(smps[o]))
             max = fabsf(smps[o]);

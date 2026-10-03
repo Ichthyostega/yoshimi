@@ -197,15 +197,15 @@ this->pars=pars;} {}
             fl_line(ox + kx, oy, ox + kx, oy + ly);
         }
 
-        int n = synth->halfoscilsize;
+        size_t n = synth->halfoscilsize;
         float spc[n];
-        for (int i = 0; i < n; i++)
+        for (size_t i = 0; i < n; i++)
             spc[i] = 0.0;
         pars->oscilgen->getOscilSpectrumIntensities(n, spc);
 
         //normalize
         float max = 0;
-        for (int i = 0; i < n; i++)
+        for (size_t i = 0; i < n; i++)
         {
             float x = fabsf(spc[i]);
             if (max < x)
@@ -219,7 +219,7 @@ this->pars=pars;} {}
         for (int i = 0; i < lx; i++)
             spectrum[i] = 0;
 
-        for (int i = 0; i+1 < n; i++)
+        for (size_t i = 0; i+1 < n; i++)
         {
             float nhr = pars->calcHarmonicPositionFactor(i);
             int kx = (int)(lx / (float)maxharmonic * nhr);

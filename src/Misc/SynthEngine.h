@@ -91,7 +91,7 @@ class SynthEngine
         SynthEngine& operator=(SynthEngine&&)      = delete;
         SynthEngine& operator=(SynthEngine const&) = delete;
 
-        bool Init(uint audiosrate, int audiobufsize);
+        bool Init(uint audiosrate, uint audiobufsize);
         InterfaceAnchor buildGuiAnchor();
         void postBootHook(bool);
 
@@ -180,12 +180,12 @@ class SynthEngine
         uint  samplerate;
         float samplerate_f;
         float halfsamplerate_f;
-        int   buffersize;
+        uint  buffersize;
         float buffersize_f;
-        int   bufferbytes;
-        int   oscilsize;
+        size_t bufferbytes;
+        uint  oscilsize;
         float oscilsize_f;
-        int   halfoscilsize;
+        uint  halfoscilsize;
         float halfoscilsize_f;
         float oscil_sample_step_f;
         float oscil_norm_factor_pm;
@@ -196,7 +196,7 @@ class SynthEngine
         static constexpr float oscilsize_ref_f = float(1024 * 256);
 
         int   sent_buffersize; //used for variable length runs
-        int   sent_bufferbytes; //used for variable length runs
+        size_t sent_bufferbytes; //used for variable length runs
         float sent_buffersize_f; //used for variable length runs
         float fixed_sample_step_f;
         float TransVolume;

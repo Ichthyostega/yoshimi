@@ -589,7 +589,7 @@ void Config::initBaseConfig(XMLStore& xml)
             base.addPar_bool("enable_auto_instance" , autoInstance);
             base.addPar_uint("handle_padsynth_build", handlePadSynthBuild);
             base.addPar_int ("gzip_compression"     , gzipCompression);
-            base.addPar_bool("enable_part_reports" , enablePartReports);
+            base.addPar_bool("enable_part_reports"  , enablePartReports);
             base.addPar_bool("banks_checked"        , banksChecked);
             base.addPar_uint("active_instances"     , activeInstances.to_ulong());
             base.addPar_str ("guide_version"        , guideVersion);

@@ -70,8 +70,8 @@ class Part
         struct DesignValues
         {
             uint refSampleRate    = 0;  // in samples per second (eg. 48000)
-            int  refControlRate   = 0;  // in audio samples per control period (eg. 128) -- seeded by buffer size
-            int  refSpectralBound = 0;  // spectral resolution limit (see PadSynth) -- seeded by oscilsize setting
+            uint refControlRate   = 0;  // in audio samples per control period (eg. 128) -- seeded by buffer size
+            uint refSpectralBound = 0;  // spectral resolution limit (see PadSynth) -- seeded by oscilsize setting
         };
 
         // Instrument description (persistent)
