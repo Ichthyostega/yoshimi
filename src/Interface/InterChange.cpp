@@ -912,7 +912,7 @@ int InterChange::indirectMain(CommandBlock& cmd, uchar &newMsg, bool &guiTo, str
             if (write)
             {
                 undoRedoClear();
-                synth.part[value]->reset(value);
+                synth.part[value]->reset();
                 synth.getRuntime().sessionSeen[TOPLEVEL::XML::Instrument] = false;
                 cmd.data.source &= ~TOPLEVEL::action::lowPrio;
                 partsChanged.reset(value);
@@ -1873,6 +1873,7 @@ void InterChange::generateSpecialInstrument(int npart, string name)
 {
     assert(npart < NUM_MIDI_PARTS);
     Part& part{*synth.part[npart]};
+    part.defaultsinstrument();  // clean baseline, do not build on leftovers
     part.meta.info.Pfilename = name;
     part.meta.info.Ptype = InstrumentType::WarmPad;
     part.meta.info.Pauthor = "Yoshimi Team\nGPL V2 or later";
