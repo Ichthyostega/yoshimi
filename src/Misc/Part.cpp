@@ -119,22 +119,22 @@ Part::Part(uchar id, Microtonal* microtonal_, fft::Calc& fft_, SynthEngine& _syn
         }
         partnote[i].time = 0;
     }
-    cleanup();
+    resetRuntime();
     // establish a defined initial state, including the instrument metadata
-    // and the Invariant for the DesignValues -- see defaultsinstrument()
-    defaults();
+    // and the Invariant for the DesignValues -- see resetInstrument()
+    resetParameters();
 }
 
 
-void Part::reset()
+void Part::resetAll()
 {
-    cleanup();
-    defaults();
+    resetRuntime();
+    resetParameters();
     synth.setPartMap(partID);
     synth.partonoffWrite(partID, 1);
 }
 
-void Part::defaults()
+void Part::resetParameters()
 {
     Penabled = 0;
     Pminkey = 0;
@@ -158,7 +158,7 @@ void Part::defaults()
     PbreathControl = MIDI::CC::breath;
     setDestination(1);
     busy = false;
-    defaultsinstrument();
+    resetInstrument();
     ctl->resetall();
     Prcvchn = partID % NUM_MIDI_CHANNELS;
     Pomni = false;
@@ -166,7 +166,7 @@ void Part::defaults()
 }
 
 
-void Part::defaultsinstrument()
+void Part::resetInstrument()
 {
     resetMetadata();
     PyoshiType = false;
@@ -264,7 +264,7 @@ void Part::establishDesignValues()
 
 
 // Cleanup the part
-void Part::cleanup()
+void Part::resetRuntime()
 {
     int enablepart = Penabled;
     Penabled = 0;
@@ -287,7 +287,7 @@ void Part::cleanup()
 
 Part::~Part()
 {
-    cleanup();
+    resetRuntime();
     for (int n = 0; n < NUM_KIT_ITEMS; ++n)
     {
         if (kit[n].adpars)
@@ -1487,7 +1487,7 @@ void Part::add2XML_synthUsage(XMLtree& xmlInfo)
 }
 
 
-bool Part::saveXML(string filename, bool yoshiFormat)
+bool Part::saveXMLInstrument(string filename, bool yoshiFormat)
 {
     XMLStore xml{TOPLEVEL::XML::Instrument, not yoshiFormat};
 
@@ -1517,7 +1517,11 @@ bool Part::saveXML(string filename, bool yoshiFormat)
 }
 
 
-int Part::loadXML(string filename)
+/** Load an Instrument, with distinction between Zyn and Yoshimi format
+ * @remark this is one of two call paths towards getfromXML_InstrumentData;
+ *         it is used from SynthEngine::setProgram() and Init
+ */
+int Part::loadXMLInstrument(string filename)
 {
     bool marked_as_Yoshi = true;
     filename = setExtension(filename, EXTEN::yoshInst);
@@ -1541,10 +1545,12 @@ int Part::loadXML(string filename)
         logg(filename + " is not an instrument file");
         return 0;
     }
-    defaultsinstrument();
     PyoshiType = not xml.meta.isZynCompat();
     if (PyoshiType != marked_as_Yoshi)
         logg("WARNING: file extension does not match Yoshimi format in file \""+filename+"\"");
+
+    // ensure clean internal state baseline
+    resetInstrument();
 
     meta.info.Pfilename = findLeafName(filename);
     int chk = findSplitPoint(meta.info.Pfilename);
@@ -1693,7 +1699,7 @@ void Part::getfromXML_InstrumentData(XMLtree& xmlInstrument)
     }
     else
     {// no <INSTRUMENT_KIT>
-        defaultsinstrument();
+        resetInstrument();
         return;
     }
     if (XMLtree xmlEffects = xmlInstrument.getElm("INSTRUMENT_EFFECTS"))
@@ -1714,13 +1720,19 @@ void Part::getfromXML_InstrumentData(XMLtree& xmlInstrument)
 }
 
 
+/** Load complete Patch-State data, including Instrument data
+ * @remark this is the second of two call paths towards getfromXML_InstrumentData;
+ *         and it is used from Config::restorePatchState()
+ * @note the top-level differs from *Instrument loading*, insofar here the
+ *         "Zyn-format" is not relevant, as the complete wiring is restored.
+ */
 void Part::getfromXML(XMLtree& xmlPart)
 {
     // Start from a clean instrument baseline. This is redundant when called from SynthEngine::getfromXML(),
     // which resets all parts beforehand, but keeps this function self-contained.
     // It must precede the retrieval of the part settings below, since these overlap
-    // with some of the settings (random detune / velocity) reset by defaultsinstrument().
-    defaultsinstrument();
+    // with some of the settings (random detune / velocity) reset by resetInstrument().
+    resetInstrument();
 
     // Note: the first block (anything before the <INSTRUMENT>)
     //       is only present in Zyn-Format instruments
