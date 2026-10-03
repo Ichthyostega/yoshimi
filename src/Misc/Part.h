@@ -111,18 +111,18 @@ class Part
 
 
           // Resetting a Part is organised in layers, from inside out:
-          //  - cleanup()            runtime state only: kill all notes, silence buffers and effect tails. No parameter is touched.
-          //  - defaultsinstrument() the instrument content: metadata (incl. DesignValues), kit items with their AD/SUB/PAD parameters,
+          //  - resetRuntime()       runtime state only: kill all notes, silence buffers and effect tails. No parameter is touched.
+          //  - resetInstrument()    the instrument content: metadata (incl. DesignValues), kit items with their AD/SUB/PAD parameters,
           //                         and the part effects. This is the clean baseline for loading an instrument.
-          //  - defaults()           the setup of the Part itself (enable, key range, volume, pan, MIDI channel, destination, controllers...),
-          //                         plus defaultsinstrument().
-          //  - reset()              cleanup() and defaults(), then re-publish the part map and enable.
-          // Loading an instrument file starts from defaultsinstrument() alone, since the caller
-          // has already switched the part off (SynthEngine::partonoffWrite), which invokes cleanup().
-        void reset();
-        void defaults();
-        void defaultsinstrument();
-        void cleanup();
+          //  - resetParameters()    everything a state file stores for this Part: the setup of the Part itself (enable, key range,
+          //                         volume, pan, MIDI channel, destination, controllers...), plus resetInstrument().
+          //  - resetAll()           resetRuntime() and resetParameters(), then re-publish the part map and enable.
+          // Loading an instrument file starts from resetInstrument() alone, since the caller
+          // has already switched the part off (SynthEngine::partonoffWrite), which invokes resetRuntime().
+        void resetAll();
+        void resetParameters();
+        void resetInstrument();
+        void resetRuntime();
         void setNoteMap(int keyshift);
 
         // Midi commands implemented
@@ -141,8 +141,8 @@ class Part
             return omniByCC == Omni::Enabled or (omniByCC == Omni::NotSet and Pomni);
         }
 
-        bool saveXML(string filename, bool yoshiFormat); // result true for load ok, otherwise false
-        int  loadXML(string filename);
+        bool saveXMLInstrument(string filename, bool yoshiFormat); // result true for load ok, otherwise false
+        int  loadXMLInstrument(string filename);
         void add2XML_YoshimiPartSetup(XMLtree&);
         void add2XML_YoshimiInstrument(XMLtree&);
         void getfromXML(XMLtree&);

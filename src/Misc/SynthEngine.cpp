@@ -342,7 +342,7 @@ bool SynthEngine::Init(uint audiosrate, int audiobufsize)
     if (Runtime.instrumentLoad.size())
     {
         string filename = Runtime.instrumentLoad;
-        if (part[Runtime.load2part]->loadXML(filename))
+        if (part[Runtime.load2part]->loadXMLInstrument(filename))
         {
             part[Runtime.load2part]->Penabled = 1;
             Runtime.Log("Instrument file " + filename + " loaded");
@@ -508,7 +508,7 @@ void SynthEngine::defaults()
     VUpeak.values.vuRmsPeakR = 0;
 
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
-        part[npart]->defaults();
+        part[npart]->resetParameters();
 
     VUpeak.values.parts[0] = -1.0f;
     VUpeak.values.partsR[0] = -1.0f;
@@ -1179,7 +1179,7 @@ bool SynthEngine::setProgram(string const& fname, int npart)
     getRuntime().currentPart = npart;
     interchange.undoRedoClear();
     bool ok = true;
-    if (!part[npart]->loadXML(fname))
+    if (!part[npart]->loadXMLInstrument(fname))
         ok = false;
     return ok;
 }
@@ -2079,7 +2079,7 @@ void SynthEngine::partonoffWrite(uint npart, int what)
     }
     else if (tmp < 1 && original == 1) // disable if it wasn't already off
     {
-        part[npart]->cleanup();
+        part[npart]->resetRuntime();
         for (int nefx = 0; nefx < NUM_INS_EFX; ++nefx)
         {
             if (Pinsparts[nefx] == int(npart))
@@ -2600,7 +2600,7 @@ void SynthEngine::ShutUp()
 
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
     {
-        part[npart]->cleanup();
+        part[npart]->resetRuntime();
         VUpeak.values.parts[npart] = -1.0f;
         VUpeak.values.partsR[npart] = -1.0f;
     }

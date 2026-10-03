@@ -752,9 +752,9 @@ int InterChange::indirectMain(CommandBlock& cmd, uchar &newMsg, bool &guiTo, str
             // This is both. Below we send them individually.
 
             if (saveType & 2) // Yoshimi format
-                ok = synth.part[value]->saveXML(text, true);
+                ok = synth.part[value]->saveXMLInstrument(text, true);
             if (ok && (saveType & 1)) // legacy
-                ok = synth.part[value]->saveXML(text, false);
+                ok = synth.part[value]->saveXMLInstrument(text, false);
 
             if (ok)
             {
@@ -912,7 +912,7 @@ int InterChange::indirectMain(CommandBlock& cmd, uchar &newMsg, bool &guiTo, str
             if (write)
             {
                 undoRedoClear();
-                synth.part[value]->reset();
+                synth.part[value]->resetAll();
                 synth.getRuntime().sessionSeen[TOPLEVEL::XML::Instrument] = false;
                 cmd.data.source &= ~TOPLEVEL::action::lowPrio;
                 partsChanged.reset(value);
@@ -1873,7 +1873,7 @@ void InterChange::generateSpecialInstrument(int npart, string name)
 {
     assert(npart < NUM_MIDI_PARTS);
     Part& part{*synth.part[npart]};
-    part.defaultsinstrument();  // clean baseline, do not build on leftovers
+    part.resetInstrument();  // clean baseline, do not build on leftovers
     part.meta.info.Pfilename = name;
     part.meta.info.Ptype = InstrumentType::WarmPad;
     part.meta.info.Pauthor = "Yoshimi Team\nGPL V2 or later";
@@ -2069,8 +2069,8 @@ void InterChange::returns(CommandBlock& cmd)
 
 void InterChange::doClearPartInstrument(int npart)
 {
-    synth.part[npart]->defaultsinstrument();
-    synth.part[npart]->cleanup();
+    synth.part[npart]->resetInstrument();
+    synth.part[npart]->resetRuntime();
     synth.getRuntime().currentPart = npart;
     synth.partonoffWrite(npart, 2);
     synth.pushEffectUpdate(npart);
