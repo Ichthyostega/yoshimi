@@ -347,6 +347,7 @@ void Controller::add2XML(XMLtree& xml)
     xml.addPar_int ("filter_cutoff_depth"   , filtercutoff.depth);
     xml.addPar_int ("filter_q_depth"        , filterq.depth);
     xml.addPar_int ("bandwidth_depth"       , bandwidth.depth);
+    xml.addPar_bool("bandwidth_exponential" , bandwidth.exponential);
     xml.addPar_int ("mod_wheel_depth"       , modwheel.depth);
     xml.addPar_bool("mod_wheel_exponential" , modwheel.exponential);
     xml.addPar_bool("fm_amp_receive"        , fmamp.receive);
@@ -378,6 +379,7 @@ void Controller::getfromXML(XMLtree& xml)
     filtercutoff.depth  = xml.getPar_127 ("filter_cutoff_depth"  ,filtercutoff.depth);
     filterq.depth       = xml.getPar_127 ("filter_q_depth"       ,filterq.depth);
     bandwidth.depth     = xml.getPar_127 ("bandwidth_depth"      ,bandwidth.depth);
+    bandwidth.exponential = xml.getPar_bool("bandwidth_exponential", false); // not persisted in older versions
     modwheel.depth      = xml.getPar_127 ("mod_wheel_depth"      ,modwheel.depth);
     modwheel.exponential= xml.getPar_bool("mod_wheel_exponential",modwheel.exponential);
     fmamp.receive       = xml.getPar_bool("fm_amp_receive"       ,fmamp.receive);

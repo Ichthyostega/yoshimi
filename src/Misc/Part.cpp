@@ -143,6 +143,7 @@ void Part::resetParameters()
     TransVolume = 128; // ensure it always gets set
     Pkeyshift = 64;
     oldFilterState = -1;
+    oldFilterQstate = -1;
     oldBendState = -1;
     oldVolumeState = -1;
     oldVolumeAdjust = 0;
@@ -1579,6 +1580,13 @@ int Part::loadXMLInstrument(string filename)
             PbreathControl = UNUSED; // impossible CC value
         else
             PbreathControl = MIDI::CC::breath;
+    }
+    else
+    {// Zyn format instruments do not carry any playing characteristics:
+     // use the neutral defaults instead of keeping those of the previous instrument.
+     // (the controller configuration only -- live controller values are left alone)
+        ctl->defaults();
+        PbreathControl = MIDI::CC::breath;
     }
     if (XMLtree xmlController = xml.getElm("CONTROLLER"))
         ctl->getfromXML(xmlController);
