@@ -1422,6 +1422,7 @@ void Part::add2XML_YoshimiPartSetup(XMLtree& xmlPart)
     xmlPart.addPar_int("key_limit"         , Pkeylimit);
     xmlPart.addPar_int("random_detune"     , Pfrand);
     xmlPart.addPar_int("random_velocity"   , Pvelrand);
+    xmlPart.addPar_bool("breath_disable"   , PbreathControl != MIDI::CC::breath);
     xmlPart.addPar_int("destination"       , Paudiodest);
 
     XMLtree xmlInstrument = xmlPart.addElm("INSTRUMENT");
@@ -1575,8 +1576,8 @@ int Part::loadXMLInstrument(string filename)
         Pvelrand = xmlInstrument.getPar_127("random_velocity", Pvelrand);
         if (Pvelrand > 50)
             Pvelrand = 50;
-        PbreathControl = xmlInstrument.getPar_bool("breath_disable", PbreathControl);
-        if (PbreathControl)
+        bool breathDisabled = xmlInstrument.getPar_bool("breath_disable", PbreathControl != MIDI::CC::breath);
+        if (breathDisabled)
             PbreathControl = UNUSED; // impossible CC value
         else
             PbreathControl = MIDI::CC::breath;
@@ -1782,6 +1783,8 @@ void Part::getfromXML(XMLtree& xmlPart)
         Pkeylimit = POLYPHONY;
     Pfrand   = xmlPart.getPar_int("random_detune",   Pfrand,   0,50);
     Pvelrand = xmlPart.getPar_int("random_velocity", Pvelrand, 0,50);
+    bool breathDisabled = xmlPart.getPar_bool("breath_disable", PbreathControl != MIDI::CC::breath);
+    PbreathControl = breathDisabled? UNUSED : MIDI::CC::breath;
     setDestination(xmlPart.getPar_127("destination", Paudiodest));
 
     if (XMLtree xmlInstrument = xmlPart.getElm("INSTRUMENT"))
