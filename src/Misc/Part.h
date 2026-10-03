@@ -108,8 +108,19 @@ class Part
 
         inline float pannedVolLeft()  { return volume * pangainL; }
         inline float pannedVolRight() { return volume * pangainR; }
-        void reset(int npart);
-        void defaults(int npart);
+
+
+          // Resetting a Part is organised in layers, from inside out:
+          //  - cleanup()            runtime state only: kill all notes, silence buffers and effect tails. No parameter is touched.
+          //  - defaultsinstrument() the instrument content: metadata (incl. DesignValues), kit items with their AD/SUB/PAD parameters,
+          //                         and the part effects. This is the clean baseline for loading an instrument.
+          //  - defaults()           the setup of the Part itself (enable, key range, volume, pan, MIDI channel, destination, controllers...),
+          //                         plus defaultsinstrument().
+          //  - reset()              cleanup() and defaults(), then re-publish the part map and enable.
+          // Loading an instrument file starts from defaultsinstrument() alone, since the caller
+          // has already switched the part off (SynthEngine::partonoffWrite), which invokes cleanup().
+        void reset();
+        void defaults();
         void defaultsinstrument();
         void cleanup();
         void setNoteMap(int keyshift);
@@ -225,6 +236,7 @@ class Part
         void KillNotePos(int pos);
         void ReleaseNotePos(int pos);
         void monoNoteHistoryRecall();
+        void resetMetadata();
         void establishDesignValues();
 
         void startNewNotes        (int pos, size_t item, size_t currItem, Note, bool portamento, float volumeAdjustment);

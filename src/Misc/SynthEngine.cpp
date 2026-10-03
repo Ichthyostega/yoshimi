@@ -508,7 +508,7 @@ void SynthEngine::defaults()
     VUpeak.values.vuRmsPeakR = 0;
 
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
-        part[npart]->defaults(npart);
+        part[npart]->defaults();
 
     VUpeak.values.parts[0] = -1.0f;
     VUpeak.values.partsR[0] = -1.0f;

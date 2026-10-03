@@ -120,26 +120,21 @@ Part::Part(uchar id, Microtonal* microtonal_, fft::Calc& fft_, SynthEngine& _syn
         partnote[i].time = 0;
     }
     cleanup();
-    /*
-     * Do we actually need the following two?
-     * defaults is called for all parts at startup by Config.cpp
-     * and Pfilename is then set to the default name when defaults
-     * calls defaultsinstrument
-     */
-    meta.info.Pfilename.clear();
-    defaults(0);
+    // establish a defined initial state, including the instrument metadata
+    // and the Invariant for the DesignValues -- see defaultsinstrument()
+    defaults();
 }
 
 
-void Part::reset(int npart)
+void Part::reset()
 {
     cleanup();
-    defaults(npart);
-    synth.setPartMap(npart);
-    synth.partonoffWrite(npart, 1);
+    defaults();
+    synth.setPartMap(partID);
+    synth.partonoffWrite(partID, 1);
 }
 
-void Part::defaults(int npart)
+void Part::defaults()
 {
     Penabled = 0;
     Pminkey = 0;
@@ -160,15 +155,12 @@ void Part::defaults(int npart)
     Pvelsns = 64;
     Pveloffs = 64;
     Pkeylimit = PART_DEFAULT_LIMIT;
-    Pfrand = 0;
-    Pvelrand = 0;
     PbreathControl = MIDI::CC::breath;
-    Peffnum = 0;
     setDestination(1);
     busy = false;
     defaultsinstrument();
     ctl->resetall();
-    Prcvchn = npart % NUM_MIDI_CHANNELS;
+    Prcvchn = partID % NUM_MIDI_CHANNELS;
     Pomni = false;
     setNoteMap(0);
 }
@@ -176,20 +168,8 @@ void Part::defaults(int npart)
 
 void Part::defaultsinstrument()
 {
-    meta.info.Pfilename = DEFAULT_NAME;
-    meta.info.PdisplayName = UNTITLED;
+    resetMetadata();
     PyoshiType = false;
-    meta.info.Ptype = InstrumentType::Undefined;
-    meta.info.Pauthor.clear();
-    meta.info.Pcomments.clear();
-
-    // by default: capture current processing parameters as DesignValues
-    // (start from a clean baseline, never carry over values of a previous instrument)
-    meta.design = DesignValues{};
-    meta.adaptSampleRate = true;
-    meta.adaptControlRate = true;
-    meta.adaptSpectralBound = true;
-    establishDesignValues();
 
     Pkitmode = 0;
     PkitfadeType = 0;
@@ -223,6 +203,26 @@ void Part::defaultsinstrument()
         Pefxroute[nefx] = 0; // route to next effect
     }
     Peffnum = 0;
+}
+
+
+/** Reset the instrument metadata to the state of a new, anonymous default instrument.
+ *  By default, the current processing parameters are captured as DesignValues.
+ */
+void Part::resetMetadata()
+{
+    meta.info.Pfilename = DEFAULT_NAME;
+    meta.info.PdisplayName = UNTITLED;
+    meta.info.Ptype = InstrumentType::Undefined;
+    meta.info.Pauthor.clear();
+    meta.info.Pcomments.clear();
+
+    // start from a clean baseline, never carry over values of a previous instrument
+    meta.design = DesignValues{};
+    meta.adaptSampleRate = true;
+    meta.adaptControlRate = true;
+    meta.adaptSpectralBound = true;
+    establishDesignValues();
 }
 
 
@@ -317,6 +317,7 @@ void Part::setNoteMap(int keyshift)
         }
     }
 }
+
 
 void Part::setChannelAT(int type, int value)
 {
@@ -1715,6 +1716,12 @@ void Part::getfromXML_InstrumentData(XMLtree& xmlInstrument)
 
 void Part::getfromXML(XMLtree& xmlPart)
 {
+    // Start from a clean instrument baseline. This is redundant when called from SynthEngine::getfromXML(),
+    // which resets all parts beforehand, but keeps this function self-contained.
+    // It must precede the retrieval of the part settings below, since these overlap
+    // with some of the settings (random detune / velocity) reset by defaultsinstrument().
+    defaultsinstrument();
+
     // Note: the first block (anything before the <INSTRUMENT>)
     //       is only present in Zyn-Format instruments
     Penabled = xmlPart.getPar_bool("enabled", Penabled);
