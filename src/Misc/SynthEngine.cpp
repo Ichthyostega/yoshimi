@@ -125,7 +125,7 @@ SynthEngine::SynthEngine(uint instanceID)
     , halfsamplerate_f{float(samplerate / 2)}
     , buffersize{512}
     , buffersize_f{float(buffersize)}
-    , bufferbytes{int(buffersize*sizeof(float))}
+    , bufferbytes{buffersize*sizeof(float)}
     , oscilsize{1024}
     , oscilsize_f{float(oscilsize)}
     , halfoscilsize{oscilsize / 2}
@@ -228,7 +228,7 @@ SynthEngine::~SynthEngine()
 }
 
 
-bool SynthEngine::Init(uint audiosrate, int audiobufsize)
+bool SynthEngine::Init(uint audiosrate, uint audiobufsize)
 {
     Runtime.init();
     audioOutStore(_SYS_::mute::Active);
@@ -250,6 +250,8 @@ bool SynthEngine::Init(uint audiosrate, int audiobufsize)
         oscilsize_f = oscilsize = buffersize / 2;
     }
     halfoscilsize_f = halfoscilsize = oscilsize / 2;
+    // the oscillator code addresses its tables with index masks, which relies on a power of two
+    assert(oscilsize > 0 and (oscilsize & (oscilsize - 1)) == 0);
     oscil_sample_step_f = oscilsize_f / samplerate_f;
 
     // Phase and frequency modulation are calculated in terms of samples, not
@@ -2110,11 +2112,11 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
 
     Samples& tmpmixl = Runtime.genMixl;
     Samples& tmpmixr = Runtime.genMixr;
-    sent_buffersize = buffersize;
+    sent_buffersize = int(buffersize);
     sent_bufferbytes = bufferbytes;
     sent_buffersize_f = buffersize_f;
 
-    if ((to_process > 0) && (to_process < buffersize))
+    if ((to_process > 0) && (uint(to_process) < buffersize))
     {
         sent_buffersize = to_process;
         sent_bufferbytes = sent_buffersize * sizeof(float);

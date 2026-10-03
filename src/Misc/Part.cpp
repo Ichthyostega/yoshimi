@@ -1335,8 +1335,8 @@ void Part::add2XML_InstrumentData(XMLtree& xmlInstrument)
         // when this instrument is used with different processing parameters)
         // A marker value of zero indicates that no normalisation shall be performed
         xmlInfo.addPar_uint("design_sample_rate"   , meta.adaptSampleRate   ? meta.design.refSampleRate : 0);
-        xmlInfo.addPar_int ("design_control_rate"  , meta.adaptControlRate  ? meta.design.refControlRate : 0);
-        xmlInfo.addPar_int ("design_spectral_bound", meta.adaptSpectralBound? meta.design.refSpectralBound : 0);
+        xmlInfo.addPar_uint("design_control_rate"  , meta.adaptControlRate  ? meta.design.refControlRate : 0);
+        xmlInfo.addPar_uint("design_spectral_bound", meta.adaptSpectralBound? meta.design.refSpectralBound : 0);
         if (meta.info.Pfilename == DEFAULT_NAME)
             return;
 
@@ -1610,13 +1610,13 @@ int Part::loadXMLInstrument(string filename)
 void Part::getfromXML_DesignValues(XMLtree& xmlInstrument)
 {
     uint origSampleRate    = 0;
-    int  origControlRate   = 0;
-    int  origSpectralBound = 0;
+    uint origControlRate   = 0;
+    uint origSpectralBound = 0;
     if (XMLtree xmlInfo = xmlInstrument.getElm("INFO"))
     {
         origSampleRate    = xmlInfo.getPar_uint("design_sample_rate"   , 0);  // no clamping: range check below
-        origControlRate   = xmlInfo.getPar_int ("design_control_rate"  , 0);
-        origSpectralBound = xmlInfo.getPar_int ("design_spectral_bound", 0);
+        origControlRate   = xmlInfo.getPar_uint("design_control_rate"  , 0);
+        origSpectralBound = xmlInfo.getPar_uint("design_spectral_bound", 0);
     }
     meta.adaptSampleRate    = MIN_SAMPLE_RATE <= origSampleRate    and origSampleRate    <= MAX_SAMPLE_RATE;
     meta.adaptControlRate   = MIN_BUFFER_SIZE <= origControlRate   and origControlRate   <= MAX_BUFFER_SIZE;

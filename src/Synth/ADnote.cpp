@@ -153,7 +153,7 @@ ADnote::ADnote(ADnoteParameters& adpars_, Controller& ctl_, Note note_, bool por
 {
     // Start phase for sub-Voices should be negative so that the zero phase in
     // the first cycle will result in a positive phase change.
-    int phase = (topVoice==this)? 0 : synth.oscilsize - phaseOffset;
+    int phase = (topVoice==this)? 0 : int(synth.oscilsize) - phaseOffset;
     for (int nvoice = 0; nvoice < NUM_VOICES; ++nvoice)
     {
         NoteVoicePar[nvoice].phaseOffset = phase;
@@ -977,7 +977,7 @@ void ADnote::initParameters()
                 for (size_t k = 0; k < unison_size[nvoice]; ++k)
                     oscposhiFM[nvoice][k] =
                         (oscposhi[nvoice][k] + adpars.VoicePar[vc].FMSmp->
-                         getPhase()) % synth.oscilsize;
+                         getPhase()) % int(synth.oscilsize);
             }
             else
             {
@@ -992,7 +992,7 @@ void ADnote::initParameters()
             int oscposhi_start;
             oscposhi_start = adpars.VoicePar[nvoice].OscilSmp->getPhase();
             for (size_t k = 0; k < unison_size[nvoice]; ++k)
-                oscposhi[nvoice][k] = (oscposhi[nvoice][k] + oscposhi_start) % synth.oscilsize;
+                oscposhi[nvoice][k] = (oscposhi[nvoice][k] + oscposhi_start) % int(synth.oscilsize);
         }
 
         if (adpars.VoicePar[nvoice].PFMFreqEnvelopeEnabled)
@@ -1325,11 +1325,11 @@ void ADnote::computePhaseOffsets(int nvoice)
     int phase_offset_diff = new_phase_offset - NoteVoicePar[nvoice].phaseOffset;
     for (size_t k = 0; k < unison_size[nvoice]; ++k)
     {
-        oscposhi[nvoice][k] = (oscposhi[nvoice][k] + phase_offset_diff) % synth.oscilsize;
+        oscposhi[nvoice][k] = (oscposhi[nvoice][k] + phase_offset_diff) % int(synth.oscilsize);
         if (oscposhi[nvoice][k] < 0)
             // This is necessary, because C '%' operator does not always
             // return a positive result.
-            oscposhi[nvoice][k] += synth.oscilsize;
+            oscposhi[nvoice][k] += int(synth.oscilsize);
     }
     NoteVoicePar[nvoice].phaseOffset = new_phase_offset;
 }
@@ -1345,11 +1345,11 @@ void ADnote::computeFMPhaseOffsets(int nvoice)
         for (size_t k = 0; k < unison_size[nvoice]; ++k)
         {
             oscposhiFM[nvoice][k] += FMphase_offset_diff;
-            oscposhiFM[nvoice][k] %= synth.oscilsize;
+            oscposhiFM[nvoice][k] %= int(synth.oscilsize);
             if (oscposhiFM[nvoice][k] < 0)
                 // This is necessary, because C '%' operator does not always
                 // return a positive result.
-                oscposhiFM[nvoice][k] += synth.oscilsize;
+                oscposhiFM[nvoice][k] += int(synth.oscilsize);
         }
         NoteVoicePar[nvoice].fmPhaseOffset = new_FMphase_offset;
     }
@@ -2279,7 +2279,7 @@ void ADnote::computeVoiceOscillator(int nvoice)
             if (stereo)
             {
                 // Reduce volume due to stereo being combined to mono.
-                for (int i = 0; i < synth.buffersize; ++i)
+                for (uint i = 0; i < synth.buffersize; ++i)
                 {
                     unison[i] = smps[i] * 0.5f;
                 }
