@@ -67,6 +67,8 @@ class Part
         // Reference settings used at design time of this instrument.
         // Persisted to record the context used for the design, and to compensate
         // when used in a different setup (to the degree this is possible).
+        // Persisted only when explicitly adopted by the user (opt-in);
+        // otherwise these values just mirror the current settings.
         struct DesignValues
         {
             uint refSampleRate    = 0;  // in samples per second (eg. 48000)
@@ -88,7 +90,7 @@ class Part
         {
             Info         info;
             DesignValues design;
-              // whether to compensate towards DesignValues
+              // whether to compensate towards DesignValues (opt-in per value)
             bool adaptSampleRate    = false;
             bool adaptControlRate   = false;
             bool adaptSpectralBound = false;

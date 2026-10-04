@@ -208,7 +208,8 @@ void Part::resetInstrument()
 
 
 /** Reset the instrument metadata to the state of a new, anonymous default instrument.
- *  By default, the current processing parameters are captured as DesignValues.
+ *  Adapting to DesignValues is strictly opt-in: the new instrument does not adapt
+ *  to any DesignValue, which then just mirror the current processing parameters.
  */
 void Part::resetMetadata()
 {
@@ -220,15 +221,15 @@ void Part::resetMetadata()
 
     // start from a clean baseline, never carry over values of a previous instrument
     meta.design = DesignValues{};
-    meta.adaptSampleRate = true;
-    meta.adaptControlRate = true;
-    meta.adaptSpectralBound = true;
+    meta.adaptSampleRate    = false;
+    meta.adaptControlRate   = false;
+    meta.adaptSpectralBound = false;
     establishDesignValues();
 }
 
 
 /** Establish the Invariant: DesignValues are valid and usable.
- *  - if current settings shall be used, retrieve these
+ *  - where the instrument is not adapting, the DesignValues mirror the current settings
  *  - otherwise do not touch the stored DesignValues
  *  - but fall back to current settings when values are missing
  */
@@ -580,6 +581,14 @@ float Part::computeKitItemCrossfade(size_t item, int midiNote)
 // Handle "Note ON" event : create new sounding note instances
 void Part::NoteOn(int note, int velocity, bool renote)
 {
+        // Invariant of the DesignValues: wherever the instrument is not adapting to a value,
+        // this value must mirror the current processing parameters. TODO 9/2026 Planned for later:
+        // define the processing parameters as immutable for the lifetime of the engine --
+        // this would reveal any violation of that premise (e.g. by some future runtime reconfiguration).
+    assert(meta.adaptSampleRate    or meta.design.refSampleRate    == synth.samplerate);
+    assert(meta.adaptControlRate   or meta.design.refControlRate   == synth.buffersize);
+    assert(meta.adaptSpectralBound or meta.design.refSpectralBound == synth.oscilsize);
+
     if (note < Pminkey || note > Pmaxkey)
         return;
 
@@ -1331,12 +1340,16 @@ void Part::add2XML_InstrumentData(XMLtree& xmlInstrument)
         xmlInfo.addPar_str("comments", meta.info.Pcomments);
         xmlInfo.addPar_int("type"    , instrumentTypeToXML(meta.info.Ptype));
         xmlInfo.addPar_str("file"    , meta.info.Pfilename);
-        // Persist the DesignValues if desired, which allows to adapt/normalise
-        // when this instrument is used with different processing parameters)
-        // A marker value of zero indicates that no normalisation shall be performed
-        xmlInfo.addPar_uint("design_sample_rate"   , meta.adaptSampleRate   ? meta.design.refSampleRate : 0);
-        xmlInfo.addPar_uint("design_control_rate"  , meta.adaptControlRate  ? meta.design.refControlRate : 0);
-        xmlInfo.addPar_uint("design_spectral_bound", meta.adaptSpectralBound? meta.design.refSpectralBound : 0);
+        // Persist those DesignValues which are actively used for adaptation.
+        // The absence of an entry will mark the instrument as "not adapting" with respect
+        // to this value. This covers also the case for any legacy instrument, which thus
+        // can be re-saved without any change to the file.
+        if (meta.adaptSampleRate)
+            xmlInfo.addPar_uint("design_sample_rate"   , meta.design.refSampleRate);
+        if (meta.adaptControlRate)
+            xmlInfo.addPar_uint("design_control_rate"  , meta.design.refControlRate);
+        if (meta.adaptSpectralBound)
+            xmlInfo.addPar_uint("design_spectral_bound", meta.design.refSpectralBound);
         if (meta.info.Pfilename == DEFAULT_NAME)
             return;
 
@@ -1601,9 +1614,10 @@ int Part::loadXMLInstrument(string filename)
  *  independent of any previous state.
  *  Any design value can be marked as "not adapted" -- which implies that the instrument
  *  uses the current processing parameters, and no adaptation or normalisation shall be
- *  performed on derived sound synthesis settings. This case is triggered either by a
- *  stored value 0 (or any other value outside the valid range). Notably this happens
- *  when loading a legacy instrument with no persisted DesignValues.
+ *  performed on derived sound synthesis settings. This is the case whenever the entry is
+ *  missing, and likewise for a stored value 0 or any other value outside the valid range
+ *  Legacy instruments fall into this category and will thus not be "adapted" in processing,
+ *  and nothing will be added to legacy instruments by default, when saving them back.
  *  @note values from XML are deliberately retrieved without clamping, since a
  *        clamped out-of-range value would pass for a valid design value.
  */
