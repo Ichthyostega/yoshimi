@@ -5425,6 +5425,115 @@ int CmdInterpreter::waveform(Parser& input, unsigned char controlType)
 }
 
 
+/** Design values of the instrument in the current part:
+ *  "read part N design" shows all three, "set part N design ..." changes them.
+ *  Values typed here are rejected when invalid, never adjusted. */
+int CmdInterpreter::partDesignValues(Parser& input, unsigned char controlType)
+{
+    using Field = Part::DesignValuesField;
+    Config& Runtime = synth->getRuntime();
+
+    if (controlType != TOPLEVEL::type::Write)
+    {
+        if (controlType != TOPLEVEL::type::Adjust)
+        {// only the range of a single design value can be queried; no MIDI-learn, no default
+            uchar request = controlType & TOPLEVEL::type::Default;
+            if (not (controlType & TOPLEVEL::type::Limits)
+                or request == TOPLEVEL::type::Default)
+                return REPLY::available_msg; // "Not available"
+            uchar limited = input.matchnMove(1, "sample")  ? PART::control::designSampleRate
+                          : input.matchnMove(1, "control") ? PART::control::designControlRate
+                          : input.matchnMove(1, "spectral")? PART::control::designSpectralBound
+                          :                                  UNUSED;
+            if (limited == UNUSED)
+                return REPLY::available_msg;
+            return sendNormal(synth, 0, 0, controlType, limited, npart);
+        }
+        auto show = [&](string name, uchar control)
+        {
+            bool adapting = readControl(synth, 0, control, npart, UNUSED, UNUSED, UNUSED, 1);
+            uint design   = readControl(synth, 0, control, npart, UNUSED, UNUSED, UNUSED, 0);
+            uint current  = readControl(synth, 0, control, npart, UNUSED, UNUSED, UNUSED, 2);
+            string text = name + " " + (adapting? to_string(design) : "off");
+            if (adapting and design != current)
+                text += " (current " + to_string(current) + ")";
+            return text;
+        };
+        Runtime.Log("Part " + to_string(npart + 1) + " design: "
+                    + show("sample rate",    PART::control::designSampleRate)   + ", "
+                    + show("control rate",   PART::control::designControlRate)  + ", "
+                    + show("spectral bound", PART::control::designSpectralBound));
+        return REPLY::done_msg;
+    }
+    if (input.isAtEnd())
+        return REPLY::what_msg;
+
+    if (input.matchnMove(2, "current"))
+    {
+        if (readControl(synth, 0, PART::control::designSetToCurrent, npart)
+            and not query("Adapting to the current settings changes the sound of part " + to_string(npart + 1)))
+        {
+            Runtime.Log("Cancelled");
+            return REPLY::done_msg;
+        }
+        return sendNormal(synth, 0, 1, controlType, PART::control::designSetToCurrent, npart);
+    }
+    if (input.matchnMove(2, "independent"))
+    {
+        if (not query("Marking part " + to_string(npart + 1) + " independent of its design values may change its sound later"))
+        {
+            Runtime.Log("Cancelled");
+            return REPLY::done_msg;
+        }
+        return sendNormal(synth, 0, 1, controlType, PART::control::designMarkIndependent, npart);
+    }
+
+    uchar control;
+    Field field;
+    uint  lowest;
+    if (input.matchnMove(1, "sample"))
+    {
+        control = PART::control::designSampleRate;
+        field   = Field::SampleRate;
+        lowest  = MIN_SAMPLE_RATE;
+    }
+    else if (input.matchnMove(1, "control"))
+    {
+        control = PART::control::designControlRate;
+        field   = Field::ControlRate;
+        lowest  = MIN_BUFFER_SIZE;
+    }
+    else if (input.matchnMove(1, "spectral"))
+    {
+        control = PART::control::designSpectralBound;
+        field   = Field::SpectralBound;
+        lowest  = MIN_OSCIL_SIZE;
+    }
+    else
+        return REPLY::what_msg;
+
+    if (input.isAtEnd())
+        return REPLY::value_msg;
+    if (input.matchnMove(3, "off")) // the value is irrelevant; but use `lowest` so it passes the limit test
+        return sendNormal(synth, 0, lowest, controlType, control, npart, UNUSED, UNUSED, UNUSED, UNUSED, 0);
+
+    if (not input.isdigit())
+        return REPLY::value_msg;
+    uint changedValue = string2int(input);
+    if (not Part::isValidDesignValue(field, changedValue))
+    {
+        if (field == Field::SampleRate)
+            Runtime.Log("Sample rate must be in the range " + to_string(MIN_SAMPLE_RATE) + " to " + to_string(MAX_SAMPLE_RATE));
+        else
+            Runtime.Log("Value must be a power of two in the range "
+                        + to_string(field == Field::ControlRate? MIN_BUFFER_SIZE : MIN_OSCIL_SIZE) + " to "
+                        + to_string(field == Field::ControlRate? MAX_BUFFER_SIZE : MAX_OSCIL_SIZE));
+        return REPLY::done_msg;
+    }
+    return sendNormal(synth, 0, changedValue, controlType, control, npart, UNUSED, UNUSED, UNUSED, UNUSED, 1);
+}
+
+
 int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
 {
     Config& Runtime = synth->getRuntime();
@@ -5632,6 +5741,9 @@ int CmdInterpreter::commandPart(Parser& input, unsigned char controlType)
 
     if (!readControl(synth, 0, PART::control::enable, npart))
         return REPLY::inactive_msg;
+
+    if (input.matchnMove(4, "design")) // needs 4 chars, since "destination" is matched with one
+        return partDesignValues(input, controlType);
 
     int tmp = -1;
     if (input.matchnMove(3, "normal"))

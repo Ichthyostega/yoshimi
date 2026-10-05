@@ -3873,7 +3873,7 @@ void InterChange::commandPart(CommandBlock& cmd)
             synth.getRuntime().Log("Not in kit mode");
         }
     }
-    else if (control != PART::control::enableKitLine && !part.kit[kititem].Penabled && kititem < UNUSED)
+    else if (control != PART::control::enableKitLine && kititem < UNUSED && !part.kit[kititem].Penabled)
     {
         cmd.data.source = TOPLEVEL::action::noAction;
         synth.getRuntime().Log("Kit item " +  to_string(kititem + 1) + " not enabled");
@@ -3915,6 +3915,7 @@ void InterChange::commandPart(CommandBlock& cmd)
             }
         }
         else
+        if (control < PART::control::designSampleRate) // no UNDO for design values
             add2undo(cmd, noteSeen);
     }
 
@@ -3927,6 +3928,8 @@ void InterChange::commandPart(CommandBlock& cmd)
     uchar effNum = part.Peffnum;
     if (!kitType)
         kititem = 0;
+
+    bool audible{false}; // a design value change which alters the sound requires to mute the part
 
     switch (control)
     {
@@ -4482,6 +4485,50 @@ void InterChange::commandPart(CommandBlock& cmd)
                 value = part.ctl->resonancebandwidth.data;
             break;
 
+        case PART::control::designSetToCurrent:
+            if (write)
+                audible = part.adoptCurrentSettings();
+            else
+                value = part.isAdaptationAudible();
+            break;
+        case PART::control::designMarkIndependent:
+            if (write)
+                audible = part.markIndependent();
+            else
+                value = part.isAdaptationAudible();
+            break;
+        case PART::control::designSampleRate:
+        case PART::control::designControlRate:
+        case PART::control::designSpectralBound:
+        {
+            auto field = control == PART::control::designSampleRate ? Part::DesignValuesField::SampleRate
+                       : control == PART::control::designControlRate? Part::DesignValuesField::ControlRate
+                       :                                              Part::DesignValuesField::SpectralBound;
+            if (write)
+            {
+                bool adaptSynth = (cmd.data.offset == 1);
+                if (adaptSynth and not Part::isValidDesignValue(field, value_int))
+                {
+                    cmd.data.source = TOPLEVEL::action::noAction;
+                    synth.getRuntime().Log("Invalid design value");
+                    return;
+                }
+                audible = part.setDesignValue(field, value_int, adaptSynth);
+            }
+            else switch (cmd.data.parameter)
+            {
+                case 1:
+                    value = part.isAdaptingTo(field);
+                    break;
+                case 2:
+                    value = part.getCurrentSetting(field);
+                    break;
+                default:
+                    value = part.getDesignValue(field);
+            }
+            break;
+        }
+
         case PART::control::instrumentCopyright: // done elsewhere
             break;
         case PART::control::instrumentComments: // done elsewhere
@@ -4492,6 +4539,13 @@ void InterChange::commandPart(CommandBlock& cmd)
             break;
         case PART::control::defaultInstrumentCopyright: // done elsewhere
             break;
+    }
+
+    if (audible and synth.partonoffRead(npart))
+    {// ensure re-initialisation of Part runtime state with the applied changes:
+     // kills all notes, so no note continues with changed processing parameters
+        synth.partonoffWrite(npart, -1);
+        synth.partonoffWrite(npart, 2);
     }
 
     if (!write || control == PART::control::minToLastKey || control == PART::control::maxToLastKey)

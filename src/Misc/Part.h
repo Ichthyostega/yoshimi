@@ -127,6 +127,19 @@ class Part
         void resetRuntime();
         void setNoteMap(int keyshift);
 
+        // Control adaptation to captured DesignValues
+        enum class DesignValuesField { SampleRate, ControlRate, SpectralBound };
+
+        bool  markIndependent();      // disable adaptation to DesignValues for this instrument
+        bool  adoptCurrentSettings(); // adapt Synth parameters to reflect the captured DesignValues
+
+        static bool isValidDesignValue(DesignValuesField, uint rawVal);
+        bool  setDesignValue(DesignValuesField field, uint newValue, bool adaptSynth);
+        uint  getDesignValue(DesignValuesField)    const;
+        bool  isAdaptingTo(DesignValuesField)      const;
+        uint  getCurrentSetting(DesignValuesField) const;
+        bool  isAdaptationAudible()                const;
+
         // Midi commands implemented
         void setChannelAT(int type, int value);
         void setKeyAT(int note, int type, int value);
