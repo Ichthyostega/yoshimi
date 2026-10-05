@@ -1713,6 +1713,44 @@ string DataText::resolvePart(CommandBlock& cmd, bool addValue)
                 contstr += "save:\n";
             contstr += textMsgBuffer.fetch(value_int);
             break;
+        case PART::control::designSetToCurrent:
+            showValue = false;
+            if (cmd.data.type & TOPLEVEL::type::Write)
+                contstr = "design values set to current settings";
+            else
+                contstr = value_bool? "adapting would be audible" : "adapting would not be audible";
+            break;
+        case PART::control::designMarkIndependent:
+            showValue = false;
+            if (cmd.data.type & TOPLEVEL::type::Write)
+                contstr = "marked independent of design values";
+            else
+                contstr = value_bool? "adapting would be audible" : "adapting would not be audible";
+            break;
+        case PART::control::designSampleRate:
+        case PART::control::designControlRate:
+        case PART::control::designSpectralBound:
+        {
+            showValue = false;
+            string what = control == PART::control::designSampleRate ? "sample rate"
+                        : control == PART::control::designControlRate? "control rate"
+                        :                                              "spectral bound";
+            contstr = "design " + what + " ";
+            if (cmd.data.type & TOPLEVEL::type::Write)
+                contstr += (cmd.data.offset == 1)? to_string(value_int) : "off";
+            else switch (parameter)
+            {
+                case 1:
+                    contstr += value_bool? "adapting" : "off";
+                    break;
+                case 2:
+                    contstr += "current " + to_string(value_int);
+                    break;
+                default:
+                    contstr += to_string(value_int);
+            }
+            break;
+        }
         case PART::control::resetAllControllers:
             showValue = false;
             contstr = "Cleared controllers";

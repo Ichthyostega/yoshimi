@@ -722,6 +722,17 @@ namespace PART // usage PART::control::volume
         instrumentName,
         instrumentType,
         defaultInstrumentCopyright, // this needs to be split into two for load/save
+
+        // Design values of the instrument (rate-adapt). IDs are persisted (MIDI-learn), only append.
+        // Actions on all three values at once. Read returns 1 if executing would be audible, else 0.
+        designSetToCurrent = 225, // adapt to all, with the design values taken from the current settings
+        designMarkIndependent,    // adapt to none, design values mirror the current settings
+        // The single values. Must stay contiguous and in this order (Undo and InterChange rely on the range).
+        // Write: value = the design value, 'offset' = 1 to adapt to it, 0 to be independent of it.
+        // Read:  'parameter' selects what is returned: 0 = design value, 1 = adapting flag, 2 = current setting.
+        designSampleRate,
+        designControlRate,
+        designSpectralBound,
     };
 
     enum kitType : uchar {

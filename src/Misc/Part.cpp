@@ -262,6 +262,11 @@ void Part::establishDesignValues()
     assert(meta.design.refSampleRate    > 0);
     assert(meta.design.refControlRate   > 0);
     assert(meta.design.refSpectralBound > 0);
+      // only the active values are checked: the inactive ones mirror the current settings,
+      // and the buffer size (hence oscilsize) is not necessarily a power of two (see SynthEngine::Init)
+    assert(not meta.adaptSampleRate    or isValidDesignValue(DesignValuesField::SampleRate,    meta.design.refSampleRate));
+    assert(not meta.adaptControlRate   or isValidDesignValue(DesignValuesField::ControlRate,   meta.design.refControlRate));
+    assert(not meta.adaptSpectralBound or isValidDesignValue(DesignValuesField::SpectralBound, meta.design.refSpectralBound));
 }
 
 
@@ -304,6 +309,139 @@ Part::~Part()
         if (partefx[nefx])
             delete partefx[nefx];
     }
+}
+
+
+/** Is the given raw number usable as a DesignValue for the given field?
+ *  - Sample rate: within limits.
+ *  - Control rate and spectral bound: within limits and a power of two.
+ */
+bool Part::isValidDesignValue(DesignValuesField field, uint rawVal)
+{
+    uint min{0}, max{0};
+    switch (field)
+    {
+        case DesignValuesField::SampleRate:
+            return rawVal >= MIN_SAMPLE_RATE and rawVal <= MAX_SAMPLE_RATE;
+        case DesignValuesField::ControlRate:
+            min = MIN_BUFFER_SIZE;
+            max = MAX_BUFFER_SIZE;
+            break;
+        case DesignValuesField::SpectralBound:
+            min = MIN_OSCIL_SIZE;
+            max = MAX_OSCIL_SIZE;
+            break;
+    }
+    bool isPowerOfTwo = rawVal > 0 and (rawVal & (rawVal - 1)) == 0;
+    return isPowerOfTwo and rawVal >= min and rawVal <= max;
+}
+
+
+/** Set one DesignValue and activate or deactivate the Synth adaptation feature for this value.
+ *  When inactive, the design value just mirrors the current processing parameter,
+ *  which is then also used by the Synth code without adaptation and adjustments.
+ * @return true if the effective DesignValue changed, which can alter the sound.
+ * @remark the caller must validate and mute the part
+ * @see InterChange::commandPart
+ */
+bool Part::setDesignValue(DesignValuesField field, uint newValue, bool adaptSynth)
+{
+    uint effectiveValue = adaptSynth? newValue : getCurrentSetting(field);
+    bool isAudible = (effectiveValue != getDesignValue(field));
+    switch (field)
+    {
+        case DesignValuesField::SampleRate:
+            meta.design.refSampleRate = effectiveValue;
+            meta.adaptSampleRate = adaptSynth;
+            break;
+        case DesignValuesField::ControlRate:
+            meta.design.refControlRate = effectiveValue;
+            meta.adaptControlRate = adaptSynth;
+            break;
+        case DesignValuesField::SpectralBound:
+            meta.design.refSpectralBound = effectiveValue;
+            meta.adaptSpectralBound = adaptSynth;
+            break;
+    }
+    establishDesignValues();
+    return isAudible;
+}
+
+
+uint Part::getDesignValue(DesignValuesField field) const
+{
+    switch (field)
+    {
+        case DesignValuesField::SampleRate:    return meta.design.refSampleRate;
+        case DesignValuesField::ControlRate:   return meta.design.refControlRate;
+        case DesignValuesField::SpectralBound: return meta.design.refSpectralBound;
+    }
+    return 0;
+}
+
+
+bool Part::isAdaptingTo(DesignValuesField field) const
+{
+    switch (field)
+    {
+        case DesignValuesField::SampleRate:    return meta.adaptSampleRate;
+        case DesignValuesField::ControlRate:   return meta.adaptControlRate;
+        case DesignValuesField::SpectralBound: return meta.adaptSpectralBound;
+    }
+    return false;
+}
+
+
+/** The effective processing parameter of the engine, corresponding to the given field. */
+uint Part::getCurrentSetting(DesignValuesField field) const
+{
+    switch (field)
+    {
+        case DesignValuesField::SampleRate:    return synth.samplerate;
+        case DesignValuesField::ControlRate:   return synth.buffersize;
+        case DesignValuesField::SpectralBound: return synth.oscilsize;
+    }
+    return 0;
+}
+
+
+/** Would the instrument sound different from now, when the DesignValues were applied?
+ *  The inactive DesignValues mirror the current settings, so they never contribute. */
+bool Part::isAdaptationAudible() const
+{
+    return meta.design.refSampleRate    != synth.samplerate
+        or meta.design.refControlRate   != synth.buffersize
+        or meta.design.refSpectralBound != synth.oscilsize;
+}
+
+
+/** Adapt to all three values, with DesignValues taken from the current settings.
+ * @return true if this changes the effective DesignValues */
+bool Part::adoptCurrentSettings()
+{
+    bool isAudible = isAdaptationAudible();
+    meta.design.refSampleRate    = synth.samplerate;
+    meta.design.refControlRate   = synth.buffersize;
+    meta.design.refSpectralBound = synth.oscilsize;
+    meta.adaptSampleRate    = true;
+    meta.adaptControlRate   = true;
+    meta.adaptSpectralBound = true;
+    establishDesignValues();
+    return isAudible;
+}
+
+
+/** Disable Adaptation to design values for this Instrument.
+ *  The DesignValues then mirror the current processing parameters.
+ * @return true if this changes the effective DesignValues */
+bool Part::markIndependent()
+{
+    bool isAudible = isAdaptationAudible();
+    meta.adaptSampleRate    = false;
+    meta.adaptControlRate   = false;
+    meta.adaptSpectralBound = false;
+    establishDesignValues();
+    return isAudible;
 }
 
 
@@ -2032,6 +2170,27 @@ float Part::getLimits(CommandBlock *getData)
             case PART::control::instrumentType:
             break;
         case PART::control::defaultInstrumentCopyright:
+            break;
+
+        case PART::control::designSampleRate:
+            min = MIN_SAMPLE_RATE;
+            def = MIN_SAMPLE_RATE;
+            max = MAX_SAMPLE_RATE;
+            break;
+        case PART::control::designControlRate:
+            min = MIN_BUFFER_SIZE;
+            def = MIN_BUFFER_SIZE;
+            max = MAX_BUFFER_SIZE;
+            break;
+        case PART::control::designSpectralBound:
+            min = MIN_OSCIL_SIZE;
+            def = MIN_OSCIL_SIZE;
+            max = MAX_OSCIL_SIZE;
+            break;
+        case PART::control::designSetToCurrent:
+        case PART::control::designMarkIndependent:
+            def = 0;
+            max = 1;
             break;
 
         case 255: // number of parts
