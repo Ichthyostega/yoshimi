@@ -337,6 +337,18 @@ bool Part::isValidDesignValue(DesignValuesField field, uint rawVal)
 }
 
 
+/** Can the current settings of the synth engine serve as DesignValues?
+ *  Rationale: a backend may deliver a sample rate outside of the supported range,
+ *  or a buffer size which is not a power of two. Adopting such settings would store
+ *  a value which Yoshimi itself rejects when loading the instrument file. */
+bool Part::canAdoptCurrentSettings() const
+{
+    return isValidDesignValue(DesignValuesField::SampleRate,    synth.samplerate)
+       and isValidDesignValue(DesignValuesField::ControlRate,   synth.buffersize)
+       and isValidDesignValue(DesignValuesField::SpectralBound, synth.oscilsize);
+}
+
+
 /** Set one DesignValue and activate or deactivate the Synth adaptation feature for this value.
  *  When inactive, the design value just mirrors the current processing parameter,
  *  which is then also used by the Synth code without adaptation and adjustments.
@@ -1698,6 +1710,9 @@ int Part::loadXMLInstrument(string filename)
         logg(filename + " is not an instrument file");
         return 0;
     }
+    if (not hasValidDesignValues(xmlInstrument, filename))
+        return 0;
+
     PyoshiType = not xml.meta.isZynCompat();
     if (PyoshiType != marked_as_Yoshi)
         logg("WARNING: file extension does not match Yoshimi format in file \""+filename+"\"");
@@ -1747,17 +1762,51 @@ int Part::loadXMLInstrument(string filename)
 }
 
 
+/** Sanity check of the DesignValues in an instrument file, before anything is loaded.
+ *  A missing entry or the value 0 implies "not adapting" and is accepted. Any other value
+ *  must be usable as DesignValue: in the supported range, and a power of two where required.
+ *  Yoshimi never writes anything else, so an invalid value hints at a damaged or manipulated
+ *  file, which is rejected rather than silently interpreted.
+ *  @note only used for single instrument files;
+ *  @warning state files fall back on "not adapting", with a warning log,
+ *           see getfromXML_DesignValues(), which is invoked after this function.
+ */
+bool Part::hasValidDesignValues(XMLtree& xmlInstrument, const string& filename) const
+{
+    XMLtree xmlInfo = xmlInstrument.getElm("INFO");
+    if (not xmlInfo)
+        return true;
+
+    auto check = [&](const char* entry, DesignValuesField field)
+                    {
+                        uint value = xmlInfo.getPar_uint(entry, 0); // no clamping, we need the original
+                        bool valid = (value == 0 or isValidDesignValue(field, value));
+                        if (not valid)
+                            synth.getRuntime().Log("Instrument file " + filename + " has an invalid value for "
+                                                  + entry + ": " + std::to_string(value) + " (not loaded)");
+                        return valid;
+                    };
+    return check("design_sample_rate"   , DesignValuesField::SampleRate)
+       and check("design_control_rate"  , DesignValuesField::ControlRate)
+       and check("design_spectral_bound", DesignValuesField::SpectralBound);
+}
+
+
 /** Retrieve the DesignValues (processing parameters as used by the instrument designer).
  *  This decoding is total: all three values and flags are assigned unconditionally,
  *  independent of any previous state.
  *  Any design value can be marked as "not adapted" -- which implies that the instrument
  *  uses the current processing parameters, and no adaptation or normalisation shall be
  *  performed on derived sound synthesis settings. This is the case whenever the entry is
- *  missing, and likewise for a stored value 0 or any other value outside the valid range
- *  Legacy instruments fall into this category and will thus not be "adapted" in processing,
- *  and nothing will be added to legacy instruments by default, when saving them back.
+ *  missing, and likewise for a stored value 0 or any other value which is not valid, see
+ *  isValidDesignValue(). Legacy instruments fall into this category and will thus not be "adapted"
+ *  in processing, and nothing will be added to legacy instruments by default, when saving them back.
  *  @note values from XML are deliberately retrieved without clamping, since a
  *        clamped out-of-range value would pass for a valid design value.
+ *  @note instrument files with invalid values are rejected beforehand, see hasValidDesignValues().
+ *        State files are not checked as a whole; here an invalid value is a second line of defence:
+ *        Yoshimi can not capture such a value itself, so it hints at hand-editing, damage or a file
+ *        from a version with different limits. It is ignored with a warning (never adjusted).
  */
 void Part::getfromXML_DesignValues(XMLtree& xmlInstrument)
 {
@@ -1770,9 +1819,17 @@ void Part::getfromXML_DesignValues(XMLtree& xmlInstrument)
         origControlRate   = xmlInfo.getPar_uint("design_control_rate"  , 0);
         origSpectralBound = xmlInfo.getPar_uint("design_spectral_bound", 0);
     }
-    meta.adaptSampleRate    = MIN_SAMPLE_RATE <= origSampleRate    and origSampleRate    <= MAX_SAMPLE_RATE;
-    meta.adaptControlRate   = MIN_BUFFER_SIZE <= origControlRate   and origControlRate   <= MAX_BUFFER_SIZE;
-    meta.adaptSpectralBound = MIN_OSCIL_SIZE  <= origSpectralBound and origSpectralBound <= MAX_OSCIL_SIZE;
+    auto isUsable = [&](const char* entry, DesignValuesField field, uint value)
+                        {
+                            bool valid = isValidDesignValue(field, value);
+                            if (not valid and value != 0)
+                                synth.getRuntime().Log("Part " + std::to_string(partID + 1) + ": ignoring invalid value "
+                                                      + std::to_string(value) + " for " + entry + " (not adapting)");
+                            return valid;
+                        };
+    meta.adaptSampleRate    = isUsable("design_sample_rate"   , DesignValuesField::SampleRate,    origSampleRate);
+    meta.adaptControlRate   = isUsable("design_control_rate"  , DesignValuesField::ControlRate,   origControlRate);
+    meta.adaptSpectralBound = isUsable("design_spectral_bound", DesignValuesField::SpectralBound, origSpectralBound);
     meta.design.refSampleRate    = meta.adaptSampleRate?    origSampleRate    : 0;
     meta.design.refControlRate   = meta.adaptControlRate?   origControlRate   : 0;
     meta.design.refSpectralBound = meta.adaptSpectralBound? origSpectralBound : 0;

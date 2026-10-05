@@ -139,6 +139,7 @@ class Part
         bool  isAdaptingTo(DesignValuesField)      const;
         uint  getCurrentSetting(DesignValuesField) const;
         bool  isAdaptationAudible()                const;
+        bool  canAdoptCurrentSettings()            const;
 
         // Midi commands implemented
         void setChannelAT(int type, int value);
@@ -243,6 +244,7 @@ class Part
 
     private:
         void getfromXML_InstrumentData(XMLtree&);
+        bool hasValidDesignValues(XMLtree&, const string& filename) const;
         void getfromXML_DesignValues(XMLtree&);
         void add2XML_InstrumentData(XMLtree&);
         void add2XML_synthUsage(XMLtree&);

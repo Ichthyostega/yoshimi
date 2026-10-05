@@ -3880,6 +3880,13 @@ void InterChange::commandPart(CommandBlock& cmd)
         return;
     }
 
+    if (write and control == PART::control::designSetToCurrent and not part.canAdoptCurrentSettings())
+    {// sanity check to prevent capturing values that can not be loaded again; see Part::canAdoptCurrentSettings()
+        cmd.data.source = TOPLEVEL::action::noAction;
+        synth.getRuntime().Log("The current settings can not be used as design values");
+        return;
+    }
+
     if (write)
     {
         /*
