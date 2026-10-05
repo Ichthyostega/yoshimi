@@ -3915,7 +3915,18 @@ void InterChange::commandPart(CommandBlock& cmd)
             }
         }
         else
-        if (control < PART::control::designSampleRate) // no UNDO for design values
+        if (control == PART::control::designSetToCurrent
+            or control == PART::control::designMarkIndependent)
+        {// an action on all three DesignValues is undone as a group of the single values
+            noteSeen = true; // always start a new undo step, never merge with a preceding write of the same value
+            for (uchar single = PART::control::designSampleRate; single <= PART::control::designSpectralBound; ++single)
+            {
+                CommandBlock singleCmd{cmd};
+                singleCmd.data.control = single;
+                add2undo(singleCmd, noteSeen, single != PART::control::designSampleRate);
+            }
+        }
+        else
             add2undo(cmd, noteSeen);
     }
 
@@ -7648,6 +7659,30 @@ void InterChange::addFixed2undo(CommandBlock& cmd)
 }
 
 
+namespace {
+    /**
+     * Undo/Redo capture works by reading the current value of the control.
+     * But the design values additionally carry the "adapt" flag in the offset field of a write,
+     * which a read does not return. This helper picks up this additional control info from the
+     * SynthEngine and packs it into the CommandBlock to be recorded Undo/Redo
+     */
+    static void captureDesignValueFlag(SynthEngine& synth, CommandBlock& cmd)
+    {
+        uchar control = cmd.data.control;
+        if (cmd.data.part < NUM_MIDI_PARTS
+            and cmd.data.kit == UNUSED and cmd.data.engine == UNUSED and cmd.data.insert == UNUSED
+            and control >= PART::control::designSampleRate
+            and control <= PART::control::designSpectralBound)
+        {
+            auto field = control == PART::control::designSampleRate ? Part::DesignValuesField::SampleRate
+                       : control == PART::control::designControlRate? Part::DesignValuesField::ControlRate
+                       :                                              Part::DesignValuesField::SpectralBound;
+            cmd.data.offset = synth.part[cmd.data.part]->isAdaptingTo(field)? 1 : 0;
+        }
+    }
+}
+
+
 void InterChange::add2undo(CommandBlock& cmd, bool& noteSeen, bool group)
 {
     if (undoLoopBack)
@@ -7687,6 +7722,7 @@ void InterChange::add2undo(CommandBlock& cmd, bool& noteSeen, bool group)
     candidate.data.type &= TOPLEVEL::type::Integer;
     candidate.data.source = 0;
     commandSendReal(candidate);
+    captureDesignValueFlag(synth, candidate);
 
     candidate.data.source = cmd.data.source | TOPLEVEL::action::forceUpdate;
     candidate.data.type = cmd.data.type;
@@ -7741,6 +7777,7 @@ void InterChange::undoLast(CommandBlock& candidate)
         oldCommand.data.type &= TOPLEVEL::type::Integer;
         oldCommand.data.source = 0;
         commandSendReal(oldCommand);
+        captureDesignValueFlag(synth, oldCommand);
         oldCommand.data.type = temptype;
     }
     oldCommand.data.source = tempsource;
