@@ -538,7 +538,7 @@ class PartUI {: {public Fl_Group, PartUI_}
         Fl_Input copyright {
           callback {//
            send_data(TOPLEVEL::action::lowPrio, PART::control::instrumentCopyright, 0, TOPLEVEL::type::Integer, npart, UNUSED, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(string(o->value())));}
-          xywh {5 49 385 55} type Multiline color 182 labelsize 12 labelcolor 64 align 9 textcolor 64
+          xywh {5 49 385 38} type Multiline color 182 labelsize 12 labelcolor 64 align 9 textcolor 64
           code0 {o->maximum_size(MAX_INFO_TEXT_SIZE);}
           code1 {o->value(part->meta.info.Pauthor.c_str());}
         }
@@ -546,7 +546,7 @@ class PartUI {: {public Fl_Group, PartUI_}
           label Comments
           callback {//
           send_data(TOPLEVEL::action::lowPrio, PART::control::instrumentComments, 0, TOPLEVEL::type::Integer, npart, UNUSED, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(string(o->value())));}
-          xywh {5 123 385 91} type Multiline color 182 labelsize 12 labelcolor 64 align 5 textcolor 64
+          xywh {5 106 385 80} type Multiline color 182 labelsize 12 labelcolor 64 align 5 textcolor 64
           code0 {o->maximum_size(MAX_INFO_TEXT_SIZE);}
           code1 {o->value(part->meta.info.Pcomments.c_str());}
         }
@@ -558,6 +558,45 @@ class PartUI {: {public Fl_Group, PartUI_}
           code0 {fillInstrumentType();}
           code1 {o->value(int(part->meta.info.Ptype));}
         } {}
+        Fl_Box designLabel {
+          label {Design:}
+          xywh {5 192 46 20} labelsize 12 labelcolor 64 align 20
+        }
+        Fl_Box designValue1 {
+          label 0
+          xywh {52 192 50 20} labelsize 12 labelcolor 64
+        }
+        Fl_Box designSep1 {
+          label {/}
+          xywh {102 192 8 20} labelsize 12 labelcolor 64
+        }
+        Fl_Box designValue2 {
+          label 0
+          xywh {110 192 38 20} labelsize 12 labelcolor 64
+        }
+        Fl_Box designSep2 {
+          label {/}
+          xywh {148 192 8 20} labelsize 12 labelcolor 64
+        }
+        Fl_Box designValue3 {
+          label 0
+          xywh {156 192 50 20} labelsize 12 labelcolor 64
+        }
+        Fl_Box designNone {
+          label {uses current settings} selected
+          xywh {52 192 188 20} labelsize 12 labelcolor 64 align 20
+        }
+        Fl_Button designDetach {
+          label Detach
+          callback {detachFromDesignValues(synth, npart);}
+          tooltip {Stop adapting: the sound of this instrument follows the current processing setup again.} xywh {244 192 66 20} box PLASTIC_THIN_UP_BOX color 228 labelsize 12 labelcolor 64
+        }
+        Fl_Button designAdapt {
+          label Adapt
+          callback {adaptToCurrentSettings(synth, npart);}
+          tooltip {Record the current processing setup (sample rate, control rate, spectral bound) with this instrument, so its sound can be kept on a different setup. Saved with the instrument.} xywh {314 192 76 20} box PLASTIC_THIN_UP_BOX color 228 labelsize 12 labelcolor 64
+          code0 {designRefresh();}
+        }
       }
       Fl_Box humaniseBox {
         xywh {0 324 272 58} box ENGRAVED_FRAME labelfont 1 align 8
@@ -861,7 +900,6 @@ class PartUI {: {public Fl_Group, PartUI_}
       label Controllers
       callback {ctlclose->do_callback();}
       xywh {418 167 505 130} type Double hide resizable
-      class ScaleTrackedWindow
       code0 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Controllers"), npart, TOPLEVEL::windowTitle)).c_str());}
       code1 {ctlDW = o->w(); ctlDH = o->h();}
       code2 {o->size_range(ctlDW, ctlDH, 0, 0, 0, 0, 1);}
@@ -1727,6 +1765,13 @@ class PartUI {: {public Fl_Group, PartUI_}
             if (parameter == 0)
                 copyright->value(text.c_str());
             break;
+        case PART::control::designSetToCurrent:
+        case PART::control::designMarkIndependent:
+        case PART::control::designSampleRate:
+        case PART::control::designControlRate:
+        case PART::control::designSpectralBound:
+            designRefresh();
+            break;
         case PART::control::resetAllControllers:
             controllersrefresh();
             break;
@@ -1915,7 +1960,47 @@ class PartUI {: {public Fl_Group, PartUI_}
         humanise->value(fetchData(0, PART::control::humanise, npart));
             humanise->selection_color(setSlider(humanise->value(),0));
         velocityhumanise->value(fetchData(0, PART::control::humanvelocity, npart));
-            velocityhumanise->selection_color(setSlider(velocityhumanise->value(),0));} {}
+            velocityhumanise->selection_color(setSlider(velocityhumanise->value(),0));
+        designRefresh();
+        //} {}
+  }
+  Function {designRefresh()} {} {
+    code {//
+        DesignValuesInfo info = fetchDesignValues(synth, npart);
+        Fl_Box* valueBox[3] = {designValue1, designValue2, designValue3};
+        Fl_Widget* tooltipped[7] = {designLabel, designValue1, designSep1, designValue2, designSep2, designValue3, designNone};
+        for (int i = 0; i < 3; ++i)
+        {
+            valueBox[i]->copy_label(info.adapting[i]? std::to_string(info.design[i]).c_str() : "-");
+            valueBox[i]->labelcolor(info.differs(i)? warning_text : gen_text);
+        }
+        string tip = designValuesTooltip(info);
+        for (Fl_Widget* widget : tooltipped)
+            widget->copy_tooltip(tip.c_str());
+
+        Fl_Widget* values[5] = {designValue1, designSep1, designValue2, designSep2, designValue3};
+        for (Fl_Widget* widget : values)
+            if (info.anyAdapting)
+                widget->show();
+            else
+                widget->hide();
+        if (info.anyAdapting)
+        {
+            designNone->hide();
+            designDetach->show();
+        }
+        else
+        {
+            designNone->show();
+            designDetach->hide();
+        }
+        if (info.allAdapting && !info.isAudible)
+            designAdapt->deactivate(); // nothing to do
+        else
+            designAdapt->activate();
+        // a hidden widget leaves its area to the window background (the frame group does not fill it)
+        instrumenteditwindow->redraw();
+        //} {}
   }
   Function {effectsrefresh()} {} {
     code {//
@@ -2597,6 +2682,15 @@ class PartUI {: {public Fl_Group, PartUI_}
 
     A_C_display->labelsize(size12);
     A_C_default->labelsize(size12);
+    designLabel->labelsize(size12);
+    designValue1->labelsize(size12);
+    designSep1->labelsize(size12);
+    designValue2->labelsize(size12);
+    designSep2->labelsize(size12);
+    designValue3->labelsize(size12);
+    designNone->labelsize(size12);
+    designDetach->labelsize(size12);
+    designAdapt->labelsize(size12);
     copyright->labelsize(size12);
         copyright->textsize(size14);
     commentField->labelsize(size12);
