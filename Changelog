@@ -1,5 +1,18 @@
 yoshimi 2.3.6.5
 
+2026-10-06 Hermann
+bn TODO
+Instruments can now record the processing setup they were designed with
+(sample rate, control rate, spectral bound), strictly opt-in and per value.
+Controls and CLI command 'design' for a part; changes take part in undo/redo,
+and a change which alters the sound silences the part.
+Values are saved with the instrument and in state files (see dev_notes).
+BugFix: part level commands in kit mode tested an out-of-range kit item.
+BugFix: inconsistencies when loading Yoshimi- and ZynAddSubFX-format instruments:
+key mode, aftertouch choices, controller settings and breath_disable default.
+BugFix: Persist 'bandwidth_exponential' of the controllers.
+Internal: buffer size and oscillator size now use unsigned types.
+
 2026-08-16 Will
 bn 2430
 Merged in bug-fix from D Runge with thanks.

@@ -1,0 +1,123 @@
+Instruments: adapting to the processing setup (DesignValues)
+=============================================================
+
+DRAFT -- for discussion on the developers list. This text is going to grow:
+the actual mitigations will be added below, as they get introduced step by step.
+
+
+Motivation
+----------
+
+A sound is designed on one particular processing setup: a sample rate, a buffer
+size (which, at the moment, also determines the control period, since parameters
+are updated once per buffer), and an oscillator size (which bounds the spectral
+resolution). When the same instrument is played on a different setup, several
+computations in the SynthEngine are based on these parameters, and thus the sound
+can change: timing of envelopes and LFOs, filter behaviour, the resolution of
+PADsynth spectra, level and brightness. The goal is to process an instrument so
+that it sounds as intended, independent of the setup it is played on -- as far
+as this is possible at all. To be able to compensate, we first need to know
+what the instrument was originally intended for: the processing parameters used
+by the instrument designer during its creation.
+
+The foundation: capture the design values
+-----------------------------------------
+
+Each instrument carries a record of the processing parameters it was designed
+with, the "DesignValues":
+
+ - sample rate           (samples per second)
+ - control rate          (in samples per control period; at the moment this is
+                          seeded from the buffer size)
+ - spectral bound        (spectral resolution limit; seeded from the oscillator size)
+
+They are stored with the instrument metadata of the Part (Part::meta), and are
+thus attached to the instrument, not to the synth engine. Consequently, only
+instrument level processing can be adapted this way; anything beyond the
+instrument (system effects, master section) has no recorded baseline values.
+
+Adapting is strictly opt-in, and decided for each value individually: an
+instrument which does not explicitly "adapt" to a value just behaves as it
+always did. This is a deliberately defensive stance while the feature is in
+development; legacy instruments are never changed behind the user's back.
+
+
+Capture logic
+-------------
+
+For each of the three values, an instrument is in one of two states:
+
+ - adapting:       the instrument holds an explicit design value, and (later on)
+                   the processing will compensate towards it
+ - not adapting:   the instrument is independent of this value; the design value
+                   just mirrors the current setting of the synth engine
+
+This leads to an invariant which is maintained by Part::establishDesignValues():
+a design value is always valid and usable. Where an instrument is not adapting,
+it equals the current setting, so no consumer ever has to deal with "unset" or
+"unknown".
+
+When does an instrument start adapting?  Only by a deliberate action of the user:
+
+ - "set to current settings": adapt to all three values,
+   capturing the design values from the current settings of the SynthEngine
+ - set an individual design value (CLI only), or switch it off
+ - "mark as independent": disable the adaptation feature altogether
+
+Nothing happens automatically. A new instrument ("clear") is not adapting.
+Loading an instrument replaces the state of the part completely by what the file
+says (a file without design values is not adapting). Values are only written to a
+file when the instrument is saved, and only when actually adapting this value.
+
+A change which alters the effective design values may change the sound. Hence the
+part is switched off and on again, which silences all notes of the part, so that no
+note continues to sound with changed parameters. Changes of design values take
+part in the Undo/Redo history; an action on all three values is one undo step.
+The values are validated: a sample rate must be within the supported range; the
+control rate and the spectral bound must be within range and a power of two.
+Invalid input is rejected, never adjusted.
+
+The controls exposed as command and through the CLI. The two high-level actions
+are PART::control::designSetToCurrent and designMarkIndependent. Moreover, the
+CLI allows to control the setting of individual design values and adaptation:
+The commands PART::control::designSampleRate, designControlRate,
+designSpectralBound allow to set a specific value and to pass the activation
+state in the "offset" field of a write, while reading selects the design value,
+or the activation flag or the current setting, depending on the selector passed
+in the "parameter" field. See the "Yoshimi Control Data" for the details.
+
+The CLI actions are placed into the "part" context and based on the "design" keyword.
+
+
+Persistence
+-----------
+
+The design values are stored in the <INFO> element of an instrument, which is part
+of an instrument file (.xiz / .xiy) as well as of the instruments in a complete
+patch set or state file:
+
+    <INSTRUMENT>
+    <INFO>
+    ...
+    <parU name="design_sample_rate" value="96000" />
+    <parU name="design_control_rate" value="256" />
+    <parU name="design_spectral_bound" value="512" />
+    </INFO>
+
+ - each entry is only present when the instrument adapts to that value;
+   a missing entry means "not adapting"
+ - when loading an individual instrument file, an entry which is zero is taken as
+   "not adapting"; any other value must be valid (within the supported range, and a
+   power of two where required), otherwise the file is rejected and nothing is loaded.
+   Yoshimi never writes anything else, so this indicates a damaged or manipulated file.
+ - for state and patchset files, the file is not rejected as a whole: rather, an invalid
+   value is ignored with a warning, and taken as "not adapting"
+ - older versions of Yoshimi ignore the unknown entries; instruments without them
+   (legacy and ZynAddSubFX instruments) load as "not adapting"
+
+
+Mitigations
+-----------
+
+(to be written -- will describe the adaptations that are done when an adapting
+instrument is played on a different setup)

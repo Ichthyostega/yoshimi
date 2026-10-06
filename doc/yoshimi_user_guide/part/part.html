@@ -135,6 +135,15 @@
     <b>Reset</b> This button reverts the part's instrument to the default 'Simple Sound'.
     <br>
     Normally it doesn't change the other part level settings (at the bottom of the main window). However, if you hold down the <em>Ctrl</em> key when hitting the button you can clear the entire part. In either case there is a confirmation message before the action is performed.
+    <br><br>
+    <b>Design values</b> An instrument can remember the processing setup (sample rate, control rate and spectral resolution) it was designed with. This is optional: an instrument without such a record will behave differently, depending on the processing setup Yoshimi is currently running with (this was the legacy behaviour before 2026). The <em>Design</em> field shows these values, with a dash for a value the instrument does not adapt to, or <em>uses current settings</em> if there are none. A value that differs from the present setting is shown as highlighted. <em>Adapt</em> takes over the present settings for the instrument, and <em>Detach</em> (shown only while the instrument adapts) removes them again. Both ask for confirmation when this may change the sound. The values are saved together with the instrument. Changing them while the part is sounding will silence its notes.
+    <br><br>
+    Individual design values can be manipulated from the CLI only:<br>
+    <tt>set design sample|control|spectral &lt;n&gt;</tt>,&nbsp;
+    as well as &nbsp;<tt>set design current</tt>&nbsp;
+    and &nbsp;<tt>set design independent</tt>&nbsp; for the two buttons.
+    <br><br>
+    <b>Please note:</b> this is work in progress. As of 10/2026 there is <em>no</em> actual adaptation implemented yet: an instrument only records its design values, and the sound is not changed by them. The actual adaptations will be added gradually in later versions, and will then take these recorded values into account.
     </p>
     <a href="#top" class="up">Back to top</a>
     <img src="../images/boundry.png" alt="divider" class="wideline">
