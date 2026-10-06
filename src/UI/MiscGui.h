@@ -142,6 +142,23 @@ string input_text(SynthEngine *synth, string label, string text);
 int setSlider(float current, float normal);
 int setKnob(float current, float normal);
 
+// Design values of an instrument (Part), see Part::meta and dev_notes/Instrument-adapt-DesignValues.txt
+struct DesignValuesInfo
+{
+    uint design[3];   // sample rate, control rate, spectral bound -- as stored with the instrument
+    uint current[3];  // the corresponding current settings of the synth engine
+    bool adapting[3]; // adapt to the individual design value
+    bool anyAdapting;
+    bool allAdapting;
+    bool isAudible;   // adapting to the design values would change the sound
+
+    bool differs(int i) const { return adapting[i] and design[i] != current[i]; }
+};
+DesignValuesInfo fetchDesignValues(SynthEngine *synth, unsigned char npart);
+string designValuesTooltip(const DesignValuesInfo&);
+void adaptToCurrentSettings(SynthEngine *synth, unsigned char npart);
+void detachFromDesignValues(SynthEngine *synth, unsigned char npart);
+
 string convert_value(ValueType type, float val);
 
 string variable_prec_units(float v, const string& u, int maxPrec, bool roundup = false);

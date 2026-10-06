@@ -683,6 +683,76 @@ int setKnob(float current, float normal)
 }
 
 
+/** Read the design values of the instrument in the given part.
+ * @note such a "GUI read" is executed directly in the GUI thread, see InterChange::readAllData()
+ *       The read selector (parameter) is: 0 = design value, 1 = adapting, 2 = current setting.
+ */
+DesignValuesInfo fetchDesignValues(SynthEngine *synth, unsigned char npart)
+{
+    const unsigned char controls[3] = {PART::control::designSampleRate
+                                      ,PART::control::designControlRate
+                                      ,PART::control::designSpectralBound};
+    DesignValuesInfo info;
+    info.allAdapting = true;
+    info.anyAdapting = false;
+    for (int i = 0; i < 3; ++i)
+    {
+        info.adapting[i] = (0 != lrint(collect_readData(synth, 0, controls[i], npart, UNUSED, UNUSED, UNUSED, 1)));
+        info.design[i]   = lrint(collect_readData(synth, 0, controls[i], npart, UNUSED, UNUSED, UNUSED, 0));
+        info.current[i]  = lrint(collect_readData(synth, 0, controls[i], npart, UNUSED, UNUSED, UNUSED, 2));
+        info.anyAdapting |= info.adapting[i];
+        info.allAdapting &= info.adapting[i];
+    }
+    info.isAudible = (collect_readData(synth, 0, PART::control::designSetToCurrent, npart) != 0);
+    return info;
+}
+
+
+string designValuesTooltip(const DesignValuesInfo& info)
+{
+    string tip;
+    if (info.anyAdapting)
+        tip = "Design values of this instrument:\nsample rate / control rate / spectral bound\n'-' = not adapting to this value\n";
+    else
+        tip = "This instrument does not adapt:\nits sound follows the current processing setup\n";
+    tip += "Current settings: " + to_string(info.current[0]) + " / " + to_string(info.current[1]) + " / " + to_string(info.current[2]);
+    if (info.isAudible)
+        tip += "\nRed: differs from the current settings";
+    return tip;
+}
+
+
+/** Adapt the instrument to the current settings (asks first, when this changes the sound) */
+void adaptToCurrentSettings(SynthEngine *synth, unsigned char npart)
+{
+    if (!collect_readData(synth, 0, PART::control::enable, npart))
+    {
+        alert(synth, "Selected part is disabled");
+        return;
+    }
+    if (collect_readData(synth, 0, PART::control::designSetToCurrent, npart) // would the sound change?
+        and choice(synth, "", "Yes", "No", "Adapting part " + to_string(npart + 1) + " to the current settings changes its sound.") <= 1)
+        return;
+    collect_writeData(synth, 1, TOPLEVEL::action::forceUpdate, TOPLEVEL::type::Write | TOPLEVEL::type::Integer,
+                      PART::control::designSetToCurrent, npart);
+}
+
+
+/** Stop adapting the instrument to design values (always asks first) */
+void detachFromDesignValues(SynthEngine *synth, unsigned char npart)
+{
+    if (!collect_readData(synth, 0, PART::control::enable, npart))
+    {
+        alert(synth, "Selected part is disabled");
+        return;
+    }
+    if (choice(synth, "", "Yes", "No", "Detach part " + to_string(npart + 1) + " from its design values? This may change its sound later.") <= 1)
+        return;
+    collect_writeData(synth, 1, TOPLEVEL::action::forceUpdate, TOPLEVEL::type::Write | TOPLEVEL::type::Integer,
+                      PART::control::designMarkIndependent, npart);
+}
+
+
 string convert_value(ValueType type, float val)
 {
     float f;
