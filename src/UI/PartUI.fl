@@ -559,42 +559,42 @@ class PartUI {: {public Fl_Group, PartUI_}
           code1 {o->value(int(part->meta.info.Ptype));}
         } {}
         Fl_Box designLabel {
-          label {Design:}
+          label {Reference:}
           xywh {5 192 46 20} labelsize 12 labelcolor 64 align 20
         }
         Fl_Box designValue1 {
           label 0
-          xywh {52 192 50 20} labelsize 12 labelcolor 64
+          xywh {76 192 50 20} labelsize 12 labelcolor 64
         }
         Fl_Box designSep1 {
           label {/}
-          xywh {102 192 8 20} labelsize 12 labelcolor 64
+          xywh {126 192 8 20} labelsize 12 labelcolor 64
         }
         Fl_Box designValue2 {
           label 0
-          xywh {110 192 38 20} labelsize 12 labelcolor 64
+          xywh {134 192 38 20} labelsize 12 labelcolor 64
         }
         Fl_Box designSep2 {
           label {/}
-          xywh {148 192 8 20} labelsize 12 labelcolor 64
+          xywh {172 192 8 20} labelsize 12 labelcolor 64
         }
         Fl_Box designValue3 {
           label 0
-          xywh {156 192 50 20} labelsize 12 labelcolor 64
+          xywh {180 192 50 20} labelsize 12 labelcolor 64
         }
         Fl_Box designNone {
           label {uses current settings} selected
-          xywh {52 192 188 20} labelsize 12 labelcolor 64 align 20
+          xywh {72 192 188 20} labelsize 12 labelcolor 64 align 20
         }
         Fl_Button designDetach {
           label Detach
           callback {detachFromDesignValues(synth, npart);}
-          tooltip {Stop adapting: the sound of this instrument follows the current processing setup again.} xywh {244 192 66 20} box PLASTIC_THIN_UP_BOX color 228 labelsize 12 labelcolor 64
+          tooltip {Stop adapting parameters: from now on, the sound of this instrument will depend on the current processing setup and may change when used in a different setting.} xywh {244 192 66 20} box PLASTIC_THIN_UP_BOX color 228 labelsize 12 labelcolor 64
         }
         Fl_Button designAdapt {
           label Adapt
           callback {adaptToCurrentSettings(synth, npart);}
-          tooltip {Record the current processing setup (sample rate, control rate, spectral bound) with this instrument, so its sound can be kept on a different setup. Saved with the instrument.} xywh {314 192 76 20} box PLASTIC_THIN_UP_BOX color 228 labelsize 12 labelcolor 64
+          tooltip {Record the current processing setup (sample rate, control rate, overtones) with this instrument, so its sound can be kept similar on a different setup (by adapting synth parameters, not resampling). Saved with the instrument.} xywh {314 192 76 20} box PLASTIC_THIN_UP_BOX color 228 labelsize 12 labelcolor 64
           code0 {designRefresh();}
         }
       }

@@ -710,19 +710,32 @@ DesignValuesInfo fetchDesignValues(SynthEngine* synth, uchar npart)
 
 string designValuesTooltip(DesignValuesInfo const& info)
 {
-    string tip;
-    if (info.anyAdapting)
-        tip = "Design values of this instrument:\nsample rate / control rate / spectral bound\n'-' = not adapting to this value\n";
-    else
-        tip = "This instrument does not adapt:\nits sound follows the current processing setup\n";
-    tip += "Current settings: " + to_string(info.current[0]) + " / " + to_string(info.current[1]) + " / " + to_string(info.current[2]);
+    auto showSettings = [](uint const* setting)
+                            {
+                                return to_string(setting[0])+" Hz; "
+                                     + to_string(setting[1])+ " samples/period;\n"
+                                     + "OscilSize="+to_string(setting[2])
+                                     + " ("+to_string(setting[2]/2-1)+" overtones).";
+                            };
+    string tip{
+        info.anyAdapting? "This instrument adapts parameters to keep the sound\n"
+                          "similar to the settings it was originally designed for:\n"
+                          +showSettings(info.design)
+                        : "This instrument does not adapt parameters: its sound\n"
+                          "may vary depending on the current processing settings:\n"
+                          +showSettings(info.current)
+                        };
     if (info.isAudible)
-        tip += "\nWarn: differs from the current settings";
+        tip += "\n\nNote: differs from the current settings\n("
+             + to_string(info.current[0])+"Hz; "
+             + to_string(info.current[1])+ " smp/period; "
+             + "OscilSize="+to_string(info.current[2])+").";
+
     return tip;
 }
 
 
-/** Adapt the instrument to the current settings (asks first, when this changes the sound) */
+/** Adapt the instrument to the current settings (asks first, when this might change the sound) */
 void adaptToCurrentSettings(SynthEngine* synth, uchar npart)
 {
     if (!collect_readData(synth, 0, PART::control::enable, npart))
@@ -731,7 +744,8 @@ void adaptToCurrentSettings(SynthEngine* synth, uchar npart)
         return;
     }
     if (collect_readData(synth, 0, PART::control::designSetToCurrent, npart) // would the sound change?
-        and choice(synth, "", "Yes", "No", "Adapting part " + to_string(npart + 1) + " to the current settings changes its sound.") <= 1)
+        and choice(synth, "", "Yes", "No", "Adapting part " + to_string(npart + 1)
+                                         + " to the current processing settings may change its sound.") <= 1)
         return;
     collect_writeData(synth, 1, TOPLEVEL::action::forceUpdate, TOPLEVEL::type::Write | TOPLEVEL::type::Integer,
                       PART::control::designSetToCurrent, npart);
@@ -746,7 +760,9 @@ void detachFromDesignValues(SynthEngine *synth, unsigned char npart)
         alert(synth, "Selected part is disabled");
         return;
     }
-    if (choice(synth, "", "Yes", "No", "Detach part " + to_string(npart + 1) + " from its design values? This may change its sound later.") <= 1)
+    if (choice(synth, "", "Yes", "No", "Detach part " + to_string(npart + 1)
+                                     + " from its recorded design settings? "
+                                     + "This may change its sound later when used in a different processing configuration.") <= 1)
         return;
     collect_writeData(synth, 1, TOPLEVEL::action::forceUpdate, TOPLEVEL::type::Write | TOPLEVEL::type::Integer,
                       PART::control::designMarkIndependent, npart);
