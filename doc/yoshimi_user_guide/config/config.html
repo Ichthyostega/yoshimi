@@ -15,8 +15,8 @@
     Some of these settings don't apply when running as an LV2 plugin, and mostly these are either hidden completely or shown as inactive.
     <h3>Main Settings</h3>
 
-    <b>Internal Buffer Size</b> Lower values will give lower latency and more accurate resolution, but at the cost of CPU loading. We recommend you keep this as low as possible without getting Xruns.
-    <b>AddSynth Oscillator Size</b> The bigger this is the better the quality. However that is at the cost of CPU loading.
+    <b>Internal Buffer Size</b> Lower values will give lower latency and more accurate resolution, but at the cost of CPU loading. Notably this setting controls how often changing parameter values are recomputed while a note plays, e.g. for envelopes and LFOs.  We recommend you keep this as low as possible without getting Xruns.
+    <b>Oscillator Size</b> Maximum size of the spectrum used in AddSynth, and as seed for PadSynth; size/2 == number of harmonics. Using a higher setting requires significantly more processing power and memory, but above all improves the quality of the bass notes. A practical example: at a samplerate of 48kHz, the lowest audible tone of 16 Hz can theoretically comprise a spectrum of 24000/16 == 1500 harmonics, while at 64Hz only 375 partials would be audible. A setting of 512 could represent 256 partials, and thus cover the whole overtone range up to 24kHz for any note above 94 Hz.
     <br><br>
     <br><br>
     <a id="PadSynthInterpolation"><b>PadSynth Interpolation</b></a> Relevant when transposing to notes far away from the nominal frequency of the wavetable. For those with good hearing at high pitches, setting this to 'Cubic' will give very slightly better results, but it is slower to operate.

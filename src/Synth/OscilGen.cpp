@@ -999,7 +999,7 @@ void OscilGen::prepare()
             hmag[i] = 0.0f;
 
     size_t len = oscilSpectrum.size();
-    assert (MAX_AD_HARMONICS < len);
+    assert (MAX_AD_HARMONICS <= len); // fft::Spectrum has one additional "slot"
     oscilSpectrum.reset();
     if (params->Pcurrentbasefunc == OSCILLATOR::wave::sine)
     {   // the sine case
@@ -1201,7 +1201,7 @@ vector<float> OscilGen::getSpectrumForPAD(float freqHz)
 
 // Core implementation of OscilGen
 // - possibly prepare() will be called to generate the raw spectrum
-// - typically invoked for each buffer to generate the Wavetable
+// - typically invoked for each note to generate the Wavetable
 //   including current phase randomisation
 // - also used to generate the base spectrum for PADsynth
 void OscilGen::buildSpectrum(float freqHz, bool applyResonance, bool forGUI, bool forPAD)

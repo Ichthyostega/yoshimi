@@ -199,11 +199,11 @@ fillThemes();
             code2 {//if (isLV2()) o->deactivate();}
           } {}
           Fl_Choice osc_size {
-            label {* AddSynth Oscillator Size}
+            label {* Oscillator Size}
             callback {//
                         send_data(0, CONFIG::control::oscillatorSize, 256 << o->value(), TOPLEVEL::type::Integer);}
-            tooltip {ADSynth Oscillator Size (samples)} xywh {245 58 105 20} down_box BORDER_BOX labelsize 12 labelcolor 64 textfont 1 textsize 12 textcolor 64
-            code0 {o->add("256");o->add("512");o->add("1024");o->add("2048");o->add("4096");o->add("8192");o->add("16384");}
+            tooltip {Oscillator Spectrum Size, used for AddSynth, PadSynth and modulation (size/2 == harmonics cnt)} xywh {245 58 105 20} down_box BORDER_BOX labelsize 12 labelcolor 64 textfont 1 textsize 12 textcolor 64
+            code0 {o->add("256");o->add("512");o->add("1024");o->add("2048");o->add("4096");o->add("8192");}
             code1 {o->value(func::bitFindHigh(synth->getRuntime().oscilsize) - 8);}
           } {}
           Fl_Choice pad_interpol {
