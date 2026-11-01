@@ -31,6 +31,7 @@
 #include "DSP/FFTwrapper.h"
 #include "Params/ParamCheck.h"
 #include "Misc/Alloc.h"
+#include "Interface/TextLists.h"
 
 #include <memory>
 #include <string>
@@ -63,6 +64,41 @@ class Part
             Disabled,
         };
 
+        // Reference settings used at design time of this instrument.
+        // Persisted to record the context used for the design, and to compensate
+        // when used in a different setup (to the degree this is possible).
+        // Persisted only when explicitly adopted by the user (opt-in);
+        // otherwise these values just mirror the current settings.
+        struct DesignValues
+        {
+            uint refSampleRate    = 0;  // in samples per second (eg. 48000)
+            uint refControlRate   = 0;  // in audio samples per control period (eg. 128) -- seeded by buffer size
+            uint refSpectralBound = 0;  // spectral resolution limit (see PadSynth) -- seeded by oscilsize setting
+        };
+
+        // Instrument description (persistent)
+        struct Info
+        {
+            InstrumentType Ptype = InstrumentType::Undefined;
+            string Pauthor;
+            string Pcomments;
+            string Pfilename;    // the file-system name this instrument is saved under
+            string PdisplayName; // the name shown to the user (may differ after a rename)
+        };
+
+        struct InstrumentMetadata
+        {
+            Info         info;
+            DesignValues design;
+              // whether to compensate towards DesignValues (opt-in per value)
+            bool adaptSampleRate    = false;
+            bool adaptControlRate   = false;
+            bool adaptSpectralBound = false;
+        };
+
+        InstrumentMetadata meta;
+
+
        ~Part();
         Part(uchar id, Microtonal*, fft::Calc&, SynthEngine&);
 
@@ -74,11 +110,36 @@ class Part
 
         inline float pannedVolLeft()  { return volume * pangainL; }
         inline float pannedVolRight() { return volume * pangainR; }
-        void reset(int npart);
-        void defaults(int npart);
+
+
+          // Resetting a Part is organised in layers, from inside out:
+          //  - resetRuntime()       runtime state only: kill all notes, silence buffers and effect tails. No parameter is touched.
+          //  - resetInstrument()    the instrument content: metadata (incl. DesignValues), kit items with their AD/SUB/PAD parameters,
+          //                         and the part effects. This is the clean baseline for loading an instrument.
+          //  - resetParameters()    everything a state file stores for this Part: the setup of the Part itself (enable, key range,
+          //                         volume, pan, MIDI channel, destination, controllers...), plus resetInstrument().
+          //  - resetAll()           resetRuntime() and resetParameters(), then re-publish the part map and enable.
+          // Loading an instrument file starts from resetInstrument() alone, since the caller
+          // has already switched the part off (SynthEngine::partonoffWrite), which invokes resetRuntime().
+        void resetAll();
+        void resetParameters();
+        void resetInstrument();
+        void resetRuntime();
         void setNoteMap(int keyshift);
-        void defaultsinstrument();
-        void cleanup();
+
+        // Control adaptation to captured DesignValues
+        enum class DesignValuesField { SampleRate, ControlRate, SpectralBound };
+
+        bool  markIndependent();      // disable adaptation to DesignValues for this instrument
+        bool  adoptCurrentSettings(); // adapt Synth parameters to reflect the captured DesignValues
+
+        static bool isValidDesignValue(DesignValuesField, uint rawVal);
+        bool  setDesignValue(DesignValuesField field, uint newValue, bool adaptSynth);
+        uint  getDesignValue(DesignValuesField)    const;
+        bool  isAdaptingTo(DesignValuesField)      const;
+        uint  getCurrentSetting(DesignValuesField) const;
+        bool  isAdaptationAudible()                const;
+        bool  canAdoptCurrentSettings()            const;
 
         // Midi commands implemented
         void setChannelAT(int type, int value);
@@ -96,8 +157,8 @@ class Part
             return omniByCC == Omni::Enabled or (omniByCC == Omni::NotSet and Pomni);
         }
 
-        bool saveXML(string filename, bool yoshiFormat); // result true for load ok, otherwise false
-        int  loadXML(string filename);
+        bool saveXMLInstrument(string filename, bool yoshiFormat); // result true for load ok, otherwise false
+        int  loadXMLInstrument(string filename);
         void add2XML_YoshimiPartSetup(XMLtree&);
         void add2XML_YoshimiInstrument(XMLtree&);
         void getfromXML(XMLtree&);
@@ -108,7 +169,7 @@ class Part
         // part's kit
         struct KitItem
         {
-            string Pname;
+            string PitemName;
             uchar  Penabled;
             uchar  Pmuted;
             uchar  Pminkey;
@@ -158,15 +219,7 @@ class Part
         uchar  PbreathControl;
         uchar  Peffnum;
         int    Paudiodest;     // jack output routing
-        string Pname;
-        string Poriginal;
 
-        struct Info {
-            uchar  Ptype;
-            string Pauthor;
-            string Pcomments;
-        };
-        Info info;
         const uchar partID;
 
         Samples partoutl;
@@ -191,13 +244,17 @@ class Part
 
     private:
         void getfromXML_InstrumentData(XMLtree&);
-        void add2XML_InstrumentData(XMLtree&);
+        bool hasValidDesignValues(XMLtree&, const string& filename) const;
+        void getfromXML_DesignValues(XMLtree&);
+        void add2XML_InstrumentData(XMLtree&, bool yoshiFormat =true);
         void add2XML_synthUsage(XMLtree&);
 
         void setPan(float value);
         void KillNotePos(int pos);
         void ReleaseNotePos(int pos);
         void monoNoteHistoryRecall();
+        void resetMetadata();
+        void establishDesignValues();
 
         void startNewNotes        (int pos, size_t item, size_t currItem, Note, bool portamento, float volumeAdjustment);
         void startLegato          (int pos, size_t item, size_t currItem, Note);

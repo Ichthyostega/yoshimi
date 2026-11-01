@@ -683,6 +683,92 @@ int setKnob(float current, float normal)
 }
 
 
+/** Read the design values of the instrument in the given part.
+ * @note such a "GUI read" is executed directly in the GUI thread, see InterChange::readAllData()
+ *       The read selector (parameter) is: 0 = design value, 1 = adapting, 2 = current setting.
+ */
+DesignValuesInfo fetchDesignValues(SynthEngine* synth, uchar npart)
+{
+    const uchar controls[3] = {PART::control::designSampleRate
+                              ,PART::control::designControlRate
+                              ,PART::control::designSpectralBound};
+    DesignValuesInfo info;
+    info.allAdapting = true;
+    info.anyAdapting = false;
+    for (int i = 0; i < 3; ++i)
+    {
+        info.adapting[i] = (0 != lrint(collect_readData(synth, 0, controls[i], npart, UNUSED, UNUSED, UNUSED, 1)));
+        info.design[i]   = lrint(collect_readData(synth, 0, controls[i], npart, UNUSED, UNUSED, UNUSED, 0));
+        info.current[i]  = lrint(collect_readData(synth, 0, controls[i], npart, UNUSED, UNUSED, UNUSED, 2));
+        info.anyAdapting |= info.adapting[i];
+        info.allAdapting &= info.adapting[i];
+    }
+    info.isAudible = (collect_readData(synth, 0, PART::control::designSetToCurrent, npart) != 0);
+    return info;
+}
+
+
+string designValuesTooltip(DesignValuesInfo const& info)
+{
+    auto showSettings = [](uint const* setting)
+                            {
+                                return to_string(setting[0])+" Hz; "
+                                     + to_string(setting[1])+ " samples/period;\n"
+                                     + "OscilSize="+to_string(setting[2])
+                                     + " ("+to_string(setting[2]/2-1)+" overtones).";
+                            };
+    string tip{
+        info.anyAdapting? "This instrument adapts parameters to keep the sound\n"
+                          "similar to the settings it was originally designed for:\n"
+                          +showSettings(info.design)
+                        : "This instrument does not adapt parameters: its sound\n"
+                          "may vary depending on the current processing settings:\n"
+                          +showSettings(info.current)
+                        };
+    if (info.isAudible)
+        tip += "\n\nNote: differs from the current settings\n("
+             + to_string(info.current[0])+"Hz; "
+             + to_string(info.current[1])+ " smp/period; "
+             + "OscilSize="+to_string(info.current[2])+").";
+
+    return tip;
+}
+
+
+/** Adapt the instrument to the current settings (asks first, when this might change the sound) */
+void adaptToCurrentSettings(SynthEngine* synth, uchar npart)
+{
+    if (!collect_readData(synth, 0, PART::control::enable, npart))
+    {
+        alert(synth, "Selected part is disabled");
+        return;
+    }
+    if (collect_readData(synth, 0, PART::control::designSetToCurrent, npart) // would the sound change?
+        and choice(synth, "", "Yes", "No", "Adapting part " + to_string(npart + 1)
+                                         + " to the current processing settings may change its sound.") <= 1)
+        return;
+    collect_writeData(synth, 1, TOPLEVEL::action::forceUpdate, TOPLEVEL::type::Write | TOPLEVEL::type::Integer,
+                      PART::control::designSetToCurrent, npart);
+}
+
+
+/** Stop adapting the instrument to design values (always asks first) */
+void detachFromDesignValues(SynthEngine *synth, unsigned char npart)
+{
+    if (!collect_readData(synth, 0, PART::control::enable, npart))
+    {
+        alert(synth, "Selected part is disabled");
+        return;
+    }
+    if (choice(synth, "", "Yes", "No", "Detach part " + to_string(npart + 1)
+                                     + " from its recorded design settings? "
+                                     + "This may change its sound later when used in a different processing configuration.") <= 1)
+        return;
+    collect_writeData(synth, 1, TOPLEVEL::action::forceUpdate, TOPLEVEL::type::Write | TOPLEVEL::type::Integer,
+                      PART::control::designMarkIndependent, npart);
+}
+
+
 string convert_value(ValueType type, float val)
 {
     float f;
@@ -1430,7 +1516,7 @@ void custom_graphics(ValueType vt, float val,int W,int H)
         fl_font(fl_font(),10);
         for (i = 0; i < 4; i++) /* 20, 100, 1k, 10k */
         {
-            x = x0 + (i == 0 ?  0 : ((float)i + 1 - lg1020) * rx);
+            x = x0 + (i == 0 ?  0 : (float(i) + 1 - lg1020) * rx);
             fl_color(tooltip_major_grid); /* Darker boundary lines */
             fl_line(x, y0, x, y0 - _h);
             fl_color(tooltip_text);
@@ -1459,7 +1545,7 @@ void custom_graphics(ValueType vt, float val,int W,int H)
         }
         else
         {
-            const float p = ((int)val / 64.0f) * 3.0;
+            const float p = (int(val) / 64.0f) * 3.0;
 
             /* Cairo not necessary, but makes it easier to read the graph */
 #ifndef YOSHIMI_CAIRO_LEGACY
@@ -1493,9 +1579,9 @@ void custom_graphics(ValueType vt, float val,int W,int H)
     }
 }
 
-string variable_prec_units(float v, const string& u, int maxPrec, bool roundup)
+string variable_prec_units(float v, string const& u, int maxPrec, bool roundup)
 {
-    int digits = 0, lim = (int) pow(10,maxPrec);
+    int digits = 0, lim = int( pow(10,maxPrec));
     float _v = fabsf(v);
     while (maxPrec > digits)
     {
@@ -1511,7 +1597,7 @@ string variable_prec_units(float v, const string& u, int maxPrec, bool roundup)
     return custom_value_units(v, u, digits);
 }
 
-string custom_value_units(float v, const string& u, int prec)
+string custom_value_units(float v, string const& u, int prec)
 {
     ostringstream oss;
     oss.setf(std::ios_base::fixed);
@@ -1557,7 +1643,7 @@ ValueType getFilterFreqTrackType(int offset)
 }
 
 /** convert a milliseconds value to a logarithmic dial setting */
-int millisec2logDial(unsigned int ms)
+int millisec2logDial(uint ms)
 {
     return ms==0? -1
                 : log10f(float(ms)) * 1000;

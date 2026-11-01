@@ -84,7 +84,7 @@ Part::Part(uchar id, Microtonal* microtonal_, fft::Calc& fft_, SynthEngine& _syn
 
     for (int n = 0; n < NUM_KIT_ITEMS; ++n)
     {
-        kit[n].Pname.clear();
+        kit[n].PitemName.clear();
         kit[n].adpars = NULL;
         kit[n].subpars = NULL;
         kit[n].padpars = NULL;
@@ -119,38 +119,31 @@ Part::Part(uchar id, Microtonal* microtonal_, fft::Calc& fft_, SynthEngine& _syn
         }
         partnote[i].time = 0;
     }
-    cleanup();
-    /*
-     * Do we actually need the following two?
-     * defaults is called for all parts at startup by Config.cpp
-     * and Pname is then set to the default name when defaults
-     * calls defaultsinstrument
-     */
-    Pname.clear();
-    defaults(0);
+    resetRuntime();
+    // establish a defined initial state, including the instrument metadata
+    // and the Invariant for the DesignValues -- see resetInstrument()
+    resetParameters();
 }
 
 
-void Part::reset(int npart)
+void Part::resetAll()
 {
-    cleanup();
-    defaults(npart);
-    synth.setPartMap(npart);
-    synth.partonoffWrite(npart, 1);
+    resetRuntime();
+    resetParameters();
+    synth.setPartMap(partID);
+    synth.partonoffWrite(partID, 1);
 }
 
-void Part::defaults(int npart)
+void Part::resetParameters()
 {
     Penabled = 0;
     Pminkey = 0;
     Pmaxkey = 127;
-    Pkeymode = PART_NORMAL;
-    PchannelATchoice = 0;
-    PkeyATchoice = 0;
     setVolume(96);
     TransVolume = 128; // ensure it always gets set
     Pkeyshift = 64;
     oldFilterState = -1;
+    oldFilterQstate = -1;
     oldBendState = -1;
     oldVolumeState = -1;
     oldVolumeAdjust = 0;
@@ -160,47 +153,30 @@ void Part::defaults(int npart)
     Pvelsns = 64;
     Pveloffs = 64;
     Pkeylimit = PART_DEFAULT_LIMIT;
-    Pfrand = 0;
-    Pvelrand = 0;
     PbreathControl = MIDI::CC::breath;
-    Peffnum = 0;
     setDestination(1);
     busy = false;
-    defaultsinstrument();
+    resetInstrument();
     ctl->resetall();
-    Prcvchn = npart % NUM_MIDI_CHANNELS;
+    Prcvchn = partID % NUM_MIDI_CHANNELS;
     Pomni = false;
     setNoteMap(0);
 }
 
-void Part::setNoteMap(int keyshift)
-{
-    for (int i = 0; i < MAX_OCTAVE_SIZE; ++i)
-    {
-        if (Pdrummode)
-            PnoteMap[i] = microtonal->getFixedNoteFreq(i);
-        else
-        {
-            PnoteMap[i] = microtonal->getNoteFreq(i, keyshift + synth.Pkeyshift - 64);
-        }
-    }
-}
 
-
-void Part::defaultsinstrument()
+void Part::resetInstrument()
 {
-    Pname = DEFAULT_NAME;
-    Poriginal = UNTITLED;
+    resetMetadata();
     PyoshiType = false;
-    info.Ptype = 0;
-    info.Pauthor.clear();
-    info.Pcomments.clear();
 
     Pkitmode = 0;
     PkitfadeType = 0;
     Pdrummode = 0;
     Pfrand = 0;
     Pvelrand = 0;
+    Pkeymode = PART_NORMAL;
+    PchannelATchoice = 0;
+    PkeyATchoice = 0;
 
     for (int n = 0; n < NUM_KIT_ITEMS; ++n)
     {
@@ -211,7 +187,7 @@ void Part::defaultsinstrument()
         kit[n].Padenabled = 0;
         kit[n].Psubenabled = 0;
         kit[n].Ppadenabled = 0;
-        kit[n].Pname.clear();
+        kit[n].PitemName.clear();
         kit[n].Psendtoparteffect = 0;
         if (n != 0)
             setkititemstatus(n, 0);
@@ -231,8 +207,71 @@ void Part::defaultsinstrument()
 }
 
 
+/** Reset the instrument metadata to the state of a new, anonymous default instrument.
+ *  Adapting to DesignValues is strictly opt-in: the new instrument does not adapt
+ *  to any DesignValue, which then just mirror the current processing parameters.
+ */
+void Part::resetMetadata()
+{
+    meta.info.Pfilename = DEFAULT_NAME;
+    meta.info.PdisplayName = UNTITLED;
+    meta.info.Ptype = InstrumentType::Undefined;
+    meta.info.Pauthor.clear();
+    meta.info.Pcomments.clear();
+
+    // start from a clean baseline, never carry over values of a previous instrument
+    meta.design = DesignValues{};
+    meta.adaptSampleRate    = false;
+    meta.adaptControlRate   = false;
+    meta.adaptSpectralBound = false;
+    establishDesignValues();
+}
+
+
+/** Establish the Invariant: DesignValues are valid and usable.
+ *  - where the instrument is not adapting, the DesignValues mirror the current settings
+ *  - otherwise do not touch the stored DesignValues
+ *  - but fall back to current settings when values are missing
+ */
+void Part::establishDesignValues()
+{
+      // precondition: the engine's processing parameters must be final
+      // (SynthEngine::Init sets them before the Parts are created)
+      // (zero is the marker for "unset", so a zero value would break the logic below)
+    assert(synth.samplerate > 0);
+    assert(synth.buffersize > 0);
+    assert(synth.oscilsize  > 0);
+
+    if (meta.design.refSampleRate == 0
+        or not meta.adaptSampleRate )
+    {
+        meta.design.refSampleRate = synth.samplerate;
+    }
+    if (meta.design.refControlRate == 0
+        or not meta.adaptControlRate )
+    {
+        meta.design.refControlRate = synth.buffersize;
+    }
+    if (meta.design.refSpectralBound == 0
+        or not meta.adaptSpectralBound )
+    {
+        meta.design.refSpectralBound = synth.oscilsize;
+    }
+
+      // postcondition: the Invariant holds
+    assert(meta.design.refSampleRate    > 0);
+    assert(meta.design.refControlRate   > 0);
+    assert(meta.design.refSpectralBound > 0);
+      // only the active values are checked: the inactive ones mirror the current settings,
+      // and the buffer size (hence oscilsize) is not necessarily a power of two (see SynthEngine::Init)
+    assert(not meta.adaptSampleRate    or isValidDesignValue(DesignValuesField::SampleRate,    meta.design.refSampleRate));
+    assert(not meta.adaptControlRate   or isValidDesignValue(DesignValuesField::ControlRate,   meta.design.refControlRate));
+    assert(not meta.adaptSpectralBound or isValidDesignValue(DesignValuesField::SpectralBound, meta.design.refSpectralBound));
+}
+
+
 // Cleanup the part
-void Part::cleanup()
+void Part::resetRuntime()
 {
     int enablepart = Penabled;
     Penabled = 0;
@@ -255,7 +294,7 @@ void Part::cleanup()
 
 Part::~Part()
 {
-    cleanup();
+    resetRuntime();
     for (int n = 0; n < NUM_KIT_ITEMS; ++n)
     {
         if (kit[n].adpars)
@@ -269,6 +308,165 @@ Part::~Part()
     {
         if (partefx[nefx])
             delete partefx[nefx];
+    }
+}
+
+
+/** Is the given raw number usable as a DesignValue for the given field?
+ *  - Sample rate: within limits.
+ *  - Control rate and spectral bound: within limits and a power of two.
+ */
+bool Part::isValidDesignValue(DesignValuesField field, uint rawVal)
+{
+    uint min{0}, max{0};
+    switch (field)
+    {
+        case DesignValuesField::SampleRate:
+            return rawVal >= MIN_SAMPLE_RATE and rawVal <= MAX_SAMPLE_RATE;
+        case DesignValuesField::ControlRate:
+            min = MIN_BUFFER_SIZE;
+            max = MAX_BUFFER_SIZE;
+            break;
+        case DesignValuesField::SpectralBound:
+            min = MIN_OSCIL_SIZE;
+            max = MAX_OSCIL_SIZE;
+            break;
+    }
+    bool isPowerOfTwo = rawVal > 0 and (rawVal & (rawVal - 1)) == 0;
+    return isPowerOfTwo and rawVal >= min and rawVal <= max;
+}
+
+
+/** Can the current settings of the synth engine serve as DesignValues?
+ *  Rationale: a backend may deliver a sample rate outside of the supported range,
+ *  or a buffer size which is not a power of two. Adopting such settings would store
+ *  a value which Yoshimi itself rejects when loading the instrument file. */
+bool Part::canAdoptCurrentSettings() const
+{
+    return isValidDesignValue(DesignValuesField::SampleRate,    synth.samplerate)
+       and isValidDesignValue(DesignValuesField::ControlRate,   synth.buffersize)
+       and isValidDesignValue(DesignValuesField::SpectralBound, synth.oscilsize);
+}
+
+
+/** Set one DesignValue and activate or deactivate the Synth adaptation feature for this value.
+ *  When inactive, the design value just mirrors the current processing parameter,
+ *  which is then also used by the Synth code without adaptation and adjustments.
+ * @return true if the effective DesignValue changed, which can alter the sound.
+ * @remark the caller must validate and mute the part
+ * @see InterChange::commandPart
+ */
+bool Part::setDesignValue(DesignValuesField field, uint newValue, bool adaptSynth)
+{
+    uint effectiveValue = adaptSynth? newValue : getCurrentSetting(field);
+    bool isAudible = (effectiveValue != getDesignValue(field));
+    switch (field)
+    {
+        case DesignValuesField::SampleRate:
+            meta.design.refSampleRate = effectiveValue;
+            meta.adaptSampleRate = adaptSynth;
+            break;
+        case DesignValuesField::ControlRate:
+            meta.design.refControlRate = effectiveValue;
+            meta.adaptControlRate = adaptSynth;
+            break;
+        case DesignValuesField::SpectralBound:
+            meta.design.refSpectralBound = effectiveValue;
+            meta.adaptSpectralBound = adaptSynth;
+            break;
+    }
+    establishDesignValues();
+    return isAudible;
+}
+
+
+uint Part::getDesignValue(DesignValuesField field) const
+{
+    switch (field)
+    {
+        case DesignValuesField::SampleRate:    return meta.design.refSampleRate;
+        case DesignValuesField::ControlRate:   return meta.design.refControlRate;
+        case DesignValuesField::SpectralBound: return meta.design.refSpectralBound;
+    }
+    return 0;
+}
+
+
+bool Part::isAdaptingTo(DesignValuesField field) const
+{
+    switch (field)
+    {
+        case DesignValuesField::SampleRate:    return meta.adaptSampleRate;
+        case DesignValuesField::ControlRate:   return meta.adaptControlRate;
+        case DesignValuesField::SpectralBound: return meta.adaptSpectralBound;
+    }
+    return false;
+}
+
+
+/** The effective processing parameter of the engine, corresponding to the given field. */
+uint Part::getCurrentSetting(DesignValuesField field) const
+{
+    switch (field)
+    {
+        case DesignValuesField::SampleRate:    return synth.samplerate;
+        case DesignValuesField::ControlRate:   return synth.buffersize;
+        case DesignValuesField::SpectralBound: return synth.oscilsize;
+    }
+    return 0;
+}
+
+
+/** Would the instrument sound different from now, when the DesignValues were applied?
+ *  The inactive DesignValues mirror the current settings, so they never contribute. */
+bool Part::isAdaptationAudible() const
+{
+    return meta.design.refSampleRate    != synth.samplerate
+        or meta.design.refControlRate   != synth.buffersize
+        or meta.design.refSpectralBound != synth.oscilsize;
+}
+
+
+/** Adapt to all three values, with DesignValues taken from the current settings.
+ * @return true if this changes the effective DesignValues */
+bool Part::adoptCurrentSettings()
+{
+    bool isAudible = isAdaptationAudible();
+    meta.design.refSampleRate    = synth.samplerate;
+    meta.design.refControlRate   = synth.buffersize;
+    meta.design.refSpectralBound = synth.oscilsize;
+    meta.adaptSampleRate    = true;
+    meta.adaptControlRate   = true;
+    meta.adaptSpectralBound = true;
+    establishDesignValues();
+    return isAudible;
+}
+
+
+/** Disable Adaptation to design values for this Instrument.
+ *  The DesignValues then mirror the current processing parameters.
+ * @return true if this changes the effective DesignValues */
+bool Part::markIndependent()
+{
+    bool isAudible = isAdaptationAudible();
+    meta.adaptSampleRate    = false;
+    meta.adaptControlRate   = false;
+    meta.adaptSpectralBound = false;
+    establishDesignValues();
+    return isAudible;
+}
+
+
+void Part::setNoteMap(int keyshift)
+{
+    for (int i = 0; i < MAX_OCTAVE_SIZE; ++i)
+    {
+        if (Pdrummode)
+            PnoteMap[i] = microtonal->getFixedNoteFreq(i);
+        else
+        {
+            PnoteMap[i] = microtonal->getNoteFreq(i, keyshift + synth.Pkeyshift - 64);
+        }
     }
 }
 
@@ -533,6 +731,14 @@ float Part::computeKitItemCrossfade(size_t item, int midiNote)
 // Handle "Note ON" event : create new sounding note instances
 void Part::NoteOn(int note, int velocity, bool renote)
 {
+        // Invariant of the DesignValues: wherever the instrument is not adapting to a value,
+        // this value must mirror the current processing parameters. TODO 9/2026 Planned for later:
+        // define the processing parameters as immutable for the lifetime of the engine --
+        // this would reveal any violation of that premise (e.g. by some future runtime reconfiguration).
+    assert(meta.adaptSampleRate    or meta.design.refSampleRate    == synth.samplerate);
+    assert(meta.adaptControlRate   or meta.design.refControlRate   == synth.buffersize);
+    assert(meta.adaptSpectralBound or meta.design.refSpectralBound == synth.oscilsize);
+
     if (note < Pminkey || note > Pmaxkey)
         return;
 
@@ -1236,7 +1442,7 @@ void Part::setkititemstatus(int kititem, int Penabled_)
         kit[kititem].Padenabled = 0;
         kit[kititem].Psubenabled = 0;
         kit[kititem].Ppadenabled = 0;
-        kit[kititem].Pname.clear();
+        kit[kititem].PitemName.clear();
         kit[kititem].Psendtoparteffect = 0;
         if (kit[kititem].adpars)
         {
@@ -1276,15 +1482,27 @@ void Part::setkititemstatus(int kititem, int Penabled_)
  * @remark this is the ZynAddSubFX compatible part,
  *         without controllers and setup
  */
-void Part::add2XML_InstrumentData(XMLtree& xmlInstrument)
+void Part::add2XML_InstrumentData(XMLtree& xmlInstrument, bool yoshiFormat)
 {
     XMLtree xmlInfo = xmlInstrument.addElm("INFO");
-        xmlInfo.addPar_str("name"    , Poriginal);
-        xmlInfo.addPar_str("author"  , info.Pauthor);
-        xmlInfo.addPar_str("comments", info.Pcomments);
-        xmlInfo.addPar_int("type"    , type_offset[info.Ptype]);
-        xmlInfo.addPar_str("file"    , Pname);
-        if (Pname == DEFAULT_NAME)
+        xmlInfo.addPar_str("name"    , meta.info.PdisplayName);
+        xmlInfo.addPar_str("author"  , meta.info.Pauthor);
+        xmlInfo.addPar_str("comments", meta.info.Pcomments);
+        xmlInfo.addPar_int("type"    , instrumentTypeToXML(meta.info.Ptype));
+        xmlInfo.addPar_str("file"    , meta.info.Pfilename);
+        if (yoshiFormat)
+        {// Persist those DesignValues which are actively used for adaptation.
+         // The absence of an entry will mark the instrument as "not adapting"
+         // with respect to this value. This covers the case of legacy instruments,
+         // which thus can be re-saved without any change to the file.
+            if (meta.adaptSampleRate)
+                xmlInfo.addPar_uint("design_sample_rate"   , meta.design.refSampleRate);
+            if (meta.adaptControlRate)
+                xmlInfo.addPar_uint("design_control_rate"  , meta.design.refControlRate);
+            if (meta.adaptSpectralBound)
+                xmlInfo.addPar_uint("design_spectral_bound", meta.design.refSpectralBound);
+        }
+        if (meta.info.Pfilename == DEFAULT_NAME)
             return;
 
     XMLtree xmlKit = xmlInstrument.addElm("INSTRUMENT_KIT");
@@ -1299,7 +1517,7 @@ void Part::add2XML_InstrumentData(XMLtree& xmlInstrument)
             xmlKitItem.addPar_bool("enabled", kit[i].Penabled);
             if (kit[i].Penabled)
             {
-                xmlKitItem.addPar_str("name", kit[i].Pname);
+                xmlKitItem.addPar_str("name", kit[i].PitemName);
 
                 xmlKitItem.addPar_bool("muted", kit[i].Pmuted);
                 xmlKitItem.addPar_int ("min_key", kit[i].Pminkey);
@@ -1369,6 +1587,7 @@ void Part::add2XML_YoshimiPartSetup(XMLtree& xmlPart)
     xmlPart.addPar_int("key_limit"         , Pkeylimit);
     xmlPart.addPar_int("random_detune"     , Pfrand);
     xmlPart.addPar_int("random_velocity"   , Pvelrand);
+    xmlPart.addPar_bool("breath_disable"   , PbreathControl != MIDI::CC::breath);
     xmlPart.addPar_int("destination"       , Paudiodest);
 
     XMLtree xmlInstrument = xmlPart.addElm("INSTRUMENT");
@@ -1435,14 +1654,14 @@ void Part::add2XML_synthUsage(XMLtree& xmlInfo)
 }
 
 
-bool Part::saveXML(string filename, bool yoshiFormat)
+bool Part::saveXMLInstrument(string filename, bool yoshiFormat)
 {
     XMLStore xml{TOPLEVEL::XML::Instrument, not yoshiFormat};
 
-    if (Pname < "!") // this shouldn't be possible
-        Pname = UNTITLED;
-    else if ((Poriginal.empty() || Poriginal == UNTITLED) && Pname != UNTITLED)
-        Poriginal = Pname;
+    if (meta.info.Pfilename < "!") // this shouldn't be possible
+        meta.info.Pfilename = UNTITLED;
+    else if ((meta.info.PdisplayName.empty() || meta.info.PdisplayName == UNTITLED) && meta.info.Pfilename != UNTITLED)
+        meta.info.PdisplayName = meta.info.Pfilename;
 
     XMLtree xmlTop = xml.accessTop(); // setup metadata and info node
     XMLtree xmlInfo = xmlTop.getElm("INFORMATION");
@@ -1454,10 +1673,10 @@ bool Part::saveXML(string filename, bool yoshiFormat)
         add2XML_YoshimiInstrument(xmlTop);
     }
     else
-    {
+    {// store in legacy Zyn format
         filename = setExtension(filename, EXTEN::zynInst);
         XMLtree xmlInstrument = xmlTop.addElm("INSTRUMENT");
-        add2XML_InstrumentData(xmlInstrument);
+        add2XML_InstrumentData(xmlInstrument, yoshiFormat);
     }
     return xml.saveXMLfile(filename
                           ,synth.getRuntime().getLogger()
@@ -1465,7 +1684,11 @@ bool Part::saveXML(string filename, bool yoshiFormat)
 }
 
 
-int Part::loadXML(string filename)
+/** Load an Instrument, with distinction between Zyn and Yoshimi format
+ * @remark this is one of two call paths towards getfromXML_InstrumentData;
+ *         it is used from SynthEngine::setProgram() and Init
+ */
+int Part::loadXMLInstrument(string filename)
 {
     bool marked_as_Yoshi = true;
     filename = setExtension(filename, EXTEN::yoshInst);
@@ -1489,15 +1712,20 @@ int Part::loadXML(string filename)
         logg(filename + " is not an instrument file");
         return 0;
     }
-    defaultsinstrument();
+    if (not hasValidDesignValues(xmlInstrument, filename))
+        return 0;
+
     PyoshiType = not xml.meta.isZynCompat();
     if (PyoshiType != marked_as_Yoshi)
         logg("WARNING: file extension does not match Yoshimi format in file \""+filename+"\"");
 
-    Pname = findLeafName(filename);
-    int chk = findSplitPoint(Pname);
+    // ensure clean internal state baseline
+    resetInstrument();
+
+    meta.info.Pfilename = findLeafName(filename);
+    int chk = findSplitPoint(meta.info.Pfilename);
     if (chk > 0)
-        Pname = Pname.substr(chk + 1, Pname.size() - chk - 1);
+        meta.info.Pfilename = meta.info.Pfilename.substr(chk + 1, meta.info.Pfilename.size() - chk - 1);
 
     getfromXML_InstrumentData(xmlInstrument);
 
@@ -1507,18 +1735,27 @@ int Part::loadXML(string filename)
 
     if (PyoshiType)
     {// Yoshimi native format stores additional information with the instrument...
-        Pkeymode = xmlInstrument.getPar_int("key_mode", Pkeymode, PART_NORMAL, MIDI_LEGATO);
+        Pkeymode = xmlInstrument.getPar_int("key_mode", Pkeymode, PART_NORMAL, PART_LEGATO);
+        PchannelATchoice = xmlInstrument.getPar_int("channel_aftertouch", PchannelATchoice, 0, 255);
+        PkeyATchoice     = xmlInstrument.getPar_int("key_aftertouch",     PkeyATchoice,     0, 255);
         Pfrand   = xmlInstrument.getPar_127("random_detune", Pfrand);
         if (Pfrand > 50)
             Pfrand = 50;
         Pvelrand = xmlInstrument.getPar_127("random_velocity", Pvelrand);
         if (Pvelrand > 50)
             Pvelrand = 50;
-        PbreathControl = xmlInstrument.getPar_bool("breath_disable", PbreathControl);
-        if (PbreathControl)
+        bool breathDisabled = xmlInstrument.getPar_bool("breath_disable", PbreathControl != MIDI::CC::breath);
+        if (breathDisabled)
             PbreathControl = UNUSED; // impossible CC value
         else
             PbreathControl = MIDI::CC::breath;
+    }
+    else
+    {// Zyn format instruments do not carry any playing characteristics:
+     // use the neutral defaults instead of keeping those of the previous instrument.
+     // (the controller configuration only -- live controller values are left alone)
+        ctl->defaults();
+        PbreathControl = MIDI::CC::breath;
     }
     if (XMLtree xmlController = xml.getElm("CONTROLLER"))
         ctl->getfromXML(xmlController);
@@ -1527,47 +1764,111 @@ int Part::loadXML(string filename)
 }
 
 
+/** Sanity check of the DesignValues in an instrument file, before anything is loaded.
+ *  A missing entry or the value 0 implies "not adapting" and is accepted. Any other value
+ *  must be usable as DesignValue: in the supported range, and a power of two where required.
+ *  Yoshimi never writes anything else, so an invalid value hints at a damaged or manipulated
+ *  file, which is rejected rather than silently interpreted.
+ *  @note only used for single instrument files;
+ *  @warning state files fall back on "not adapting", with a warning log,
+ *           see getfromXML_DesignValues(), which is invoked after this function.
+ */
+bool Part::hasValidDesignValues(XMLtree& xmlInstrument, const string& filename) const
+{
+    XMLtree xmlInfo = xmlInstrument.getElm("INFO");
+    if (not xmlInfo)
+        return true;
+
+    auto check = [&](const char* entry, DesignValuesField field)
+                    {
+                        uint value = xmlInfo.getPar_uint(entry, 0); // no clamping, we need the original
+                        bool valid = (value == 0 or isValidDesignValue(field, value));
+                        if (not valid)
+                            synth.getRuntime().Log("Instrument file " + filename + " has an invalid value for "
+                                                  + entry + ": " + std::to_string(value) + " (not loaded)");
+                        return valid;
+                    };
+    return check("design_sample_rate"   , DesignValuesField::SampleRate)
+       and check("design_control_rate"  , DesignValuesField::ControlRate)
+       and check("design_spectral_bound", DesignValuesField::SpectralBound);
+}
+
+
+/** Retrieve the DesignValues (processing parameters as used by the instrument designer).
+ *  The values and flags are retrieved when present, independent of previous internal state.
+ *  Any design value can be marked as "not adapted" -- which implies that the instrument
+ *  uses the current processing parameters, and no adaptation or normalisation shall be
+ *  performed on derived sound synthesis settings. This is the case whenever the entry is
+ *  missing, and likewise for a stored value 0 or any other value which is not valid, see
+ *  isValidDesignValue(). Legacy instruments fall into this category and will thus not be "adapted"
+ *  in processing, and nothing will be added to legacy instruments by default, when saving them back.
+ *  @note values from XML are deliberately retrieved without clamping, since a
+ *        clamped out-of-range value would pass for a valid design value.
+ *  @note instrument files with invalid values are rejected beforehand, see hasValidDesignValues().
+ *        State files are not checked as a whole; here an invalid value is a second line of defence:
+ *        Yoshimi can not capture such a value itself, so it hints at hand-editing, damage or a file
+ *        from a version with different limits. It is ignored with a warning (never adjusted).
+ */
+void Part::getfromXML_DesignValues(XMLtree& xmlInfo)
+{
+    auto isUsable = [&](const char* entry, DesignValuesField field, uint value)
+                        {
+                            bool valid = isValidDesignValue(field, value);
+                            if (not valid and value != 0)
+                                synth.getRuntime().Log("Part " + std::to_string(partID + 1) + ": ignoring invalid value "
+                                                      + std::to_string(value) + " for " + entry + " (not adapting)");
+                            return valid;
+                        };
+
+    assert(xmlInfo);
+    uint origSampleRate     = xmlInfo.getPar_uint("design_sample_rate"   , 0);  // no clamping: range check below
+    uint origControlRate    = xmlInfo.getPar_uint("design_control_rate"  , 0);
+    uint origSpectralBound  = xmlInfo.getPar_uint("design_spectral_bound", 0);
+    meta.adaptSampleRate    = isUsable("design_sample_rate"   , DesignValuesField::SampleRate,    origSampleRate);
+    meta.adaptControlRate   = isUsable("design_control_rate"  , DesignValuesField::ControlRate,   origControlRate);
+    meta.adaptSpectralBound = isUsable("design_spectral_bound", DesignValuesField::SpectralBound, origSpectralBound);
+    meta.design.refSampleRate    = meta.adaptSampleRate?    origSampleRate    : 0;
+    meta.design.refControlRate   = meta.adaptControlRate?   origControlRate   : 0;
+    meta.design.refSpectralBound = meta.adaptSpectralBound? origSpectralBound : 0;
+
+    // where not adapted, DesignValues = current settings
+    establishDesignValues();
+}
+
+
 void Part::getfromXML_InstrumentData(XMLtree& xmlInstrument)
 {
     assert(xmlInstrument);
     if (XMLtree xmlInfo = xmlInstrument.getElm("INFO"))
     {
-        Poriginal = xmlInfo.getPar_str("name");
-        // counting type numbers but checking the *contents* of type_offset()
-        info.Pauthor = func::formatTextLines(xmlInfo.getPar_str("author"), 54);
-        info.Pcomments = func::formatTextLines(xmlInfo.getPar_str("comments"), 54);
+        meta.info.PdisplayName = xmlInfo.getPar_str("name");
+        meta.info.Pauthor = func::formatTextLines(xmlInfo.getPar_str("author"), 54);
+        meta.info.Pcomments = func::formatTextLines(xmlInfo.getPar_str("comments"), 54);
         int found = xmlInfo.getPar_int("type", 0, -20, 255); // should cover all!
-        int type = 0;
-        int offset = 0;
-        while (offset != UNUSED && offset != found)
-        {
-            ++type;
-            offset = type_offset[type];
-        }
-        if (offset == UNUSED)
-            type = 0; // undefined
-        info.Ptype = type;
+        meta.info.Ptype = instrumentTypeFromXML(found);
 
-        // The following is surprisingly complex!
-        if (Pname.empty())
-            Pname = xmlInfo.getPar_str("file");
+        // Heuristics to migrate names from legacy instruments and state files
+        // Introduced 2021-02-16 with 57fbd4ec6
+        if (meta.info.Pfilename.empty())
+            meta.info.Pfilename = xmlInfo.getPar_str("file");
 
-        if (Poriginal == DEFAULT_NAME) // it's an old one
-            Poriginal = UNTITLED;
-        if (Pname.empty()) // it's an older state file
+        if (meta.info.PdisplayName == DEFAULT_NAME) // it's an old one
+            meta.info.PdisplayName = UNTITLED;
+        if (meta.info.Pfilename.empty()) // it's an older state file
         {
-            if (Poriginal.empty())
-                Pname = UNTITLED;
+            if (meta.info.PdisplayName.empty())
+                meta.info.Pfilename = UNTITLED;
             else
-                Pname = Poriginal;
+                meta.info.Pfilename = meta.info.PdisplayName;
         }
-        else if (Poriginal.empty() || Poriginal == UNTITLED) // it's one from zyn
-            Poriginal = Pname;
-        if (Pname.empty() && Poriginal == UNTITLED)
+        else if (meta.info.PdisplayName.empty() || meta.info.PdisplayName == UNTITLED) // it's one from zyn
+            meta.info.PdisplayName = meta.info.Pfilename;
+        if (meta.info.Pfilename.empty() && meta.info.PdisplayName == UNTITLED)
         {
-            Pname = UNTITLED;
-            Poriginal = UNTITLED;
+            meta.info.Pfilename = UNTITLED;
+            meta.info.PdisplayName = UNTITLED;
         }
+        getfromXML_DesignValues(xmlInfo);
     }
 
     if (XMLtree xmlKit = xmlInstrument.getElm("INSTRUMENT_KIT"))
@@ -1586,10 +1887,10 @@ void Part::getfromXML_InstrumentData(XMLtree& xmlInstrument)
                 setkititemstatus(i, xmlKitItem.getPar_bool("enabled", kit[i].Penabled));
                 if (kit[i].Penabled)
                 {
-                    kit[i].Pname   = xmlKitItem.getPar_str("name");
-                    kit[i].Pmuted  = xmlKitItem.getPar_bool("muted",  kit[i].Pmuted);
-                    kit[i].Pminkey = xmlKitItem.getPar_127("min_key", kit[i].Pminkey);
-                    kit[i].Pmaxkey = xmlKitItem.getPar_127("max_key", kit[i].Pmaxkey);
+                    kit[i].PitemName = xmlKitItem.getPar_str("name");
+                    kit[i].Pmuted    = xmlKitItem.getPar_bool("muted",  kit[i].Pmuted);
+                    kit[i].Pminkey   = xmlKitItem.getPar_127("min_key", kit[i].Pminkey);
+                    kit[i].Pmaxkey   = xmlKitItem.getPar_127("max_key", kit[i].Pmaxkey);
                     kit[i].Psendtoparteffect = xmlKitItem.getPar_127("send_to_instrument_effect"
                                                                     ,kit[i].Psendtoparteffect);
                     kit[i].Padenabled  = xmlKitItem.getPar_bool("add_enabled", kit[i].Padenabled);
@@ -1615,7 +1916,7 @@ void Part::getfromXML_InstrumentData(XMLtree& xmlInstrument)
     }
     else
     {// no <INSTRUMENT_KIT>
-        defaultsinstrument();
+        resetInstrument();
         return;
     }
     if (XMLtree xmlEffects = xmlInstrument.getElm("INSTRUMENT_EFFECTS"))
@@ -1636,8 +1937,20 @@ void Part::getfromXML_InstrumentData(XMLtree& xmlInstrument)
 }
 
 
+/** Load complete Patch-State data, including Instrument data
+ * @remark this is the second of two call paths towards getfromXML_InstrumentData;
+ *         and it is used from Config::restorePatchState()
+ * @note the top-level differs from *Instrument loading*, insofar here the
+ *         "Zyn-format" is not relevant, as the complete wiring is restored.
+ */
 void Part::getfromXML(XMLtree& xmlPart)
 {
+    // Start from a clean instrument baseline. This is redundant when called from SynthEngine::getfromXML(),
+    // which resets all parts beforehand, but keeps this function self-contained.
+    // It must precede the retrieval of the part settings below, since these overlap
+    // with some of the settings (random detune / velocity) reset by resetInstrument().
+    resetInstrument();
+
     // Note: the first block (anything before the <INSTRUMENT>)
     //       is only present in Zyn-Format instruments
     Penabled = xmlPart.getPar_bool("enabled", Penabled);
@@ -1668,19 +1981,21 @@ void Part::getfromXML(XMLtree& xmlPart)
     else
         Pkeymode = PART_MONO;
 
-    PchannelATchoice = xmlPart.getPar_int("channel_aftertouch", PchannelATchoice, 0, PART::aftertouchType::allTargets);
-    PkeyATchoice     = xmlPart.getPar_int("key_aftertouch",     PkeyATchoice,     0, PART::aftertouchType::allTargets);
+    PchannelATchoice = xmlPart.getPar_int("channel_aftertouch", PchannelATchoice, 0, 255);
+    PkeyATchoice     = xmlPart.getPar_int("key_aftertouch",     PkeyATchoice, 0, 255);
 
     Pkeylimit = xmlPart.getPar_127("key_limit", Pkeylimit);
     if (Pkeylimit < 1 or Pkeylimit > POLYPHONY)
         Pkeylimit = POLYPHONY;
     Pfrand   = xmlPart.getPar_int("random_detune",   Pfrand,   0,50);
     Pvelrand = xmlPart.getPar_int("random_velocity", Pvelrand, 0,50);
+    bool breathDisabled = xmlPart.getPar_bool("breath_disable", PbreathControl != MIDI::CC::breath);
+    PbreathControl = breathDisabled? UNUSED : MIDI::CC::breath;
     setDestination(xmlPart.getPar_127("destination", Paudiodest));
 
     if (XMLtree xmlInstrument = xmlPart.getElm("INSTRUMENT"))
     {
-        Pname.clear(); // erase any previous name
+        meta.info.Pfilename.clear(); // erase any previous name
         getfromXML_InstrumentData(xmlInstrument);
     }
     if (XMLtree xmlController = xmlPart.getElm("CONTROLLER"))
@@ -1773,7 +2088,7 @@ float Part::getLimits(CommandBlock *getData)
         case PART::control::keyATset:
             min = 0;
             def = 0;
-            max = PART::aftertouchType::allTargets;
+            max = PART::aftertouchType::modulation * 2;
             break;
 
         case PART::control::keyMode:
@@ -1909,6 +2224,27 @@ float Part::getLimits(CommandBlock *getData)
             case PART::control::instrumentType:
             break;
         case PART::control::defaultInstrumentCopyright:
+            break;
+
+        case PART::control::designSampleRate:
+            min = MIN_SAMPLE_RATE;
+            def = MIN_SAMPLE_RATE;
+            max = MAX_SAMPLE_RATE;
+            break;
+        case PART::control::designControlRate:
+            min = MIN_BUFFER_SIZE;
+            def = MIN_BUFFER_SIZE;
+            max = MAX_BUFFER_SIZE;
+            break;
+        case PART::control::designSpectralBound:
+            min = MIN_OSCIL_SIZE;
+            def = MIN_OSCIL_SIZE;
+            max = MAX_OSCIL_SIZE;
+            break;
+        case PART::control::designSetToCurrent:
+        case PART::control::designMarkIndependent:
+            def = 0;
+            max = 1;
             break;
 
         case 255: // number of parts

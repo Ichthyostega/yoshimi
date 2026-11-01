@@ -449,7 +449,7 @@ void InterChange::indirectTransfers(CommandBlock& cmd, bool noForward)
             if (switchNum == TOPLEVEL::section::scales && control == SCALES::control::importScl)
             {   // loading a tuning includes a name and comment!
                 cmd.data.control = SCALES::control::name;
-                cmd.data.miscmsg = textMsgBuffer.push(synth.microtonal.Pname);
+                cmd.data.miscmsg = textMsgBuffer.push(synth.microtonal.PscaleName);
                 returnsBuffer.write(cmd.bytes);
 
                 cmd.data.control = SCALES::control::comment;
@@ -633,10 +633,10 @@ int InterChange::indirectScales(CommandBlock& cmd, uchar& newMsg, bool& guiTo, s
         case SCALES::control::name:
             if (write)
             {
-                synth.microtonal.Pname = text;
+                synth.microtonal.PscaleName = text;
             }
             else
-                text = synth.microtonal.Pname;
+                text = synth.microtonal.PscaleName;
             newMsg = true;
             break;
         case SCALES::control::comment:
@@ -752,9 +752,9 @@ int InterChange::indirectMain(CommandBlock& cmd, uchar &newMsg, bool &guiTo, str
             // This is both. Below we send them individually.
 
             if (saveType & 2) // Yoshimi format
-                ok = synth.part[value]->saveXML(text, true);
+                ok = synth.part[value]->saveXMLInstrument(text, true);
             if (ok && (saveType & 1)) // legacy
-                ok = synth.part[value]->saveXML(text, false);
+                ok = synth.part[value]->saveXMLInstrument(text, false);
 
             if (ok)
             {
@@ -912,7 +912,7 @@ int InterChange::indirectMain(CommandBlock& cmd, uchar &newMsg, bool &guiTo, str
             if (write)
             {
                 undoRedoClear();
-                synth.part[value]->reset(value);
+                synth.part[value]->resetAll();
                 synth.getRuntime().sessionSeen[TOPLEVEL::XML::Instrument] = false;
                 cmd.data.source &= ~TOPLEVEL::action::lowPrio;
                 partsChanged.reset(value);
@@ -1065,7 +1065,7 @@ int InterChange::indirectBank(CommandBlock& cmd, uchar& newMsg, bool& guiTo, str
                 parameter = synth.getRuntime().currentPart;
                 cmd.data.parameter = parameter;
             }
-            text = synth.part[parameter]->Pname;
+            text = synth.part[parameter]->meta.info.Pfilename;
             if (text == DEFAULT_NAME)
                 text = "FAILED Can't save default instrument type";
             else if (!synth.bank.savetoslot(engine, kititem, insert, parameter))
@@ -1512,22 +1512,22 @@ int InterChange::indirectPart(CommandBlock& cmd, uchar& newMsg, bool& guiTo, str
         case PART::control::instrumentCopyright:
             if (write)
             {
-                part.info.Pauthor = text;
+                part.meta.info.Pauthor = text;
                 guiTo = true;
             }
             else
-                text = part.info.Pauthor;
+                text = part.meta.info.Pauthor;
             cmd.data.source &= ~TOPLEVEL::action::lowPrio;
             newMsg = true;
             break;
         case PART::control::instrumentComments:
             if (write)
             {
-                part.info.Pcomments = text;
+                part.meta.info.Pcomments = text;
                 guiTo = true;
             }
             else
-                text = part.info.Pcomments;
+                text = part.meta.info.Pcomments;
             cmd.data.source &= ~TOPLEVEL::action::lowPrio;
             newMsg = true;
             break;
@@ -1536,14 +1536,14 @@ int InterChange::indirectPart(CommandBlock& cmd, uchar& newMsg, bool& guiTo, str
             {
                 if (write)
                 {
-                    part.Pname = text;
-                    if (part.Poriginal.empty() || part.Poriginal == UNTITLED)
-                        part.Poriginal = text;
+                    part.meta.info.Pfilename = text;
+                    if (part.meta.info.PdisplayName.empty() || part.meta.info.PdisplayName == UNTITLED)
+                        part.meta.info.PdisplayName = text;
                     guiTo = true;
                 }
                 else
                 {
-                    text = part.Pname;
+                    text = part.meta.info.Pfilename;
                 }
             }
             else if (part.Pkitmode)
@@ -1554,12 +1554,12 @@ int InterChange::indirectPart(CommandBlock& cmd, uchar& newMsg, bool& guiTo, str
                 {
                     if (write)
                     {
-                        part.kit[kititem].Pname = text;
+                        part.kit[kititem].PitemName = text;
                         guiTo = true;
                     }
                     else
                     {
-                        text = part.kit[kititem].Pname;
+                        text = part.kit[kititem].PitemName;
                     }
                 }
             }
@@ -1571,11 +1571,11 @@ int InterChange::indirectPart(CommandBlock& cmd, uchar& newMsg, bool& guiTo, str
         case PART::control::instrumentType:
             if (write)
             {
-                part.info.Ptype = value;
+                part.meta.info.Ptype = InstrumentType(uchar(value));
                 guiTo = true;
             }
             else
-                value = part.info.Ptype;
+                value = float(uchar(part.meta.info.Ptype));
             cmd.data.source &= ~TOPLEVEL::action::lowPrio;
             break;
         case PART::control::defaultInstrumentCopyright:
@@ -1584,12 +1584,12 @@ int InterChange::indirectPart(CommandBlock& cmd, uchar& newMsg, bool& guiTo, str
             {
                 text = loadText(name); // TODO provide failure warning
                 text = func::formatTextLines(text, 54);
-                part.info.Pauthor = text;
+                part.meta.info.Pauthor = text;
                 guiTo = true;
             }
             else
             {
-                text = part.info.Pauthor;
+                text = part.meta.info.Pauthor;
                 saveText(text, name);
             }
             cmd.data.source &= ~TOPLEVEL::action::lowPrio;
@@ -1815,7 +1815,7 @@ float InterChange::buildWindowTitle(CommandBlock& cmd)
         name += " - Part ";
         name += to_string(section + 1);
         name += " ";
-        name += synth.part[section]->Pname;
+        name += synth.part[section]->meta.info.Pfilename;
 
         if (synth.part[section]->Pkitmode != 0)
         {
@@ -1825,7 +1825,7 @@ float InterChange::buildWindowTitle(CommandBlock& cmd)
             {
                 name += to_string(kititem + 1);
                 name += " ";
-                string kitname = synth.part[section]->kit[kititem].Pname;
+                string kitname = synth.part[section]->kit[kititem].PitemName;
                 if (!kitname.empty())
                 {
                     name += "- ";
@@ -1873,9 +1873,10 @@ void InterChange::generateSpecialInstrument(int npart, string name)
 {
     assert(npart < NUM_MIDI_PARTS);
     Part& part{*synth.part[npart]};
-    part.Pname = name;
-    part.info.Ptype = 17; // Warm Pad
-    part.info.Pauthor = "Yoshimi Team\nGPL V2 or later";
+    part.resetInstrument();  // clean baseline, do not build on leftovers
+    part.meta.info.Pfilename = name;
+    part.meta.info.Ptype = InstrumentType::WarmPad;
+    part.meta.info.Pauthor = "Yoshimi Team\nGPL V2 or later";
     part.partefx[0]->changeeffect(1);
     part.kit[0].Padenabled = false;
     part.kit[0].Psubenabled = true;
@@ -2068,8 +2069,8 @@ void InterChange::returns(CommandBlock& cmd)
 
 void InterChange::doClearPartInstrument(int npart)
 {
-    synth.part[npart]->defaultsinstrument();
-    synth.part[npart]->cleanup();
+    synth.part[npart]->resetInstrument();
+    synth.part[npart]->resetRuntime();
     synth.getRuntime().currentPart = npart;
     synth.partonoffWrite(npart, 2);
     synth.pushEffectUpdate(npart);
@@ -2091,9 +2092,9 @@ bool InterChange::commandSend(CommandBlock& cmd)
         uchar insert  = cmd.data.insert;
         if (npart < NUM_MIDI_PARTS && (insert != UNUSED || (control != PART::control::enable && control != PART::control::instrumentName)))
         {
-            if (synth.part[npart]->Pname == DEFAULT_NAME)
+            if (synth.part[npart]->meta.info.Pfilename == DEFAULT_NAME)
             {
-                synth.part[npart]->Pname = UNTITLED;
+                synth.part[npart]->meta.info.Pfilename = UNTITLED;
                 cmd.data.source |= TOPLEVEL::action::forceUpdate;
             }
         }
@@ -3771,7 +3772,7 @@ void InterChange::commandBank(CommandBlock& cmd)
                 textMsgBuffer.push(synth.bank.getname(value_int, kititem, engine));
             else
             {
-                int offset = type_offset [parameter];
+                int offset = instrumentTypeToXML(InstrumentType(parameter));
                 /*
                  * This version of the call is for building up lists of instruments that match the given type.
                  * It will find the next in the series until the entire bank structure has been scanned.
@@ -3872,10 +3873,17 @@ void InterChange::commandPart(CommandBlock& cmd)
             synth.getRuntime().Log("Not in kit mode");
         }
     }
-    else if (control != PART::control::enableKitLine && !part.kit[kititem].Penabled && kititem < UNUSED)
+    else if (control != PART::control::enableKitLine && kititem < UNUSED && !part.kit[kititem].Penabled)
     {
         cmd.data.source = TOPLEVEL::action::noAction;
         synth.getRuntime().Log("Kit item " +  to_string(kititem + 1) + " not enabled");
+        return;
+    }
+
+    if (write and control == PART::control::designSetToCurrent and not part.canAdoptCurrentSettings())
+    {// sanity check to prevent capturing values that can not be loaded again; see Part::canAdoptCurrentSettings()
+        cmd.data.source = TOPLEVEL::action::noAction;
+        synth.getRuntime().Log("The current settings can not be used as design values");
         return;
     }
 
@@ -3914,6 +3922,18 @@ void InterChange::commandPart(CommandBlock& cmd)
             }
         }
         else
+        if (control == PART::control::designSetToCurrent
+            or control == PART::control::designMarkIndependent)
+        {// an action on all three DesignValues is undone as a group of the single values
+            noteSeen = true; // always start a new undo step, never merge with a preceding write of the same value
+            for (uchar single = PART::control::designSampleRate; single <= PART::control::designSpectralBound; ++single)
+            {
+                CommandBlock singleCmd{cmd};
+                singleCmd.data.control = single;
+                add2undo(singleCmd, noteSeen, single != PART::control::designSampleRate);
+            }
+        }
+        else
             add2undo(cmd, noteSeen);
     }
 
@@ -3926,6 +3946,8 @@ void InterChange::commandPart(CommandBlock& cmd)
     uchar effNum = part.Peffnum;
     if (!kitType)
         kititem = 0;
+
+    bool audible{false}; // a design value change which alters the sound requires to mute the part
 
     switch (control)
     {
@@ -4481,6 +4503,50 @@ void InterChange::commandPart(CommandBlock& cmd)
                 value = part.ctl->resonancebandwidth.data;
             break;
 
+        case PART::control::designSetToCurrent:
+            if (write)
+                audible = part.adoptCurrentSettings();
+            else
+                value = part.isAdaptationAudible();
+            break;
+        case PART::control::designMarkIndependent:
+            if (write)
+                audible = part.markIndependent();
+            else
+                value = part.isAdaptationAudible();
+            break;
+        case PART::control::designSampleRate:
+        case PART::control::designControlRate:
+        case PART::control::designSpectralBound:
+        {
+            auto field = control == PART::control::designSampleRate ? Part::DesignValuesField::SampleRate
+                       : control == PART::control::designControlRate? Part::DesignValuesField::ControlRate
+                       :                                              Part::DesignValuesField::SpectralBound;
+            if (write)
+            {
+                bool adaptSynth = (cmd.data.offset == 1);
+                if (adaptSynth and not Part::isValidDesignValue(field, value_int))
+                {
+                    cmd.data.source = TOPLEVEL::action::noAction;
+                    synth.getRuntime().Log("Invalid design value");
+                    return;
+                }
+                audible = part.setDesignValue(field, value_int, adaptSynth);
+            }
+            else switch (cmd.data.parameter)
+            {
+                case 1:
+                    value = part.isAdaptingTo(field);
+                    break;
+                case 2:
+                    value = part.getCurrentSetting(field);
+                    break;
+                default:
+                    value = part.getDesignValue(field);
+            }
+            break;
+        }
+
         case PART::control::instrumentCopyright: // done elsewhere
             break;
         case PART::control::instrumentComments: // done elsewhere
@@ -4491,6 +4557,13 @@ void InterChange::commandPart(CommandBlock& cmd)
             break;
         case PART::control::defaultInstrumentCopyright: // done elsewhere
             break;
+    }
+
+    if (audible and synth.partonoffRead(npart))
+    {// ensure re-initialisation of Part runtime state with the applied changes:
+     // kills all notes, so no note continues with changed processing parameters
+        synth.partonoffWrite(npart, -1);
+        synth.partonoffWrite(npart, 2);
     }
 
     if (!write || control == PART::control::minToLastKey || control == PART::control::maxToLastKey)
@@ -7593,6 +7666,30 @@ void InterChange::addFixed2undo(CommandBlock& cmd)
 }
 
 
+namespace {
+    /**
+     * Undo/Redo capture works by reading the current value of the control.
+     * But the design values additionally carry the "adapt" flag in the offset field of a write,
+     * which a read does not return. This helper picks up this additional control info from the
+     * SynthEngine and packs it into the CommandBlock to be recorded Undo/Redo
+     */
+    static void captureDesignValueFlag(SynthEngine& synth, CommandBlock& cmd)
+    {
+        uchar control = cmd.data.control;
+        if (cmd.data.part < NUM_MIDI_PARTS
+            and cmd.data.kit == UNUSED and cmd.data.engine == UNUSED and cmd.data.insert == UNUSED
+            and control >= PART::control::designSampleRate
+            and control <= PART::control::designSpectralBound)
+        {
+            auto field = control == PART::control::designSampleRate ? Part::DesignValuesField::SampleRate
+                       : control == PART::control::designControlRate? Part::DesignValuesField::ControlRate
+                       :                                              Part::DesignValuesField::SpectralBound;
+            cmd.data.offset = synth.part[cmd.data.part]->isAdaptingTo(field)? 1 : 0;
+        }
+    }
+}
+
+
 void InterChange::add2undo(CommandBlock& cmd, bool& noteSeen, bool group)
 {
     if (undoLoopBack)
@@ -7632,6 +7729,7 @@ void InterChange::add2undo(CommandBlock& cmd, bool& noteSeen, bool group)
     candidate.data.type &= TOPLEVEL::type::Integer;
     candidate.data.source = 0;
     commandSendReal(candidate);
+    captureDesignValueFlag(synth, candidate);
 
     candidate.data.source = cmd.data.source | TOPLEVEL::action::forceUpdate;
     candidate.data.type = cmd.data.type;
@@ -7686,6 +7784,7 @@ void InterChange::undoLast(CommandBlock& candidate)
         oldCommand.data.type &= TOPLEVEL::type::Integer;
         oldCommand.data.source = 0;
         commandSendReal(oldCommand);
+        captureDesignValueFlag(synth, oldCommand);
         oldCommand.data.type = temptype;
     }
     oldCommand.data.source = tempsource;

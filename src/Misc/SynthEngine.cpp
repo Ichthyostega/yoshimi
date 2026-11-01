@@ -125,7 +125,7 @@ SynthEngine::SynthEngine(uint instanceID)
     , halfsamplerate_f{float(samplerate / 2)}
     , buffersize{512}
     , buffersize_f{float(buffersize)}
-    , bufferbytes{int(buffersize*sizeof(float))}
+    , bufferbytes{buffersize*sizeof(float)}
     , oscilsize{1024}
     , oscilsize_f{float(oscilsize)}
     , halfoscilsize{oscilsize / 2}
@@ -228,7 +228,7 @@ SynthEngine::~SynthEngine()
 }
 
 
-bool SynthEngine::Init(uint audiosrate, int audiobufsize)
+bool SynthEngine::Init(uint audiosrate, uint audiobufsize)
 {
     Runtime.init();
     audioOutStore(_SYS_::mute::Active);
@@ -250,6 +250,8 @@ bool SynthEngine::Init(uint audiosrate, int audiobufsize)
         oscilsize_f = oscilsize = buffersize / 2;
     }
     halfoscilsize_f = halfoscilsize = oscilsize / 2;
+    // the oscillator code addresses its tables with index masks, which relies on a power of two
+    assert(oscilsize > 0 and (oscilsize & (oscilsize - 1)) == 0);
     oscil_sample_step_f = oscilsize_f / samplerate_f;
 
     // Phase and frequency modulation are calculated in terms of samples, not
@@ -342,7 +344,7 @@ bool SynthEngine::Init(uint audiosrate, int audiobufsize)
     if (Runtime.instrumentLoad.size())
     {
         string filename = Runtime.instrumentLoad;
-        if (part[Runtime.load2part]->loadXML(filename))
+        if (part[Runtime.load2part]->loadXMLInstrument(filename))
         {
             part[Runtime.load2part]->Penabled = 1;
             Runtime.Log("Instrument file " + filename + " loaded");
@@ -508,7 +510,7 @@ void SynthEngine::defaults()
     VUpeak.values.vuRmsPeakR = 0;
 
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
-        part[npart]->defaults(npart);
+        part[npart]->resetParameters();
 
     VUpeak.values.parts[0] = -1.0f;
     VUpeak.values.partsR[0] = -1.0f;
@@ -1179,7 +1181,7 @@ bool SynthEngine::setProgram(string const& fname, int npart)
     getRuntime().currentPart = npart;
     interchange.undoRedoClear();
     bool ok = true;
-    if (!part[npart]->loadXML(fname))
+    if (!part[npart]->loadXMLInstrument(fname))
         ok = false;
     return ok;
 }
@@ -1422,7 +1424,7 @@ bool SynthEngine::SingleVector(list<string>& msg_buf, int chan)
     }
     msg_buf.push_back("Channel " + asString(chan + 1));
     msg_buf.push_back("  X CC = " + asString((int)  Runtime.vectordata.Xaxis[chan]) + ",  " + Xtext);
-    msg_buf.push_back("  L = " + part[chan]->Pname + ",  R = " + part[chan + 16]->Pname);
+    msg_buf.push_back("  L = " + part[chan]->meta.info.Pfilename + ",  R = " + part[chan + 16]->meta.info.Pfilename);
 
     if (Runtime.vectordata.Yaxis[chan] > 0x7f
         || Runtime.numAvailableParts < NUM_MIDI_CHANNELS * 4)
@@ -1445,7 +1447,7 @@ bool SynthEngine::SingleVector(list<string>& msg_buf, int chan)
                 Ytext += " 4";
         }
         msg_buf.push_back("  Y CC = " + asString((int) Runtime.vectordata.Yaxis[chan]) + ",  " + Ytext);
-        msg_buf.push_back("  U = " + part[chan + 32]->Pname + ",  D = " + part[chan + 48]->Pname);
+        msg_buf.push_back("  U = " + part[chan + 32]->meta.info.Pfilename + ",  D = " + part[chan + 48]->meta.info.Pfilename);
         msg_buf.push_back("  Name = " + Runtime.vectordata.Name[chan]);
     }
     return true;
@@ -2079,7 +2081,7 @@ void SynthEngine::partonoffWrite(uint npart, int what)
     }
     else if (tmp < 1 && original == 1) // disable if it wasn't already off
     {
-        part[npart]->cleanup();
+        part[npart]->resetRuntime();
         for (int nefx = 0; nefx < NUM_INS_EFX; ++nefx)
         {
             if (Pinsparts[nefx] == int(npart))
@@ -2110,11 +2112,11 @@ int SynthEngine::MasterAudio(float *outl [NUM_MIDI_PARTS + 1], float *outr [NUM_
 
     Samples& tmpmixl = Runtime.genMixl;
     Samples& tmpmixr = Runtime.genMixr;
-    sent_buffersize = buffersize;
+    sent_buffersize = int(buffersize);
     sent_bufferbytes = bufferbytes;
     sent_buffersize_f = buffersize_f;
 
-    if ((to_process > 0) && (to_process < buffersize))
+    if ((to_process > 0) && (uint(to_process) < buffersize))
     {
         sent_buffersize = to_process;
         sent_bufferbytes = sent_buffersize * sizeof(float);
@@ -2600,7 +2602,7 @@ void SynthEngine::ShutUp()
 
     for (int npart = 0; npart < NUM_MIDI_PARTS; ++npart)
     {
-        part[npart]->cleanup();
+        part[npart]->resetRuntime();
         VUpeak.values.parts[npart] = -1.0f;
         VUpeak.values.partsR[npart] = -1.0f;
     }

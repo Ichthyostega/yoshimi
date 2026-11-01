@@ -20,6 +20,7 @@
 */
 #ifndef TEXTLISTS_H
 #define TEXTLISTS_H
+#include "globals.h"
 #include <string>
 #include <list>
 
@@ -227,6 +228,41 @@ extern std::string fx_list [];
 
 extern std::string type_list [];
 extern const int type_offset [];
+
+// The instrument category shown in the GUI / CLI (display order, matches type_list[]).
+// Kept apart from the persisted XML code (type_offset[]), which must stay stable across
+// versions and therefore grows by appending negative numbers, not by following this order.
+enum class InstrumentType : uchar
+{
+    Undefined,
+    Piano,
+    BellsAndChimes,
+    ChromaticPercussion,
+    Organ,
+    Guitar,
+    Bass,
+    SoloStrings,
+    Ensemble,
+    SingleVoice,
+    Choir,
+    Brass,
+    Reed,
+    Pipe,
+    WindOther,
+    LeadSynth,
+    PadSynth,
+    WarmPad,
+    SynthEffects,
+    Ethnic,
+    Percussive,
+    SoundEffects,
+};
+
+// Translate between InstrumentType and the persisted XML code (type_offset[] entries).
+// instrumentTypeFromXML() resolves an unrecognised code to InstrumentType::Undefined,
+// same as the legacy hand-rolled scan it replaces.
+int            instrumentTypeToXML(InstrumentType);
+InstrumentType instrumentTypeFromXML(int xmlCode);
 
 extern std::string fx_presets [];
 

@@ -103,14 +103,14 @@ class PartKitItem {: {public Fl_Group}
         Fl_Button labelbutton {
           label {Bass Drum}
           callback {//
-          string tmp = input_text(synth, "Kit item name:", part->kit[n].Pname);
-          if (tmp != "" && tmp != part->kit[n].Pname)
+          string tmp = input_text(synth, "Kit item name:", part->kit[n].PitemName);
+          if (tmp != "" && tmp != part->kit[n].PitemName)
           {
               send_data(TOPLEVEL::action::lowPrio, PART::control::instrumentName, 0, TOPLEVEL::type::Integer, n, UNUSED, TOPLEVEL::insert::kitGroup, UNUSED, textMsgBuffer.push(tmp));
               o->copy_label(tmp.c_str());
           }}
           xywh {90 4 130 14} box THIN_DOWN_BOX down_box FLAT_BOX color 7 labelfont 1 labelsize 10 labelcolor 64 align 20
-          code0 {o->copy_label(part->kit[n].Pname.c_str());}
+          code0 {o->copy_label(part->kit[n].PitemName.c_str());}
         }
         Fl_Counter minkcounter {
           callback {//
@@ -538,17 +538,17 @@ class PartUI {: {public Fl_Group, PartUI_}
         Fl_Input copyright {
           callback {//
            send_data(TOPLEVEL::action::lowPrio, PART::control::instrumentCopyright, 0, TOPLEVEL::type::Integer, npart, UNUSED, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(string(o->value())));}
-          xywh {5 49 385 55} type Multiline color 182 labelsize 12 labelcolor 64 align 9 textcolor 64
+          xywh {5 49 385 38} type Multiline color 182 labelsize 12 labelcolor 64 align 9 textcolor 64
           code0 {o->maximum_size(MAX_INFO_TEXT_SIZE);}
-          code1 {o->value(part->info.Pauthor.c_str());}
+          code1 {o->value(part->meta.info.Pauthor.c_str());}
         }
         Fl_Input commentField {
           label Comments
           callback {//
           send_data(TOPLEVEL::action::lowPrio, PART::control::instrumentComments, 0, TOPLEVEL::type::Integer, npart, UNUSED, UNUSED, UNUSED, UNUSED, textMsgBuffer.push(string(o->value())));}
-          xywh {5 123 385 91} type Multiline color 182 labelsize 12 labelcolor 64 align 5 textcolor 64
+          xywh {5 106 385 80} type Multiline color 182 labelsize 12 labelcolor 64 align 5 textcolor 64
           code0 {o->maximum_size(MAX_INFO_TEXT_SIZE);}
-          code1 {o->value(part->info.Pcomments.c_str());}
+          code1 {o->value(part->meta.info.Pcomments.c_str());}
         }
         Fl_Choice instrumentType {
           label {Type:}
@@ -556,8 +556,47 @@ class PartUI {: {public Fl_Group, PartUI_}
               send_data(TOPLEVEL::action::lowPrio, PART::control::instrumentType, o->value(), TOPLEVEL::type::Integer, npart);}
           xywh {5 25 155 20} down_box BORDER_BOX labelfont 1 labelsize 11 labelcolor 64 align 5 textfont 1 textsize 11 textcolor 64
           code0 {fillInstrumentType();}
-          code1 {o->value(part->info.Ptype);}
+          code1 {o->value(int(part->meta.info.Ptype));}
         } {}
+        Fl_Box designLabel {
+          label {Reference:}
+          xywh {5 192 46 20} labelsize 12 labelcolor 64 align 20
+        }
+        Fl_Box designValue1 {
+          label 0
+          xywh {76 192 50 20} labelsize 12 labelcolor 64
+        }
+        Fl_Box designSep1 {
+          label {/}
+          xywh {126 192 8 20} labelsize 12 labelcolor 64
+        }
+        Fl_Box designValue2 {
+          label 0
+          xywh {134 192 38 20} labelsize 12 labelcolor 64
+        }
+        Fl_Box designSep2 {
+          label {/}
+          xywh {172 192 8 20} labelsize 12 labelcolor 64
+        }
+        Fl_Box designValue3 {
+          label 0
+          xywh {180 192 50 20} labelsize 12 labelcolor 64
+        }
+        Fl_Box designNone {
+          label {uses current settings} selected
+          xywh {72 192 188 20} labelsize 12 labelcolor 64 align 20
+        }
+        Fl_Button designDetach {
+          label Detach
+          callback {detachFromDesignValues(synth, npart);}
+          tooltip {Stop adapting parameters: from now on, the sound of this instrument will depend on the current processing setup and may change when used in a different setting.} xywh {244 192 66 20} box PLASTIC_THIN_UP_BOX color 228 labelsize 12 labelcolor 64
+        }
+        Fl_Button designAdapt {
+          label Adapt
+          callback {adaptToCurrentSettings(synth, npart);}
+          tooltip {Record the current processing setup (sample rate, control rate, overtones) with this instrument, so its sound can be kept similar on a different setup (by adapting synth parameters, not resampling). Saved with the instrument.} xywh {314 192 76 20} box PLASTIC_THIN_UP_BOX color 228 labelsize 12 labelcolor 64
+          code0 {designRefresh();}
+        }
       }
       Fl_Box humaniseBox {
         xywh {0 324 272 58} box ENGRAVED_FRAME labelfont 1 align 8
@@ -861,7 +900,6 @@ class PartUI {: {public Fl_Group, PartUI_}
       label Controllers
       callback {ctlclose->do_callback();}
       xywh {418 167 505 130} type Double hide resizable
-      class ScaleTrackedWindow
       code0 {o->copy_label(textMsgBuffer.fetch(collect_readData(synth, textMsgBuffer.push("Controllers"), npart, TOPLEVEL::windowTitle)).c_str());}
       code1 {ctlDW = o->w(); ctlDH = o->h();}
       code2 {o->size_range(ctlDW, ctlDH, 0, 0, 0, 0, 1);}
@@ -1727,6 +1765,13 @@ class PartUI {: {public Fl_Group, PartUI_}
             if (parameter == 0)
                 copyright->value(text.c_str());
             break;
+        case PART::control::designSetToCurrent:
+        case PART::control::designMarkIndependent:
+        case PART::control::designSampleRate:
+        case PART::control::designControlRate:
+        case PART::control::designSpectralBound:
+            designRefresh();
+            break;
         case PART::control::resetAllControllers:
             controllersrefresh();
             break;
@@ -1897,10 +1942,10 @@ class PartUI {: {public Fl_Group, PartUI_}
         setinstrumentlabel();
         instrumenteditwindow->redraw();
         fillInstrumentType();
-        copyright->value(part->info.Pauthor.c_str());
-        commentField->value(part->info.Pcomments.c_str());
-        string name = part->Poriginal;
-        if (!name.empty() && name != UNTITLED && part->Pname != name)
+        copyright->value(part->meta.info.Pauthor.c_str());
+        commentField->value(part->meta.info.Pcomments.c_str());
+        string name = part->meta.info.PdisplayName;
+        if (!name.empty() && name != UNTITLED && part->meta.info.Pfilename != name)
         {
             originaltext->copy_label(name.c_str());
             originalname->show();
@@ -1911,11 +1956,51 @@ class PartUI {: {public Fl_Group, PartUI_}
             originalname->hide();
             originaltext->hide();
         }
-        instrumentType->value(part->info.Ptype);
+        instrumentType->value(int(part->meta.info.Ptype));
         humanise->value(fetchData(0, PART::control::humanise, npart));
             humanise->selection_color(setSlider(humanise->value(),0));
         velocityhumanise->value(fetchData(0, PART::control::humanvelocity, npart));
-            velocityhumanise->selection_color(setSlider(velocityhumanise->value(),0));} {}
+            velocityhumanise->selection_color(setSlider(velocityhumanise->value(),0));
+        designRefresh();
+        //} {}
+  }
+  Function {designRefresh()} {} {
+    code {//
+        DesignValuesInfo info = fetchDesignValues(synth, npart);
+        Fl_Box* valueBox[3] = {designValue1, designValue2, designValue3};
+        Fl_Widget* tooltipped[7] = {designLabel, designValue1, designSep1, designValue2, designSep2, designValue3, designNone};
+        for (int i = 0; i < 3; ++i)
+        {
+            valueBox[i]->copy_label(info.adapting[i]? std::to_string(info.design[i]).c_str() : "-");
+            valueBox[i]->labelcolor(info.differs(i)? warning_text : gen_text);
+        }
+        string tip = designValuesTooltip(info);
+        for (Fl_Widget* widget : tooltipped)
+            widget->copy_tooltip(tip.c_str());
+
+        Fl_Widget* values[5] = {designValue1, designSep1, designValue2, designSep2, designValue3};
+        for (Fl_Widget* widget : values)
+            if (info.anyAdapting)
+                widget->show();
+            else
+                widget->hide();
+        if (info.anyAdapting)
+        {
+            designNone->hide();
+            designDetach->show();
+        }
+        else
+        {
+            designNone->show();
+            designDetach->hide();
+        }
+        if (info.allAdapting && !info.isAudible)
+            designAdapt->deactivate(); // nothing to do
+        else
+            designAdapt->activate();
+        // a hidden widget leaves its area to the window background (the frame group does not fill it)
+        instrumenteditwindow->redraw();
+        //} {}
   }
   Function {effectsrefresh()} {} {
     code {//
@@ -1989,7 +2074,7 @@ class PartUI {: {public Fl_Group, PartUI_}
                 partkititem[i]->padcheck->value(0);
                 partkititem[i]->padeditbutton->deactivate();
             }
-            partkititem[i]->labelbutton->copy_label(part->kit[i].Pname.c_str());
+            partkititem[i]->labelbutton->copy_label(part->kit[i].PitemName.c_str());
             partkititem[i]->minkcounter->value(part->kit[i].Pminkey);
             partkititem[i]->maxkcounter->value(part->kit[i].Pmaxkey);
             int effnum = part->kit[i].Psendtoparteffect + 1;
@@ -2223,7 +2308,7 @@ class PartUI {: {public Fl_Group, PartUI_}
     code {//
     engine = 0;
     if (instrumentName == "")
-        instrumentName = part->Pname;
+        instrumentName = part->meta.info.Pfilename;
     partname = instrumentName;
 
     if (part->kit[0].Padenabled)
@@ -2270,7 +2355,7 @@ class PartUI {: {public Fl_Group, PartUI_}
   }
   Function {showparameters(int kititem, int engine)} {} {
     code {//
-    kitname = part->kit[kititem].Pname;
+    kitname = part->kit[kititem].PitemName;
     if (engine == -1)
     {   // this is used if I want to clear the engine from the part
         if (kititem == lastkititem)
@@ -2347,7 +2432,7 @@ class PartUI {: {public Fl_Group, PartUI_}
     else
         synth->getGuiMaster()->instrumentlabel->labelcolor(gen_text);
     if (text == "")
-        text = part->Pname.c_str();
+        text = part->meta.info.Pfilename.c_str();
     partname = text;
     synth->getGuiMaster()->instrumentlabel->copy_label(text.c_str());} {}
   }
@@ -2597,6 +2682,15 @@ class PartUI {: {public Fl_Group, PartUI_}
 
     A_C_display->labelsize(size12);
     A_C_default->labelsize(size12);
+    designLabel->labelsize(size12);
+    designValue1->labelsize(size12);
+    designSep1->labelsize(size12);
+    designValue2->labelsize(size12);
+    designSep2->labelsize(size12);
+    designValue3->labelsize(size12);
+    designNone->labelsize(size12);
+    designDetach->labelsize(size12);
+    designAdapt->labelsize(size12);
     copyright->labelsize(size12);
         copyright->textsize(size14);
     commentField->labelsize(size12);

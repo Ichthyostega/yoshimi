@@ -651,6 +651,71 @@
         <td>Load/Save default instrument copyright info</td>
       </tr>
       <tr>
+        <td>designSetToCurrent</td>
+        <td>0,1</td>
+        <td>225</td>
+        <td>0~63</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Instrument design values: activate and capture settings<br>read: 1 if this would change the sound</td>
+      </tr>
+      <tr>
+        <td>designMarkIndependent</td>
+        <td>0,1</td>
+        <td>226</td>
+        <td>0~63</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>Disable adaptation to design values for this part<br>read: 1 if this would change the sound</td>
+      </tr>
+      <tr>
+        <td>designSampleRate</td>
+        <td>44100~192000</td>
+        <td>227</td>
+        <td>0~63</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>0~2</td>
+        <td>0,1</td>
+        <td>255</td>
+        <td>Instrument design value: sample rate<br>write: offset 1 = adapt, 0 = independent<br>read: parameter 0 = design value, 1 = adapting, 2 = current setting</td>
+      </tr>
+      <tr>
+        <td>designControlRate</td>
+        <td>16~8192</td>
+        <td>228</td>
+        <td>0~63</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>0~2</td>
+        <td>0,1</td>
+        <td>255</td>
+        <td>Instrument design value: control rate, power of two<br>offset and parameter as for designSampleRate</td>
+      </tr>
+      <tr>
+        <td>designSpectralBound</td>
+        <td>256~16384</td>
+        <td>229</td>
+        <td>0~63</td>
+        <td>255</td>
+        <td>255</td>
+        <td>255</td>
+        <td>0~2</td>
+        <td>0,1</td>
+        <td>255</td>
+        <td>Instrument design value: spectral bound, power of two<br>offset and parameter as for designSampleRate</td>
+      </tr>
+      <tr>
         <td></td>
         <td></td>
         <td></td>

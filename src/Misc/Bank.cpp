@@ -251,7 +251,7 @@ string Bank::clearslot(uint ninstrument, size_t rootID, size_t bankID)
 bool Bank::savetoslot(size_t rootID, size_t bankID, int ninstrument, int npart)
 {
     string filepath = getBankPath(rootID, bankID);
-    string name = synth.part[npart]->Pname;
+    string name = synth.part[npart]->meta.info.Pfilename;
     if (filepath.at(filepath.size() - 1) != '/')
         filepath += "/";
     clearslot(ninstrument, rootID, bankID);
@@ -273,7 +273,7 @@ bool Bank::savetoslot(size_t rootID, size_t bankID, int ninstrument, int npart)
         }
     }
     if (saveType & 1) // legacy
-        ok2 = synth.part[npart]->saveXML(fullpath, false);
+        ok2 = synth.part[npart]->saveXMLInstrument(fullpath, false);
 
     fullpath = setExtension(fullpath, EXTEN::yoshInst);
     if (isRegularFile(fullpath))
@@ -286,7 +286,7 @@ bool Bank::savetoslot(size_t rootID, size_t bankID, int ninstrument, int npart)
     }
 
     if (saveType & 2) // Yoshimi format
-        ok1 = synth.part[npart]->saveXML(fullpath, true);
+        ok1 = synth.part[npart]->saveXMLInstrument(fullpath, true);
     if (!ok1 || !ok2)
         return false;
 
@@ -1323,13 +1323,13 @@ size_t Bank::generateSingleRoot(string const& newRoot, bool clear)
     synth.interchange.generateSpecialInstrument(npart, instrumentName);
 
     string filename = newBank + "/" + "0005-" + instrumentName + EXTEN::zynInst;
-    synth.part[npart]->saveXML(filename, false);
+    synth.part[npart]->saveXMLInstrument(filename, false);
 
     // set root and tidy up
     size_t idx = addRootDir(newRoot);
 
     if (clear)
-        synth.part[npart]->defaultsinstrument();
+        synth.part[npart]->resetInstrument();
 
     synth.maybePublishEffectsToGui();
     return idx;

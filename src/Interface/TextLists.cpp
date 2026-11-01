@@ -213,6 +213,9 @@ std::string partlist [] = {
     "NAme <s>",            "sets the display name the part can be saved with",
     "TYPe <s>",            "sets the instrument type",
     "COPyright <s>",       "sets the instrument copyright message",
+    "DESIgn <s> <n>/OFF",  "design value (Sample, Control, Spectral) to adapt to, or off",
+    "DESIgn CUrrent",      "adapt to all, taking design values from current settings",
+    "DESIgn INdependent",  "adapt to none",
     "INFo <s>",            "fills the comments info entry",
     "Humanise Pitch <n>",  "adds a small random pitch change at note_on",
     "Humanise Velocity <n>",  "adds a small random velocity change at note_on",
@@ -1159,6 +1162,21 @@ const int type_offset [] = {0, 1, -3, 2, 3, 4, 5, 6, 7, -6, -2, 8, 9, 10, -5, 11
  *
  * Note: can't use -1 as ID
  */
+
+int instrumentTypeToXML(InstrumentType type)
+{
+    return type_offset[size_t(type)];
+}
+
+InstrumentType instrumentTypeFromXML(int xmlCode)
+{
+    size_t pos = 0;
+    while (type_offset[pos] != UNUSED && type_offset[pos] != xmlCode)
+        ++pos;
+    if (type_offset[pos] == UNUSED) // unrecognised code
+        pos = 0;                    // -> Undefined
+    return InstrumentType(pos);
+}
 
 std::string fx_presets [] = {
     "1, off",

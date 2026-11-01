@@ -142,10 +142,27 @@ string input_text(SynthEngine *synth, string label, string text);
 int setSlider(float current, float normal);
 int setKnob(float current, float normal);
 
+// Design values of an instrument (Part), see Part::meta and dev_notes/Instrument-adapt-DesignValues.txt
+struct DesignValuesInfo
+{
+    uint design[3];   // sample rate, control rate, spectral bound -- as stored with the instrument
+    uint current[3];  // the corresponding current settings of the synth engine
+    bool adapting[3]; // adapt to the individual design value
+    bool anyAdapting;
+    bool allAdapting;
+    bool isAudible;   // adapting to the design values would change the sound
+
+    bool differs(int i) const { return adapting[i] and design[i] != current[i]; }
+};
+DesignValuesInfo fetchDesignValues(SynthEngine* synth, uchar npart);
+string designValuesTooltip(DesignValuesInfo const&);
+void adaptToCurrentSettings(SynthEngine* synth, uchar npart);
+void detachFromDesignValues(SynthEngine* synth, uchar npart);
+
 string convert_value(ValueType type, float val);
 
-string variable_prec_units(float v, const string& u, int maxPrec, bool roundup = false);
-string custom_value_units(float v, const string& u, int prec=0);
+string variable_prec_units(float v, string const& u, int maxPrec, bool roundup = false);
+string custom_value_units(float v, string const& u, int prec=0);
 void  custom_graph_dimensions(ValueType vt, int& w, int& h);
 void custom_graphics(ValueType vt, float val,int W,int H);
 ValueType getLFOdepthType(int group);
@@ -153,7 +170,7 @@ ValueType getLFOFreqType(int bpmEnabled);
 ValueType getFilterFreqType(int type);
 ValueType getFilterFreqTrackType(int offset);
 
-int millisec2logDial(unsigned int);
+int millisec2logDial(uint);
 unsigned int logDial2millisec(int);
 
 

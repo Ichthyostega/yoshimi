@@ -117,6 +117,7 @@ class CmdInterpreter
         int modulator(Parser& input, unsigned char controlType);
         int waveform(Parser& input, unsigned char controlType);
         int commandPart(Parser& input, unsigned char controlType);
+        int partDesignValues(Parser& input, unsigned char controlType);
         int commandTest(Parser& input, unsigned char controlType);
         int commandReadnSet(Parser& input, unsigned char controlType);
         bool checkOnePart(SynthEngine *synth, uchar npart);
